@@ -44,13 +44,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 }));
 
 // Mock task-manager.js
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager.js',
-	() => ({
-		generateTaskFiles: jest.fn()
-	})
-);
-
 // Mock external libraries
 jest.unstable_mockModule('chalk', () => ({
 	default: {

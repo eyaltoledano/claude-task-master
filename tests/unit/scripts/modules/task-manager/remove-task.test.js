@@ -16,13 +16,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isSilentMode: jest.fn(() => false)
 }));
 
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
 // fs is used for file deletion side-effects – stub the methods we touch
 jest.unstable_mockModule('fs', () => ({
 	existsSync: jest.fn(() => true),
@@ -35,11 +28,6 @@ jest.unstable_mockModule('fs', () => ({
 const { readJSON, writeJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 const fs = await import('fs');
 
 // Import module under test (AFTER mocks in place)

@@ -1,25 +1,21 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, mergeConfig } from 'vitest/config';
+import rootConfig from '../../vitest.config';
 
-export default defineConfig({
-	test: {
-		globals: true,
-		environment: 'node',
-		include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
-		coverage: {
-			provider: 'v8',
-			reporter: ['text', 'json', 'html'],
-			include: ['src/**/*.ts'],
-			exclude: [
-				'node_modules/',
-				'dist/',
-				'tests/',
-				'**/*.test.ts',
-				'**/*.spec.ts',
-				'**/*.d.ts',
-				'**/mocks/**',
-				'**/fixtures/**',
-				'vitest.config.ts'
+/**
+ * CLI package Vitest configuration
+ * Extends root config with CLI-specific settings
+ */
+export default mergeConfig(
+	rootConfig,
+	defineConfig({
+		test: {
+			// CLI-specific test patterns
+			include: [
+				'tests/**/*.test.ts',
+				'tests/**/*.spec.ts',
+				'src/**/*.test.ts',
+				'src/**/*.spec.ts'
 			]
 		}
-	}
-});
+	})
+);

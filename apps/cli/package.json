@@ -35,9 +35,10 @@
 		"@biomejs/biome": "^1.9.4",
 		"@types/inquirer": "^9.0.3",
 		"@types/node": "^22.10.5",
+		"@vitest/coverage-v8": "^4.0.10",
 		"tsx": "^4.20.4",
 		"typescript": "^5.9.2",
-		"vitest": "^2.1.8"
+		"vitest": "^4.0.10"
 	},
 	"engines": {
 		"node": ">=18.0.0"

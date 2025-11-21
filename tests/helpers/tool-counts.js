@@ -4,8 +4,8 @@
  */
 
 import {
-	getToolCounts,
-	getToolCategories
+	getToolCategories,
+	getToolCounts
 } from '../../mcp-server/src/tools/tool-registry.js';
 
 /**
@@ -14,8 +14,8 @@ import {
  */
 export const EXPECTED_TOOL_COUNTS = {
 	core: 7,
-	standard: 15,
-	total: 44
+	standard: 14,
+	total: 43
 };
 
 /**

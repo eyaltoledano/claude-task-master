@@ -6,10 +6,10 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	withNormalizedProjectRoot
+	withToolContext
 } from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
-import { createTmCore, type TaskStatus, type Task } from '@tm/core';
+import type { ToolContext } from '../../shared/types.js';
+import type { TaskStatus, Task } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const GetTasksSchema = z.object({
@@ -40,23 +40,15 @@ export function registerGetTasksTool(server: FastMCP) {
 		description:
 			'Get all tasks from Task Master, optionally filtering by status and including subtasks.',
 		parameters: GetTasksSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: GetTasksArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'get-tasks',
+			async (args: GetTasksArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot, status, withSubtasks, tag } = args;
 
 				try {
-					context.log.info(
+					log.info(
 						`Getting tasks from ${projectRoot}${status ? ` with status filter: ${status}` : ''}${tag ? ` for tag: ${tag}` : ''}`
 					);
-
-					// Create tm-core with logging callback
-					const tmCore = await createTmCore({
-						projectPath: projectRoot,
-						loggerConfig: {
-							mcpMode: true,
-							logCallback: context.log
-						}
-					});
 
 					// Build filter
 					const filter =
@@ -75,13 +67,14 @@ export function registerGetTasksTool(server: FastMCP) {
 						includeSubtasks: withSubtasks
 					});
 
-					context.log.info(
+					log.info(
 						`Retrieved ${result.tasks?.length || 0} tasks (${result.filtered} filtered, ${result.total} total)`
 					);
 
 					// Calculate stats using reduce for cleaner code
+					const tasks = result.tasks ?? [];
 					const totalTasks = result.total;
-					const taskCounts = result.tasks.reduce(
+					const taskCounts = tasks.reduce(
 						(acc, task) => {
 							acc[task.status] = (acc[task.status] || 0) + 1;
 							return acc;
@@ -93,7 +86,7 @@ export function registerGetTasksTool(server: FastMCP) {
 						totalTasks > 0 ? ((taskCounts.done || 0) / totalTasks) * 100 : 0;
 
 					// Count subtasks using reduce
-					const subtaskCounts = result.tasks.reduce(
+					const subtaskCounts = tasks.reduce(
 						(acc, task) => {
 							task.subtasks?.forEach((st) => {
 								acc.total++;
@@ -113,7 +106,7 @@ export function registerGetTasksTool(server: FastMCP) {
 						result: {
 							success: true,
 							data: {
-								tasks: result.tasks as Task[],
+								tasks: tasks as Task[],
 								filter: status || 'all',
 								stats: {
 									total: totalTasks,
@@ -138,14 +131,14 @@ export function registerGetTasksTool(server: FastMCP) {
 								}
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot,
 						tag: result.tag
 					});
 				} catch (error: any) {
-					context.log.error(`Error in get-tasks: ${error.message}`);
+					log.error(`Error in get-tasks: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -154,7 +147,7 @@ export function registerGetTasksTool(server: FastMCP) {
 								message: `Failed to get tasks: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

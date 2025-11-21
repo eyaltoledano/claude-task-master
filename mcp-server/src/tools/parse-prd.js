@@ -9,7 +9,7 @@ import {
 	withNormalizedProjectRoot,
 	createErrorResponse,
 	checkProgressCapability
-} from './utils.js';
+} from '@tm/mcp';
 import { parsePRDDirect } from '../core/task-master-core.js';
 import {
 	PRD_FILE,
@@ -84,13 +84,12 @@ export function registerParsePRDTool(server) {
 						log,
 						{ session, reportProgress: progressCapability }
 					);
-					return handleApiResult(
+					return handleApiResult({
 						result,
-						log,
-						'Error parsing PRD',
-						undefined,
-						args.projectRoot
-					);
+						log: log,
+						errorPrefix: 'Error parsing PRD',
+						projectRoot: args.projectRoot
+					});
 				} catch (error) {
 					log.error(`Error in parse_prd: ${error.message}`);
 					return createErrorResponse(`Failed to parse PRD: ${error.message}`);

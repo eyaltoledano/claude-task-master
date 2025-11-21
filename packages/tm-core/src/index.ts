@@ -82,6 +82,12 @@ export type {
 } from './modules/auth/types.js';
 export { AuthenticationError } from './modules/auth/types.js';
 
+// Auth constants
+export {
+	LOCAL_ONLY_COMMANDS,
+	type LocalOnlyCommand
+} from './modules/auth/index.js';
+
 // Brief types
 export type { Brief } from './modules/briefs/types.js';
 export type { TagWithStats } from './modules/briefs/services/brief-service.js';

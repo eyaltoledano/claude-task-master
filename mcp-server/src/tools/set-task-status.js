@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import {
 	setTaskStatusDirect,
 	nextTaskDirect
@@ -113,13 +113,12 @@ export function registerSetTaskStatusTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error setting task status',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error setting task status',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);
 				return createErrorResponse(

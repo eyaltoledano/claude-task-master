@@ -3,15 +3,11 @@
  * Tool for adding a dependency to a task
  */
 
+import { createErrorResponse, handleApiResult, withToolContext } from '@tm/mcp';
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { addDependencyDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the addDependency tool with the MCP server
@@ -37,62 +33,65 @@ export function registerAddDependencyTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
-			try {
-				log.info(
-					`Adding dependency for task ${args.id} to depend on ${args.dependsOn}`
-				);
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
-				let tasksJsonPath;
+		execute: withToolContext(
+			'add-dependency',
+			async (args, { log, session }) => {
 				try {
-					tasksJsonPath = findTasksPath(
-						{ projectRoot: args.projectRoot, file: args.file },
-						log
+					log.info(
+						`Adding dependency for task ${args.id} to depend on ${args.dependsOn}`
 					);
-				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
-					return createErrorResponse(
-						`Failed to find tasks.json: ${error.message}`
-					);
-				}
+					const resolvedTag = resolveTag({
+						projectRoot: args.projectRoot,
+						tag: args.tag
+					});
+					let tasksJsonPath;
+					try {
+						tasksJsonPath = findTasksPath(
+							{ projectRoot: args.projectRoot, file: args.file },
+							log
+						);
+					} catch (error) {
+						log.error(`Error finding tasks.json: ${error.message}`);
+						return createErrorResponse(
+							`Failed to find tasks.json: ${error.message}`
+						);
+					}
 
-				// Call the direct function with the resolved path
-				const result = await addDependencyDirect(
-					{
-						// Pass the explicitly resolved path
-						tasksJsonPath: tasksJsonPath,
-						// Pass other relevant args
-						id: args.id,
-						dependsOn: args.dependsOn,
+					// Call the direct function with the resolved path
+					const result = await addDependencyDirect(
+						{
+							// Pass the explicitly resolved path
+							tasksJsonPath: tasksJsonPath,
+							// Pass other relevant args
+							id: args.id,
+							dependsOn: args.dependsOn,
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
+						},
+						log
+						// Remove context object
+					);
+
+					// Log result
+					if (result.success) {
+						log.info(`Successfully added dependency: ${result.data.message}`);
+					} else {
+						log.error(`Failed to add dependency: ${result.error.message}`);
+					}
+
+					// Use handleApiResult to format the response
+					return handleApiResult({
+						result,
+						log,
+						errorPrefix: 'Error adding dependency',
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
-					},
-					log
-					// Remove context object
-				);
-
-				// Log result
-				if (result.success) {
-					log.info(`Successfully added dependency: ${result.data.message}`);
-				} else {
-					log.error(`Failed to add dependency: ${result.error.message}`);
+					});
+				} catch (error) {
+					log.error(`Error in addDependency tool: ${error.message}`);
+					return createErrorResponse(error.message);
 				}
-
-				// Use handleApiResult to format the response
-				return handleApiResult(
-					result,
-					log,
-					'Error adding dependency',
-					undefined,
-					args.projectRoot
-				);
-			} catch (error) {
-				log.error(`Error in addDependency tool: ${error.message}`);
-				return createErrorResponse(error.message);
 			}
-		})
+		)
 	});
 }

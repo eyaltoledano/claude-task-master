@@ -26,3 +26,9 @@ export {
 	DEFAULT_AUTH_CONFIG,
 	getAuthConfig
 } from './config.js';
+
+// Command guard types and utilities
+export { isLocalOnlyCommand, type AuthBlockResult } from './command.guard.js';
+
+// Auth constants
+export { LOCAL_ONLY_COMMANDS, type LocalOnlyCommand } from './constants.js';

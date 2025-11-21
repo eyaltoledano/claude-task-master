@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { removeSubtaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -89,13 +89,12 @@ export function registerRemoveSubtaskTool(server) {
 					log.error(`Failed to remove subtask: ${result.error.message}`);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error removing subtask',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error removing subtask',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in removeSubtask tool: ${error.message}`);
 				return createErrorResponse(error.message);

@@ -1,7 +1,6 @@
 import path from 'path';
 import * as fs from 'fs';
 import { readJSON, writeJSON, log, findTaskById } from '../utils.js';
-import generateTaskFiles from './generate-task-files.js';
 import taskExists from './task-exists.js';
 
 /**

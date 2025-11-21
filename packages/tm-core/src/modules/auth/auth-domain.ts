@@ -16,6 +16,7 @@ import type {
 	OAuthFlowOptions,
 	UserContext
 } from './types.js';
+import { checkAuthBlock, type AuthBlockResult } from './command.guard.js';
 
 /**
  * Display information for storage context
@@ -223,6 +224,41 @@ export class AuthDomain {
 		}
 
 		return `${baseUrl}/home/${context.orgSlug}/briefs/create`;
+	}
+
+	// ========== Command Guards ==========
+
+	/**
+	 * Check if a local-only command should be blocked when using API storage
+	 *
+	 * Local-only commands (like dependency management) are blocked when authenticated
+	 * with Hamster and using API storage, since Hamster manages these features remotely.
+	 *
+	 * @param commandName - Name of the command to check
+	 * @param storageType - Current storage type being used
+	 * @returns Guard result with blocking decision and context
+	 *
+	 * @example
+	 * ```ts
+	 * const result = await tmCore.auth.guardCommand('add-dependency', tmCore.tasks.getStorageType());
+	 * if (result.isBlocked) {
+	 *   console.log(`Command blocked: ${result.briefName}`);
+	 * }
+	 * ```
+	 */
+	async guardCommand(
+		commandName: string,
+		storageType: StorageType
+	): Promise<AuthBlockResult> {
+		const hasValidSession = await this.hasValidSession();
+		const context = this.getContext();
+
+		return checkAuthBlock({
+			hasValidSession,
+			briefName: context?.briefName,
+			storageType,
+			commandName
+		});
 	}
 
 	/**
