@@ -88,7 +88,7 @@ export function registerAddTaskTool(server) {
 					);
 				}
 
-				// Call the direct functionP
+				// Call the direct function
 				const result = await addTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,

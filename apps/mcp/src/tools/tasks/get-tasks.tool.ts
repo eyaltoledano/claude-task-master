@@ -72,8 +72,9 @@ export function registerGetTasksTool(server: FastMCP) {
 					);
 
 					// Calculate stats using reduce for cleaner code
+					const tasks = result.tasks ?? [];
 					const totalTasks = result.total;
-					const taskCounts = result.tasks.reduce(
+					const taskCounts = tasks.reduce(
 						(acc, task) => {
 							acc[task.status] = (acc[task.status] || 0) + 1;
 							return acc;
@@ -85,7 +86,7 @@ export function registerGetTasksTool(server: FastMCP) {
 						totalTasks > 0 ? ((taskCounts.done || 0) / totalTasks) * 100 : 0;
 
 					// Count subtasks using reduce
-					const subtaskCounts = result.tasks.reduce(
+					const subtaskCounts = tasks.reduce(
 						(acc, task) => {
 							task.subtasks?.forEach((st) => {
 								acc.total++;
@@ -105,7 +106,7 @@ export function registerGetTasksTool(server: FastMCP) {
 						result: {
 							success: true,
 							data: {
-								tasks: result.tasks as Task[],
+								tasks: tasks as Task[],
 								filter: status || 'all',
 								stats: {
 									total: totalTasks,

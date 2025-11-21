@@ -85,7 +85,7 @@ export function registerModelsTool(server) {
 					`Starting models tool with args: ${JSON.stringify(args)}`
 				);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use args.projectRoot directly (normalized by withToolContext)
 				const result = await modelsDirect(
 					{ ...args, projectRoot: args.projectRoot },
 					context.log,

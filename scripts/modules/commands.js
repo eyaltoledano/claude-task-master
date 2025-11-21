@@ -2544,8 +2544,9 @@ ${result.result}
 
 			try {
 				// Read data once for checks and confirmation
+				const tasksPath = taskMaster.getTasksPath();
 				const data = readJSON(
-					taskMaster.getTasksPath(),
+					tasksPath,
 					taskMaster.getProjectRoot(),
 					tag
 				);
