@@ -92,13 +92,12 @@ export function registerModelsTool(server) {
 					{ session: context.session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					context.log,
-					'Error managing models',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error managing models',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				context.log.error(`Error in models tool: ${error.message}`);
 				return createErrorResponse(error.message);

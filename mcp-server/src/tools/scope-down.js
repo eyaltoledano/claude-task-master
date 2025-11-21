@@ -88,13 +88,12 @@ export function registerScopeDownTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error scoping down task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error scoping down task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in scope-down tool: ${error.message}`);
 				return createErrorResponse(error.message);

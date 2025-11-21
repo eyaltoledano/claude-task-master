@@ -84,13 +84,12 @@ export function registerRemoveTaskTool(server) {
 					log.error(`Failed to remove task: ${result.error.message}`);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error removing task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error removing task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in remove-task tool: ${error.message}`);
 				return createErrorResponse(`Failed to remove task: ${error.message}`);

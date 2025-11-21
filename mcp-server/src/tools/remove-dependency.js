@@ -76,13 +76,12 @@ export function registerRemoveDependencyTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					context.log,
-					'Error removing dependency',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error removing dependency',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				context.log.error(`Error in removeDependency tool: ${error.message}`);
 				return createErrorResponse(error.message);

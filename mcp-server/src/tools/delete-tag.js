@@ -64,13 +64,12 @@ export function registerDeleteTagTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error deleting tag',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error deleting tag',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in delete-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);
