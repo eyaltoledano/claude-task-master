@@ -202,11 +202,8 @@ export class TaskService {
 			// Delegate to storage layer which handles the specific logic for tasks vs subtasks
 			return await this.storage.loadTask(String(taskId), activeTag);
 		} catch (error) {
-			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
+			// Re-throw all TaskMasterErrors without wrapping
+			if (error instanceof TaskMasterError) {
 				throw error;
 			}
 
@@ -551,11 +548,8 @@ export class TaskService {
 			// Direct update - no AI processing
 			await this.storage.updateTask(taskIdStr, updates, activeTag);
 		} catch (error) {
-			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
+			// Re-throw all TaskMasterErrors without wrapping
+			if (error instanceof TaskMasterError) {
 				throw error;
 			}
 
@@ -741,11 +735,8 @@ export class TaskService {
 				activeTag
 			);
 		} catch (error) {
-			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
+			// Re-throw all TaskMasterErrors without wrapping
+			if (error instanceof TaskMasterError) {
 				throw error;
 			}
 
@@ -785,11 +776,8 @@ export class TaskService {
 		try {
 			return await this.storage.getTagsWithStats();
 		} catch (error) {
-			// If it's a user-facing error (like NO_BRIEF_SELECTED), don't wrap it
-			if (
-				error instanceof TaskMasterError &&
-				error.is(ERROR_CODES.NO_BRIEF_SELECTED)
-			) {
+			// Re-throw all TaskMasterErrors without wrapping
+			if (error instanceof TaskMasterError) {
 				throw error;
 			}
 
