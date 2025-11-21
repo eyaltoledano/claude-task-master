@@ -9,6 +9,15 @@ export {
 } from './format-handler.js';
 export { FileOperations } from './file-operations.js';
 export { PathResolver } from './path-resolver.js';
+export {
+	TaskWatcher,
+	type TaskWatcherEvent,
+	type TaskWatcherOptions,
+	type TaskFileAddedEvent,
+	type TaskFileChangedEvent,
+	type TaskFileDeletedEvent,
+	type TaskDirectoryChangedEvent
+} from './task-watcher.js';
 
 // Main FileStorage class - primary export
 export { FileStorage as default, FileStorage } from './file-storage.js';
