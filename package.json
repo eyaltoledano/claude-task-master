@@ -72,7 +72,7 @@
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^5.0.51",
-		"ai-sdk-provider-claude-code": "^2.1.0",
+		"ai-sdk-provider-claude-code": "^2.2.0",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
 		"ai-sdk-provider-gemini-cli": "^1.1.1",
 		"ajv": "^8.17.1",
