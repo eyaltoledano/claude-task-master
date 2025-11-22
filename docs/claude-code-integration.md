@@ -194,6 +194,68 @@ Task Master's Claude Code integration uses the official `ai-sdk-provider-claude-
 - **Full AI SDK Compatibility**: Works with generateText, streamText, and other AI SDK functions
 - **Automatic Error Handling**: Graceful degradation when Claude Code is unavailable
 - **Type Safety**: Full TypeScript support with proper type definitions
+- **Native Structured Outputs (v2.2.0+)**: Guaranteed schema-compliant JSON responses
+
+## Native Structured Outputs (v2.2.0+)
+
+As of `ai-sdk-provider-claude-code` v2.2.0, Claude Code supports **native structured outputs** via the Claude Agent SDK's `outputFormat` option. This provides significant benefits for Task Master's structured data generation:
+
+### Key Benefits
+
+- **Guaranteed Schema Compliance**: The SDK uses constrained decoding to ensure responses always match your Zod schema
+- **No JSON Parsing Errors**: Schema validation is handled internally by the SDK
+- **No Prompt Engineering Required**: No need for "output valid JSON" instructions - the SDK enforces schema natively
+- **Better Performance**: No retry/extraction logic needed for valid JSON output
+
+### How It Works
+
+When Task Master calls `generateObject()` or `streamObject()` with a Zod schema, the Claude Code provider:
+
+1. Sets `mode: 'json'` (via `needsExplicitJsonSchema = true`)
+2. Passes the schema to the SDK
+3. The SDK converts the Zod schema to JSON Schema and uses `outputFormat: { type: 'json_schema', schema: ... }`
+4. Claude Agent SDK returns `structured_output` with guaranteed schema compliance
+
+### Example
+
+```javascript
+import { z } from 'zod';
+import { generateObjectService } from './scripts/modules/ai-services-unified.js';
+
+// Define your schema
+const taskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  priority: z.enum(['high', 'medium', 'low']),
+  dependencies: z.array(z.number().int())
+});
+
+// Generate structured output - guaranteed to match schema
+const result = await generateObjectService({
+  role: 'main',  // Uses Claude Code if configured as main provider
+  schema: taskSchema,
+  objectName: 'task',
+  prompt: 'Create a task for implementing user authentication',
+  systemPrompt: 'You are a task planning assistant.',
+  commandName: 'add-task',
+  outputType: 'cli'
+});
+
+// result.mainResult is guaranteed to match taskSchema
+console.log(result.mainResult);
+// { title: "...", description: "...", priority: "high", dependencies: [] }
+```
+
+### Supported Commands
+
+All Task Master commands that generate structured data benefit from native schema support:
+
+- `parse-prd` - Parsing PRD documents into tasks
+- `add-task` - Creating new tasks
+- `expand-task` - Expanding tasks into subtasks
+- `update-tasks` - Batch updating tasks
+- `update-task-by-id` - Updating individual tasks
+- `analyze-complexity` - Analyzing task complexity
 
 ### Example AI SDK Usage
 
