@@ -25,7 +25,7 @@
 		"vitest": "^4.0.10"
 	},
 	"engines": {
-		"node": ">=18"
+		"node": ">=20"
 	},
 	"keywords": ["ai", "grok", "x.ai", "cli", "language-model", "provider"],
 	"files": ["dist/**/*", "README.md"],

@@ -29,7 +29,7 @@ task-master models --set-main gpt-5-codex --codex-cli
 
 ## Requirements
 
-- **Node.js**: >= 18.0.0
+- **Node.js**: >= 20.0.0
 - **Codex CLI**: >= 0.42.0 (>= 0.44.0 recommended)
 - **ChatGPT Subscription**: Required for OAuth access (Plus, Pro, Business, Edu, or Enterprise)
 - **Task Master**: >= 0.27.3 (version with Codex CLI support)
