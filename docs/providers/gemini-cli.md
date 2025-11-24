@@ -107,7 +107,8 @@ You can also manually edit your `.taskmaster/config.json`:
 
 ### Available Models
 
-The gemini-cli provider supports only two models:
+The gemini-cli provider supports the following models:
+- `gemini-3-pro-preview` - Latest preview model with best performance
 - `gemini-2.5-pro` - High performance model (1M token context window, 65,536 max output tokens)
 - `gemini-2.5-flash` - Fast, efficient model (1M token context window, 65,536 max output tokens)
 
@@ -134,7 +135,8 @@ If you get an authentication error:
 
 ### "Model not found" Error
 
-The gemini-cli provider only supports two models:
+The gemini-cli provider supports the following models:
+- `gemini-3-pro-preview`
 - `gemini-2.5-pro`
 - `gemini-2.5-flash`
 
@@ -152,10 +154,45 @@ npm install -g @google/gemini-cli
 gemini --version
 ```
 
+## Native Structured Outputs (v1.4.0+)
+
+As of `ai-sdk-provider-gemini-cli` v1.4.0, the Gemini CLI provider now supports **native structured output** via Gemini's `responseJsonSchema` parameter. This provides several benefits:
+
+### Key Benefits
+
+- **Guaranteed Schema Compliance**: JSON output is constrained at the API level to match your schema
+- **No JSON Parsing Errors**: Eliminates issues with malformed JSON or conversational preamble
+- **Improved Reliability**: Native schema enforcement means consistent, predictable output
+- **Better Performance**: No need for post-processing or JSON extraction from text
+
+### How It Works
+
+When you use Task Master commands that require structured output (like `parse-prd`, `expand`, `add-task`, `update-task`, or `analyze-complexity`), the provider:
+
+1. Passes the Zod schema directly to Gemini's API via `responseJsonSchema`
+2. Sets `responseMimeType: 'application/json'` for clean JSON output
+3. Returns validated, schema-compliant JSON without any text extraction needed
+
+### Supported Commands
+
+All commands that use structured output benefit from native schema enforcement:
+
+- `task-master parse-prd` - Parse PRD and generate tasks
+- `task-master expand` - Expand tasks into subtasks
+- `task-master add-task` - Add new tasks with AI assistance
+- `task-master update-task` - Update existing tasks
+- `task-master analyze-complexity` - Analyze task complexity
+
+### Requirements
+
+- **Node.js 20+**: The v1.4.0 SDK requires Node.js 20 or later
+- **ai-sdk-provider-gemini-cli >= 1.4.0**: Included with Task Master automatically
+
 ## Important Notes
 
 - **OAuth vs API Key**: This provider is specifically designed for users who want to use OAuth authentication via gemini-cli. If you prefer using API keys, consider using the standard `google` provider instead.
-- **Limited Model Support**: Only `gemini-2.5-pro` and `gemini-2.5-flash` are available through gemini-cli.
+- **Limited Model Support**: Only `gemini-3-pro-preview`, `gemini-2.5-pro`, and `gemini-2.5-flash` are available through gemini-cli.
 - **Subscription Benefits**: Using OAuth authentication allows you to leverage any subscription benefits associated with your Google account.
+- **Node.js Requirement**: Requires Node.js 20+ due to native structured output support.
 - The provider uses the `ai-sdk-provider-gemini-cli` npm package internally.
-- Supports all standard Task Master features: text generation, streaming, and structured object generation.
+- Supports all standard Task Master features: text generation, streaming, and structured object generation with native schema enforcement.
