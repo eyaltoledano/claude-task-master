@@ -357,4 +357,163 @@ export class SupabaseAuthClient {
 			);
 		}
 	}
+
+	/**
+	 * Check if MFA is required for the current session
+	 * Returns MFA factor information if MFA is required, null otherwise
+	 */
+	async checkMFARequired(): Promise<{
+		required: boolean;
+		factorId?: string;
+		factorType?: string;
+	}> {
+		const client = this.getClient();
+
+		try {
+			// Get the current session
+			const {
+				data: { session },
+				error: sessionError
+			} = await client.auth.getSession();
+
+			if (sessionError || !session) {
+				this.logger.warn('No session available to check MFA');
+				return { required: false };
+			}
+
+			// Check the current Authentication Assurance Level (AAL)
+			// AAL1 = basic authentication (password/oauth)
+			// AAL2 = MFA verified
+			const { data: aalData, error: aalError } =
+				await client.auth.mfa.getAuthenticatorAssuranceLevel();
+
+			if (aalError) {
+				this.logger.warn('Failed to get AAL:', aalError);
+				return { required: false };
+			}
+
+			// If already at AAL2, MFA is not required
+			if (aalData?.currentLevel === 'aal2') {
+				this.logger.info('Session already at AAL2, MFA not required');
+				return { required: false };
+			}
+
+			// Get MFA factors for this user
+			const { data: factors, error: factorsError } =
+				await client.auth.mfa.listFactors();
+
+			if (factorsError) {
+				this.logger.warn('Failed to list MFA factors:', factorsError);
+				return { required: false };
+			}
+
+			// Check if user has any verified MFA factors
+			const verifiedFactors = factors?.totp?.filter(
+				(factor) => factor.status === 'verified'
+			);
+
+			if (!verifiedFactors || verifiedFactors.length === 0) {
+				this.logger.info('No verified MFA factors found');
+				return { required: false };
+			}
+
+			// MFA is required - user has MFA enabled but session is only at AAL1
+			const factor = verifiedFactors[0]; // Use the first verified factor
+			this.logger.info('MFA verification required', {
+				factorId: factor.id,
+				factorType: factor.factor_type
+			});
+
+			return {
+				required: true,
+				factorId: factor.id,
+				factorType: factor.factor_type
+			};
+		} catch (error) {
+			this.logger.error('Error checking MFA requirement:', error);
+			return { required: false };
+		}
+	}
+
+	/**
+	 * Verify MFA code and upgrade session to AAL2
+	 */
+	async verifyMFA(factorId: string, code: string): Promise<Session> {
+		const client = this.getClient();
+
+		try {
+			this.logger.info('Verifying MFA code...');
+
+			// Create MFA challenge
+			const { data: challengeData, error: challengeError } =
+				await client.auth.mfa.challenge({ factorId });
+
+			if (challengeError || !challengeData) {
+				throw new AuthenticationError(
+					`Failed to create MFA challenge: ${challengeError?.message || 'Unknown error'}`,
+					'MFA_VERIFICATION_FAILED'
+				);
+			}
+
+			// Verify the TOTP code
+			const { data, error } = await client.auth.mfa.verify({
+				factorId,
+				challengeId: challengeData.id,
+				code
+			});
+
+			if (error) {
+				this.logger.error('MFA verification failed:', error);
+				throw new AuthenticationError(
+					`Invalid MFA code: ${error.message}`,
+					'INVALID_MFA_CODE'
+				);
+			}
+
+			if (!data) {
+				throw new AuthenticationError(
+					'No data returned from MFA verification',
+					'INVALID_RESPONSE'
+				);
+			}
+
+			// Set the session with the new tokens from MFA verification
+			const { error: setSessionError } = await client.auth.setSession({
+				access_token: data.access_token,
+				refresh_token: data.refresh_token
+			});
+
+			if (setSessionError) {
+				throw new AuthenticationError(
+					`Failed to set session after MFA: ${setSessionError.message}`,
+					'SESSION_SET_FAILED'
+				);
+			}
+
+			// Get the updated session
+			const {
+				data: { session },
+				error: getSessionError
+			} = await client.auth.getSession();
+
+			if (getSessionError || !session) {
+				throw new AuthenticationError(
+					'Failed to retrieve session after MFA verification',
+					'INVALID_RESPONSE'
+				);
+			}
+
+			this.logger.info('Successfully verified MFA, session upgraded to AAL2');
+			return session;
+		} catch (error) {
+			if (error instanceof AuthenticationError) {
+				throw error;
+			}
+
+			throw new AuthenticationError(
+				`MFA verification failed: ${(error as Error).message}`,
+				'MFA_VERIFICATION_FAILED'
+			);
+		}
+	}
 }

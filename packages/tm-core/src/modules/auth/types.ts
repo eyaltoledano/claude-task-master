@@ -62,6 +62,16 @@ export interface CliData {
 }
 
 /**
+ * MFA challenge information
+ */
+export interface MFAChallenge {
+	/** ID of the MFA factor that needs verification */
+	factorId: string;
+	/** Type of MFA factor (e.g., 'totp') */
+	factorType: string;
+}
+
+/**
  * Authentication error codes
  */
 export type AuthErrorCode =
@@ -90,19 +100,27 @@ export type AuthErrorCode =
 	| 'CODE_EXCHANGE_FAILED'
 	| 'SESSION_SET_FAILED'
 	| 'CODE_AUTH_FAILED'
-	| 'INVALID_CODE';
+	| 'INVALID_CODE'
+	| 'MFA_REQUIRED'
+	| 'MFA_VERIFICATION_FAILED'
+	| 'INVALID_MFA_CODE';
 
 /**
  * Authentication error class
  */
 export class AuthenticationError extends Error {
+	/** Optional MFA challenge information when MFA is required */
+	public mfaChallenge?: MFAChallenge;
+
 	constructor(
 		message: string,
 		public code: AuthErrorCode,
-		public cause?: unknown
+		public cause?: unknown,
+		mfaChallenge?: MFAChallenge
 	) {
 		super(message);
 		this.name = 'AuthenticationError';
+		this.mfaChallenge = mfaChallenge;
 		if (cause && cause instanceof Error) {
 			this.stack = `${this.stack}\nCaused by: ${cause.stack}`;
 		}
