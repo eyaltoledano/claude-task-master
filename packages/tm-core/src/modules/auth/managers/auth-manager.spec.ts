@@ -1,5 +1,13 @@
 /**
  * Tests for AuthManager singleton behavior
+ *
+ * Mocking strategy (per @tm/core guidelines):
+ * - Mock external I/O: SupabaseAuthClient (API), SessionManager (filesystem), OAuthService (OAuth APIs)
+ * - Mock side effects: logger (acceptable for unit tests)
+ * - Mock internal services: ContextStore (TODO: evaluate if real instance can be used)
+ *
+ * Note: Mocking 5 dependencies is a code smell suggesting AuthManager may have too many responsibilities.
+ * Consider refactoring to reduce coupling in the future.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,6 +87,7 @@ vi.mock('../../integration/clients/supabase-client.js', () => {
 
 // Import SUT after mocks
 import { AuthManager } from './auth-manager.js';
+import { AuthenticationError } from '../types.js';
 
 describe('AuthManager Singleton', () => {
 	beforeEach(() => {
@@ -154,5 +163,163 @@ describe('AuthManager Singleton', () => {
 
 		// They should be different instances
 		expect(instance1).not.toBe(instance2);
+	});
+});
+
+describe('AuthManager - MFA Retry Logic', () => {
+	beforeEach(() => {
+		AuthManager.resetInstance();
+		vi.clearAllMocks();
+	});
+
+	describe('verifyMFAWithRetry', () => {
+		it('should succeed on first attempt with valid code', async () => {
+			const authManager = AuthManager.getInstance();
+			let callCount = 0;
+
+			// Mock code provider
+			const codeProvider = vi.fn(async () => {
+				callCount++;
+				return '123456';
+			});
+
+			// Mock successful verification
+			vi.spyOn(authManager, 'verifyMFA').mockResolvedValue({
+				token: 'test-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				tokenType: 'standard',
+				savedAt: new Date().toISOString()
+			});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.attemptsUsed).toBe(1);
+			expect(result.credentials).toBeDefined();
+			expect(result.credentials?.token).toBe('test-token');
+			expect(codeProvider).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry on INVALID_MFA_CODE and succeed on second attempt', async () => {
+			const authManager = AuthManager.getInstance();
+			let attemptCount = 0;
+
+			// Mock code provider
+			const codeProvider = vi.fn(async () => {
+				attemptCount++;
+				return `code-${attemptCount}`;
+			});
+
+			// Mock verification: fail once, then succeed
+			const verifyMFASpy = vi
+				.spyOn(authManager, 'verifyMFA')
+				.mockRejectedValueOnce(
+					new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+				)
+				.mockResolvedValueOnce({
+					token: 'test-token',
+					userId: 'test-user',
+					email: 'test@example.com',
+					tokenType: 'standard',
+					savedAt: new Date().toISOString()
+				});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.attemptsUsed).toBe(2);
+			expect(result.credentials).toBeDefined();
+			expect(codeProvider).toHaveBeenCalledTimes(2);
+			expect(verifyMFASpy).toHaveBeenCalledTimes(2);
+		});
+
+		it('should fail after max attempts with INVALID_MFA_CODE', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			// Mock verification to always fail
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(3);
+			expect(result.credentials).toBeUndefined();
+			expect(result.errorCode).toBe('INVALID_MFA_CODE');
+			expect(codeProvider).toHaveBeenCalledTimes(3);
+		});
+
+		it('should throw immediately on non-INVALID_MFA_CODE errors', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+
+			// Mock verification to throw different error
+			const networkError = new AuthenticationError(
+				'Network error',
+				'NETWORK_ERROR'
+			);
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(networkError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 3)
+			).rejects.toThrow('Network error');
+
+			// Should not retry on non-INVALID_MFA_CODE errors
+			expect(codeProvider).toHaveBeenCalledTimes(1);
+		});
+
+		it('should respect custom maxAttempts parameter', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			// Mock verification to always fail
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				5 // Custom max attempts
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(5);
+			expect(codeProvider).toHaveBeenCalledTimes(5);
+		});
+
+		it('should use default maxAttempts of 3', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			// Don't pass maxAttempts - should default to 3
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(3);
+			expect(codeProvider).toHaveBeenCalledTimes(3);
+		});
 	});
 });

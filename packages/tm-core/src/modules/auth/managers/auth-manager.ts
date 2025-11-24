@@ -124,6 +124,75 @@ export class AuthManager {
 	}
 
 	/**
+	 * Verify MFA code with automatic retry logic
+	 * Handles retry attempts for invalid MFA codes up to maxAttempts
+	 *
+	 * @param factorId - MFA factor ID from the MFA_REQUIRED error
+	 * @param codeProvider - Function that prompts for and returns the MFA code
+	 * @param maxAttempts - Maximum number of verification attempts (default: 3)
+	 * @returns Result object with success status, attempts used, and credentials if successful
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await authManager.verifyMFAWithRetry(
+	 *   factorId,
+	 *   async () => await promptUserForMFACode(),
+	 *   3
+	 * );
+	 *
+	 * if (result.success) {
+	 *   console.log('MFA verified!', result.credentials);
+	 * } else {
+	 *   console.error(`Failed after ${result.attemptsUsed} attempts`);
+	 * }
+	 * ```
+	 */
+	async verifyMFAWithRetry(
+		factorId: string,
+		codeProvider: () => Promise<string>,
+		maxAttempts = 3
+	): Promise<import('../types.js').MFAVerificationResult> {
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const code = await codeProvider();
+				const credentials = await this.verifyMFA(factorId, code);
+				return {
+					success: true,
+					attemptsUsed: attempt,
+					credentials
+				};
+			} catch (error) {
+				// Only retry on invalid MFA code errors
+				if (
+					error instanceof AuthenticationError &&
+					error.code === 'INVALID_MFA_CODE'
+				) {
+					// If we've exhausted attempts, return failure
+					if (attempt >= maxAttempts) {
+						return {
+							success: false,
+							attemptsUsed: attempt,
+							errorCode: 'INVALID_MFA_CODE'
+						};
+					}
+					// Otherwise continue to next attempt
+					continue;
+				}
+
+				// For other errors, fail immediately
+				throw error;
+			}
+		}
+
+		// Should never reach here due to loop logic, but TypeScript needs it
+		return {
+			success: false,
+			attemptsUsed: maxAttempts,
+			errorCode: 'MFA_VERIFICATION_FAILED'
+		};
+	}
+
+	/**
 	 * Get the authorization URL (for browser opening)
 	 */
 	getAuthorizationUrl(): string | null {

@@ -477,29 +477,16 @@ export class SupabaseAuthClient {
 				);
 			}
 
-			// Set the session with the new tokens from MFA verification
-			const { error: setSessionError } = await client.auth.setSession({
-				access_token: data.access_token,
-				refresh_token: data.refresh_token
-			});
-
-			if (setSessionError) {
-				throw new AuthenticationError(
-					`Failed to set session after MFA: ${setSessionError.message}`,
-					'SESSION_SET_FAILED'
-				);
-			}
-
-			// Get the updated session
+			// After successful MFA verification, refresh the session to get the upgraded AAL2 session
 			const {
 				data: { session },
-				error: getSessionError
-			} = await client.auth.getSession();
+				error: refreshError
+			} = await client.auth.refreshSession();
 
-			if (getSessionError || !session) {
+			if (refreshError || !session) {
 				throw new AuthenticationError(
-					'Failed to retrieve session after MFA verification',
-					'INVALID_RESPONSE'
+					`Failed to refresh session after MFA: ${refreshError?.message || 'No session returned'}`,
+					'REFRESH_FAILED'
 				);
 			}
 

@@ -72,6 +72,20 @@ export interface MFAChallenge {
 }
 
 /**
+ * Result of MFA verification with retry
+ */
+export interface MFAVerificationResult {
+	/** Whether verification was successful */
+	success: boolean;
+	/** Number of attempts used */
+	attemptsUsed: number;
+	/** Credentials if successful */
+	credentials?: AuthCredentials;
+	/** Error code if failed */
+	errorCode?: AuthErrorCode;
+}
+
+/**
  * Authentication error codes
  */
 export type AuthErrorCode =
