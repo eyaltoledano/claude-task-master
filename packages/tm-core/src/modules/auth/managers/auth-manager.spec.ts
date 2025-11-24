@@ -321,5 +321,31 @@ describe('AuthManager - MFA Retry Logic', () => {
 			expect(result.attemptsUsed).toBe(3);
 			expect(codeProvider).toHaveBeenCalledTimes(3);
 		});
+
+		it('should throw TypeError on invalid maxAttempts (0 or negative)', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+
+			// Test with 0
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+			).rejects.toThrow(TypeError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+			).rejects.toThrow('Invalid maxAttempts value: 0. Must be at least 1.');
+
+			// Test with negative
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+			).rejects.toThrow(TypeError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+			).rejects.toThrow('Invalid maxAttempts value: -1. Must be at least 1.');
+
+			// Verify code provider was never called
+			expect(codeProvider).not.toHaveBeenCalled();
+		});
 	});
 });

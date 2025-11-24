@@ -74,6 +74,7 @@ Examples:
   $ tm auth login         # Browser-based OAuth flow (interactive)
   $ tm auth login <token> # Token-based authentication
   $ tm auth login <token> -y # Non-interactive token auth (for scripts)
+                             # Note: MFA prompts cannot be skipped if enabled
 `
 			)
 			.action(async (token?: string, options?: { yes?: boolean }) => {
@@ -118,12 +119,12 @@ Examples:
 	 * Handle authentication errors with proper type safety
 	 */
 	private handleAuthError(error: unknown): void {
-		if (error instanceof AuthenticationError) {
-			displayError(error);
-		} else if (error instanceof Error) {
+		if (error instanceof Error) {
 			displayError(error);
 		} else {
-			displayError(new Error('An unknown authentication error occurred'));
+			displayError(
+				new Error(String(error ?? 'An unknown authentication error occurred'))
+			);
 		}
 	}
 
@@ -517,10 +518,7 @@ Examples:
 	/**
 	 * Authenticate with token
 	 */
-	private async authenticateWithToken(
-		token: string,
-		skipMFAPrompt = false
-	): Promise<AuthCredentials> {
+	private async authenticateWithToken(token: string): Promise<AuthCredentials> {
 		const spinner = ora('Verifying authentication token...').start();
 
 		try {
@@ -531,8 +529,7 @@ Examples:
 			// Check if MFA is required BEFORE showing failure message
 			if (
 				error instanceof AuthenticationError &&
-				error.code === 'MFA_REQUIRED' &&
-				!skipMFAPrompt
+				error.code === 'MFA_REQUIRED'
 			) {
 				// Stop spinner without showing failure - MFA is required, not a failure
 				spinner.stop();

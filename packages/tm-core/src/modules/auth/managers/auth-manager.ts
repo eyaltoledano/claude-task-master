@@ -12,19 +12,20 @@ import type { Brief } from '../../briefs/types.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { ContextStore } from '../services/context-store.js';
 import { OAuthService } from '../services/oauth-service.js';
-import { SessionManager } from '../services/session-manager.js';
 import {
 	type Organization,
 	OrganizationService,
 	type RemoteTask
 } from '../services/organization.service.js';
+import { SessionManager } from '../services/session-manager.js';
 import {
-	AuthConfig,
-	AuthCredentials,
+	type AuthConfig,
+	type AuthCredentials,
 	AuthenticationError,
-	OAuthFlowOptions,
-	UserContext,
-	UserContextWithBrief
+	type MFAVerificationResult,
+	type OAuthFlowOptions,
+	type UserContext,
+	type UserContextWithBrief
 } from '../types.js';
 
 /**
@@ -151,7 +152,14 @@ export class AuthManager {
 		factorId: string,
 		codeProvider: () => Promise<string>,
 		maxAttempts = 3
-	): Promise<import('../types.js').MFAVerificationResult> {
+	): Promise<MFAVerificationResult> {
+		// Guard against invalid maxAttempts values
+		if (maxAttempts < 1) {
+			throw new TypeError(
+				`Invalid maxAttempts value: ${maxAttempts}. Must be at least 1.`
+			);
+		}
+
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
 				const code = await codeProvider();
@@ -272,8 +280,8 @@ export class AuthManager {
 	 */
 	private async getOrganizationService(): Promise<OrganizationService> {
 		if (!this.organizationService) {
-			// Check if we have a valid Supabase session
-			const session = await this.supabaseClient.getSession();
+			// Check if we have a valid Supabase session via SessionManager
+			const session = await this.sessionManager.getSession();
 
 			if (!session) {
 				throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');

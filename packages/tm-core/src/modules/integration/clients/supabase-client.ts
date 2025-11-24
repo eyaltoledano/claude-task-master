@@ -266,7 +266,7 @@ export class SupabaseAuthClient {
 		const client = this.getClient();
 
 		try {
-			// Sign out with global scope to revoke all refresh tokens
+			// Sign out with local scope to clear only this device's session
 			const { error } = await client.auth.signOut({ scope: 'local' });
 
 			if (error) {
@@ -360,7 +360,8 @@ export class SupabaseAuthClient {
 
 	/**
 	 * Check if MFA is required for the current session
-	 * Returns MFA factor information if MFA is required, null otherwise
+	 * @returns Object with required=true and factor details if MFA is required,
+	 *          or required=false if session is already at AAL2 or no MFA is configured
 	 */
 	async checkMFARequired(): Promise<{
 		required: boolean;

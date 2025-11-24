@@ -135,9 +135,11 @@ describe('SupabaseAuthClient', () => {
 			mockSupabaseClient.auth.mfa.challenge.mockResolvedValue(mockChallenge);
 			(authClient as any).client = mockSupabaseClient;
 
-			await expect(
-				authClient.verifyMFA('factor-123', '123456')
-			).rejects.toThrow(AuthenticationError);
+			const error = await authClient
+				.verifyMFA('factor-123', '123456')
+				.catch((e) => e);
+			expect(error).toBeInstanceOf(AuthenticationError);
+			expect(error.code).toBe('MFA_VERIFICATION_FAILED');
 		});
 
 		it('should throw AuthenticationError when MFA verification fails', async () => {
@@ -155,9 +157,11 @@ describe('SupabaseAuthClient', () => {
 			mockSupabaseClient.auth.mfa.verify.mockResolvedValue(mockVerifyResponse);
 			(authClient as any).client = mockSupabaseClient;
 
-			await expect(
-				authClient.verifyMFA('factor-123', '123456')
-			).rejects.toThrow(AuthenticationError);
+			const error = await authClient
+				.verifyMFA('factor-123', '123456')
+				.catch((e) => e);
+			expect(error).toBeInstanceOf(AuthenticationError);
+			expect(error.code).toBe('INVALID_MFA_CODE');
 		});
 
 		it('should throw AuthenticationError when refreshSession fails', async () => {
@@ -186,9 +190,11 @@ describe('SupabaseAuthClient', () => {
 			);
 			(authClient as any).client = mockSupabaseClient;
 
-			await expect(
-				authClient.verifyMFA('factor-123', '123456')
-			).rejects.toThrow(AuthenticationError);
+			const error = await authClient
+				.verifyMFA('factor-123', '123456')
+				.catch((e) => e);
+			expect(error).toBeInstanceOf(AuthenticationError);
+			expect(error.code).toBe('REFRESH_FAILED');
 		});
 
 		it('should throw AuthenticationError when refreshSession returns no session', async () => {
@@ -217,12 +223,36 @@ describe('SupabaseAuthClient', () => {
 			);
 			(authClient as any).client = mockSupabaseClient;
 
-			await expect(
-				authClient.verifyMFA('factor-123', '123456')
-			).rejects.toThrow(AuthenticationError);
-			await expect(
-				authClient.verifyMFA('factor-123', '123456')
-			).rejects.toThrow('Failed to refresh session after MFA');
+			const error = await authClient
+				.verifyMFA('factor-123', '123456')
+				.catch((e) => e);
+			expect(error).toBeInstanceOf(AuthenticationError);
+			expect(error.message).toBe(
+				'Failed to refresh session after MFA: No session returned'
+			);
+		});
+
+		it('should throw AuthenticationError when MFA verification returns no data', async () => {
+			const mockChallenge = {
+				data: { id: 'challenge-123' },
+				error: null
+			};
+
+			const mockVerifyResponse = {
+				data: null,
+				error: null
+			};
+
+			mockSupabaseClient.auth.mfa.challenge.mockResolvedValue(mockChallenge);
+			mockSupabaseClient.auth.mfa.verify.mockResolvedValue(mockVerifyResponse);
+			(authClient as any).client = mockSupabaseClient;
+
+			const error = await authClient
+				.verifyMFA('factor-123', '123456')
+				.catch((e) => e);
+			expect(error).toBeInstanceOf(AuthenticationError);
+			expect(error.code).toBe('INVALID_RESPONSE');
+			expect(error.message).toBe('No data returned from MFA verification');
 		});
 	});
 
@@ -374,6 +404,110 @@ describe('SupabaseAuthClient', () => {
 
 			expect(result).toEqual({ required: false });
 		});
+
+		it('should return required: false when getSession fails', async () => {
+			const mockGetSessionResponse = {
+				data: { session: null },
+				error: { message: 'Session error' }
+			};
+
+			mockSupabaseClient.auth.getSession.mockResolvedValue(
+				mockGetSessionResponse
+			);
+			(authClient as any).client = mockSupabaseClient;
+
+			const result = await authClient.checkMFARequired();
+
+			expect(result).toEqual({ required: false });
+		});
+
+		it('should return required: false when getAuthenticatorAssuranceLevel fails', async () => {
+			const mockSession: Session = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+				expires_in: 3600,
+				expires_at: Date.now() + 3600,
+				token_type: 'bearer',
+				user: {
+					id: 'user-123',
+					email: 'test@example.com',
+					app_metadata: {},
+					user_metadata: {},
+					aud: 'authenticated',
+					created_at: new Date().toISOString()
+				}
+			};
+
+			const mockGetSessionResponse = {
+				data: { session: mockSession },
+				error: null
+			};
+
+			const mockAALResponse = {
+				data: null,
+				error: { message: 'AAL error' }
+			};
+
+			mockSupabaseClient.auth.getSession.mockResolvedValue(
+				mockGetSessionResponse
+			);
+			mockSupabaseClient.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(
+				mockAALResponse
+			);
+			(authClient as any).client = mockSupabaseClient;
+
+			const result = await authClient.checkMFARequired();
+
+			expect(result).toEqual({ required: false });
+		});
+
+		it('should return required: false when listFactors fails', async () => {
+			const mockSession: Session = {
+				access_token: 'access-token',
+				refresh_token: 'refresh-token',
+				expires_in: 3600,
+				expires_at: Date.now() + 3600,
+				token_type: 'bearer',
+				user: {
+					id: 'user-123',
+					email: 'test@example.com',
+					app_metadata: {},
+					user_metadata: {},
+					aud: 'authenticated',
+					created_at: new Date().toISOString()
+				}
+			};
+
+			const mockGetSessionResponse = {
+				data: { session: mockSession },
+				error: null
+			};
+
+			const mockAALResponse = {
+				data: { currentLevel: 'aal1', nextLevel: 'aal2' },
+				error: null
+			};
+
+			const mockFactorsResponse = {
+				data: null,
+				error: { message: 'Factors error' }
+			};
+
+			mockSupabaseClient.auth.getSession.mockResolvedValue(
+				mockGetSessionResponse
+			);
+			mockSupabaseClient.auth.mfa.getAuthenticatorAssuranceLevel.mockResolvedValue(
+				mockAALResponse
+			);
+			mockSupabaseClient.auth.mfa.listFactors.mockResolvedValue(
+				mockFactorsResponse
+			);
+			(authClient as any).client = mockSupabaseClient;
+
+			const result = await authClient.checkMFARequired();
+
+			expect(result).toEqual({ required: false });
+		});
 	});
 
 	describe('signOut', () => {
@@ -387,6 +521,23 @@ describe('SupabaseAuthClient', () => {
 
 			await authClient.signOut();
 
+			expect(mockSupabaseClient.auth.signOut).toHaveBeenCalledWith({
+				scope: 'local'
+			});
+		});
+
+		it('should handle signOut errors gracefully', async () => {
+			const mockSignOutResponse = {
+				error: { message: 'Sign out failed' }
+			};
+
+			mockSupabaseClient.auth.signOut.mockResolvedValue(mockSignOutResponse);
+			(authClient as any).client = mockSupabaseClient;
+
+			// signOut should not throw errors - it handles them gracefully
+			await expect(authClient.signOut()).resolves.not.toThrow();
+
+			// Verify signOut was still called
 			expect(mockSupabaseClient.auth.signOut).toHaveBeenCalledWith({
 				scope: 'local'
 			});
