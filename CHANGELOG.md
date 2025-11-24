@@ -1,5 +1,22 @@
 # task-master-ai
 
+## 0.35.0
+
+### Minor Changes
+
+- [#1437](https://github.com/eyaltoledano/claude-task-master/pull/1437) [`783398e`](https://github.com/eyaltoledano/claude-task-master/commit/783398ecdf71432bd2b97f400756acbcfd60fbef) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Upgrade gemini-cli provider to native structured output support
+  - Upgrade `ai-sdk-provider-gemini-cli` from v1.1.1 to v1.4.0 with native `responseJsonSchema` support
+  - Simplify provider implementation by removing JSON extraction workarounds (652 lines → 95 lines)
+  - Enable native structured output via Gemini API's schema enforcement
+
+- [#1440](https://github.com/eyaltoledano/claude-task-master/pull/1440) [`9f6f3af`](https://github.com/eyaltoledano/claude-task-master/commit/9f6f3affe322512a8708624850c144b4b890e782) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for opus 4.1 and opus 4.5 anthropic models
+
+### Patch Changes
+
+- [#1440](https://github.com/eyaltoledano/claude-task-master/pull/1440) [`9f6f3af`](https://github.com/eyaltoledano/claude-task-master/commit/9f6f3affe322512a8708624850c144b4b890e782) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Correct swe scores of haiku 4.5 and sonnet 4.5
+
+- [#1436](https://github.com/eyaltoledano/claude-task-master/pull/1436) [`c1df63d`](https://github.com/eyaltoledano/claude-task-master/commit/c1df63d7229f05b57abba4af11e74a8d2bc6dcd9) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Upgrade ai-sdk-provider-claude-code to v2.2.0 for native structured outputs support.
+
 ## 0.34.0
 
 ### Minor Changes
