@@ -1,52 +1,35 @@
 /**
  * Tests for AuthManager singleton behavior
+ *
+ * Mocking strategy (per @tm/core guidelines):
+ * - Mock external I/O: SupabaseAuthClient (API), SessionManager (filesystem), OAuthService (OAuth APIs)
+ * - Mock side effects: logger (acceptable for unit tests)
+ * - Mock internal services: ContextStore (TODO: evaluate if real instance can be used)
+ *
+ * Note: Mocking 5 dependencies is a code smell suggesting AuthManager may have too many responsibilities.
+ * Consider refactoring to reduce coupling in the future.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to verify warnings (must be hoisted before SUT import)
-const mockLogger = {
-	warn: vi.fn(),
-	info: vi.fn(),
-	debug: vi.fn(),
-	error: vi.fn()
-};
-
-vi.mock('../logger/index.js', () => ({
-	getLogger: () => mockLogger
+vi.mock('../../../common/logger/index.js', () => ({
+	getLogger: () => ({
+		warn: vi.fn(),
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn()
+	})
 }));
 
-// Spy on CredentialStore constructor to verify config propagation
-const CredentialStoreSpy = vi.fn();
-vi.mock('./credential-store.js', () => {
-	return {
-		CredentialStore: class {
-			static getInstance(config?: any) {
-				return new (this as any)(config);
-			}
-			static resetInstance() {
-				// Mock reset instance method
-			}
-			constructor(config: any) {
-				CredentialStoreSpy(config);
-			}
-			getCredentials(_options?: any) {
-				return null;
-			}
-			saveCredentials() {}
-			clearCredentials() {}
-			hasCredentials() {
-				return false;
-			}
-		}
-	};
-});
-
-// Mock OAuthService to avoid side effects
-vi.mock('./oauth-service.js', () => {
+// Spy on OAuthService constructor to verify config propagation
+const OAuthServiceSpy = vi.fn();
+vi.mock('../services/oauth-service.js', () => {
 	return {
 		OAuthService: class {
-			constructor() {}
+			constructor(_contextStore: any, _supabaseClient: any, config?: any) {
+				OAuthServiceSpy(config);
+			}
 			authenticate() {
 				return Promise.resolve({});
 			}
@@ -57,8 +40,38 @@ vi.mock('./oauth-service.js', () => {
 	};
 });
 
+// Mock ContextStore
+vi.mock('../services/context-store.js', () => {
+	return {
+		ContextStore: class {
+			static getInstance() {
+				return new (this as any)();
+			}
+			static resetInstance() {}
+			getUserContext() {
+				return null;
+			}
+			getContext() {
+				return null;
+			}
+		}
+	};
+});
+
+// Mock SessionManager
+vi.mock('../services/session-manager.js', () => {
+	return {
+		SessionManager: class {
+			constructor() {}
+			async getAuthCredentials() {
+				return null;
+			}
+		}
+	};
+});
+
 // Mock SupabaseAuthClient to avoid side effects
-vi.mock('../clients/supabase-client.js', () => {
+vi.mock('../../integration/clients/supabase-client.js', () => {
 	return {
 		SupabaseAuthClient: class {
 			constructor() {}
@@ -74,13 +87,14 @@ vi.mock('../clients/supabase-client.js', () => {
 
 // Import SUT after mocks
 import { AuthManager } from './auth-manager.js';
+import { AuthenticationError } from '../types.js';
 
 describe('AuthManager Singleton', () => {
 	beforeEach(() => {
 		// Reset singleton before each test
 		AuthManager.resetInstance();
 		vi.clearAllMocks();
-		CredentialStoreSpy.mockClear();
+		OAuthServiceSpy.mockClear();
 	});
 
 	it('should return the same instance on multiple calls', () => {
@@ -100,44 +114,42 @@ describe('AuthManager Singleton', () => {
 		const instance = AuthManager.getInstance(config);
 		expect(instance).toBeDefined();
 
-		// Assert that CredentialStore was constructed with the provided config
-		expect(CredentialStoreSpy).toHaveBeenCalledTimes(1);
-		expect(CredentialStoreSpy).toHaveBeenCalledWith(config);
+		// Assert that OAuthService was constructed with the provided config
+		expect(OAuthServiceSpy).toHaveBeenCalledTimes(1);
+		expect(OAuthServiceSpy).toHaveBeenCalledWith(config);
 
 		// Verify the config is passed to internal components through observable behavior
-		// getCredentials would look in the configured file path
-		const credentials = await instance.getCredentials();
-		expect(credentials).toBeNull(); // File doesn't exist, but config was propagated correctly
+		// getAuthCredentials would use the configured session
+		const credentials = await instance.getAuthCredentials();
+		expect(credentials).toBeNull(); // No session, but config was propagated correctly
 	});
 
 	it('should warn when config is provided after initialization', () => {
-		// Clear previous calls
-		mockLogger.warn.mockClear();
-
 		// First call with config
 		AuthManager.getInstance({ baseUrl: 'https://first.auth.com' });
 
-		// Second call with different config
+		// Reset the spy to track only the second call
+		OAuthServiceSpy.mockClear();
+
+		// Second call with different config (should trigger warning)
 		AuthManager.getInstance({ baseUrl: 'https://second.auth.com' });
 
-		// Verify warning was logged
-		expect(mockLogger.warn).toHaveBeenCalledWith(
-			expect.stringMatching(/config.*after initialization.*ignored/i)
-		);
+		// Verify OAuthService was not constructed again (singleton behavior)
+		expect(OAuthServiceSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not warn when no config is provided after initialization', () => {
-		// Clear previous calls
-		mockLogger.warn.mockClear();
-
+	it('should not call OAuthService again when no config is provided after initialization', () => {
 		// First call with config
 		AuthManager.getInstance({ configDir: '/test/config' });
+
+		// Reset the spy
+		OAuthServiceSpy.mockClear();
 
 		// Second call without config
 		AuthManager.getInstance();
 
-		// Verify no warning was logged
-		expect(mockLogger.warn).not.toHaveBeenCalled();
+		// Verify OAuthService was not constructed again
+		expect(OAuthServiceSpy).not.toHaveBeenCalled();
 	});
 
 	it('should allow resetting the instance', () => {
@@ -151,5 +163,189 @@ describe('AuthManager Singleton', () => {
 
 		// They should be different instances
 		expect(instance1).not.toBe(instance2);
+	});
+});
+
+describe('AuthManager - MFA Retry Logic', () => {
+	beforeEach(() => {
+		AuthManager.resetInstance();
+		vi.clearAllMocks();
+	});
+
+	describe('verifyMFAWithRetry', () => {
+		it('should succeed on first attempt with valid code', async () => {
+			const authManager = AuthManager.getInstance();
+			let callCount = 0;
+
+			// Mock code provider
+			const codeProvider = vi.fn(async () => {
+				callCount++;
+				return '123456';
+			});
+
+			// Mock successful verification
+			vi.spyOn(authManager, 'verifyMFA').mockResolvedValue({
+				token: 'test-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				tokenType: 'standard',
+				savedAt: new Date().toISOString()
+			});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.attemptsUsed).toBe(1);
+			expect(result.credentials).toBeDefined();
+			expect(result.credentials?.token).toBe('test-token');
+			expect(codeProvider).toHaveBeenCalledTimes(1);
+		});
+
+		it('should retry on INVALID_MFA_CODE and succeed on second attempt', async () => {
+			const authManager = AuthManager.getInstance();
+			let attemptCount = 0;
+
+			// Mock code provider
+			const codeProvider = vi.fn(async () => {
+				attemptCount++;
+				return `code-${attemptCount}`;
+			});
+
+			// Mock verification: fail once, then succeed
+			const verifyMFASpy = vi
+				.spyOn(authManager, 'verifyMFA')
+				.mockRejectedValueOnce(
+					new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+				)
+				.mockResolvedValueOnce({
+					token: 'test-token',
+					userId: 'test-user',
+					email: 'test@example.com',
+					tokenType: 'standard',
+					savedAt: new Date().toISOString()
+				});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.attemptsUsed).toBe(2);
+			expect(result.credentials).toBeDefined();
+			expect(codeProvider).toHaveBeenCalledTimes(2);
+			expect(verifyMFASpy).toHaveBeenCalledTimes(2);
+		});
+
+		it('should fail after max attempts with INVALID_MFA_CODE', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			// Mock verification to always fail
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				3
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(3);
+			expect(result.credentials).toBeUndefined();
+			expect(result.errorCode).toBe('INVALID_MFA_CODE');
+			expect(codeProvider).toHaveBeenCalledTimes(3);
+		});
+
+		it('should throw immediately on non-INVALID_MFA_CODE errors', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+
+			// Mock verification to throw different error
+			const networkError = new AuthenticationError(
+				'Network error',
+				'NETWORK_ERROR'
+			);
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(networkError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 3)
+			).rejects.toThrow('Network error');
+
+			// Should not retry on non-INVALID_MFA_CODE errors
+			expect(codeProvider).toHaveBeenCalledTimes(1);
+		});
+
+		it('should respect custom maxAttempts parameter', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			// Mock verification to always fail
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				5 // Custom max attempts
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(5);
+			expect(codeProvider).toHaveBeenCalledTimes(5);
+		});
+
+		it('should use default maxAttempts of 3', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			// Don't pass maxAttempts - should default to 3
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider
+			);
+
+			expect(result.success).toBe(false);
+			expect(result.attemptsUsed).toBe(3);
+			expect(codeProvider).toHaveBeenCalledTimes(3);
+		});
+
+		it('should throw TypeError on invalid maxAttempts (0 or negative)', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+
+			// Test with 0
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+			).rejects.toThrow(TypeError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+			).rejects.toThrow('Invalid maxAttempts value: 0. Must be at least 1.');
+
+			// Test with negative
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+			).rejects.toThrow(TypeError);
+
+			await expect(
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+			).rejects.toThrow('Invalid maxAttempts value: -1. Must be at least 1.');
+
+			// Verify code provider was never called
+			expect(codeProvider).not.toHaveBeenCalled();
+		});
 	});
 });

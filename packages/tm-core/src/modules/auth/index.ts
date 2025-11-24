@@ -17,7 +17,8 @@ export type {
 	OAuthFlowOptions,
 	AuthConfig,
 	CliData,
-	UserContext
+	UserContext,
+	MFAVerificationResult
 } from './types.js';
 
 export { AuthenticationError } from './types.js';

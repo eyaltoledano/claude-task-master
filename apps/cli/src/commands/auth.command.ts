@@ -74,6 +74,7 @@ Examples:
   $ tm auth login         # Browser-based OAuth flow (interactive)
   $ tm auth login <token> # Token-based authentication
   $ tm auth login <token> -y # Non-interactive token auth (for scripts)
+                             # Note: MFA prompts cannot be skipped if enabled
 `
 			)
 			.action(async (token?: string, options?: { yes?: boolean }) => {
@@ -115,6 +116,19 @@ Examples:
 	}
 
 	/**
+	 * Handle authentication errors with proper type safety
+	 */
+	private handleAuthError(error: unknown): void {
+		if (error instanceof Error) {
+			displayError(error);
+		} else {
+			displayError(
+				new Error(String(error ?? 'An unknown authentication error occurred'))
+			);
+		}
+	}
+
+	/**
 	 * Execute login command
 	 */
 	private async executeLogin(token?: string, yes?: boolean): Promise<void> {
@@ -133,8 +147,8 @@ Examples:
 			setTimeout(() => {
 				process.exit(0);
 			}, 100);
-		} catch (error: any) {
-			displayError(error);
+		} catch (error) {
+			this.handleAuthError(error);
 		}
 	}
 
@@ -149,8 +163,8 @@ Examples:
 			if (!result.success) {
 				process.exit(1);
 			}
-		} catch (error: any) {
-			displayError(error);
+		} catch (error) {
+			this.handleAuthError(error);
 		}
 	}
 
@@ -161,8 +175,8 @@ Examples:
 		try {
 			const result = await this.displayStatus();
 			this.setLastResult(result);
-		} catch (error: any) {
-			displayError(error);
+		} catch (error) {
+			this.handleAuthError(error);
 		}
 	}
 
@@ -177,8 +191,8 @@ Examples:
 			if (!result.success) {
 				process.exit(1);
 			}
-		} catch (error: any) {
-			displayError(error);
+		} catch (error) {
+			this.handleAuthError(error);
 		}
 	}
 
@@ -512,9 +526,106 @@ Examples:
 			spinner.succeed('Successfully authenticated!');
 			return credentials;
 		} catch (error) {
+			// Check if MFA is required BEFORE showing failure message
+			if (
+				error instanceof AuthenticationError &&
+				error.code === 'MFA_REQUIRED'
+			) {
+				// Stop spinner without showing failure - MFA is required, not a failure
+				spinner.stop();
+
+				// MFA is required - prompt the user for their MFA code
+				return this.handleMFAVerification(error);
+			}
+
+			// Only show "Authentication failed" for actual failures
 			spinner.fail('Authentication failed');
 			throw error;
 		}
+	}
+
+	/**
+	 * Handle MFA verification flow
+	 * Thin wrapper around @tm/core's verifyMFAWithRetry
+	 */
+	private async handleMFAVerification(
+		mfaError: AuthenticationError
+	): Promise<AuthCredentials> {
+		if (!mfaError.mfaChallenge) {
+			throw new AuthenticationError(
+				'MFA challenge information missing',
+				'MFA_VERIFICATION_FAILED'
+			);
+		}
+
+		console.log(
+			chalk.yellow(
+				'\n⚠️  Multi-factor authentication is enabled on your account'
+			)
+		);
+		console.log(
+			chalk.white(
+				'  Please enter the 6-digit code from your authenticator app\n'
+			)
+		);
+
+		// Use @tm/core's retry logic - presentation layer just handles UI
+		const result = await this.authManager.verifyMFAWithRetry(
+			mfaError.mfaChallenge.factorId,
+			async () => {
+				// Prompt for MFA code
+				try {
+					const response = await inquirer.prompt([
+						{
+							type: 'input',
+							name: 'mfaCode',
+							message: 'Enter your 6-digit MFA code:',
+							validate: (input: string) => {
+								const trimmed = (input || '').trim();
+
+								if (trimmed.length === 0) {
+									return 'MFA code cannot be empty';
+								}
+
+								if (!/^\d{6}$/.test(trimmed)) {
+									return 'MFA code must be exactly 6 digits (0-9)';
+								}
+
+								return true;
+							}
+						}
+					]);
+
+					return response.mfaCode.trim();
+				} catch (error: any) {
+					// Handle user cancellation (Ctrl+C)
+					if (
+						error.name === 'ExitPromptError' ||
+						error.message?.includes('force closed')
+					) {
+						ui.displayWarning('\nMFA verification cancelled by user');
+						throw new AuthenticationError(
+							'MFA verification cancelled',
+							'MFA_VERIFICATION_FAILED'
+						);
+					}
+					throw error;
+				}
+			},
+			3 // Max attempts
+		);
+
+		// Handle result from core
+		if (result.success && result.credentials) {
+			console.log(chalk.green('\n✓ MFA verification successful!'));
+			return result.credentials;
+		}
+
+		// Show error with attempt count
+		throw new AuthenticationError(
+			`MFA verification failed after ${result.attemptsUsed} attempts`,
+			'MFA_VERIFICATION_FAILED'
+		);
 	}
 
 	/**

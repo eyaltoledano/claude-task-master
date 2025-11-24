@@ -1,10 +1,8 @@
 /**
  * Authentication manager for Task Master CLI
+ * Lightweight coordinator that delegates to focused services
  */
 
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -19,91 +17,45 @@ import {
 	OrganizationService,
 	type RemoteTask
 } from '../services/organization.service.js';
+import { SessionManager } from '../services/session-manager.js';
 import {
-	AuthConfig,
-	AuthCredentials,
+	type AuthConfig,
+	type AuthCredentials,
 	AuthenticationError,
-	OAuthFlowOptions,
-	UserContext,
-	UserContextWithBrief
+	type MFAVerificationResult,
+	type OAuthFlowOptions,
+	type UserContext,
+	type UserContextWithBrief
 } from '../types.js';
 
 /**
- * Authentication manager class
+ * Authentication manager class - coordinates auth services
  */
 export class AuthManager {
 	private static instance: AuthManager | null = null;
 	private static readonly staticLogger = getLogger('AuthManager');
 	private contextStore: ContextStore;
 	private oauthService: OAuthService;
+	private sessionManager: SessionManager;
 	public supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
-	private readonly logger = getLogger('AuthManager');
-	private readonly LEGACY_AUTH_FILE = path.join(
-		os.homedir(),
-		'.taskmaster',
-		'auth.json'
-	);
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.contextStore = ContextStore.getInstance();
 		this.supabaseClient = new SupabaseAuthClient();
+
+		// Initialize session manager (handles session lifecycle)
+		this.sessionManager = new SessionManager(
+			this.supabaseClient,
+			this.contextStore
+		);
+
 		// Pass the supabase client to OAuthService so they share the same instance
 		this.oauthService = new OAuthService(
 			this.contextStore,
 			this.supabaseClient,
 			config
 		);
-
-		// Initialize Supabase client with session restoration
-		// Fire-and-forget with catch handler to prevent unhandled rejections
-		this.initializeSupabaseSession().catch(() => {
-			// Errors are already logged in initializeSupabaseSession
-		});
-
-		// Migrate legacy auth.json if it exists
-		// Fire-and-forget with catch handler
-		this.migrateLegacyAuth().catch(() => {
-			// Errors are already logged in migrateLegacyAuth
-		});
-	}
-
-	/**
-	 * Initialize Supabase session from stored credentials
-	 */
-	private async initializeSupabaseSession(): Promise<void> {
-		try {
-			await this.supabaseClient.initialize();
-		} catch (error) {
-			// Log but don't throw - session might not exist yet
-			this.logger.debug('No existing session to restore');
-		}
-	}
-
-	/**
-	 * Migrate legacy auth.json to Supabase session
-	 * Called once during AuthManager initialization
-	 */
-	private async migrateLegacyAuth(): Promise<void> {
-		if (!fs.existsSync(this.LEGACY_AUTH_FILE)) {
-			return;
-		}
-
-		try {
-			// If we have a valid Supabase session, delete legacy file
-			const hasSession = await this.hasValidSession();
-			if (hasSession) {
-				fs.unlinkSync(this.LEGACY_AUTH_FILE);
-				this.logger.info('Migrated to Supabase auth, removed legacy auth.json');
-				return;
-			}
-
-			// Otherwise, user needs to re-authenticate
-			this.logger.warn('Legacy auth.json found but no valid Supabase session.');
-			this.logger.warn('Please run: task-master auth login');
-		} catch (error) {
-			this.logger.debug('Error during legacy auth migration:', error);
-		}
 	}
 
 	/**
@@ -134,8 +86,7 @@ export class AuthManager {
 	 * @returns Access token or null if not authenticated
 	 */
 	async getAccessToken(): Promise<string | null> {
-		const session = await this.supabaseClient.getSession();
-		return session?.access_token || null;
+		return this.sessionManager.getAccessToken();
 	}
 
 	/**
@@ -144,24 +95,7 @@ export class AuthManager {
 	 * @returns AuthCredentials object or null if not authenticated
 	 */
 	async getAuthCredentials(): Promise<AuthCredentials | null> {
-		const session = await this.supabaseClient.getSession();
-		if (!session) return null;
-
-		const user = session.user;
-		const context = this.contextStore.getUserContext();
-
-		return {
-			token: session.access_token,
-			refreshToken: session.refresh_token,
-			userId: user.id,
-			email: user.email,
-			expiresAt: session.expires_at
-				? new Date(session.expires_at * 1000).toISOString()
-				: undefined,
-			tokenType: 'standard',
-			savedAt: new Date().toISOString(),
-			selectedContext: context || undefined
-		};
+		return this.sessionManager.getAuthCredentials();
 	}
 
 	/**
@@ -179,61 +113,91 @@ export class AuthManager {
 	 * where browser-based auth is not practical
 	 */
 	async authenticateWithCode(token: string): Promise<AuthCredentials> {
-		try {
-			this.logger.info('Authenticating with one-time token...');
+		return this.sessionManager.authenticateWithCode(token);
+	}
 
-			// Verify the token and get session from Supabase
-			const session = await this.supabaseClient.verifyOneTimeCode(token);
+	/**
+	 * Verify MFA code and complete authentication
+	 * Call this after authenticateWithCode() throws MFA_REQUIRED error
+	 */
+	async verifyMFA(factorId: string, code: string): Promise<AuthCredentials> {
+		return this.sessionManager.verifyMFA(factorId, code);
+	}
 
-			if (!session || !session.access_token) {
-				throw new AuthenticationError(
-					'Failed to obtain access token from token',
-					'NO_TOKEN'
-				);
-			}
-
-			// Get user information
-			const user = await this.supabaseClient.getUser();
-
-			if (!user) {
-				throw new AuthenticationError(
-					'Failed to get user information',
-					'INVALID_RESPONSE'
-				);
-			}
-
-			// Store user context
-			this.contextStore.saveContext({
-				userId: user.id,
-				email: user.email
-			});
-
-			// Build credentials response
-			const context = this.contextStore.getUserContext();
-			const credentials: AuthCredentials = {
-				token: session.access_token,
-				refreshToken: session.refresh_token,
-				userId: user.id,
-				email: user.email,
-				expiresAt: session.expires_at
-					? new Date(session.expires_at * 1000).toISOString()
-					: undefined,
-				tokenType: 'standard',
-				savedAt: new Date().toISOString(),
-				selectedContext: context || undefined
-			};
-
-			this.logger.info('Successfully authenticated with token');
-			return credentials;
-		} catch (error) {
-			if (error instanceof AuthenticationError) {
-				throw error;
-			}
-			throw new AuthenticationError(
-				`Token authentication failed: ${(error as Error).message}`,
-				'CODE_AUTH_FAILED'
+	/**
+	 * Verify MFA code with automatic retry logic
+	 * Handles retry attempts for invalid MFA codes up to maxAttempts
+	 *
+	 * @param factorId - MFA factor ID from the MFA_REQUIRED error
+	 * @param codeProvider - Function that prompts for and returns the MFA code
+	 * @param maxAttempts - Maximum number of verification attempts (default: 3)
+	 * @returns Result object with success status, attempts used, and credentials if successful
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await authManager.verifyMFAWithRetry(
+	 *   factorId,
+	 *   async () => await promptUserForMFACode(),
+	 *   3
+	 * );
+	 *
+	 * if (result.success) {
+	 *   console.log('MFA verified!', result.credentials);
+	 * } else {
+	 *   console.error(`Failed after ${result.attemptsUsed} attempts`);
+	 * }
+	 * ```
+	 */
+	async verifyMFAWithRetry(
+		factorId: string,
+		codeProvider: () => Promise<string>,
+		maxAttempts = 3
+	): Promise<MFAVerificationResult> {
+		// Guard against invalid maxAttempts values
+		if (maxAttempts < 1) {
+			throw new TypeError(
+				`Invalid maxAttempts value: ${maxAttempts}. Must be at least 1.`
 			);
 		}
+
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const code = await codeProvider();
+				const credentials = await this.verifyMFA(factorId, code);
+				return {
+					success: true,
+					attemptsUsed: attempt,
+					credentials
+				};
+			} catch (error) {
+				// Only retry on invalid MFA code errors
+				if (
+					error instanceof AuthenticationError &&
+					error.code === 'INVALID_MFA_CODE'
+				) {
+					// If we've exhausted attempts, return failure
+					if (attempt >= maxAttempts) {
+						return {
+							success: false,
+							attemptsUsed: attempt,
+							errorCode: 'INVALID_MFA_CODE'
+						};
+					}
+					// Otherwise continue to next attempt
+					continue;
+				}
+
+				// For other errors, fail immediately
+				throw error;
+			}
+		}
+
+		// Should never reach here due to loop logic, but TypeScript needs it
+		return {
+			success: false,
+			attemptsUsed: maxAttempts,
+			errorCode: 'MFA_VERIFICATION_FAILED'
+		};
 	}
 
 	/**
@@ -249,75 +213,14 @@ export class AuthManager {
 	 * This method is mainly for explicit refresh requests.
 	 */
 	async refreshToken(): Promise<AuthCredentials> {
-		try {
-			// Use Supabase's built-in session refresh
-			const session = await this.supabaseClient.refreshSession();
-
-			if (!session) {
-				throw new AuthenticationError(
-					'Failed to refresh session',
-					'REFRESH_FAILED'
-				);
-			}
-
-			// Sync user info to context store
-			this.contextStore.saveContext({
-				userId: session.user.id,
-				email: session.user.email
-			});
-
-			// Build credentials response
-			const context = this.contextStore.getContext();
-			const credentials: AuthCredentials = {
-				token: session.access_token,
-				refreshToken: session.refresh_token,
-				userId: session.user.id,
-				email: session.user.email,
-				expiresAt: session.expires_at
-					? new Date(session.expires_at * 1000).toISOString()
-					: undefined,
-				savedAt: new Date().toISOString(),
-				selectedContext: context?.selectedContext
-			};
-
-			return credentials;
-		} catch (error) {
-			if (error instanceof AuthenticationError) {
-				throw error;
-			}
-			throw new AuthenticationError(
-				`Token refresh failed: ${(error as Error).message}`,
-				'REFRESH_FAILED'
-			);
-		}
+		return this.sessionManager.refreshToken();
 	}
 
 	/**
 	 * Logout and clear credentials
 	 */
 	async logout(): Promise<void> {
-		try {
-			// First try to sign out from Supabase to revoke tokens
-			await this.supabaseClient.signOut();
-		} catch (error) {
-			// Log but don't throw - we still want to clear local credentials
-			this.logger.warn('Failed to sign out from Supabase:', error);
-		}
-
-		// Clear app context
-		this.contextStore.clearContext();
-		// Session is cleared by supabaseClient.signOut()
-
-		// Clear legacy auth.json if it exists
-		try {
-			if (fs.existsSync(this.LEGACY_AUTH_FILE)) {
-				fs.unlinkSync(this.LEGACY_AUTH_FILE);
-				this.logger.debug('Cleared legacy auth.json');
-			}
-		} catch (error) {
-			// Ignore errors clearing legacy file
-			this.logger.debug('No legacy credentials to clear');
-		}
+		return this.sessionManager.logout();
 	}
 
 	/**
@@ -325,26 +228,21 @@ export class AuthManager {
 	 * @returns true if a valid session exists
 	 */
 	async hasValidSession(): Promise<boolean> {
-		try {
-			const session = await this.supabaseClient.getSession();
-			return session !== null;
-		} catch {
-			return false;
-		}
+		return this.sessionManager.hasValidSession();
 	}
 
 	/**
 	 * Get the current Supabase session
 	 */
 	async getSession() {
-		return this.supabaseClient.getSession();
+		return this.sessionManager.getSession();
 	}
 
 	/**
 	 * Get stored user context (userId, email)
 	 */
 	getStoredContext() {
-		return this.contextStore.getContext();
+		return this.sessionManager.getStoredContext();
 	}
 
 	/**
@@ -382,8 +280,8 @@ export class AuthManager {
 	 */
 	private async getOrganizationService(): Promise<OrganizationService> {
 		if (!this.organizationService) {
-			// Check if we have a valid Supabase session
-			const session = await this.supabaseClient.getSession();
+			// Check if we have a valid Supabase session via SessionManager
+			const session = await this.sessionManager.getSession();
 
 			if (!session) {
 				throw new AuthenticationError('Not authenticated', 'NOT_AUTHENTICATED');

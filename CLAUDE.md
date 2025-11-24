@@ -87,6 +87,33 @@ function getTasks() {
 4. Verify test now passes
 5. Commit both fix and test together
 
+### Testing Guidelines
+
+**Principles**: FIRST (Fast, Independent, Repeatable, Self-validating, Timely)
+**Structure**: AAA (Arrange, Act, Assert)
+**Coverage**: Right-BICEP (Right results, Boundary, Inverse, Cross-check, Error conditions, Performance)
+
+#### What to Mock
+
+**Unit tests** (`.spec.ts` - test single unit in isolation):
+- **@tm/core**: Mock only external I/O (Supabase, APIs, filesystem). Use real internal services.
+- **apps/cli**: Mock tm-core responses. Use real Commander/chalk/inquirer/other npm packages (test display logic).
+- **apps/mcp**: Mock tm-core responses. Use real MCP framework (test response formatting).
+
+**Integration tests** (`tests/integration/` - test multiple units together):
+- **All packages**: Use real tm-core, mock only external boundaries (APIs, DB, filesystem).
+
+**Never mock**:
+- Internal utilities/helpers in the same package
+- Standard frameworks (Commander, Express) - let them run
+- Standard library
+
+**Rule of thumb**: Mock what you're NOT testing. CLI unit tests test display → mock tm-core. Core unit tests test logic → mock I/O. Integration tests test full flow → mock only external APIs.
+
+**Red flag**: Mocking 3+ dependencies in a unit test means code is doing too much or is in the wrong layer.
+
+**Anti-pattern**: Heavily mocked tests don't verify real behavior—they verify that you wired up mocks correctly. You end up writing orchestration code to satisfy tests, rather than tests that validate your actual implementation. If testing is hard, move the logic to where it's naturally testable.
+
 ## Architecture Guidelines
 
 ### Business Logic Separation
@@ -149,3 +176,4 @@ Apply standard software engineering principles:
 
 - **Add a changeset for code changes** - Run `npx changeset` after making code changes (not needed for docs-only PRs)
 - When creating changesets, remember that it's user-facing, meaning we don't have to get into the specifics of the code, but rather mention what the end-user is getting or fixing from this changeset
+- Run `npm run turbo:typecheck` before pushing to ensure TypeScript type checks pass
