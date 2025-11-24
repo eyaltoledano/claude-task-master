@@ -3,9 +3,9 @@
  */
 
 import {
-	Session,
-	SupabaseClient as SupabaseJSClient,
-	User,
+	type Session,
+	type SupabaseClient as SupabaseJSClient,
+	type User,
 	createClient
 } from '@supabase/supabase-js';
 import { getLogger } from '../../../common/logger/index.js';
@@ -267,7 +267,7 @@ export class SupabaseAuthClient {
 
 		try {
 			// Sign out with global scope to revoke all refresh tokens
-			const { error } = await client.auth.signOut({ scope: 'global' });
+			const { error } = await client.auth.signOut({ scope: 'local' });
 
 			if (error) {
 				this.logger.warn('Failed to sign out:', error);
