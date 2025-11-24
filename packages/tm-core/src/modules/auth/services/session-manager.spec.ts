@@ -397,17 +397,16 @@ describe('SessionManager', () => {
 				mockContextStore as any
 			);
 
-			try {
-				await sessionManager.authenticateWithCode('test-code');
-				expect.fail('Should have thrown MFA_REQUIRED error');
-			} catch (error) {
-				expect(error).toBeInstanceOf(AuthenticationError);
-				expect((error as AuthenticationError).code).toBe('MFA_REQUIRED');
-				expect((error as AuthenticationError).mfaChallenge).toEqual({
+			const promise = sessionManager.authenticateWithCode('test-code');
+
+			await expect(promise).rejects.toThrow(AuthenticationError);
+			await expect(promise).rejects.toMatchObject({
+				code: 'MFA_REQUIRED',
+				mfaChallenge: {
 					factorId: 'factor-123',
 					factorType: 'totp'
-				});
-			}
+				}
+			});
 		});
 	});
 
