@@ -195,7 +195,7 @@ describe('AuthManager - MFA Retry Logic', () => {
 			const result = await authManager.verifyMFAWithRetry(
 				'factor-123',
 				codeProvider,
-				3
+				{ maxAttempts: 3 }
 			);
 
 			expect(result.success).toBe(true);
@@ -232,7 +232,7 @@ describe('AuthManager - MFA Retry Logic', () => {
 			const result = await authManager.verifyMFAWithRetry(
 				'factor-123',
 				codeProvider,
-				3
+				{ maxAttempts: 3 }
 			);
 
 			expect(result.success).toBe(true);
@@ -254,7 +254,7 @@ describe('AuthManager - MFA Retry Logic', () => {
 			const result = await authManager.verifyMFAWithRetry(
 				'factor-123',
 				codeProvider,
-				3
+				{ maxAttempts: 3 }
 			);
 
 			expect(result.success).toBe(false);
@@ -276,7 +276,9 @@ describe('AuthManager - MFA Retry Logic', () => {
 			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(networkError);
 
 			await expect(
-				authManager.verifyMFAWithRetry('factor-123', codeProvider, 3)
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+					maxAttempts: 3
+				})
 			).rejects.toThrow('Network error');
 
 			// Should not retry on non-INVALID_MFA_CODE errors
@@ -295,7 +297,7 @@ describe('AuthManager - MFA Retry Logic', () => {
 			const result = await authManager.verifyMFAWithRetry(
 				'factor-123',
 				codeProvider,
-				5 // Custom max attempts
+				{ maxAttempts: 5 } // Custom max attempts
 			);
 
 			expect(result.success).toBe(false);
@@ -311,7 +313,7 @@ describe('AuthManager - MFA Retry Logic', () => {
 				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
 			);
 
-			// Don't pass maxAttempts - should default to 3
+			// Don't pass options - should default to 3
 			const result = await authManager.verifyMFAWithRetry(
 				'factor-123',
 				codeProvider
@@ -328,24 +330,151 @@ describe('AuthManager - MFA Retry Logic', () => {
 
 			// Test with 0
 			await expect(
-				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+					maxAttempts: 0
+				})
 			).rejects.toThrow(TypeError);
 
 			await expect(
-				authManager.verifyMFAWithRetry('factor-123', codeProvider, 0)
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+					maxAttempts: 0
+				})
 			).rejects.toThrow('Invalid maxAttempts value: 0. Must be at least 1.');
 
 			// Test with negative
 			await expect(
-				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+					maxAttempts: -1
+				})
 			).rejects.toThrow(TypeError);
 
 			await expect(
-				authManager.verifyMFAWithRetry('factor-123', codeProvider, -1)
+				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+					maxAttempts: -1
+				})
 			).rejects.toThrow('Invalid maxAttempts value: -1. Must be at least 1.');
 
 			// Verify code provider was never called
 			expect(codeProvider).not.toHaveBeenCalled();
+		});
+
+		it('should invoke onInvalidCode callback when invalid code is entered', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '000000');
+			const onInvalidCode = vi.fn();
+
+			// Mock verification to always fail
+			vi.spyOn(authManager, 'verifyMFA').mockRejectedValue(
+				new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+			);
+
+			await authManager.verifyMFAWithRetry('factor-123', codeProvider, {
+				maxAttempts: 3,
+				onInvalidCode
+			});
+
+			// Should be called 3 times (after each failed attempt)
+			expect(onInvalidCode).toHaveBeenCalledTimes(3);
+
+			// Verify callback arguments: (attempt, remaining)
+			expect(onInvalidCode).toHaveBeenNthCalledWith(1, 1, 2); // 1st attempt, 2 remaining
+			expect(onInvalidCode).toHaveBeenNthCalledWith(2, 2, 1); // 2nd attempt, 1 remaining
+			expect(onInvalidCode).toHaveBeenNthCalledWith(3, 3, 0); // 3rd attempt, 0 remaining
+		});
+
+		it('should not invoke onInvalidCode callback on successful verification', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+			const onInvalidCode = vi.fn();
+
+			// Mock successful verification
+			vi.spyOn(authManager, 'verifyMFA').mockResolvedValue({
+				token: 'test-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				tokenType: 'standard',
+				savedAt: new Date().toISOString()
+			});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				{
+					maxAttempts: 3,
+					onInvalidCode
+				}
+			);
+
+			expect(result.success).toBe(true);
+			expect(onInvalidCode).not.toHaveBeenCalled();
+		});
+
+		it('should work without onInvalidCode callback (backward compatibility)', async () => {
+			const authManager = AuthManager.getInstance();
+			const codeProvider = vi.fn(async () => '123456');
+
+			// Mock successful verification
+			vi.spyOn(authManager, 'verifyMFA').mockResolvedValue({
+				token: 'test-token',
+				userId: 'test-user',
+				email: 'test@example.com',
+				tokenType: 'standard',
+				savedAt: new Date().toISOString()
+			});
+
+			// Call without onInvalidCode - should not throw
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				{
+					maxAttempts: 3
+				}
+			);
+
+			expect(result.success).toBe(true);
+		});
+
+		it('should invoke onInvalidCode with correct remaining attempts', async () => {
+			const authManager = AuthManager.getInstance();
+			let attemptCount = 0;
+			const codeProvider = vi.fn(async () => {
+				attemptCount++;
+				return `code-${attemptCount}`;
+			});
+			const onInvalidCode = vi.fn();
+
+			// Fail twice, then succeed
+			vi.spyOn(authManager, 'verifyMFA')
+				.mockRejectedValueOnce(
+					new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+				)
+				.mockRejectedValueOnce(
+					new AuthenticationError('Invalid MFA code', 'INVALID_MFA_CODE')
+				)
+				.mockResolvedValueOnce({
+					token: 'test-token',
+					userId: 'test-user',
+					email: 'test@example.com',
+					tokenType: 'standard',
+					savedAt: new Date().toISOString()
+				});
+
+			const result = await authManager.verifyMFAWithRetry(
+				'factor-123',
+				codeProvider,
+				{
+					maxAttempts: 3,
+					onInvalidCode
+				}
+			);
+
+			expect(result.success).toBe(true);
+			expect(result.attemptsUsed).toBe(3);
+
+			// Verify callback was called for the first two failed attempts
+			expect(onInvalidCode).toHaveBeenCalledTimes(2);
+			expect(onInvalidCode).toHaveBeenNthCalledWith(1, 1, 2); // 1st attempt, 2 remaining
+			expect(onInvalidCode).toHaveBeenNthCalledWith(2, 2, 1); // 2nd attempt, 1 remaining
 		});
 	});
 });

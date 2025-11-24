@@ -603,7 +603,7 @@ Examples:
 						error.name === 'ExitPromptError' ||
 						error.message?.includes('force closed')
 					) {
-						ui.displayWarning('\nMFA verification cancelled by user');
+						ui.displayWarning(' MFA verification cancelled by user');
 						throw new AuthenticationError(
 							'MFA verification cancelled',
 							'MFA_VERIFICATION_FAILED'
@@ -612,7 +612,15 @@ Examples:
 					throw error;
 				}
 			},
-			3 // Max attempts
+			{
+				maxAttempts: 3,
+				onInvalidCode: (_attempt: number, remaining: number) => {
+					// Callback invoked when invalid code is entered
+					if (remaining > 0) {
+						ui.displayError(`Invalid MFA code. Please try again.`);
+					}
+				}
+			}
 		);
 
 		// Handle result from core
