@@ -1,0 +1,330 @@
+---
+title: "Claude Code Integration"
+description: "Complete guide for using Task Master with Claude Code CLI for enhanced AI-powered development workflows with native structured outputs"
+---
+
+# Claude Code Integration
+
+Task Master provides seamless integration with the Claude Code CLI, enabling AI-powered development workflows without requiring direct API keys. The integration leverages OAuth tokens managed by the Claude Code CLI and supports **native structured outputs** for guaranteed schema-compliant responses.
+
+## Features
+
+- **OAuth Authentication**: Secure token management via Claude Code CLI
+- **Native Structured Outputs (v2.2.0+)**: Guaranteed schema-compliant JSON responses
+- **Full AI SDK Compatibility**: Works with generateText, streamText, and generateObject functions
+- **Automatic Error Handling**: Graceful degradation when Claude Code is unavailable
+- **Type Safety**: Full TypeScript support with proper type definitions
+
+## Quick Start
+
+### 1. Install Claude Code CLI
+
+Follow the [Claude Code documentation](https://docs.anthropic.com/claude-code) for installation instructions specific to your system.
+
+### 2. Set Up Authentication
+
+Configure OAuth authentication with the Claude Code CLI:
+
+```bash
+claude setup-token
+```
+
+This command will:
+- Guide you through OAuth authentication
+- Store the token securely for CLI usage
+- Enable Task Master to use Claude Code without manual API key configuration
+
+### 3. Configure Task Master
+
+Add Claude Code to your Task Master configuration:
+
+```bash
+# Interactive setup
+task-master models --setup
+# Select "claude-code" from the provider list
+
+# Or set directly
+task-master models --set-main claude-code:sonnet
+```
+
+### 4. Start Using
+
+```bash
+# Task Master will now use Claude Code for AI operations
+task-master add-task --prompt="Implement user authentication system" --research
+task-master expand --id=1 --research
+```
+
+## Authentication
+
+### Authentication Priority
+
+Task Master attempts authentication in this order:
+
+1. **Environment Variable** (optional): `CLAUDE_CODE_OAUTH_TOKEN`
+   - Useful for CI/CD environments or when you want to override the default token
+   - Not required if you've set up the CLI token
+
+2. **Claude Code CLI Token** (recommended): Token managed by `claude setup-token`
+   - Automatically used when available
+   - Most convenient for local development
+
+3. **Fallback**: Error if neither is available
+
+### Environment Configuration (Optional)
+
+While not required for local development, you may need to set environment variables in specific scenarios:
+
+```bash
+# CI/CD pipelines, Docker containers, or custom token usage
+export CLAUDE_CODE_OAUTH_TOKEN="your_oauth_token_here"
+```
+
+## Model Configuration
+
+### Supported Models
+
+- `claude-code:sonnet` - Claude 3.5 Sonnet via Claude Code CLI
+- `claude-code:opus` - Claude 3 Opus via Claude Code CLI
+
+### Configuration Examples
+
+```javascript
+// In your .taskmaster/config.json
+{
+  "models": {
+    "main": "claude-code:sonnet",      // Use Claude Code with Sonnet
+    "research": "perplexity-llama-3.1-sonar-large-128k-online",
+    "fallback": "claude-code:opus"     // Use Claude Code with Opus as fallback
+  }
+}
+```
+
+## Native Structured Outputs (v2.2.0+)
+
+### Overview
+
+As of `ai-sdk-provider-claude-code` v2.2.0, Claude Code supports **native structured outputs** via the Claude Agent SDK's `outputFormat` option. This provides significant benefits for Task Master's structured data generation.
+
+### Key Benefits
+
+- **Guaranteed Schema Compliance**: Uses constrained decoding to ensure responses always match your Zod schema
+- **No JSON Parsing Errors**: Schema validation handled internally by the SDK
+- **No Prompt Engineering Required**: No need for "output valid JSON" instructions - the SDK enforces schema natively
+- **Better Performance**: No retry/extraction logic needed for valid JSON output
+
+### How It Works
+
+When Task Master calls `generateObject()` with a Zod schema, the Claude Code provider:
+
+1. Sets `mode: 'json'` (via `needsExplicitJsonSchema = true`)
+2. Passes the schema to the SDK
+3. The SDK converts the Zod schema to JSON Schema and uses `outputFormat: { type: 'json_schema', schema: ... }`
+4. Claude Agent SDK returns `structured_output` with guaranteed schema compliance
+
+### Supported Commands
+
+All Task Master commands that generate structured data benefit from native schema support:
+
+- `parse-prd` - Parsing PRD documents into tasks
+- `add-task` - Creating new tasks
+- `expand-task` - Expanding tasks into subtasks
+- `update-tasks` - Batch updating tasks
+- `update-task-by-id` - Updating individual tasks
+- `analyze-complexity` - Analyzing task complexity
+
+### Example Usage
+
+```javascript
+import { z } from 'zod';
+
+// Define your schema
+const taskSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().min(1),
+  priority: z.enum(['high', 'medium', 'low']),
+  dependencies: z.array(z.number().int())
+});
+
+// Task Master will automatically use native structured outputs
+// when Claude Code is configured as the provider
+```
+
+## Integration Scenarios
+
+### Local Development
+
+Most common setup for individual developers:
+
+```bash
+# 1. Install and authenticate with Claude Code
+claude setup-token
+
+# 2. Configure Task Master
+task-master models --set-main claude-code:sonnet
+
+# 3. Use normally - OAuth tokens handled automatically
+task-master add-task --prompt="Add dark mode support"
+```
+
+### Docker/Containers
+
+When running in Docker environments:
+
+```dockerfile
+# Install Claude Code CLI in your container
+RUN npm install -g @anthropic/claude-code
+
+# Set environment variable for authentication
+ENV CLAUDE_CODE_OAUTH_TOKEN="your_token_here"
+```
+
+### CI/CD Pipelines
+
+For automated environments:
+
+```yaml
+# GitHub Actions example
+env:
+  CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_TOKEN }}
+
+steps:
+  - name: Install Claude Code CLI
+    run: npm install -g @anthropic/claude-code
+    
+  - name: Run Task Master
+    run: task-master analyze-complexity --research
+```
+
+### MCP Server Configuration
+
+For Claude Code integration via MCP:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "CLAUDE_CODE_OAUTH_TOKEN": "your_token_here"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Claude Code CLI not available" Error
+
+**Problem**: Task Master cannot connect to Claude Code CLI.
+
+**Solutions**:
+- Ensure Claude Code CLI is installed and in your PATH
+- Run `claude setup-token` to configure authentication
+- Verify Claude Code CLI works: `claude --help`
+
+#### Authentication Failures
+
+**Problem**: Token authentication is failing.
+
+**Solutions**:
+- Re-run `claude setup-token` to refresh your OAuth token
+- Check if your token has expired
+- Verify Claude Code CLI can authenticate: try a simple `claude` command
+
+#### Model Not Available
+
+**Problem**: Specified Claude Code model is not supported.
+
+**Solutions**:
+- Use supported models: `sonnet` or `opus`
+- Check model availability: `task-master models --list`
+- Verify your Claude Code CLI has access to the requested model
+
+### Debug Steps
+
+1. **Test Claude Code CLI directly**:
+   ```bash
+   claude --help
+   # Should show help without errors
+   ```
+
+2. **Test authentication**:
+   ```bash
+   claude setup-token --verify
+   # Should confirm token is valid
+   ```
+
+3. **Test Task Master integration**:
+   ```bash
+   task-master models --test claude-code:sonnet
+   # Should successfully connect and test the model
+   ```
+
+4. **Check logs**:
+   - Task Master logs will show detailed error messages
+   - Use `--verbose` flag for more detailed output
+
+### Performance Considerations
+
+- **Native structured outputs** eliminate retry logic, improving response times
+- **OAuth token refresh** is handled automatically by Claude Code CLI
+- **Local CLI integration** reduces network latency compared to direct API calls
+
+## Migration from Direct API Usage
+
+If you're currently using Anthropic API keys directly:
+
+### Before (Direct API)
+```json
+{
+  "models": {
+    "main": "claude-3-5-sonnet-20241022"
+  }
+}
+```
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
+```
+
+### After (Claude Code)
+```json
+{
+  "models": {
+    "main": "claude-code:sonnet"
+  }
+}
+```
+
+```bash
+claude setup-token
+# No API key needed in environment
+```
+
+### Benefits of Migration
+
+- **Better security**: OAuth tokens vs API keys
+- **Automatic token management**: No manual key rotation
+- **Native structured outputs**: Better reliability and performance
+- **CLI integration**: Leverages existing Claude Code workflows
+
+## Security Best Practices
+
+- **OAuth tokens** are managed securely by Claude Code CLI
+- **No API keys** need to be stored in your project files
+- **Tokens are automatically refreshed** by the Claude Code CLI
+- **Environment variables** should only be used in secure environments
+
+## Getting Help
+
+If you encounter issues:
+
+1. Check the [Claude Code CLI documentation](https://docs.anthropic.com/claude-code)
+2. Verify your authentication setup with `claude setup-token --verify`
+3. Review Task Master logs for detailed error messages
+4. Report issues on [GitHub](https://github.com/eyaltoledano/claude-task-master/issues) with both Task Master and Claude Code version information

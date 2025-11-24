@@ -6,13 +6,22 @@ description: "Configure Task Master through environment variables in a .env file
 ## Required Configuration
 
 <Note>
-  Task Master requires an Anthropic API key to function. Add this to your `.env` file:
+  Task Master requires at least one AI provider to function. You can use:
 
+  **Option 1: Direct API Key (Traditional)**
   ```bash
   ANTHROPIC_API_KEY=sk-ant-api03-your-api-key
   ```
+  Get your key from the [Anthropic Console](https://console.anthropic.com/).
 
-  You can obtain an API key from the [Anthropic Console](https://console.anthropic.com/).
+  **Option 2: Claude Code CLI (Recommended)**
+  ```bash
+  claude setup-token  # No API key needed in .env
+  task-master models --set-main claude-code:sonnet
+  ```
+  Uses OAuth authentication with native structured outputs (v2.2.0+).
+  
+  See the [Claude Code Integration Guide](/configuration/claude-code-integration) for details.
 </Note>
 
 ## Optional Configuration
@@ -30,6 +39,7 @@ description: "Configure Task Master through environment variables in a .env file
 | `PROJECT_VERSION` | `"1.0.0"` | Version in metadata | `PROJECT_VERSION=2.1.0` |
 | `PERPLEXITY_API_KEY` | - | For research-backed features | `PERPLEXITY_API_KEY=pplx-...` |
 | `PERPLEXITY_MODEL` | `"sonar-medium-online"` | Perplexity model | `PERPLEXITY_MODEL=sonar-large-online` |
+| `CLAUDE_CODE_OAUTH_TOKEN` | - | Claude Code CLI OAuth token (optional) | `CLAUDE_CODE_OAUTH_TOKEN=token123` |
 
 ## TDD Workflow Configuration
 

@@ -112,15 +112,17 @@ AWS_ACCESS_KEY_ID="your-aws-access-key"
 AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
 ```
 
-### CLAUDE_CODE_API_KEY
+### CLAUDE_CODE_OAUTH_TOKEN
 - **Provider**: Claude Code CLI
 - **Required**: ❌ **No** (uses OAuth tokens)
 - **Purpose**: Integration with local Claude Code CLI
-- **Authentication**: Uses OAuth tokens, no API key needed
+- **Authentication**: Uses OAuth tokens managed by `claude setup-token`
+- **Features**: Native structured outputs (v2.2.0+) with guaranteed schema compliance
 
 ```bash
-# Not typically needed
-CLAUDE_CODE_API_KEY="not-usually-required"
+# Optional - Only needed for CI/CD or custom environments
+# Local development uses tokens from `claude setup-token` automatically
+CLAUDE_CODE_OAUTH_TOKEN="your_oauth_token_here"
 ```
 
 ### GEMINI_API_KEY

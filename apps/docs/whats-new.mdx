@@ -3,4 +3,32 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
+Stay up to date with the latest Task Master features and improvements.
+
+## Latest Updates
+
+### Claude Code v2.2.0 Integration
+
+**Enhanced AI Provider Support with Native Structured Outputs**
+
+Task Master now includes upgraded support for Claude Code CLI with significant improvements:
+
+- **Native Structured Outputs**: Guaranteed schema-compliant JSON responses using the Claude Agent SDK's `outputFormat` option
+- **Better Reliability**: No more JSON parsing errors or retry logic needed
+- **Improved Performance**: Faster response times with constrained decoding
+- **Enhanced Security**: OAuth token management via `claude setup-token`
+
+All structured data generation commands now benefit from this upgrade:
+- `parse-prd` - Parsing PRD documents into tasks
+- `add-task` - Creating new tasks  
+- `expand-task` - Expanding tasks into subtasks
+- `update-tasks` - Batch updating tasks
+- `analyze-complexity` - Analyzing task complexity
+
+[Learn more about Claude Code integration →](/configuration/claude-code-integration)
+
+---
+
+## Previous Releases
+
 An easy way to see the latest releases
