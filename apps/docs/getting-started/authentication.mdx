@@ -1,0 +1,194 @@
+# Authentication
+
+Task Master supports authentication with tryhamster.com for cloud-based task management and synchronization. This allows you to store tasks remotely, access them from multiple devices, and collaborate with your team.
+
+## Authentication Commands
+
+### Login
+
+Authenticate with your tryhamster.com account:
+
+```bash
+# Interactive browser-based login (recommended)
+task-master auth login
+
+# Token-based login (for SSH/remote environments)
+task-master auth login <token>
+
+# Non-interactive token login (for scripts)
+task-master auth login <token> --yes
+```
+
+### Authentication Methods
+
+#### Browser Authentication (Interactive)
+The default authentication method opens your browser and uses OAuth 2.0 with PKCE for secure authentication:
+
+```bash
+task-master auth login
+```
+
+This will:
+1. Open your default browser
+2. Redirect you to tryhamster.com for authentication  
+3. Automatically complete the authentication flow
+4. Set up your workspace context (organization/brief selection)
+
+#### Token Authentication
+For SSH environments, CI/CD pipelines, or headless servers, use token-based authentication:
+
+```bash
+# Get a token from tryhamster.com/cli
+task-master auth login <your-token>
+```
+
+## Multi-Factor Authentication (MFA)
+
+If you have multi-factor authentication enabled on your tryhamster.com account, you'll be prompted to enter your authenticator code during token-based authentication.
+
+### MFA Flow
+When MFA is required:
+
+1. Enter your authentication token
+2. You'll see a prompt: **"Multi-factor authentication is enabled on your account"**
+3. Enter the 6-digit code from your authenticator app (Google Authenticator, Authy, etc.)
+4. You have 3 attempts to enter the correct code
+
+### MFA Code Requirements
+- Must be exactly 6 digits (0-9)
+- Generated from your authenticator app
+- Time-sensitive (typically valid for 30 seconds)
+
+### Example MFA Flow
+```bash
+$ task-master auth login abc123token
+
+🔐 Task Master Authentication
+
+✓ Verifying authentication token...
+
+⚠️  Multi-factor authentication is enabled on your account
+  Please enter the 6-digit code from your authenticator app
+
+? Enter your 6-digit MFA code: 123456
+
+✓ MFA verification successful!
+✓ Authentication successful!
+  Logged in as: user@example.com
+```
+
+### MFA Troubleshooting
+- **Invalid MFA code**: Ensure your device's time is synchronized
+- **Code expired**: Generate a new code from your authenticator app
+- **Maximum attempts exceeded**: Wait a few minutes before trying again
+- **Cancelled verification**: Use Ctrl+C to cancel MFA input
+
+## Other Authentication Commands
+
+### Check Status
+View your current authentication status:
+
+```bash
+task-master auth status
+```
+
+This displays:
+- Authentication status (authenticated/not authenticated)
+- User email and ID
+- Token expiration time
+- Selected organization and brief context
+
+### Refresh Token
+Refresh your authentication token before it expires:
+
+```bash
+task-master auth refresh
+```
+
+### Logout
+Clear your local authentication credentials:
+
+```bash
+task-master auth logout
+```
+
+## Context Management
+
+After authentication, Task Master helps you set up your workspace context:
+
+### Organization Selection
+If you belong to multiple organizations, you'll be prompted to select one:
+- Choose your active organization
+- This determines which briefs and tasks you can access
+
+### Brief Selection  
+Within your organization, select a brief (project) to work with:
+- Lists all available briefs in your organization
+- You can change this later using `task-master context`
+
+### Skip Context Setup
+Use the `--yes` flag to skip interactive context setup:
+
+```bash
+task-master auth login --yes
+# or
+task-master auth login <token> --yes
+```
+
+You can configure context later using:
+```bash
+task-master context
+```
+
+## Authentication vs API Keys
+
+Task Master supports two distinct configuration types:
+
+### Authentication (tryhamster.com)
+- **Purpose**: Access cloud-based task storage and collaboration
+- **Commands**: `task-master auth login/logout/status`
+- **Storage**: Tasks stored remotely on tryhamster.com
+- **Collaboration**: Share tasks with team members
+
+### API Keys (AI Providers)
+- **Purpose**: Enable AI-powered task generation and updates  
+- **Configuration**: Environment variables (`.env` file)
+- **Required**: At least one AI provider key needed
+- **See**: [API Keys Configuration](/getting-started/api-keys)
+
+## Security Best Practices
+
+1. **Secure Token Storage**: Authentication tokens are stored securely in your system's credential store
+2. **Token Expiration**: Tokens automatically expire for security - use `auth refresh` to renew
+3. **MFA Protection**: Enable MFA on your tryhamster.com account for additional security
+4. **Remote Environments**: Use token authentication instead of browser auth for SSH/remote access
+5. **Logout When Done**: Use `auth logout` on shared or temporary systems
+
+## Troubleshooting
+
+### Browser Won't Open
+If the browser doesn't open automatically during `auth login`:
+1. Copy the displayed URL
+2. Open it manually in your browser
+3. Complete the authentication flow
+
+### Token Authentication Fails
+- Ensure the token is valid and hasn't expired
+- Check your internet connection
+- Try generating a new token from tryhamster.com
+
+### MFA Issues
+- Verify your authenticator app is working correctly
+- Check that your device time is synchronized
+- If locked out, contact support or wait before retrying
+
+### Permission Denied
+- Your token may have expired - try refreshing: `task-master auth refresh`  
+- You may not have access to the selected organization/brief
+- Contact your organization administrator
+
+### Getting Help
+If you encounter authentication issues:
+- Check the [FAQ](/getting-started/faq) for common solutions  
+- Join our [Discord community](https://discord.gg/fWJkU7rf) for support
+- Report issues on [GitHub](https://github.com/eyaltoledano/claude-task-master/issues)

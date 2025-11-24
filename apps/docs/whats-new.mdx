@@ -3,4 +3,28 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
+## Latest Updates
+
+### Multi-Factor Authentication (MFA) Support
+
+**New in latest release**: Task Master now supports Multi-Factor Authentication for enhanced security when using token-based authentication.
+
+**Features:**
+- **Automatic MFA Detection**: When authenticating with a token, Task Master automatically detects if MFA is enabled on your account
+- **Interactive MFA Prompts**: Clear, user-friendly prompts guide you through the MFA verification process
+- **Retry Logic**: Up to 3 attempts to enter your 6-digit authenticator code
+- **Comprehensive Error Handling**: Helpful error messages and troubleshooting guidance
+
+**How to Use:**
+1. Authenticate with your token: `task-master auth login <token>`
+2. If MFA is enabled, you'll see: *"Multi-factor authentication is enabled on your account"*
+3. Enter your 6-digit code from your authenticator app (Google Authenticator, Authy, etc.)
+4. Complete authentication successfully
+
+**Documentation:**
+- [Authentication Guide](/getting-started/authentication) - Complete authentication documentation
+- [Command Reference](/command-reference) - All authentication commands
+
+---
+
 An easy way to see the latest releases

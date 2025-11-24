@@ -206,4 +206,30 @@ sidebarTitle: "CLI Commands"
     task-master init
     ```
   </Accordion>
+
+  <Accordion title="Authentication">
+    ```bash
+    # Interactive browser-based authentication
+    task-master auth login
+
+    # Token-based authentication (SSH/remote environments)  
+    task-master auth login <token>
+
+    # Non-interactive token authentication (for scripts)
+    task-master auth login <token> --yes
+
+    # Check authentication status
+    task-master auth status
+
+    # Refresh authentication token
+    task-master auth refresh
+
+    # Logout and clear credentials
+    task-master auth logout
+    ```
+
+    **Multi-Factor Authentication (MFA)**: If MFA is enabled on your account, you'll be prompted for a 6-digit authenticator code during token-based authentication. You have 3 attempts to enter the correct code.
+
+    See [Authentication Guide](/getting-started/authentication) for detailed setup and MFA information.
+  </Accordion>
 </AccordionGroup>
