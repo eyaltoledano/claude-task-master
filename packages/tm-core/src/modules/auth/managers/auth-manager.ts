@@ -130,7 +130,7 @@ export class AuthManager {
 	 *
 	 * @param factorId - MFA factor ID from the MFA_REQUIRED error
 	 * @param codeProvider - Function that prompts for and returns the MFA code
-	 * @param maxAttempts - Maximum number of verification attempts (default: 3)
+	 * @param options - Optional configuration for retry behavior
 	 * @returns Result object with success status, attempts used, and credentials if successful
 	 *
 	 * @example
@@ -138,7 +138,10 @@ export class AuthManager {
 	 * const result = await authManager.verifyMFAWithRetry(
 	 *   factorId,
 	 *   async () => await promptUserForMFACode(),
-	 *   3
+	 *   {
+	 *     maxAttempts: 3,
+	 *     onInvalidCode: (attempt, remaining) => console.log(`Invalid code. ${remaining} attempts remaining.`)
+	 *   }
 	 * );
 	 *
 	 * if (result.success) {
@@ -151,8 +154,14 @@ export class AuthManager {
 	async verifyMFAWithRetry(
 		factorId: string,
 		codeProvider: () => Promise<string>,
-		maxAttempts = 3
+		options?: {
+			maxAttempts?: number;
+			onInvalidCode?: (attempt: number, remaining: number) => void;
+		}
 	): Promise<MFAVerificationResult> {
+		const maxAttempts = options?.maxAttempts ?? 3;
+		const onInvalidCode = options?.onInvalidCode;
+
 		// Guard against invalid maxAttempts values
 		if (maxAttempts < 1) {
 			throw new TypeError(
@@ -175,6 +184,14 @@ export class AuthManager {
 					error instanceof AuthenticationError &&
 					error.code === 'INVALID_MFA_CODE'
 				) {
+					// Calculate remaining attempts
+					const remaining = maxAttempts - attempt;
+
+					// Notify callback of invalid code
+					if (onInvalidCode) {
+						onInvalidCode(attempt, remaining);
+					}
+
 					// If we've exhausted attempts, return failure
 					if (attempt >= maxAttempts) {
 						return {
