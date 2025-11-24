@@ -97,6 +97,17 @@ export class AuthDomain {
 	}
 
 	/**
+	 * Verify MFA code and complete authentication
+	 * Call this after authenticateWithCode() throws MFA_REQUIRED error
+	 *
+	 * @param factorId - MFA factor ID from the MFA_REQUIRED error
+	 * @param code - The TOTP code from the user's authenticator app
+	 */
+	async verifyMFA(factorId: string, code: string): Promise<AuthCredentials> {
+		return this.authManager.verifyMFA(factorId, code);
+	}
+
+	/**
 	 * Get OAuth authorization URL
 	 */
 	getAuthorizationUrl(): string | null {

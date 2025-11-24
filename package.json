@@ -72,9 +72,9 @@
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^5.0.51",
-		"ai-sdk-provider-claude-code": "^2.1.0",
+		"ai-sdk-provider-claude-code": "^2.2.0",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
-		"ai-sdk-provider-gemini-cli": "^1.1.1",
+		"ai-sdk-provider-gemini-cli": "^1.4.0",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
@@ -115,7 +115,7 @@
 		"@biomejs/cli-linux-x64": "^1.9.4"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"packageManager": "npm@10.9.2",
 	"repository": {
