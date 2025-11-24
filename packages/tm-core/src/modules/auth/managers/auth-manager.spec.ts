@@ -339,7 +339,9 @@ describe('AuthManager - MFA Retry Logic', () => {
 				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
 					maxAttempts: 0
 				})
-			).rejects.toThrow('Invalid maxAttempts value: 0. Must be at least 1.');
+			).rejects.toThrow(
+				'Invalid maxAttempts value: 0. Must be a positive integer.'
+			);
 
 			// Test with negative
 			await expect(
@@ -352,7 +354,9 @@ describe('AuthManager - MFA Retry Logic', () => {
 				authManager.verifyMFAWithRetry('factor-123', codeProvider, {
 					maxAttempts: -1
 				})
-			).rejects.toThrow('Invalid maxAttempts value: -1. Must be at least 1.');
+			).rejects.toThrow(
+				'Invalid maxAttempts value: -1. Must be a positive integer.'
+			);
 
 			// Verify code provider was never called
 			expect(codeProvider).not.toHaveBeenCalled();

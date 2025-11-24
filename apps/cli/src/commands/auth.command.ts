@@ -551,12 +551,14 @@ Examples:
 	private async handleMFAVerification(
 		mfaError: AuthenticationError
 	): Promise<AuthCredentials> {
-		if (!mfaError.mfaChallenge) {
+		if (!mfaError.mfaChallenge?.factorId) {
 			throw new AuthenticationError(
 				'MFA challenge information missing',
 				'MFA_VERIFICATION_FAILED'
 			);
 		}
+
+		const { factorId } = mfaError.mfaChallenge;
 
 		console.log(
 			chalk.yellow(
@@ -571,7 +573,7 @@ Examples:
 
 		// Use @tm/core's retry logic - presentation layer just handles UI
 		const result = await this.authManager.verifyMFAWithRetry(
-			mfaError.mfaChallenge.factorId,
+			factorId,
 			async () => {
 				// Prompt for MFA code
 				try {

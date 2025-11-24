@@ -37,7 +37,15 @@ describe('SupabaseAuthClient', () => {
 	let authClient: InstanceType<typeof SupabaseAuthClient>;
 	let mockSupabaseClient: any;
 
+	// Store original env values for cleanup
+	let originalSupabaseUrl: string | undefined;
+	let originalSupabaseAnonKey: string | undefined;
+
 	beforeEach(() => {
+		// Store original values
+		originalSupabaseUrl = process.env.TM_SUPABASE_URL;
+		originalSupabaseAnonKey = process.env.TM_SUPABASE_ANON_KEY;
+
 		// Set required environment variables
 		process.env.TM_SUPABASE_URL = 'https://test.supabase.co';
 		process.env.TM_SUPABASE_ANON_KEY = 'test-anon-key';
@@ -65,6 +73,21 @@ describe('SupabaseAuthClient', () => {
 		};
 
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		// Restore original env values
+		if (originalSupabaseUrl === undefined) {
+			delete process.env.TM_SUPABASE_URL;
+		} else {
+			process.env.TM_SUPABASE_URL = originalSupabaseUrl;
+		}
+
+		if (originalSupabaseAnonKey === undefined) {
+			delete process.env.TM_SUPABASE_ANON_KEY;
+		} else {
+			process.env.TM_SUPABASE_ANON_KEY = originalSupabaseAnonKey;
+		}
 	});
 
 	describe('verifyMFA', () => {

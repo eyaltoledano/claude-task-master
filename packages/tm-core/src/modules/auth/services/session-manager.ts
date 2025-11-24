@@ -42,7 +42,10 @@ export class SessionManager {
 			await this.migrateLegacyAuth();
 		} catch (error) {
 			// Log but don't throw - initialization errors are handled gracefully
-			this.logger.debug('Session initialization completed with warnings');
+			this.logger.debug(
+				'Session initialization completed with warnings',
+				error
+			);
 		}
 	}
 
@@ -102,7 +105,7 @@ export class SessionManager {
 		await this.waitForInitialization();
 		try {
 			const session = await this.supabaseClient.getSession();
-			return session !== null;
+			return session != null;
 		} catch {
 			return false;
 		}

@@ -399,7 +399,7 @@ describe('SessionManager', () => {
 
 			try {
 				await sessionManager.authenticateWithCode('test-code');
-				expect.fail('Should have thrown MFA_REQUIRED error');
+				throw new Error('Should have thrown MFA_REQUIRED error');
 			} catch (error) {
 				expect(error).toBeInstanceOf(AuthenticationError);
 				expect((error as AuthenticationError).code).toBe('MFA_REQUIRED');

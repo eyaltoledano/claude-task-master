@@ -163,9 +163,13 @@ export class AuthManager {
 		const onInvalidCode = options?.onInvalidCode;
 
 		// Guard against invalid maxAttempts values
-		if (maxAttempts < 1) {
+		if (
+			!Number.isFinite(maxAttempts) ||
+			!Number.isInteger(maxAttempts) ||
+			maxAttempts < 1
+		) {
 			throw new TypeError(
-				`Invalid maxAttempts value: ${maxAttempts}. Must be at least 1.`
+				`Invalid maxAttempts value: ${maxAttempts}. Must be a positive integer.`
 			);
 		}
 
