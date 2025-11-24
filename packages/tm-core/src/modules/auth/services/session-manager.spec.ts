@@ -397,11 +397,14 @@ describe('SessionManager', () => {
 				mockContextStore as any
 			);
 
+			await expect(
+				sessionManager.authenticateWithCode('test-code')
+			).rejects.toThrow(AuthenticationError);
+
+			// Verify error details by catching it
 			try {
 				await sessionManager.authenticateWithCode('test-code');
-				throw new Error('Should have thrown MFA_REQUIRED error');
 			} catch (error) {
-				expect(error).toBeInstanceOf(AuthenticationError);
 				expect((error as AuthenticationError).code).toBe('MFA_REQUIRED');
 				expect((error as AuthenticationError).mfaChallenge).toEqual({
 					factorId: 'factor-123',
