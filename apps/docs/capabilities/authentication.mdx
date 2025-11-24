@@ -1,0 +1,232 @@
+# Authentication
+
+Task Master provides comprehensive authentication capabilities for connecting to the tryhamster.com platform. The authentication system supports both browser-based OAuth and token-based authentication, with robust multi-factor authentication (MFA) handling.
+
+## Authentication Methods
+
+### Browser-Based Authentication (Recommended)
+
+The default authentication method opens your browser for OAuth 2.0 authentication:
+
+```bash
+# Interactive browser authentication
+tm auth login
+```
+
+This method:
+- Opens your default browser automatically
+- Uses OAuth 2.0 with PKCE for security
+- Supports automatic context setup after login
+- Handles MFA seamlessly when enabled
+
+### Token-Based Authentication
+
+For SSH/remote environments where browser access isn't available:
+
+```bash
+# Authenticate with a token
+tm auth login <token>
+
+# Non-interactive mode (skips context setup)
+tm auth login <token> -y
+```
+
+**Important**: Even in non-interactive mode with `-y`, MFA prompts cannot be skipped if MFA is enabled on your account.
+
+## Multi-Factor Authentication (MFA)
+
+Task Master provides enhanced MFA support with automatic retry logic for invalid codes.
+
+### MFA Flow
+
+When MFA is enabled on your account:
+
+1. **Initial authentication** proceeds normally (browser or token)
+2. **MFA prompt appears** requesting your 6-digit authenticator code
+3. **Retry logic** allows multiple attempts if you enter an invalid code
+4. **Automatic completion** once a valid code is provided
+
+### MFA Configuration
+
+The MFA system includes configurable retry behavior:
+
+- **Default attempts**: 3 retry attempts for invalid codes
+- **Code validation**: Ensures 6-digit numeric format
+- **User feedback**: Clear error messages and attempt counters
+- **Graceful handling**: Non-MFA errors (network, etc.) fail immediately without retries
+
+### Example MFA Session
+
+```bash
+$ tm auth login
+
+🔐 Browser Authentication
+
+Opening your browser to authenticate...
+If the browser doesn't open, visit: https://auth.tryhamster.com/...
+
+✓ Authentication successful!
+
+⚠️  Multi-factor authentication is enabled on your account
+Please enter the 6-digit code from your authenticator app
+
+? Enter your 6-digit MFA code: 123456
+✗ Invalid MFA code. Please try again.
+
+? Enter your 6-digit MFA code: 789012  
+✗ Invalid MFA code. Please try again.
+
+? Enter your 6-digit MFA code: 456789
+✓ MFA verification successful!
+
+✓ Workspace context configured successfully
+```
+
+## Authentication Commands
+
+### Login
+
+```bash
+# Browser-based authentication (interactive)
+tm auth login
+
+# Token-based authentication
+tm auth login <token>
+
+# Skip interactive prompts
+tm auth login <token> -y
+```
+
+**Options:**
+- `[token]` - Authentication token for SSH/remote environments
+- `-y, --yes` - Skip interactive prompts (Note: MFA prompts cannot be skipped)
+
+### Status
+
+Check your current authentication status:
+
+```bash
+tm auth status
+```
+
+Shows:
+- Authentication status (authenticated/not authenticated)
+- User email and ID
+- Token expiration information
+- Selected organization and brief context
+
+### Logout
+
+Clear your authentication and credentials:
+
+```bash
+tm auth logout
+```
+
+### Refresh Token
+
+Manually refresh your authentication token:
+
+```bash
+tm auth refresh
+```
+
+## Workspace Context Setup
+
+After successful authentication, Task Master automatically prompts you to set up your workspace context (unless using `-y` flag):
+
+1. **Organization selection** - Choose from your available organizations
+2. **Brief selection** - Select a specific project brief to work with
+3. **Context persistence** - Your selections are saved for future sessions
+
+You can manage context later using:
+
+```bash
+tm context
+```
+
+## API Integration
+
+For developers integrating with Task Master's authentication system:
+
+### MFA Retry Method
+
+The enhanced `verifyMFAWithRetry()` method provides robust MFA handling:
+
+```typescript
+const result = await authManager.verifyMFAWithRetry(
+  factorId,
+  async () => await promptUserForMFACode(),
+  {
+    maxAttempts: 3,
+    onInvalidCode: (attempt, remaining) => {
+      console.log(`Invalid code. ${remaining} attempts remaining.`);
+    }
+  }
+);
+
+if (result.success) {
+  console.log('MFA verified!', result.credentials);
+} else {
+  console.error(`Failed after ${result.attemptsUsed} attempts`);
+}
+```
+
+**Parameters:**
+- `factorId` - MFA factor ID from the MFA_REQUIRED error
+- `codeProvider` - Function that prompts for and returns the MFA code
+- `options.maxAttempts` - Maximum retry attempts (default: 3, minimum: 1)
+- `options.onInvalidCode` - Callback for invalid code attempts (optional)
+
+**Return Value:**
+- `success` - Boolean indicating verification success
+- `attemptsUsed` - Number of attempts made
+- `credentials` - Auth credentials if successful
+- `errorCode` - Error code if failed
+
+### Error Handling
+
+The authentication system provides specific error codes for different failure scenarios:
+
+- `MFA_REQUIRED` - MFA verification needed
+- `INVALID_MFA_CODE` - Invalid MFA code provided (retriable)
+- `MFA_VERIFICATION_FAILED` - MFA verification failed after max attempts
+- `NOT_AUTHENTICATED` - User not authenticated
+- `NETWORK_ERROR` - Network or API error (non-retriable)
+
+## Security Best Practices
+
+1. **Token Security** - Authentication tokens are stored securely in your system keychain
+2. **Session Management** - Tokens automatically refresh when needed
+3. **MFA Compliance** - MFA cannot be bypassed when enabled on your account
+4. **Secure Transport** - All authentication uses HTTPS with OAuth 2.0/PKCE
+5. **Context Isolation** - Workspace context is stored separately from authentication credentials
+
+## Troubleshooting
+
+### Common Issues
+
+**Browser doesn't open automatically:**
+- The authentication URL is displayed in the terminal
+- Manually copy and paste the URL into your browser
+
+**MFA codes not working:**
+- Ensure your authenticator app time is synchronized
+- Double-check you're using the correct account's codes
+- Wait for the code to refresh if near expiration
+
+**Token-based auth fails:**
+- Verify the token hasn't expired
+- Ensure you're copying the complete token
+- Check for extra spaces or characters
+
+**Network connectivity issues:**
+- Verify internet connection
+- Check if corporate firewalls block authentication endpoints
+- Try authentication from a different network
+
+### Getting Help
+
+- Check the [FAQ](/getting-started/faq) for common solutions
+- Join our [Discord community](https://discord.gg/fWJkU7rf) for support  
+- Report authentication issues on [GitHub](https://github.com/eyaltoledano/claude-task-master/issues)

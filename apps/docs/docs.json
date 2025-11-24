@@ -48,6 +48,7 @@
 					{
 						"group": "Technical Capabilities",
 						"pages": [
+							"capabilities/authentication",
 							"capabilities/mcp",
 							"capabilities/cli-root-commands",
 							"capabilities/task-structure"
