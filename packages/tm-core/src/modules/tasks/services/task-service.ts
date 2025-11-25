@@ -792,4 +792,15 @@ export class TaskService {
 			);
 		}
 	}
+
+	/**
+	 * Close and cleanup resources
+	 * Releases file locks and other storage resources
+	 */
+	async close(): Promise<void> {
+		if (this.storage) {
+			await this.storage.close();
+		}
+		this.initialized = false;
+	}
 }

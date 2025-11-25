@@ -7,6 +7,7 @@
 	"main": "./dist/index.js",
 	"exports": {
 		".": "./src/index.ts",
+		"./testing": "./src/testing/index.ts",
 		"./auth": "./src/auth/index.ts",
 		"./storage": "./src/storage/index.ts",
 		"./config": "./src/config/index.ts",
