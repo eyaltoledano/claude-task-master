@@ -12,7 +12,8 @@ export const LOCAL_ONLY_COMMANDS = [
 	'validate-dependencies',
 	'fix-dependencies',
 	'clear-subtasks',
-	'models'
+	'models',
+	'generate'
 ] as const;
 
 export type LocalOnlyCommand = (typeof LOCAL_ONLY_COMMANDS)[number];

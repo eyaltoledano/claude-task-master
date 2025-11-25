@@ -9,7 +9,7 @@
  *
  * USAGE:
  * ```ts
- * import { createTask, createTasksFile } from '../fixtures/task-fixtures';
+ * import { createTask, createTasksFile } from '@tm/core/testing';
  *
  * // Create a single task with defaults
  * const task = createTask({ id: 1, title: 'My Task', status: 'pending' });
@@ -24,7 +24,7 @@
  * ```
  */
 
-import type { Task, Subtask, TaskMetadata } from '@tm/core';
+import type { Task, Subtask, TaskMetadata } from '../common/types/index.js';
 
 /**
  * File structure for tasks.json

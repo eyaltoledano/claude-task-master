@@ -48,7 +48,8 @@ import {
 	registerAutopilotFinalizeTool,
 	registerAutopilotAbortTool,
 	registerGetTasksTool,
-	registerGetTaskTool
+	registerGetTaskTool,
+	registerGenerateTool
 } from '@tm/mcp';
 
 /**
@@ -98,7 +99,8 @@ export const toolRegistry = {
 	autopilot_complete: registerAutopilotCompleteTool,
 	autopilot_commit: registerAutopilotCommitTool,
 	autopilot_finalize: registerAutopilotFinalizeTool,
-	autopilot_abort: registerAutopilotAbortTool
+	autopilot_abort: registerAutopilotAbortTool,
+	generate: registerGenerateTool
 };
 
 /**
