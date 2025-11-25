@@ -69,6 +69,7 @@ import { LOCAL_ONLY_COMMANDS } from '@tm/core';
 
 import {
 	ConfigurationError,
+	getConfig,
 	getDebugFlag,
 	getDefaultNumTasks,
 	isApiKeySet,
@@ -150,13 +151,29 @@ import {
 
 /**
  * Check if the user is connected to a Hamster brief
- * @returns {boolean} True if connected to Hamster
+ * @returns {boolean} True if connected to Hamster (has brief context OR has API storage configured)
  */
 function isConnectedToHamster() {
 	try {
 		const authManager = AuthManager.getInstance();
 		const context = authManager.getContext();
-		return context && context.briefId;
+
+		// Check if user has a brief context
+		if (context && context.briefId) {
+			return true;
+		}
+
+		// Fallback: Check if storage type is 'api' (user selected Hamster during init)
+		try {
+			const config = getConfig();
+			if (config?.storage?.type === 'api') {
+				return true;
+			}
+		} catch {
+			// Config check failed, continue
+		}
+
+		return false;
 	} catch {
 		return false;
 	}
@@ -277,32 +294,27 @@ function displayHamsterHelp() {
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
-					'tm show 1,1.1,2',
+					'tm show HAM-1,HAM-2',
 					'View multiple tasks\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
-					'tm status 1,1.1 in-progress',
+					'tm status HAM-1,HAM-2 in-progress',
 					'Start tasks\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
-					'tm status 1.2 done',
-					'Mark subtask complete\n',
+					'tm status HAM-1 done',
+					'Mark task complete\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
-					'tm update-task 1 Add implementation details',
+					'tm update-task HAM-1 <content>',
 					'Add info/context/breadcrumbs to task\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
-					'tm auth refresh',
-					'Refresh expired token\n',
-					'  '
-				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
-				createCommandEntry(
-					'tm context',
+					'tm briefs',
 					'View current brief info\n\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +

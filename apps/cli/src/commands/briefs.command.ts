@@ -12,12 +12,16 @@ import {
 import type { TmCore } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
 import { Command } from 'commander';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import readline from 'readline';
 import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
 	selectBriefFromInput,
 	selectBriefInteractive
 } from '../utils/brief-selection.js';
 import * as ui from '../utils/ui.js';
+import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
 
 /**
  * Result type from briefs command
@@ -179,10 +183,14 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				process.exit(1);
 			}
 
+			// Determine if we should skip table display (when interactive selection follows)
+			const isInteractive = process.stdout.isTTY;
+
 			// Use the bridge to list briefs
 			const remoteResult = await tryListTagsViaRemote({
 				projectRoot: process.cwd(),
 				showMetadata: options?.showMetadata || false,
+				skipTableDisplay: isInteractive, // Skip table when we'll show integrated selection
 				report: (level: LogLevel, ...args: unknown[]) => {
 					const message = args[0] as string;
 					if (level === 'error') ui.displayError(message);
@@ -202,6 +210,15 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				currentBrief: remoteResult.currentTag,
 				message: remoteResult.message
 			});
+
+			// If interactive mode and briefs available, show integrated table selection
+			if (
+				isInteractive &&
+				remoteResult.tags &&
+				remoteResult.tags.length > 0
+			) {
+				await this.promptBriefSelection(remoteResult.tags);
+			}
 		} catch (error) {
 			ui.displayError(`Failed to list briefs: ${(error as Error).message}`);
 			this.setLastResult({
@@ -210,6 +227,198 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				message: (error as Error).message
 			});
 			process.exit(1);
+		}
+	}
+
+	/**
+	 * Create table-formatted choice for integrated selection
+	 */
+	private formatBriefAsTableRow(
+		brief: TagInfo,
+		colWidths: { name: number; status: number; updated: number; tasks: number; done: number }
+	): string {
+		const shortId = brief.briefId ? brief.briefId.slice(-8) : 'unknown';
+		const isCurrent = brief.isCurrent;
+		
+		// Current indicator
+		const currentMarker = isCurrent ? chalk.green('●') : ' ';
+		
+		// Calculate max name length (leave room for marker, spaces, and ID)
+		const idSuffix = isCurrent ? '(current)' : `(${shortId})`;
+		const maxNameLen = colWidths.name - 4 - idSuffix.length; // 4 = "● " + " " before id
+		
+		// Truncate name if too long
+		let displayName = brief.name;
+		if (displayName.length > maxNameLen) {
+			displayName = displayName.substring(0, maxNameLen - 1) + '…';
+		}
+		
+		const nameText = isCurrent 
+			? chalk.green.bold(displayName) 
+			: displayName;
+		const idText = isCurrent 
+			? chalk.gray(`(current)`)
+			: chalk.gray(`(${shortId})`);
+		
+		// Calculate visual length and pad
+		const nameVisualLength = 2 + displayName.length + 1 + idSuffix.length;
+		const namePadding = Math.max(0, colWidths.name - nameVisualLength);
+		const nameCol = `${currentMarker} ${nameText} ${idText}${' '.repeat(namePadding)}`;
+		
+		// Status column - fixed width with padding
+		const statusDisplay = getBriefStatusWithColor(brief.status, true);
+		const statusVisual = (brief.status || 'unknown').length + 2; // icon + space + status
+		const statusPadding = Math.max(0, colWidths.status - statusVisual);
+		const statusCol = `${statusDisplay}${' '.repeat(statusPadding)}`;
+		
+		// Updated column
+		const updatedDate = brief.updatedAt
+			? new Date(brief.updatedAt).toLocaleDateString('en-US', {
+					month: 'short',
+					day: 'numeric',
+					year: 'numeric'
+				})
+			: 'N/A';
+		const updatedCol = chalk.gray(updatedDate.padEnd(colWidths.updated));
+		
+		// Tasks column
+		const tasksCol = chalk.white(String(brief.taskCount || 0).padStart(colWidths.tasks));
+		
+		// Done column
+		const doneCol = chalk.green(String(brief.completedTasks || 0).padStart(colWidths.done));
+		
+		return `${nameCol}  ${statusCol}  ${updatedCol}  ${tasksCol}  ${doneCol}`;
+	}
+
+	/**
+	 * Prompt user to select a brief using integrated table selection
+	 */
+	private async promptBriefSelection(briefs: TagInfo[]): Promise<void> {
+		try {
+			// Check if org is selected (required for context updates)
+			const context = this.authManager.getContext();
+			if (!context?.orgId) {
+				// Don't prompt if no org selected - user needs to set org first
+				return;
+			}
+
+			// Calculate column widths based on terminal
+			const terminalWidth = Math.max(process.stdout.columns || 120, 80);
+			const usableWidth = Math.floor(terminalWidth * 0.95);
+			const colWidths = {
+				name: Math.floor(usableWidth * 0.42),  // More room for long names
+				status: Math.floor(usableWidth * 0.14),
+				updated: Math.floor(usableWidth * 0.16),
+				tasks: 6,
+				done: 6
+			};
+
+			// Create table header
+			const headerLine = 
+				chalk.cyan.bold('Brief Name'.padEnd(colWidths.name)) +
+				chalk.cyan.bold('Status'.padEnd(colWidths.status)) +
+				chalk.cyan.bold('Updated'.padEnd(colWidths.updated)) +
+				chalk.cyan.bold('Tasks'.padStart(colWidths.tasks + 2)) +
+				chalk.cyan.bold('Done'.padStart(colWidths.done + 2));
+
+			const separator = chalk.gray('─'.repeat(usableWidth));
+
+			// Build choices as table rows
+			const choices: any[] = [
+				new inquirer.Separator(headerLine),
+				new inquirer.Separator(separator)
+			];
+
+			briefs.forEach((brief) => {
+				choices.push({
+					name: this.formatBriefAsTableRow(brief, colWidths),
+					value: brief.briefId || brief.name,
+					short: brief.name // Show just name after selection
+				});
+			});
+
+			// Add separator and cancel option
+			choices.push(new inquirer.Separator(separator));
+			choices.push({
+				name: chalk.dim('  (Cancel - keep current selection)'),
+				value: null,
+				short: 'Cancelled'
+			});
+
+			// Set up ESC key handler to cancel
+			let cancelled = false;
+			const handleKeypress = (_char: string, key: readline.Key) => {
+				if (key && key.name === 'escape') {
+					cancelled = true;
+					// Send Ctrl+C to cancel the prompt
+					process.stdin.emit('keypress', '', { name: 'c', ctrl: true });
+				}
+			};
+
+			// Enable keypress events
+			if (process.stdin.isTTY) {
+				readline.emitKeypressEvents(process.stdin);
+				process.stdin.on('keypress', handleKeypress);
+			}
+
+			let answer: { selectedBrief: string | null };
+			try {
+				answer = await inquirer.prompt([
+					{
+						type: 'list',
+						name: 'selectedBrief',
+						message: 'Select a brief:',
+						choices: choices,
+						pageSize: Math.min(briefs.length + 5, 20), // Show all briefs if possible
+						loop: false
+					}
+				]);
+			} finally {
+				// Clean up keypress listener
+				if (process.stdin.isTTY) {
+					process.stdin.removeListener('keypress', handleKeypress);
+				}
+			}
+
+			// If ESC was pressed, treat as cancel
+			if (cancelled) {
+				return;
+			}
+
+			if (answer.selectedBrief && answer.selectedBrief !== null) {
+				// Find the selected brief
+				const selectedBrief = briefs.find(
+					(b) => b.briefId === answer.selectedBrief || b.name === answer.selectedBrief
+				);
+
+				if (selectedBrief) {
+					// Update context with selected brief
+					await this.authManager.updateContext({
+						briefId: selectedBrief.briefId || undefined,
+						briefName: selectedBrief.name,
+						briefStatus: selectedBrief.status || undefined,
+						briefUpdatedAt: selectedBrief.updatedAt || undefined
+					});
+
+					ui.displaySuccess(`Selected brief: ${selectedBrief.name}`);
+					this.setLastResult({
+						success: true,
+						action: 'select',
+						currentBrief: selectedBrief.briefId || selectedBrief.name,
+						message: `Selected brief: ${selectedBrief.name}`
+					});
+				}
+			}
+		} catch (error) {
+			// If user cancels (Ctrl+C), inquirer throws - handle gracefully
+			if ((error as any).isTtyError) {
+				// Not a TTY, skip interactive prompt
+				return;
+			}
+			// Other errors - log but don't fail the command
+			console.error(
+				chalk.yellow(`\nNote: Could not prompt for brief selection: ${(error as Error).message}`)
+			);
 		}
 	}
 

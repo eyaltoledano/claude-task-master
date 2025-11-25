@@ -1213,14 +1213,12 @@ async function createProjectStructure(
 				chalk.cyan('How to orchestrate with Taskmaster:'),
 				chalk.white('  • Create your first brief at: ') +
 					chalk.underline.cyan('https://tryhamster.com'),
-				chalk.white('  • Connect your brief to Taskmaster using ') +
+				chalk.white('  • Connect your brief using ') +
 					chalk.bold('tm context <brief-url>') +
-					chalk.white(' to see tasks from your brief'),
-				chalk.white(
-					'  • Work on tasks with any AI coding assistant or background agent'
-				) +
+					chalk.white(' to access tasks in Taskmaster'),
+				chalk.white('  • Orchestrate and implement tasks using') +
 					chalk.bold('tm next') +
-					chalk.white(' - Find the next task to work on'),
+					chalk.white('to kickoff any AI agent'),
 				chalk.white('  • Run ') +
 					chalk.bold('tm help') +
 					chalk.white(' to explore other available commands'),
