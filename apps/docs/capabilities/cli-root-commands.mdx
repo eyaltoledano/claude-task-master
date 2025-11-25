@@ -86,7 +86,21 @@ sidebarTitle: "CLI Commands"
     ```bash
     # Generate individual task files from tasks.json
     task-master generate
+
+    # Generate files from a specific tag (useful when working with multiple tag contexts)
+    task-master generate --tag=feature-auth
+
+    # Generate files to a custom output directory
+    task-master generate --output=./custom-tasks
+
+    # Generate files in JSON format instead of text
+    task-master generate --format=json
+
+    # Combine options: generate from specific tag to custom directory
+    task-master generate --tag=v2-features --output=./v2-tasks
     ```
+
+    Generated files are now in Markdown format (`.md`) and follow markdownlint standards. By default, files are generated in the `.taskmaster/tasks/` directory. The command also automatically removes orphaned task files that no longer have corresponding tasks in your `tasks.json`.
   </Accordion>
 
   <Accordion title="Set Task Status">
