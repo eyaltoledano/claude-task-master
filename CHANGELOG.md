@@ -1,5 +1,49 @@
 # task-master-ai
 
+## 0.35.0
+
+### Minor Changes
+
+- [#1437](https://github.com/eyaltoledano/claude-task-master/pull/1437) [`783398e`](https://github.com/eyaltoledano/claude-task-master/commit/783398ecdf71432bd2b97f400756acbcfd60fbef) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Upgrade gemini-cli provider to native structured output support
+  - Upgrade `ai-sdk-provider-gemini-cli` from v1.1.1 to v1.4.0 with native `responseJsonSchema` support
+  - Simplify provider implementation by removing JSON extraction workarounds (652 lines → 95 lines)
+  - Enable native structured output via Gemini API's schema enforcement
+
+- [#1440](https://github.com/eyaltoledano/claude-task-master/pull/1440) [`9f6f3af`](https://github.com/eyaltoledano/claude-task-master/commit/9f6f3affe322512a8708624850c144b4b890e782) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for opus 4.1 and opus 4.5 anthropic models
+
+### Patch Changes
+
+- [#1440](https://github.com/eyaltoledano/claude-task-master/pull/1440) [`9f6f3af`](https://github.com/eyaltoledano/claude-task-master/commit/9f6f3affe322512a8708624850c144b4b890e782) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Correct swe scores of haiku 4.5 and sonnet 4.5
+
+- [#1436](https://github.com/eyaltoledano/claude-task-master/pull/1436) [`c1df63d`](https://github.com/eyaltoledano/claude-task-master/commit/c1df63d7229f05b57abba4af11e74a8d2bc6dcd9) Thanks [@ben-vargas](https://github.com/ben-vargas)! - Upgrade ai-sdk-provider-claude-code to v2.2.0 for native structured outputs support.
+
+## 0.34.0
+
+### Minor Changes
+
+- [#1425](https://github.com/eyaltoledano/claude-task-master/pull/1425) [`99d9179`](https://github.com/eyaltoledano/claude-task-master/commit/99d9179522dc66797ec7e3f428d72b46a9557f09) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Deprecated generate command
+
+## 0.33.0
+
+### Minor Changes
+
+- [#1427](https://github.com/eyaltoledano/claude-task-master/pull/1427) [`122c23a`](https://github.com/eyaltoledano/claude-task-master/commit/122c23abb36634c1e68c476d681f41b4b4991671) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Added Gemini 3 pro preview to supported Taskmaster AI providers
+  - Added to Google providers
+  - Added to Gemini CLI providers
+    - Attention: Gemini 3 Pro is available for:
+      - Google AI Ultra Subscribers
+      - Users who have access via a paid Gemini API key
+        - If you want to use the gemini api key, make sure you have this defined in your .env or mcp.json env variables: `GEMINI_API_KEY=xxxx`
+
+## 0.32.2
+
+### Patch Changes
+
+- [#1421](https://github.com/eyaltoledano/claude-task-master/pull/1421) [`e75946b`](https://github.com/eyaltoledano/claude-task-master/commit/e75946b1a998269e6a751d2b5baf5c3b7e9b9f46) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Upgrade fastmcp dependency to solve `Server does not support completions (required for completion/complete)`
+  - This resolves errors where MCP clients (like Cursor) failed to connect to the Task Master MCP server:
+    - [#1413](https://github.com/eyaltoledano/claude-task-master/issues/1413)
+    - [#1411](https://github.com/eyaltoledano/claude-task-master/issues/1411)
+
 ## 0.32.1
 
 ### Patch Changes
