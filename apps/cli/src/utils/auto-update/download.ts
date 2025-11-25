@@ -88,8 +88,14 @@ export async function fetchTarballInfo(
 export async function downloadTarballWithProgress(
 	tarballUrl: string,
 	destPath: string,
-	version: string
+	version: string,
+	maxRedirects = 5
 ): Promise<boolean> {
+	if (maxRedirects <= 0) {
+		console.error(chalk.red('Too many redirects'));
+		return Promise.resolve(false);
+	}
+
 	return new Promise((resolve) => {
 		const url = new URL(tarballUrl);
 
@@ -107,7 +113,12 @@ export async function downloadTarballWithProgress(
 			if (res.statusCode === 301 || res.statusCode === 302) {
 				const redirectUrl = res.headers.location;
 				if (redirectUrl) {
-					downloadTarballWithProgress(redirectUrl, destPath, version)
+					downloadTarballWithProgress(
+						redirectUrl,
+						destPath,
+						version,
+						maxRedirects - 1
+					)
 						.then(resolve)
 						.catch(() => resolve(false));
 					return;
@@ -167,12 +178,13 @@ export async function downloadTarballWithProgress(
 				if (totalSize > 0) {
 					progressBar.stop();
 				}
-				console.log(
-					chalk.green('✓') +
-						chalk.dim(` Downloaded ${formatBytes(downloadedSize)}`)
-				);
-				fileStream.close();
-				resolve(true);
+				fileStream.close(() => {
+					console.log(
+						chalk.green('✓') +
+							chalk.dim(` Downloaded ${formatBytes(downloadedSize)}`)
+					);
+					resolve(true);
+				});
 			});
 
 			fileStream.on('error', (err) => {

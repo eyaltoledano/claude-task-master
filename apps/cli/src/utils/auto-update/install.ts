@@ -55,6 +55,9 @@ function parseNpmPhaseIndex(output: string): number {
  * Calculate progress percentage based on phase and sub-progress within phase
  */
 function calculateProgress(phaseIndex: number, phaseProgress: number): number {
+	if (phaseIndex < 0 || phaseIndex >= INSTALL_PHASES.length) {
+		return phaseIndex >= INSTALL_PHASES.length ? 100 : 0;
+	}
 	let baseProgress = 0;
 	for (let i = 0; i < phaseIndex; i++) {
 		baseProgress += INSTALL_PHASES[i].weight;
@@ -192,7 +195,9 @@ async function installFromTarball(tarballPath: string): Promise<boolean> {
 			progressBar.stop();
 
 			// Cleanup tarball
-			fs.unlink(tarballPath, () => {});
+			if (fs.existsSync(tarballPath)) {
+				fs.unlink(tarballPath, () => {});
+			}
 
 			if (code === 0) {
 				console.log(
