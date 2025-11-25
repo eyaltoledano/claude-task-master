@@ -3,7 +3,7 @@
  * Generates individual markdown task files from tasks.json
  */
 
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Task, Subtask, TaskStatus } from '../../../common/types/index.js';
 import type { IStorage } from '../../../common/interfaces/storage.interface.js';
@@ -24,14 +24,16 @@ export interface GenerateTaskFilesOptions {
  */
 export interface GenerateTaskFilesResult {
 	success: boolean;
-	/** Number of task files generated */
+	/** Number of task files successfully generated */
 	count: number;
 	/** Output directory where files were written */
 	directory: string;
 	/** Number of orphaned files cleaned up */
 	orphanedFilesRemoved: number;
-	/** Error message if generation failed */
+	/** Error message if generation failed completely */
 	error?: string;
+	/** Individual file write errors (task ID -> error message) */
+	fileErrors?: Record<string, string>;
 }
 
 /**
@@ -60,9 +62,7 @@ export class TaskFileGeneratorService {
 
 		try {
 			// Ensure output directory exists
-			if (!fs.existsSync(outputDir)) {
-				fs.mkdirSync(outputDir, { recursive: true });
-			}
+			await fs.mkdir(outputDir, { recursive: true });
 
 			// Load tasks from storage
 			const tasks = await this.storage.loadTasks(tag);
@@ -77,26 +77,43 @@ export class TaskFileGeneratorService {
 			}
 
 			// Clean up orphaned task files
-			const orphanedCount = this.cleanupOrphanedFiles(
+			const orphanedCount = await this.cleanupOrphanedFiles(
 				outputDir,
 				tasks,
 				tag
 			);
 
-			// Generate task files
-			for (const task of tasks) {
-				const content = this.formatTaskContent(task, tasks);
-				const fileName = this.getTaskFileName(task.id, tag);
-				const filePath = path.join(outputDir, fileName);
+			// Generate task files in parallel with individual error handling
+			// This allows partial success - some files can be written even if others fail
+			const fileErrors: Record<string, string> = {};
+			const results = await Promise.allSettled(
+				tasks.map(async (task) => {
+					const content = this.formatTaskContent(task, tasks);
+					const fileName = this.getTaskFileName(task.id, tag);
+					const filePath = path.join(outputDir, fileName);
+					await fs.writeFile(filePath, content, 'utf-8');
+					return task.id;
+				})
+			);
 
-				fs.writeFileSync(filePath, content, 'utf-8');
+			// Count successes and collect errors
+			let successCount = 0;
+			for (let i = 0; i < results.length; i++) {
+				const result = results[i];
+				if (result.status === 'fulfilled') {
+					successCount++;
+				} else {
+					const taskId = String(tasks[i].id);
+					fileErrors[taskId] = result.reason?.message || 'Unknown error';
+				}
 			}
 
 			return {
-				success: true,
-				count: tasks.length,
+				success: Object.keys(fileErrors).length === 0,
+				count: successCount,
 				directory: outputDir,
-				orphanedFilesRemoved: orphanedCount
+				orphanedFilesRemoved: orphanedCount,
+				...(Object.keys(fileErrors).length > 0 && { fileErrors })
 			};
 		} catch (error: any) {
 			return {
@@ -132,20 +149,23 @@ export class TaskFileGeneratorService {
 	 * Clean up orphaned task files (files for tasks that no longer exist)
 	 * @returns Number of files removed
 	 */
-	private cleanupOrphanedFiles(
+	private async cleanupOrphanedFiles(
 		outputDir: string,
 		tasks: Task[],
 		tag: string
-	): number {
+	): Promise<number> {
 		let removedCount = 0;
 
 		try {
-			const files = fs.readdirSync(outputDir);
+			const files = await fs.readdir(outputDir);
 			const validTaskIds = tasks.map((task) => String(task.id));
 
 			// Tag-aware file patterns
 			const masterFilePattern = /^task_(\d+)\.md$/;
 			const taggedFilePattern = new RegExp(`^task_(\\d+)_${this.escapeRegExp(tag)}\\.md$`);
+
+			// Collect files to remove
+			const filesToRemove: string[] = [];
 
 			for (const file of files) {
 				let match = null;
@@ -169,12 +189,19 @@ export class TaskFileGeneratorService {
 					// Convert to integer for comparison (removes leading zeros)
 					const normalizedId = String(parseInt(fileTaskId, 10));
 					if (!validTaskIds.includes(normalizedId)) {
-						const filePath = path.join(outputDir, file);
-						fs.unlinkSync(filePath);
-						removedCount++;
+						filesToRemove.push(file);
 					}
 				}
 			}
+
+			// Remove files in parallel
+			await Promise.all(
+				filesToRemove.map(async (file) => {
+					const filePath = path.join(outputDir, file);
+					await fs.unlink(filePath);
+				})
+			);
+			removedCount = filesToRemove.length;
 		} catch (error) {
 			// Ignore errors during cleanup - non-critical operation
 		}

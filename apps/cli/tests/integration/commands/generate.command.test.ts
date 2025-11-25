@@ -181,17 +181,7 @@ describe('generate command', () => {
 		const testData = {
 			master: { tasks: [], metadata: {} },
 			'feature-branch': {
-				tasks: [
-					{
-						id: '1',
-						title: 'Test Task',
-						description: 'Test',
-						status: 'pending',
-						priority: 'medium',
-						dependencies: [],
-						subtasks: []
-					}
-				],
+				tasks: [createTask({ id: 1, title: 'Test Task', status: 'pending' })],
 				metadata: {}
 			}
 		};
@@ -218,5 +208,17 @@ describe('generate command', () => {
 
 		expect(exitCode).toBe(0);
 		expect(output).toContain('.taskmaster/tasks');
+	});
+
+	it('should exit with non-zero code for invalid --format value', () => {
+		const testData = createTasksFile({
+			tasks: [createTask({ id: 1, title: 'Test Task', status: 'pending' })]
+		});
+		writeTasks(testData);
+
+		const { output, exitCode } = runGenerate('--format invalid');
+
+		expect(exitCode).not.toBe(0);
+		expect(output.toLowerCase()).toMatch(/invalid|error|format/);
 	});
 });

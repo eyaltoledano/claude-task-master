@@ -177,17 +177,7 @@ describe('generate MCP tool', () => {
 		const testData = {
 			master: { tasks: [], metadata: {} },
 			'feature-branch': {
-				tasks: [
-					{
-						id: '1',
-						title: 'Test Task',
-						description: 'Test',
-						status: 'pending',
-						priority: 'medium',
-						dependencies: [],
-						subtasks: []
-					}
-				],
+				tasks: [createTask({ id: 1, title: 'Test Task', status: 'pending' })],
 				metadata: {}
 			}
 		};

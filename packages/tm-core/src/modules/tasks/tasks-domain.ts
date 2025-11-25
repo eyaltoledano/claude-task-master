@@ -393,7 +393,7 @@ export class TasksDomain {
 
 	/**
 	 * Generate individual task markdown files from tasks.json
-	 * This writes .txt files for each task in the tasks directory.
+	 * This writes .md files for each task in the tasks directory.
 	 *
 	 * Note: Only applicable for file storage. API storage throws an error.
 	 *
@@ -416,5 +416,15 @@ export class TasksDomain {
 		}
 
 		return this.taskFileGenerator.generateTaskFiles(options);
+	}
+
+	// ========== Cleanup ==========
+
+	/**
+	 * Close and cleanup resources
+	 * Releases file locks and other storage resources
+	 */
+	async close(): Promise<void> {
+		await this.taskService.close();
 	}
 }

@@ -53,7 +53,7 @@ import {
 } from '@tm/mcp';
 
 /**
- * Comprehensive tool registry mapping all 44 tool names to their registration functions
+ * Comprehensive tool registry mapping tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {

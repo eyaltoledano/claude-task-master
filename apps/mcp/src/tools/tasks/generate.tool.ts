@@ -10,10 +10,6 @@ import type { ToolContext } from '../../shared/types.js';
 import type { FastMCP } from 'fastmcp';
 
 const GenerateSchema = z.object({
-	file: z
-		.string()
-		.optional()
-		.describe('Absolute path to the tasks file (default: tasks/tasks.json)'),
 	output: z
 		.string()
 		.optional()

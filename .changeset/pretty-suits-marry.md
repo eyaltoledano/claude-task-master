@@ -8,4 +8,4 @@ Bring back `task-master generate` as a command and mcp tool (after popular deman
   - They also follow the markdownlint format making them look like more standard md files
 - added parameters to generate allowing you to generate with the `--tag` flag
   - If I am on an active tag and want to generate files from another tag, I can with the tag parameter
-- See `--help` on more information on how `task-master generate --help` works
+- See `task-master generate --help` for more information.
