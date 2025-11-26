@@ -1492,7 +1492,7 @@ export function Shell({
 	const isHamster = storageType === 'api';
 	const currentTag = initialTag;
 
-	// Load tasks
+	// Load tasks using @tm/core
 	useEffect(() => {
 		if (initialTasks) {
 			setLoading(false);
@@ -1571,7 +1571,7 @@ export function Shell({
 		}
 	}, []);
 
-	// Status update (for both tasks and subtasks)
+	// Status update (for both tasks and subtasks) - uses @tm/core
 	const updateTaskStatus = useCallback(
 		async (taskId: string, newStatus: string) => {
 			if (!tmCore && !initialTasks) return;
@@ -1594,7 +1594,7 @@ export function Shell({
 						}
 					}
 				} else {
-					// Handle subtask status locally
+					// Handle subtask status locally (for initialTasks/demo mode)
 					if (taskId.includes('.')) {
 						const [parentId, subId] = taskId.split('.');
 						setTasks((prev) =>

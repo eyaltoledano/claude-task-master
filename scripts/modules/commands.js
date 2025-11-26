@@ -4606,16 +4606,25 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
+		// If no arguments provided, try to launch TUI REPL mode (skip banner - TUI has its own)
+		if (argv.length <= 2) {
+			const tui = await loadTUI();
+			if (tui) {
+				const { render, Shell } = tui;
+				const React = await import('react');
+				render(React.createElement(Shell));
+				return; // TUI takes over, don't continue to parse
+			}
+			// Fallback to help if TUI not available
+			displayBanner();
+			displayHelp();
+			process.exit(0);
+		}
+
 		// Display banner if not in a pipe (except for init command which has its own banner)
 		const isInitCommand = argv.includes('init');
 		if (process.stdout.isTTY && !isInitCommand) {
 			displayBanner();
-		}
-
-		// If no arguments provided, show help
-		if (argv.length <= 2) {
-			displayHelp();
-			process.exit(0);
 		}
 
 		// Check for updates BEFORE executing the command

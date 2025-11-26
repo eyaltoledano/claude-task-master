@@ -16,35 +16,35 @@
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
-import boxen from 'boxen';
 import gradient from 'gradient-string';
-import { isSilentMode } from './modules/utils.js';
-import { insideGitWorkTree } from './modules/utils/git-utils.js';
-import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import { RULE_PROFILES } from '../src/constants/profiles.js';
+import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import {
 	convertAllRulesToProfileRules,
 	getRulesProfile
 } from '../src/utils/rule-transformer.js';
 import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
+import { isSilentMode } from './modules/utils.js';
+import { insideGitWorkTree } from './modules/utils/git-utils.js';
 
 // Import asset resolver
 import { assetExists, readAsset } from '../src/utils/asset-resolver.js';
 
 import { execSync } from 'child_process';
 import {
+	ENV_EXAMPLE_FILE,
 	EXAMPLE_PRD_FILE,
+	GITIGNORE_FILE,
 	TASKMASTER_CONFIG_FILE,
-	TASKMASTER_TEMPLATES_DIR,
 	TASKMASTER_DIR,
-	TASKMASTER_TASKS_DIR,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
 	TASKMASTER_STATE_FILE,
-	ENV_EXAMPLE_FILE,
-	GITIGNORE_FILE
+	TASKMASTER_TASKS_DIR,
+	TASKMASTER_TEMPLATES_DIR
 } from '../src/constants/paths.js';
 
 // Define log levels
