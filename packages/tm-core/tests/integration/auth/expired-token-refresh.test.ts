@@ -25,24 +25,27 @@ vi.mock('../../../src/common/logger/index.js', () => ({
 }));
 
 // Mock SupabaseSessionStorage
-vi.mock('../../../src/modules/auth/services/supabase-session-storage.js', () => ({
-	SupabaseSessionStorage: class MockSupabaseSessionStorage {
-		private data = new Map<string, string>();
+vi.mock(
+	'../../../src/modules/auth/services/supabase-session-storage.js',
+	() => ({
+		SupabaseSessionStorage: class MockSupabaseSessionStorage {
+			private data = new Map<string, string>();
 
-		clear() {
-			this.data.clear();
+			clear() {
+				this.data.clear();
+			}
+			async getItem(key: string) {
+				return this.data.get(key) ?? null;
+			}
+			async setItem(key: string, value: string) {
+				this.data.set(key, value);
+			}
+			async removeItem(key: string) {
+				this.data.delete(key);
+			}
 		}
-		async getItem(key: string) {
-			return this.data.get(key) ?? null;
-		}
-		async setItem(key: string, value: string) {
-			this.data.set(key, value);
-		}
-		async removeItem(key: string) {
-			this.data.delete(key);
-		}
-	}
-}));
+	})
+);
 
 // Import after mocking
 import { SupabaseAuthClient } from '../../../src/modules/integration/clients/supabase-client.js';

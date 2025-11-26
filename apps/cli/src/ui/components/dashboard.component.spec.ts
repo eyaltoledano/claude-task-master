@@ -31,7 +31,11 @@ const createTask = (
 };
 
 // Helper to create minimal subtasks
-const createSubtask = (id: string, parentId: string, status: TaskStatus): Subtask => ({
+const createSubtask = (
+	id: string,
+	parentId: string,
+	status: TaskStatus
+): Subtask => ({
 	id,
 	parentId,
 	title: `Subtask ${id}`,

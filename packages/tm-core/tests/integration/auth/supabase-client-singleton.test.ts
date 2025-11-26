@@ -29,16 +29,19 @@ vi.mock('../../../src/common/logger/index.js', () => ({
 }));
 
 // Mock SupabaseSessionStorage
-vi.mock('../../../src/modules/auth/services/supabase-session-storage.js', () => ({
-	SupabaseSessionStorage: class MockSupabaseSessionStorage {
-		clear() {}
-		async getItem() {
-			return null;
+vi.mock(
+	'../../../src/modules/auth/services/supabase-session-storage.js',
+	() => ({
+		SupabaseSessionStorage: class MockSupabaseSessionStorage {
+			clear() {}
+			async getItem() {
+				return null;
+			}
+			async setItem() {}
+			async removeItem() {}
 		}
-		async setItem() {}
-		async removeItem() {}
-	}
-}));
+	})
+);
 
 // Import after mocking
 import { SupabaseAuthClient } from '../../../src/modules/integration/clients/supabase-client.js';
