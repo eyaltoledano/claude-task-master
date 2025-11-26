@@ -11,6 +11,11 @@ import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
 import { TagService } from './services/tag.service.js';
+import {
+	TaskFileGeneratorService,
+	type GenerateTaskFilesOptions,
+	type GenerateTaskFilesResult
+} from './services/task-file-generator.service.js';
 import type {
 	CreateTagOptions,
 	DeleteTagOptions,
@@ -42,12 +47,17 @@ export class TasksDomain {
 	private preflightChecker: PreflightChecker;
 	private briefsDomain: BriefsDomain;
 	private tagService!: TagService;
+	private taskFileGenerator!: TaskFileGeneratorService;
+	private projectRoot: string;
+	private configManager: ConfigManager;
 
 	constructor(configManager: ConfigManager, _authDomain?: AuthDomain) {
+		this.projectRoot = configManager.getProjectRoot();
+		this.configManager = configManager;
 		this.taskService = new TaskService(configManager);
 		this.executionService = new TaskExecutionService(this.taskService);
 		this.loaderService = new TaskLoaderService(this.taskService);
-		this.preflightChecker = new PreflightChecker(configManager.getProjectRoot());
+		this.preflightChecker = new PreflightChecker(this.projectRoot);
 		this.briefsDomain = new BriefsDomain();
 	}
 
@@ -56,6 +66,13 @@ export class TasksDomain {
 
 		// TagService needs storage - get it from TaskService AFTER initialization
 		this.tagService = new TagService(this.taskService.getStorage());
+
+		// TaskFileGeneratorService needs storage and config for active tag
+		this.taskFileGenerator = new TaskFileGeneratorService(
+			this.taskService.getStorage(),
+			this.projectRoot,
+			this.configManager
+		);
 	}
 
 	// ========== Task Retrieval ==========
@@ -370,5 +387,44 @@ export class TasksDomain {
 	 */
 	getStorageType(): 'file' | 'api' {
 		return this.taskService.getStorageType();
+	}
+
+	// ========== Task File Generation ==========
+
+	/**
+	 * Generate individual task markdown files from tasks.json
+	 * This writes .md files for each task in the tasks directory.
+	 *
+	 * Note: Only applicable for file storage. API storage throws an error.
+	 *
+	 * @param options - Generation options (tag, outputDir)
+	 * @returns Result with count of generated files and cleanup info
+	 */
+	async generateTaskFiles(
+		options?: GenerateTaskFilesOptions
+	): Promise<GenerateTaskFilesResult> {
+		// Only file storage supports task file generation
+		if (this.getStorageType() === 'api') {
+			return {
+				success: false,
+				count: 0,
+				directory: '',
+				orphanedFilesRemoved: 0,
+				error:
+					'Task file generation is only available for local file storage. API storage manages tasks in the cloud.'
+			};
+		}
+
+		return this.taskFileGenerator.generateTaskFiles(options);
+	}
+
+	// ========== Cleanup ==========
+
+	/**
+	 * Close and cleanup resources
+	 * Releases file locks and other storage resources
+	 */
+	async close(): Promise<void> {
+		await this.taskService.close();
 	}
 }

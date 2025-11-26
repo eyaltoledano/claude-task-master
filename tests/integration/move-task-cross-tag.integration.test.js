@@ -1,7 +1,7 @@
-import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -105,13 +105,6 @@ jest.unstable_mockModule('../../scripts/modules/dependency-manager.js', () => ({
 		}
 	})
 }));
-
-jest.unstable_mockModule(
-	'../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
 
 // Import the modules we'll be testing after mocking
 const { moveTasksBetweenTags } = await import(

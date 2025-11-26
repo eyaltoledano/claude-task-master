@@ -505,7 +505,7 @@ Azure OpenAI provides enterprise-grade OpenAI models through Microsoft's Azure c
 The Codex CLI provider integrates Task Master with OpenAI's Codex CLI, allowing you to use ChatGPT subscription models via OAuth authentication.
 
 1. **Prerequisites**:
-   - Node.js >= 18
+   - Node.js >= 20
    - Codex CLI >= 0.42.0 (>= 0.44.0 recommended)
    - ChatGPT subscription: Plus, Pro, Business, Edu, or Enterprise (for OAuth access to GPT-5 models)
 

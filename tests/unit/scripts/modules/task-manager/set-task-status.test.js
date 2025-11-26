@@ -24,13 +24,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	getCurrentTag: jest.fn(() => 'master')
 }));
 
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
 	formatDependenciesWithStatus: jest.fn(),
 	displayBanner: jest.fn(),
@@ -86,12 +79,6 @@ jest.unstable_mockModule(
 const { readJSON, writeJSON, log, findTaskById } = await import(
 	'../../../../../scripts/modules/utils.js'
 );
-
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 
 const updateSingleTaskStatus = (
 	await import(

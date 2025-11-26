@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { copyTagDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
@@ -67,13 +67,12 @@ export function registerCopyTagTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error copying tag',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error copying tag',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in copy-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);

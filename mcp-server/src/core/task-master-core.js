@@ -10,7 +10,6 @@ import { parsePRDDirect } from './direct-functions/parse-prd.js';
 import { updateTasksDirect } from './direct-functions/update-tasks.js';
 import { updateTaskByIdDirect } from './direct-functions/update-task-by-id.js';
 import { updateSubtaskByIdDirect } from './direct-functions/update-subtask-by-id.js';
-import { generateTaskFilesDirect } from './direct-functions/generate-task-files.js';
 import { setTaskStatusDirect } from './direct-functions/set-task-status.js';
 import { nextTaskDirect } from './direct-functions/next-task.js';
 import { expandTaskDirect } from './direct-functions/expand-task.js';
@@ -50,7 +49,6 @@ export const directFunctions = new Map([
 	['updateTasksDirect', updateTasksDirect],
 	['updateTaskByIdDirect', updateTaskByIdDirect],
 	['updateSubtaskByIdDirect', updateSubtaskByIdDirect],
-	['generateTaskFilesDirect', generateTaskFilesDirect],
 	['setTaskStatusDirect', setTaskStatusDirect],
 	['nextTaskDirect', nextTaskDirect],
 	['expandTaskDirect', expandTaskDirect],
@@ -88,7 +86,6 @@ export {
 	updateTasksDirect,
 	updateTaskByIdDirect,
 	updateSubtaskByIdDirect,
-	generateTaskFilesDirect,
 	setTaskStatusDirect,
 	nextTaskDirect,
 	expandTaskDirect,

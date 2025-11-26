@@ -1,4 +1,4 @@
-# Available Models as of November 18, 2025
+# Available Models as of November 24, 2025
 
 ## Main Models
 
@@ -8,8 +8,10 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
-| anthropic   | claude-sonnet-4-5-20250929                     | 0.73      | 3          | 15          |
-| anthropic   | claude-haiku-4-5-20251001                      | 0.45      | 1          | 5           |
+| anthropic   | claude-sonnet-4-5                              | 0.772     | 3          | 15          |
+| anthropic   | claude-haiku-4-5                               | 0.733     | 1          | 5           |
+| anthropic   | claude-opus-4-1                                | 0.745     | 15         | 75          |
+| anthropic   | claude-opus-4-5                                | 0.809     | 5          | 25          |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | claude-code | haiku                                          | 0.45      | 0          | 0           |
@@ -162,8 +164,10 @@
 | anthropic   | claude-opus-4-20250514                         | 0.725     | 15         | 75          |
 | anthropic   | claude-3-7-sonnet-20250219                     | 0.623     | 3          | 15          |
 | anthropic   | claude-3-5-sonnet-20241022                     | 0.49      | 3          | 15          |
-| anthropic   | claude-sonnet-4-5-20250929                     | 0.73      | 3          | 15          |
-| anthropic   | claude-haiku-4-5-20251001                      | 0.45      | 1          | 5           |
+| anthropic   | claude-sonnet-4-5                              | 0.772     | 3          | 15          |
+| anthropic   | claude-haiku-4-5                               | 0.733     | 1          | 5           |
+| anthropic   | claude-opus-4-1                                | 0.745     | 15         | 75          |
+| anthropic   | claude-opus-4-5                                | 0.809     | 5          | 25          |
 | claude-code | opus                                           | 0.725     | 0          | 0           |
 | claude-code | sonnet                                         | 0.727     | 0          | 0           |
 | claude-code | haiku                                          | 0.45      | 0          | 0           |

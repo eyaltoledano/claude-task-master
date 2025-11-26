@@ -91,12 +91,16 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 // Import all modules after mocking
 import fs from 'fs';
 import path from 'path';
+import { compareVersions } from '@tm/cli';
+import {
+	displayUpgradeNotification,
+	parseChangelogHighlights
+} from '../../apps/cli/src/utils/auto-update/index.js';
 import { setupCLI } from '../../scripts/modules/commands.js';
 import {
-	RULES_SETUP_ACTION,
-	RULES_ACTIONS
+	RULES_ACTIONS,
+	RULES_SETUP_ACTION
 } from '../../src/constants/rules-actions.js';
-import { compareVersions } from '@tm/cli';
 
 describe('Commands Module - CLI Setup and Integration', () => {
 	const mockExistsSync = jest.spyOn(fs, 'existsSync');
@@ -278,16 +282,7 @@ describe('Version comparison utility', () => {
 });
 
 describe('Update check functionality', () => {
-	let displayUpgradeNotification;
-	let parseChangelogHighlights;
 	let consoleLogSpy;
-
-	beforeAll(async () => {
-		// Import from @tm/cli instead of commands.js
-		const cliModule = await import('../../apps/cli/src/utils/auto-update.js');
-		displayUpgradeNotification = cliModule.displayUpgradeNotification;
-		parseChangelogHighlights = cliModule.parseChangelogHighlights;
-	});
 
 	beforeEach(() => {
 		consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});

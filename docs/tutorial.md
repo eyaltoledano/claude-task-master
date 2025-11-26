@@ -107,9 +107,6 @@ task-master list
 
 # Show the next task to work on
 task-master next
-
-# Generate task files
-task-master generate
 ```
 
 ## Setting up Cursor AI Integration
@@ -177,14 +174,6 @@ Next, ask the agent to generate individual task files:
 ```
 Please generate individual task files from tasks.json
 ```
-
-The agent will execute:
-
-```bash
-task-master generate
-```
-
-This creates individual task files in the `tasks/` directory (e.g., `task_001.txt`, `task_002.txt`), making it easier to reference specific tasks.
 
 ## AI-Driven Development Workflow
 

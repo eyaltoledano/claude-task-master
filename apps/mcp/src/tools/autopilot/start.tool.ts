@@ -4,12 +4,8 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	withNormalizedProjectRoot
-} from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
-import { createTmCore } from '@tm/core';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
+import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
@@ -57,12 +53,13 @@ export function registerAutopilotStartTool(server: FastMCP) {
 		description:
 			'Initialize and start a new TDD workflow for a task. Creates a git branch and sets up the workflow state machine.',
 		parameters: StartWorkflowSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: StartWorkflowArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-start',
+			async (args: StartWorkflowArgs, { log, tmCore }: ToolContext) => {
 				const { taskId, projectRoot, maxAttempts, force } = args;
 
 				try {
-					context.log.info(
+					log.info(
 						`Starting autopilot workflow for task ${taskId} in ${projectRoot}`
 					);
 
@@ -75,20 +72,15 @@ export function registerAutopilotStartTool(server: FastMCP) {
 									message: `Task ID "${taskId}" is a subtask. Autopilot workflows can only be started for main tasks (e.g., "1", "2", "HAM-123"). Please provide the parent task ID instead.`
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
 
-					// Load task data and get current tag
-					const core = await createTmCore({
-						projectPath: projectRoot
-					});
-
 					// Get current tag from ConfigManager
-					const currentTag = core.config.getActiveTag();
+					const currentTag = tmCore.config.getActiveTag();
 
-					const taskResult = await core.tasks.get(taskId);
+					const taskResult = await tmCore.tasks.get(taskId);
 
 					if (!taskResult || !taskResult.task) {
 						return handleApiResult({
@@ -96,7 +88,7 @@ export function registerAutopilotStartTool(server: FastMCP) {
 								success: false,
 								error: { message: `Task ${taskId} not found` }
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -112,7 +104,7 @@ export function registerAutopilotStartTool(server: FastMCP) {
 									message: `Task ${taskId} has no subtasks. Please use expand_task (with id="${taskId}") to create subtasks first. For improved results, consider running analyze_complexity before expanding the task.`
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -123,7 +115,7 @@ export function registerAutopilotStartTool(server: FastMCP) {
 					// Check for existing workflow
 					const hasWorkflow = await workflowService.hasWorkflow();
 					if (hasWorkflow && !force) {
-						context.log.warn('Workflow state already exists');
+						log.warn('Workflow state already exists');
 						return handleApiResult({
 							result: {
 								success: false,
@@ -132,7 +124,7 @@ export function registerAutopilotStartTool(server: FastMCP) {
 										'Workflow already in progress. Use force=true to override or resume the existing workflow. Suggestion: Use autopilot_resume to continue the existing workflow'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -152,7 +144,7 @@ export function registerAutopilotStartTool(server: FastMCP) {
 						tag: currentTag // Pass current tag for branch naming
 					});
 
-					context.log.info(`Workflow started successfully for task ${taskId}`);
+					log.info(`Workflow started successfully for task ${taskId}`);
 
 					// Get next action with guidance from WorkflowService
 					const nextAction = workflowService.getNextAction();
@@ -172,20 +164,20 @@ export function registerAutopilotStartTool(server: FastMCP) {
 								nextSteps: nextAction.nextSteps
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-start: ${error.message}`);
+					log.error(`Error in autopilot-start: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
 							success: false,
 							error: { message: `Failed to start workflow: ${error.message}` }
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { useTagDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
@@ -59,13 +59,12 @@ export function registerUseTagTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error switching tag',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error switching tag',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in use-tag tool: ${error.message}`);
 				return createErrorResponse(error.message);

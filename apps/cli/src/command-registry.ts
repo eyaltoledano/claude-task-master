@@ -10,6 +10,7 @@ import { AutopilotCommand } from './commands/autopilot/index.js';
 import { BriefsCommand } from './commands/briefs.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand } from './commands/export.command.js';
+import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
 import { InteractiveCommand } from './commands/interactive.command.js';
 import { ListTasksCommand } from './commands/list.command.js';
@@ -114,6 +115,12 @@ export class CommandRegistry {
 			description: 'Manage briefs (Hamster only)',
 			commandClass: BriefsCommand as any,
 			category: 'task'
+		},
+		{
+			name: 'generate',
+			description: 'Generate individual task files from tasks.json',
+			commandClass: GenerateCommand as any,
+			category: 'utility'
 		}
 	];
 

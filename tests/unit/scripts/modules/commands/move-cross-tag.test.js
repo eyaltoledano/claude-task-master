@@ -12,7 +12,6 @@ const mockConfig = {
 	// Core functionality mocks (always needed)
 	core: {
 		moveTasksBetweenTags: true,
-		generateTaskFiles: true,
 		readJSON: true,
 		initTaskMaster: true,
 		findProjectRoot: true
@@ -48,9 +47,6 @@ function createMockFactory(config = mockConfig) {
 	if (config.core?.moveTasksBetweenTags) {
 		mocks.moveTasksBetweenTags = createMock('moveTasksBetweenTags');
 	}
-	if (config.core?.generateTaskFiles) {
-		mocks.generateTaskFiles = createMock('generateTaskFiles');
-	}
 	if (config.core?.readJSON) {
 		mocks.readJSON = createMock('readJSON');
 	}
@@ -80,14 +76,9 @@ function setupMocks(config = mockConfig) {
 		);
 	}
 
-	if (
-		config.core?.generateTaskFiles ||
-		config.core?.readJSON ||
-		config.core?.findProjectRoot
-	) {
+	if (config.core?.readJSON || config.core?.findProjectRoot) {
 		jest.mock('../../../../../scripts/modules/utils.js', () => ({
 			findProjectRoot: mocks.findProjectRoot,
-			generateTaskFiles: mocks.generateTaskFiles,
 			readJSON: mocks.readJSON,
 			// Minimal set of utils that might be used
 			log: jest.fn(),
@@ -172,20 +163,6 @@ async function handleCrossTagMove(moveContext, options) {
 	const sourceTagHasTasks =
 		tasksData && Array.isArray(tasksData.tasks) && tasksData.tasks.length > 0;
 
-	// Generate task files for the affected tags
-	await mocks.generateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
-		tag: toTag,
-		projectRoot: taskMaster.getProjectRoot()
-	});
-
-	// Only regenerate source tag files if it still contains tasks
-	if (sourceTagHasTasks) {
-		await mocks.generateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
-			tag: sourceTag,
-			projectRoot: taskMaster.getProjectRoot()
-		});
-	}
-
 	return result;
 }
 
@@ -216,7 +193,6 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 
 		mocks.initTaskMaster.mockReturnValue(mockTaskMaster);
 		mocks.findProjectRoot.mockReturnValue('/test/project');
-		mocks.generateTaskFiles.mockResolvedValue();
 		mocks.readJSON.mockReturnValue({
 			tasks: [
 				{ id: 1, title: 'Test Task 1' },
@@ -482,14 +458,12 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 			const minimalConfig = {
 				core: {
 					moveTasksBetweenTags: true,
-					generateTaskFiles: true,
 					readJSON: true
 				}
 			};
 
 			const minimalMocks = createMockFactory(minimalConfig);
 			expect(minimalMocks.moveTasksBetweenTags).toBeDefined();
-			expect(minimalMocks.generateTaskFiles).toBeDefined();
 			expect(minimalMocks.readJSON).toBeDefined();
 		});
 
@@ -498,15 +472,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 			const selectiveConfig = {
 				core: {
 					moveTasksBetweenTags: true,
-					generateTaskFiles: false, // Disabled
-					readJSON: true
+					readJSON: false // Disabled
 				}
 			};
 
 			const selectiveMocks = createMockFactory(selectiveConfig);
 			expect(selectiveMocks.moveTasksBetweenTags).toBeDefined();
-			expect(selectiveMocks.generateTaskFiles).toBeUndefined();
-			expect(selectiveMocks.readJSON).toBeDefined();
+			expect(selectiveMocks.readJSON).toBeUndefined();
 		});
 	});
 });

@@ -203,6 +203,17 @@ export class TmCore {
 	get projectPath(): string {
 		return this._projectPath;
 	}
+
+	/**
+	 * Close and cleanup resources
+	 * Releases file locks and other storage resources
+	 * Should be called when done using TmCore, especially in tests
+	 */
+	async close(): Promise<void> {
+		if (this._tasks) {
+			await this._tasks.close();
+		}
+	}
 }
 
 /**

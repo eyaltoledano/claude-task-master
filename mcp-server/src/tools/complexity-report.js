@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { complexityReportDirect } from '../core/task-master-core.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { findComplexityReportPath } from '../core/utils/path-utils.js';
@@ -71,13 +71,12 @@ export function registerComplexityReportTool(server) {
 					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error retrieving complexity report',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error retrieving complexity report',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in complexity-report tool: ${error.message}`);
 				return createErrorResponse(

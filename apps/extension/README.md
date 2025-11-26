@@ -40,7 +40,7 @@ Taskmaster AI is an intelligent task management system designed for AI-assisted 
 ### Prerequisites
 
 1. **VS Code** 1.90.0 or higher
-2. **Node.js** 18.0 or higher (for Taskmaster MCP server)
+2. **Node.js** 20.0 or higher (for Taskmaster MCP server)
 
 ### Install the Extension
 
@@ -125,7 +125,7 @@ Access settings via **File → Preferences → Settings** and search for "Taskma
 ## 🔧 Troubleshooting
 
 ### **Extension Not Loading**
-1. Ensure Node.js 18+ is installed
+1. Ensure Node.js 20+ is installed
 2. Check workspace contains `.taskmaster` folder
 3. Restart VS Code
 4. Check Output panel (View → Output → Taskmaster Kanban)

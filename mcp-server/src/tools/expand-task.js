@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
 	findTasksPath,
@@ -94,13 +94,12 @@ export function registerExpandTaskTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error expanding task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error expanding task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in expand-task tool: ${error.message}`);
 				return createErrorResponse(error.message);

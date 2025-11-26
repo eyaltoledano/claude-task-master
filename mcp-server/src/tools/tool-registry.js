@@ -8,7 +8,6 @@ import { registerParsePRDTool } from './parse-prd.js';
 import { registerUpdateTool } from './update.js';
 import { registerUpdateTaskTool } from './update-task.js';
 import { registerUpdateSubtaskTool } from './update-subtask.js';
-import { registerGenerateTool } from './generate.js';
 import { registerNextTaskTool } from './next-task.js';
 import { registerExpandTaskTool } from './expand-task.js';
 import { registerAddTaskTool } from './add-task.js';
@@ -49,11 +48,12 @@ import {
 	registerAutopilotFinalizeTool,
 	registerAutopilotAbortTool,
 	registerGetTasksTool,
-	registerGetTaskTool
+	registerGetTaskTool,
+	registerGenerateTool
 } from '@tm/mcp';
 
 /**
- * Comprehensive tool registry mapping all 44 tool names to their registration functions
+ * Comprehensive tool registry mapping tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -72,7 +72,6 @@ export const toolRegistry = {
 	next_task: registerNextTaskTool,
 	complexity_report: registerComplexityReportTool,
 	set_task_status: registerSetTaskStatusTool,
-	generate: registerGenerateTool,
 	add_task: registerAddTaskTool,
 	add_subtask: registerAddSubtaskTool,
 	update: registerUpdateTool,
@@ -100,7 +99,8 @@ export const toolRegistry = {
 	autopilot_complete: registerAutopilotCompleteTool,
 	autopilot_commit: registerAutopilotCommitTool,
 	autopilot_finalize: registerAutopilotFinalizeTool,
-	autopilot_abort: registerAutopilotAbortTool
+	autopilot_abort: registerAutopilotAbortTool,
+	generate: registerGenerateTool
 };
 
 /**
@@ -128,7 +128,6 @@ export const standardTools = [
 	'expand_all',
 	'add_subtask',
 	'remove_task',
-	'generate',
 	'add_task',
 	'complexity_report'
 ];

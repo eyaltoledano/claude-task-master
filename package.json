@@ -1,6 +1,6 @@
 {
 	"name": "task-master-ai",
-	"version": "0.32.1",
+	"version": "0.35.0",
 	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
 	"main": "index.js",
 	"type": "module",
@@ -72,9 +72,9 @@
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"ai": "^5.0.51",
-		"ai-sdk-provider-claude-code": "^2.1.0",
+		"ai-sdk-provider-claude-code": "^2.2.0",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
-		"ai-sdk-provider-gemini-cli": "^1.1.1",
+		"ai-sdk-provider-gemini-cli": "^1.4.0",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
@@ -115,7 +115,7 @@
 		"@biomejs/cli-linux-x64": "^1.9.4"
 	},
 	"engines": {
-		"node": ">=18.0.0"
+		"node": ">=20.0.0"
 	},
 	"packageManager": "npm@10.9.2",
 	"repository": {
@@ -147,6 +147,7 @@
 		"@types/fs-extra": "^11.0.4",
 		"@types/jest": "^29.5.14",
 		"@types/marked-terminal": "^6.1.1",
+		"@vitest/coverage-v8": "^4.0.10",
 		"concurrently": "^9.2.1",
 		"cross-env": "^10.0.0",
 		"execa": "^8.0.1",
