@@ -1,4 +1,7 @@
+import { spawn } from 'child_process';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import Spinner from 'ink-spinner';
+import TextInput from 'ink-text-input';
 import open from 'open';
 /**
  * Shell.tsx - Task Master TUI
@@ -8,6 +11,46 @@ import open from 'open';
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Splash from '../components/layout/Splash.js';
+
+// Helper to execute CLI commands and get output
+function execCLI(
+	args: string[],
+	options?: {
+		onOutput?: (data: string) => void;
+		onError?: (data: string) => void;
+	}
+): Promise<{ success: boolean; output: string; error: string }> {
+	return new Promise((resolve) => {
+		let output = '';
+		let error = '';
+
+		// Use task-master command - npx ensures it's found even if not in PATH
+		const child = spawn('npx', ['task-master', ...args], {
+			shell: true,
+			env: { ...process.env, FORCE_COLOR: '0' } // Disable colors for easier parsing
+		});
+
+		child.stdout?.on('data', (data: Buffer) => {
+			const str = data.toString();
+			output += str;
+			options?.onOutput?.(str);
+		});
+
+		child.stderr?.on('data', (data: Buffer) => {
+			const str = data.toString();
+			error += str;
+			options?.onError?.(str);
+		});
+
+		child.on('close', (code) => {
+			resolve({ success: code === 0, output, error });
+		});
+
+		child.on('error', (err) => {
+			resolve({ success: false, output, error: err.message });
+		});
+	});
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME - Cool gradient (matching splash)
@@ -106,7 +149,9 @@ type ViewMode =
 	| 'init'
 	| 'help'
 	| 'tags'
-	| 'goodbye';
+	| 'goodbye'
+	| 'auth-loading'
+	| 'update-prompt';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKDOWN RENDERER (simple terminal-friendly)
@@ -351,37 +396,75 @@ function AnimatedProgressBar({
 	width = 40
 }: { percent: number; width?: number }) {
 	const [shimmerPos, setShimmerPos] = useState(0);
+	const [glowPhase, setGlowPhase] = useState(0);
 	const filled = Math.round((percent / 100) * width);
+	const isComplete = percent === 100;
 
 	useEffect(() => {
-		const interval = setInterval(() => {
-			setShimmerPos((prev) => (prev + 1) % (width + 10));
-		}, 50);
-		return () => clearInterval(interval);
-	}, [width]);
+		if (isComplete) {
+			// Cool pulsing glow effect for 100%
+			const interval = setInterval(() => {
+				setGlowPhase((prev) => (prev + 1) % 100);
+			}, 30);
+			return () => clearInterval(interval);
+		} else {
+			// Normal shimmer animation
+			const interval = setInterval(() => {
+				setShimmerPos((prev) => (prev + 1) % (width + 10));
+			}, 50);
+			return () => clearInterval(interval);
+		}
+	}, [width, isComplete]);
 
-	const color =
+	const baseColor =
 		percent === 100
 			? theme.success
 			: percent >= 50
 				? theme.accent.cyan
 				: theme.warning;
 
+	// Glow colors for 100% - oscillate between success and bright
+	const glowColors = [
+		'#22c55e',
+		'#4ade80',
+		'#86efac',
+		'#bbf7d0',
+		'#86efac',
+		'#4ade80'
+	];
+	const glowIndex =
+		Math.floor((glowPhase / 100) * glowColors.length) % glowColors.length;
+
 	return (
 		<Box>
 			{Array.from({ length: width }).map((_, i) => {
 				const isFilled = i < filled;
+				if (isComplete) {
+					// Glowing effect - wave of brightness across the bar
+					const distFromGlow = Math.abs(i - (glowPhase % width) * (width / 50));
+					const brightness =
+						distFromGlow < 8
+							? glowColors[
+									Math.min(Math.floor(distFromGlow), glowColors.length - 1)
+								]
+							: baseColor;
+					return (
+						<Text key={i} color={brightness}>
+							█
+						</Text>
+					);
+				}
 				const isShimmer = Math.abs(i - shimmerPos) < 3 && isFilled;
 				return (
 					<Text
 						key={i}
-						color={isShimmer ? theme.bright : isFilled ? color : theme.dim}
+						color={isShimmer ? theme.bright : isFilled ? baseColor : theme.dim}
 					>
 						{isFilled ? '█' : '░'}
 					</Text>
 				);
 			})}
-			<Text color={color} bold>
+			<Text color={isComplete ? glowColors[glowIndex] : baseColor} bold>
 				{' '}
 				{percent}%
 			</Text>
@@ -442,17 +525,30 @@ function DashboardView({
 	const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
 	// Menu items: Tags in local mode, Briefs in authenticated mode
+	// Next is disabled when there's no next task
+	const hasNextTask = !!nextTask;
 	const menuItems = [
-		{ label: 'List', key: 'L', color: theme.accent.cyan },
-		{ label: 'Next', key: 'N', color: theme.accent.orange },
+		{ label: 'List', key: 'L', color: theme.accent.cyan, disabled: false },
+		{
+			label: 'Next',
+			key: 'N',
+			color: theme.accent.orange,
+			disabled: !hasNextTask
+		},
 		{
 			label: isHamster ? 'Briefs' : 'Tags',
 			key: 'T',
-			color: theme.accent.purple
+			color: theme.accent.purple,
+			disabled: false
 		},
-		{ label: 'Setup', key: 'S', color: theme.accent.green },
-		{ label: 'Account', key: 'A', color: theme.accent.magenta },
-		{ label: 'Help', key: '?', color: theme.accent.yellow }
+		{ label: 'Setup', key: 'S', color: theme.accent.green, disabled: false },
+		{
+			label: 'Account',
+			key: 'A',
+			color: theme.accent.magenta,
+			disabled: false
+		},
+		{ label: 'Help', key: '?', color: theme.accent.yellow, disabled: false }
 	];
 
 	if (loading) {
@@ -526,16 +622,24 @@ function DashboardView({
 			<Box justifyContent="center" marginTop={2} gap={1}>
 				{menuItems.map((item, idx) => {
 					const isSelected = idx === selectedMenu;
+					const isDisabled = item.disabled;
 					return (
 						<Box
 							key={item.label}
-							borderStyle={isSelected ? 'round' : 'single'}
-							borderColor={isSelected ? item.color : theme.border}
+							borderStyle={isSelected && !isDisabled ? 'round' : 'single'}
+							borderColor={
+								isDisabled ? theme.dim : isSelected ? item.color : theme.border
+							}
 							paddingX={2}
 							paddingY={0}
 						>
-							<Text color={isSelected ? item.color : theme.muted}>
-								{isSelected ? '▸ ' : '  '}
+							<Text
+								color={
+									isDisabled ? theme.dim : isSelected ? item.color : theme.muted
+								}
+								dimColor={isDisabled}
+							>
+								{isSelected && !isDisabled ? '▸ ' : '  '}
 								{item.key} {item.label}
 							</Text>
 						</Box>
@@ -796,11 +900,11 @@ function TaskListView({
 				})}
 			</Box>
 
-			{/* Help - includes D/S/P and F for filter */}
+			{/* Help - includes D/S/P/U and F for filter */}
 			<Box paddingX={1} marginTop={2}>
 				<Text color={theme.dim}>
 					{
-						'↑↓ Navigate  ·  ◀▶ Expand  ·  A All  ·  F Filter  ·  D/S/P Status  ·  ↵ View  ·  Esc Back'
+						'↑↓ Navigate  ·  ◀▶ Expand  ·  A All  ·  F Filter  ·  D/S/P Status  ·  U Update  ·  ↵ View  ·  Esc Back'
 					}
 				</Text>
 			</Box>
@@ -1041,7 +1145,9 @@ function TaskDetailView({
 			</Box>
 
 			<Box paddingX={1} marginTop={2}>
-				<Text color={theme.dim}>◀▶ Tabs ▼ Subtasks D/S/P Status Esc Back</Text>
+				<Text color={theme.dim}>
+					◀▶ Tabs ▼ Subtasks D/S/P Status U Update Esc Back
+				</Text>
 			</Box>
 		</Box>
 	);
@@ -1138,7 +1244,7 @@ function SubtaskDetailView({
 			</Box>
 
 			<Box paddingX={1} marginTop={2}>
-				<Text color={theme.dim}>D/S/P Change Status Esc Back to Task</Text>
+				<Text color={theme.dim}>D/S/P Status U Update Esc Back to Task</Text>
 			</Box>
 		</Box>
 	);
@@ -1702,6 +1808,137 @@ function FilterModal({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AUTH LOADING VIEW (Spinner while waiting for OAuth)
+// ─────────────────────────────────────────────────────────────────────────────
+function AuthLoadingView({
+	authUrl,
+	onOpenBrowser
+}: {
+	authUrl?: string;
+	onOpenBrowser?: () => void;
+}) {
+	return (
+		<Box flexDirection="column" paddingX={2} paddingY={2}>
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.hamster}
+				paddingX={3}
+				paddingY={2}
+				alignItems="center"
+			>
+				<Box marginBottom={1}>
+					<Text color={theme.hamster}>
+						<Spinner type="dots" />
+					</Text>
+					<Text color={theme.bright} bold>
+						{' '}
+						Waiting for Authentication...
+					</Text>
+				</Box>
+
+				<Text color={theme.text}>
+					Please complete authentication in the browser window that opened.
+				</Text>
+
+				<Box marginTop={2}>
+					<Text color={theme.muted}>
+						Browser didn't open?{' '}
+						<Text color={theme.accent.cyan}>Press Enter to open it again</Text>
+					</Text>
+				</Box>
+
+				{authUrl && (
+					<Box marginTop={1}>
+						<Text color={theme.dim} wrap="truncate-end">
+							URL: {authUrl.substring(0, 60)}...
+						</Text>
+					</Box>
+				)}
+			</Box>
+
+			<Box paddingX={1} marginTop={2}>
+				<Text color={theme.dim}>↵ Open browser again · Esc Cancel</Text>
+			</Box>
+		</Box>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UPDATE PROMPT MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function UpdatePromptModal({
+	taskId,
+	taskTitle,
+	isSubtask,
+	inputValue,
+	onInputChange,
+	isLoading
+}: {
+	taskId: string;
+	taskTitle: string;
+	isSubtask: boolean;
+	inputValue: string;
+	onInputChange: (val: string) => void;
+	isLoading: boolean;
+}) {
+	return (
+		<Box flexDirection="column" paddingX={2} paddingY={2}>
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.accent.cyan}
+				paddingX={3}
+				paddingY={2}
+			>
+				<Text color={theme.accent.cyan} bold>
+					Update {isSubtask ? 'Subtask' : 'Task'}
+				</Text>
+
+				<Box marginTop={1}>
+					<Text color={theme.muted}>
+						{taskId} — {taskTitle}
+					</Text>
+				</Box>
+
+				<Box marginTop={2} flexDirection="column">
+					<Text color={theme.text}>Enter update prompt:</Text>
+					<Box
+						marginTop={1}
+						borderStyle="single"
+						borderColor={theme.border}
+						paddingX={1}
+					>
+						{isLoading ? (
+							<Box>
+								<Text color={theme.accent.cyan}>
+									<Spinner type="dots" />
+								</Text>
+								<Text color={theme.muted}> Updating...</Text>
+							</Box>
+						) : (
+							<TextInput
+								value={inputValue}
+								onChange={onInputChange}
+								placeholder="Describe the update..."
+							/>
+						)}
+					</Box>
+				</Box>
+
+				<Box marginTop={2}>
+					<Text color={theme.dim}>
+						{isLoading
+							? 'Please wait while the task is being updated...'
+							: '↵ Submit update · Esc Cancel'}
+					</Text>
+				</Box>
+			</Box>
+		</Box>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STATUS BAR
 // ─────────────────────────────────────────────────────────────────────────────
 function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
@@ -1715,7 +1952,9 @@ function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
 		tags: 'Tags',
 		init: 'Setup',
 		help: 'Help',
-		goodbye: 'Goodbye'
+		goodbye: 'Goodbye',
+		'auth-loading': 'Authenticating',
+		'update-prompt': 'Update'
 	};
 
 	return (
@@ -1784,7 +2023,22 @@ export function Shell({
 	const [tagsIndex, setTagsIndex] = useState(0);
 	const [tagsLoading, setTagsLoading] = useState(false);
 
-	const isHamster = storageType === 'api';
+	// Auth state (can be updated after login)
+	const [currentStorageType, setCurrentStorageType] = useState(storageType);
+	const [currentAuthState, setCurrentAuthState] = useState(authState);
+	const [authUrl, setAuthUrl] = useState<string | undefined>();
+	const [previousView, setPreviousView] = useState<ViewMode>('dashboard');
+
+	// Update prompt state
+	const [updateTarget, setUpdateTarget] = useState<{
+		id: string;
+		title: string;
+		isSubtask: boolean;
+	} | null>(null);
+	const [updateInput, setUpdateInput] = useState('');
+	const [updateLoading, setUpdateLoading] = useState(false);
+
+	const isHamster = currentStorageType === 'api';
 	const [currentTag, setCurrentTag] = useState(initialTag);
 
 	// Available statuses for filtering
@@ -1833,80 +2087,133 @@ export function Shell({
 		loadTasks();
 	}, [initialTasks, projectRoot, currentTag]);
 
-	// Execute auth command using @tm/core directly
+	// Execute auth command - login uses @tm/core directly (for browser opening), others use CLI
 	const executeAuthCommand = useCallback(
 		async (action: string) => {
 			try {
-				setStatusMessage(`Running auth ${action}...`);
 				setActionLoading(true);
 
-				// Initialize tmCore if not available
-				let core = tmCore;
-				if (!core) {
-					const { createTmCore } = await import('@tm/core');
-					const root = projectRoot || process.cwd();
-					core = await createTmCore({ projectPath: root });
-					setTmCore(core);
-				}
-
 				if (action === 'login') {
-					// Use OAuth flow from @tm/core with browser opening
+					// Show auth loading view with spinner
+					setPreviousView(view);
+					setView('auth-loading');
 					setStatusMessage('Opening browser for login...');
-					const creds = await core.auth.authenticateWithOAuth({
-						openBrowser: async (url: string) => {
-							await open(url);
-						},
-						onAuthUrl: (url: string) => {
-							setStatusMessage(`Auth URL: ${url.substring(0, 50)}...`);
-						},
-						onWaitingForAuth: () => {
-							setStatusMessage('Waiting for authentication...');
-						},
-						onSuccess: () => {
-							setStatusMessage('Authentication successful!');
-						},
-						onError: () => {
-							setStatusMessage('Authentication failed');
-						},
-						timeout: 5 * 60 * 1000 // 5 minutes
-					});
-					if (creds) {
-						setStatusMessage('Login successful! Refreshing...');
-						// Reload tasks after auth
-						const result = await core.tasks.list({ tag: currentTag });
-						setTasks(result.tasks || []);
+
+					// Use @tm/core directly for login - it handles browser opening properly
+					let core = tmCore;
+					if (!core) {
+						const { createTmCore } = await import('@tm/core');
+						const root = projectRoot || process.cwd();
+						core = await createTmCore({ projectPath: root });
+						setTmCore(core);
 					}
+
+					try {
+						const creds = await core.auth.authenticateWithOAuth({
+							openBrowser: async (url: string) => {
+								setAuthUrl(url);
+								await open(url);
+							},
+							onAuthUrl: (url: string) => {
+								setAuthUrl(url);
+							},
+							onWaitingForAuth: () => {
+								setStatusMessage('Waiting for authentication...');
+							},
+							onSuccess: () => {
+								setStatusMessage('Authentication successful!');
+							},
+							onError: (err: any) => {
+								setStatusMessage(`Auth error: ${err?.message || 'Unknown'}`);
+							},
+							timeout: 5 * 60 * 1000 // 5 minutes
+						});
+
+						if (creds) {
+							setStatusMessage('Login successful!');
+							setCurrentStorageType('api');
+							// Get user info
+							const context = core.auth.getContext?.();
+							setCurrentAuthState({
+								isAuthenticated: true,
+								email: context?.email || creds?.email
+							});
+							// Reload tasks
+							const tasksResult = await core.tasks.list({ tag: currentTag });
+							setTasks(tasksResult.tasks || []);
+						} else {
+							setStatusMessage('Login cancelled or failed');
+						}
+					} catch (authErr: any) {
+						setStatusMessage(`Login failed: ${authErr.message}`);
+					}
+					console.clear();
+					setView('dashboard');
 				} else if (action === 'logout') {
-					await core.auth.logout();
-					setStatusMessage('Logged out successfully');
+					setStatusMessage('Logging out...');
+					const result = await execCLI(['auth', 'logout']);
+					if (result.success) {
+						setStatusMessage('Logged out successfully');
+						setCurrentStorageType('local');
+						setCurrentAuthState({ isAuthenticated: false });
+					} else {
+						setStatusMessage(result.error || 'Logout failed');
+					}
 				} else if (action === 'status') {
-					const hasSession = await core.auth.hasValidSession();
-					const context = core.auth.getContext();
-					if (hasSession && context) {
-						setStatusMessage(`Logged in as ${context.email || context.userId}`);
+					const result = await execCLI(['auth', 'status']);
+					if (result.output.includes('Authenticated')) {
+						const emailMatch = result.output.match(/Email:\s*(\S+)/);
+						setStatusMessage(`Logged in as ${emailMatch?.[1] || 'user'}`);
 					} else {
 						setStatusMessage('Not authenticated');
 					}
 				} else if (action === 'refresh') {
-					await core.auth.refreshToken();
-					setStatusMessage('Token refreshed');
+					setStatusMessage('Refreshing token...');
+					const result = await execCLI(['auth', 'refresh']);
+					if (result.success) {
+						setStatusMessage('Token refreshed');
+					} else {
+						setStatusMessage(result.error || 'Refresh failed');
+					}
 				}
 				setActionLoading(false);
 			} catch (err: any) {
 				setStatusMessage(`Error: ${err.message}`);
 				setActionLoading(false);
+				if (view === 'auth-loading') {
+					setView('dashboard');
+				}
 			}
 		},
-		[tmCore, projectRoot, currentTag]
+		[tmCore, currentTag, view]
 	);
 
-	// Execute init/setup using @tm/core
+	// Execute init/setup using CLI
 	const executeSetup = useCallback(
 		async (type: 'local' | 'cloud') => {
 			try {
 				if (type === 'cloud') {
-					setStatusMessage('Opening Hamster login...');
+					// First check if already authenticated
+					const statusResult = await execCLI(['auth', 'status']);
+					if (statusResult.output.includes('Authenticated')) {
+						// Already logged in!
+						const emailMatch = statusResult.output.match(/Email:\s*(\S+)/);
+						setCurrentStorageType('api');
+						setCurrentAuthState({
+							isAuthenticated: true,
+							email: emailMatch?.[1]
+						});
+						setStatusMessage('Already connected to Hamster!');
+						console.clear();
+						setView('dashboard');
+						return;
+					}
+
+					// Not logged in, start OAuth flow using @tm/core (for proper browser opening)
 					setActionLoading(true);
+					setPreviousView('init');
+					setView('auth-loading');
+					setStatusMessage('Opening browser for login...');
 
 					const { createTmCore } = await import('@tm/core');
 					const root = projectRoot || process.cwd();
@@ -1915,10 +2222,11 @@ export function Shell({
 					try {
 						const creds = await core.auth.authenticateWithOAuth({
 							openBrowser: async (url: string) => {
+								setAuthUrl(url);
 								await open(url);
 							},
 							onAuthUrl: (url: string) => {
-								setStatusMessage(`Opening browser...`);
+								setAuthUrl(url);
 							},
 							onWaitingForAuth: () => {
 								setStatusMessage('Waiting for authentication...');
@@ -1926,111 +2234,139 @@ export function Shell({
 							onSuccess: () => {
 								setStatusMessage('Authentication successful!');
 							},
-							onError: () => {
-								setStatusMessage('Authentication failed');
+							onError: (err: any) => {
+								setStatusMessage(`Auth error: ${err?.message || 'Unknown'}`);
 							},
-							timeout: 5 * 60 * 1000 // 5 minutes
+							timeout: 5 * 60 * 1000
 						});
+
 						if (creds) {
 							setTmCore(core);
-							setStatusMessage('Hamster login completed! Loading tasks...');
-							// Reload tasks after successful auth
-							const result = await core.tasks.list({ tag: currentTag });
-							setTasks(result.tasks || []);
-							setStatusMessage('Connected to Hamster');
+							setStatusMessage('Connected to Hamster!');
+							setCurrentStorageType('api');
+							const context = core.auth.getContext?.();
+							setCurrentAuthState({
+								isAuthenticated: true,
+								email: context?.email || creds?.email
+							});
+							// Reload tasks
+							const tasksResult = await core.tasks.list({ tag: currentTag });
+							setTasks(tasksResult.tasks || []);
+						} else {
+							setStatusMessage('Login cancelled or failed');
 						}
 					} catch (authErr: any) {
 						setStatusMessage(`Login failed: ${authErr.message}`);
 					}
-
 					setActionLoading(false);
+					console.clear();
 					setView('dashboard');
 				} else {
 					setStatusMessage('Solo mode selected - tasks stored locally');
+					setCurrentStorageType('local');
+					console.clear();
 					setView('dashboard');
 				}
 			} catch (err: any) {
 				setStatusMessage(`Error: ${err.message}`);
 				setActionLoading(false);
+				console.clear();
 				setView('dashboard');
 			}
 		},
-		[projectRoot, currentTag]
+		[tmCore, currentTag]
 	);
 
-	// Status update (for both tasks and subtasks) - uses @tm/core
+	// Status update (for both tasks and subtasks) - uses CLI
 	const updateTaskStatus = useCallback(
 		async (taskId: string, newStatus: string) => {
-			if (!tmCore && !initialTasks) return;
 			try {
 				setActionLoading(true);
-				if (tmCore) {
-					await tmCore.tasks.updateStatus(taskId, newStatus, currentTag);
-					const result = await tmCore.tasks.list({ tag: currentTag });
-					setTasks(result.tasks || []);
-					const next = await tmCore.tasks.getNext(currentTag);
-					setNextTask(next);
+				setStatusMessage(`Updating ${taskId}...`);
 
-					// Update selectedTask if we're viewing it
-					if (selectedTask) {
-						const updatedTask = result.tasks?.find(
-							(t: Task) => String(t.id) === String(selectedTask.id)
-						);
-						if (updatedTask) {
-							setSelectedTask(updatedTask);
+				// Use CLI command: tm set-status --id=X --status=Y
+				const result = await execCLI([
+					'set-status',
+					`--id=${taskId}`,
+					`--status=${newStatus}`,
+					`--tag=${currentTag}`
+				]);
+
+				if (result.success) {
+					setStatusMessage(`${taskId} → ${newStatus}`);
+
+					// Reload tasks to get fresh data
+					if (tmCore) {
+						const tasksResult = await tmCore.tasks.list({ tag: currentTag });
+						setTasks(tasksResult.tasks || []);
+						const next = await tmCore.tasks.getNext(currentTag);
+						setNextTask(next);
+
+						// Update selectedTask if we're viewing it
+						if (selectedTask) {
+							const updatedTask = tasksResult.tasks?.find(
+								(t: Task) => String(t.id) === String(selectedTask.id)
+							);
+							if (updatedTask) {
+								setSelectedTask(updatedTask);
+							}
 						}
-					}
-				} else {
-					// Handle subtask status locally (for initialTasks/demo mode)
-					if (taskId.includes('.')) {
-						const [parentId, subId] = taskId.split('.');
-						setTasks((prev) =>
-							prev.map((t) => {
-								if (String(t.id) === parentId && t.subtasks) {
+					} else {
+						// Local update for demo mode
+						if (taskId.includes('.')) {
+							const [parentId, subId] = taskId.split('.');
+							setTasks((prev) =>
+								prev.map((t) => {
+									if (String(t.id) === parentId && t.subtasks) {
+										return {
+											...t,
+											subtasks: t.subtasks.map((s) =>
+												String(s.id) === subId ? { ...s, status: newStatus } : s
+											)
+										};
+									}
+									return t;
+								})
+							);
+							if (selectedTask && String(selectedTask.id) === parentId) {
+								setSelectedTask((prev) => {
+									if (!prev || !prev.subtasks) return prev;
 									return {
-										...t,
-										subtasks: t.subtasks.map((s) =>
+										...prev,
+										subtasks: prev.subtasks.map((s) =>
 											String(s.id) === subId ? { ...s, status: newStatus } : s
 										)
 									};
-								}
-								return t;
-							})
-						);
-						// Update selectedTask's subtasks too
-						if (selectedTask && String(selectedTask.id) === parentId) {
-							setSelectedTask((prev) => {
-								if (!prev || !prev.subtasks) return prev;
-								return {
-									...prev,
-									subtasks: prev.subtasks.map((s) =>
-										String(s.id) === subId ? { ...s, status: newStatus } : s
-									)
-								};
-							});
-						}
-						// Update selectedSubtaskObj if we're viewing it
-						if (selectedSubtaskObj && String(selectedSubtaskObj.id) === subId) {
-							setSelectedSubtaskObj((prev) =>
-								prev ? { ...prev, status: newStatus } : prev
+								});
+							}
+							if (
+								selectedSubtaskObj &&
+								String(selectedSubtaskObj.id) === subId
+							) {
+								setSelectedSubtaskObj((prev) =>
+									prev ? { ...prev, status: newStatus } : prev
+								);
+							}
+						} else {
+							setTasks((prev) =>
+								prev.map((t) =>
+									String(t.id) === taskId ? { ...t, status: newStatus } : t
+								)
 							);
 						}
-					} else {
-						setTasks((prev) =>
-							prev.map((t) =>
-								String(t.id) === taskId ? { ...t, status: newStatus } : t
-							)
-						);
 					}
+				} else {
+					setStatusMessage(
+						`Failed to update: ${result.error || 'Unknown error'}`
+					);
 				}
-				setStatusMessage(`${taskId} → ${newStatus}`);
 				setActionLoading(false);
 			} catch (err: any) {
 				setStatusMessage(`Error: ${err.message}`);
 				setActionLoading(false);
 			}
 		},
-		[tmCore, currentTag, initialTasks, selectedTask, selectedSubtaskObj]
+		[tmCore, currentTag, selectedTask, selectedSubtaskObj]
 	);
 
 	// Load tags list (for Tags view) using tmCore.tasks.getTagsWithStats()
@@ -2096,6 +2432,87 @@ export function Shell({
 		[tmCore, projectRoot]
 	);
 
+	// Execute task/subtask update using CLI
+	const executeUpdate = useCallback(
+		async (taskId: string, prompt: string, isSubtask: boolean) => {
+			if (!prompt.trim()) {
+				setStatusMessage('Update prompt cannot be empty');
+				return;
+			}
+			try {
+				setUpdateLoading(true);
+				setStatusMessage(`Updating ${taskId}...`);
+
+				// Use CLI command: tm update-subtask or tm update-task
+				const command = isSubtask ? 'update-subtask' : 'update-task';
+				const result = await execCLI([
+					command,
+					`--id=${taskId}`,
+					`--prompt=${prompt}`,
+					`--tag=${currentTag}`
+				]);
+
+				if (result.success) {
+					setStatusMessage(`${taskId} updated successfully`);
+
+					// Reload tasks to get fresh data
+					if (tmCore) {
+						const tasksResult = await tmCore.tasks.list({ tag: currentTag });
+						setTasks(tasksResult.tasks || []);
+
+						// Update selectedTask if we're viewing it
+						if (selectedTask) {
+							const updatedTask = tasksResult.tasks?.find(
+								(t: Task) => String(t.id) === String(selectedTask.id)
+							);
+							if (updatedTask) {
+								setSelectedTask(updatedTask);
+							}
+						}
+					}
+
+					// Clear update state and return to previous view
+					setUpdateInput('');
+					setUpdateTarget(null);
+					console.clear();
+					setView(previousView);
+				} else {
+					setStatusMessage(
+						`Failed to update: ${result.error || 'Unknown error'}`
+					);
+				}
+				setUpdateLoading(false);
+			} catch (err: any) {
+				setStatusMessage(`Error: ${err.message}`);
+				setUpdateLoading(false);
+			}
+		},
+		[tmCore, currentTag, selectedTask, previousView]
+	);
+
+	// Open update prompt for a task or subtask
+	const openUpdatePrompt = useCallback(
+		(id: string, title: string, isSubtask: boolean) => {
+			setPreviousView(view);
+			setUpdateTarget({ id, title, isSubtask });
+			setUpdateInput('');
+			setUpdateLoading(false);
+			console.clear();
+			setView('update-prompt');
+		},
+		[view]
+	);
+
+	// Reopen browser for auth
+	const reopenAuthBrowser = useCallback(async () => {
+		if (authUrl) {
+			await open(authUrl);
+		} else {
+			// Try to restart the login flow
+			executeAuthCommand('login');
+		}
+	}, [authUrl, executeAuthCommand]);
+
 	// Status message timeout
 	useEffect(() => {
 		if (statusMessage) {
@@ -2137,9 +2554,38 @@ export function Shell({
 		(input, key) => {
 			if (!isInteractive || view === 'splash' || view === 'goodbye') return;
 
-			if (input === 'q' || (key.ctrl && input === 'c')) {
+			// Don't process q/quit in update-prompt mode (text input needs it)
+			if (
+				view !== 'update-prompt' &&
+				(input === 'q' || (key.ctrl && input === 'c'))
+			) {
 				console.clear();
 				setView('goodbye');
+				return;
+			}
+
+			// Handle auth-loading view
+			if (view === 'auth-loading') {
+				if (key.return) {
+					reopenAuthBrowser();
+				} else if (key.escape) {
+					console.clear();
+					setActionLoading(false);
+					setView(previousView);
+				}
+				return;
+			}
+
+			// Handle update-prompt view
+			if (view === 'update-prompt') {
+				if (key.escape) {
+					console.clear();
+					setUpdateTarget(null);
+					setUpdateInput('');
+					setView(previousView);
+				} else if (key.return && !updateLoading && updateTarget) {
+					executeUpdate(updateTarget.id, updateInput, updateTarget.isSubtask);
+				}
 				return;
 			}
 
@@ -2166,10 +2612,24 @@ export function Shell({
 			}
 
 			// Dashboard (6 items: List, Next, Tags/Briefs, Setup, Account, Help)
+			// Note: Next (index 1) is disabled when there's no nextTask
 			if (view === 'dashboard') {
-				if (key.leftArrow) setDashboardMenu((p) => Math.max(0, p - 1));
-				else if (key.rightArrow) setDashboardMenu((p) => Math.min(5, p + 1));
-				else if (input === 'l' || input === 'L') {
+				const hasNext = !!nextTask;
+				if (key.leftArrow) {
+					setDashboardMenu((p) => {
+						let newVal = p - 1;
+						// Skip disabled Next (index 1) if no next task
+						if (!hasNext && newVal === 1) newVal = 0;
+						return Math.max(0, newVal);
+					});
+				} else if (key.rightArrow) {
+					setDashboardMenu((p) => {
+						let newVal = p + 1;
+						// Skip disabled Next (index 1) if no next task
+						if (!hasNext && newVal === 1) newVal = 2;
+						return Math.min(5, newVal);
+					});
+				} else if (input === 'l' || input === 'L') {
 					console.clear();
 					setView('tasks');
 				} else if (input === 'n' || input === 'N') {
@@ -2250,12 +2710,16 @@ export function Shell({
 				const flatList = getFlatList();
 				const currentItem = flatList[taskListIndex];
 
-				// D/S/P status changes from task list
+				// D/S/P status changes and U for update from task list
 				if (currentItem && !actionLoading) {
 					const itemId =
 						currentItem.isSubtask && currentItem.subtask
 							? `${currentItem.task.id}.${currentItem.subtask.id}`
 							: String(currentItem.task.id);
+					const itemTitle =
+						currentItem.isSubtask && currentItem.subtask
+							? currentItem.subtask.title
+							: currentItem.task.title;
 
 					if (input === 'd' || input === 'D') {
 						updateTaskStatus(itemId, 'done');
@@ -2267,6 +2731,10 @@ export function Shell({
 					}
 					if (input === 'p' || input === 'P') {
 						updateTaskStatus(itemId, 'pending');
+						return;
+					}
+					if (input === 'u' || input === 'U') {
+						openUpdatePrompt(itemId, itemTitle, currentItem.isSubtask);
 						return;
 					}
 				}
@@ -2355,6 +2823,14 @@ export function Shell({
 						updateTaskStatus(String(selectedTask.id), 'pending');
 						return;
 					}
+					if (input === 'u' || input === 'U') {
+						openUpdatePrompt(
+							String(selectedTask.id),
+							selectedTask.title,
+							false
+						);
+						return;
+					}
 				}
 
 				// Status changes for subtask (when in subtask focus)
@@ -2379,6 +2855,14 @@ export function Shell({
 							updateTaskStatus(
 								`${selectedTask.id}.${currentSubtask.id}`,
 								'pending'
+							);
+							return;
+						}
+						if (input === 'u' || input === 'U') {
+							openUpdatePrompt(
+								`${selectedTask.id}.${currentSubtask.id}`,
+								currentSubtask.title,
+								true
 							);
 							return;
 						}
@@ -2427,6 +2911,8 @@ export function Shell({
 					updateTaskStatus(subtaskId, 'in-progress');
 				} else if (input === 'p' || input === 'P') {
 					updateTaskStatus(subtaskId, 'pending');
+				} else if (input === 'u' || input === 'U') {
+					openUpdatePrompt(subtaskId, selectedSubtaskObj.title, true);
 				}
 				return;
 			}
@@ -2450,7 +2936,7 @@ export function Shell({
 			}
 
 			if (view === 'account') {
-				const actions = authState?.isAuthenticated
+				const actions = currentAuthState?.isAuthenticated
 					? ['refresh', 'logout']
 					: ['login'];
 				const maxAction = actions.length - 1;
@@ -2494,7 +2980,7 @@ export function Shell({
 				<Header
 					version={version}
 					isHamster={isHamster}
-					authState={authState}
+					authState={currentAuthState}
 					briefName={brief?.name}
 					tag={currentTag}
 					isInteractive={false}
@@ -2520,7 +3006,7 @@ export function Shell({
 			<Header
 				version={version}
 				isHamster={isHamster}
-				authState={authState}
+				authState={currentAuthState}
 				briefName={brief?.name}
 				tag={currentTag}
 				isInteractive={true}
@@ -2602,7 +3088,7 @@ export function Shell({
 			{view === 'account' && (
 				<AccountView
 					isHamster={isHamster}
-					authState={authState}
+					authState={currentAuthState}
 					brief={brief}
 					tag={currentTag}
 					selectedAction={accountAction}
@@ -2617,11 +3103,26 @@ export function Shell({
 					loading={tagsLoading}
 				/>
 			)}
+			{view === 'auth-loading' && (
+				<AuthLoadingView authUrl={authUrl} onOpenBrowser={reopenAuthBrowser} />
+			)}
+			{view === 'update-prompt' && updateTarget && (
+				<UpdatePromptModal
+					taskId={updateTarget.id}
+					taskTitle={updateTarget.title}
+					isSubtask={updateTarget.isSubtask}
+					inputValue={updateInput}
+					onInputChange={setUpdateInput}
+					isLoading={updateLoading}
+				/>
+			)}
 			{view === 'init' && <InitView selectedOption={initOption} />}
 			{view === 'help' && <HelpView />}
 			{view === 'goodbye' && <GoodbyeView version={version} />}
 
-			{view !== 'goodbye' && <StatusBar view={view} message={statusMessage} />}
+			{view !== 'goodbye' && view !== 'auth-loading' && (
+				<StatusBar view={view} message={statusMessage} />
+			)}
 		</Box>
 	);
 }
