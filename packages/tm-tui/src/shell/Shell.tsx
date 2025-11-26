@@ -532,7 +532,7 @@ function DashboardView({
 
 			{/* Help */}
 			<Box justifyContent="center" marginTop={2}>
-				<Text color={theme.dim}>◀▶ Navigate Enter Select q Quit</Text>
+				<Text color={theme.dim}>{'◀ ▶ Navigate  ·  ↵ Select  ·  q Quit'}</Text>
 			</Box>
 		</Box>
 	);
@@ -606,11 +606,11 @@ function TaskListView({
 	});
 
 	// Column widths: ID, Title, Status, Priority, Dependencies, Complexity
-	const idWidth = 14;
+	const idWidth = 10;
 	const statusWidth = 14;
-	const priWidth = 8;
-	const depsWidth = 14;
-	const compWidth = 8;
+	const priWidth = 10;
+	const depsWidth = 15;
+	const compWidth = 10;
 	const titleWidth = Math.max(
 		30,
 		termWidth - idWidth - statusWidth - priWidth - depsWidth - compWidth - 14
@@ -645,17 +645,17 @@ function TaskListView({
 				</Box>
 				<Box width={priWidth}>
 					<Text color={theme.cool[0]} bold>
-						PRI
+						PRIORITY
 					</Text>
 				</Box>
 				<Box width={depsWidth}>
 					<Text color={theme.cool[0]} bold>
-						DEPS
+						DEPENDENCIES
 					</Text>
 				</Box>
 				<Box width={compWidth}>
 					<Text color={theme.cool[0]} bold>
-						CMPLX
+						COMPLEXITY
 					</Text>
 				</Box>
 			</Box>
@@ -760,9 +760,7 @@ function TaskListView({
 								</Text>
 							</Box>
 							<Box width={priWidth}>
-								<Text color={priColor}>
-									{(task.priority || 'med').slice(0, 4)}
-								</Text>
+								<Text color={priColor}>{task.priority}</Text>
 							</Box>
 							<Box width={depsWidth}>
 								<Text color={theme.accent.yellow} wrap="truncate-end">
@@ -785,10 +783,12 @@ function TaskListView({
 				})}
 			</Box>
 
-			{/* Help - includes D/S/P */}
+			{/* Help - includes D/S/P and F for filter */}
 			<Box paddingX={1} marginTop={2}>
 				<Text color={theme.dim}>
-					▲▼ Navigate ◀▶ Expand A All D/S/P Status Enter View Esc Back
+					{
+						'↑↓ Navigate  ·  ◀▶ Expand  ·  A All  ·  F Filter  ·  D/S/P Status  ·  ↵ View  ·  Esc Back'
+					}
 				</Text>
 			</Box>
 		</Box>
@@ -879,7 +879,7 @@ function TaskDetailContent({
 					{focusArea === 'content' && (
 						<Box marginTop={2}>
 							<Text color={theme.muted}>
-								D/S/P change status Enter view details
+								{'D/S/P Status  ·  ↵ View Details'}
 							</Text>
 						</Box>
 					)}
@@ -1270,14 +1270,12 @@ function AccountView({
 				</Box>
 
 				<Box marginTop={2}>
-					<Text color={theme.dim}>
-						Press Enter to execute the selected action
-					</Text>
+					<Text color={theme.dim}>{'↵ Execute selected action'}</Text>
 				</Box>
 			</Box>
 
 			<Box paddingX={1} marginTop={2}>
-				<Text color={theme.dim}>◀▶ Select Action Enter Execute Esc Back</Text>
+				<Text color={theme.dim}>{'◀ ▶ Select  ·  ↵ Execute  ·  Esc Back'}</Text>
 			</Box>
 		</Box>
 	);
@@ -1421,6 +1419,80 @@ function HelpView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FILTER MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function FilterModal({
+	statuses,
+	selectedStatuses,
+	focusedIndex,
+	onToggle,
+	onClose,
+	onClear
+}: {
+	statuses: string[];
+	selectedStatuses: Set<string>;
+	focusedIndex: number;
+	onToggle: (status: string) => void;
+	onClose: () => void;
+	onClear: () => void;
+}) {
+	const statusColors: Record<string, string> = {
+		done: theme.success,
+		'in-progress': theme.accent.cyan,
+		pending: theme.accent.yellow,
+		blocked: theme.error,
+		deferred: theme.accent.purple,
+		cancelled: theme.muted
+	};
+
+	return (
+		<Box
+			flexDirection="column"
+			borderStyle="round"
+			borderColor={theme.accent.cyan}
+			paddingX={2}
+			paddingY={1}
+			width={40}
+		>
+			<Box justifyContent="center" marginBottom={1}>
+				<Text bold color={theme.accent.cyan}>
+					Filter by Status
+				</Text>
+			</Box>
+
+			<Box flexDirection="column">
+				{statuses.map((status, idx) => {
+					const isSelected = selectedStatuses.has(status);
+					const isFocused = idx === focusedIndex;
+					return (
+						<Box key={status}>
+							<Text color={isFocused ? theme.bright : theme.text}>
+								{isFocused ? '▸ ' : '  '}
+								<Text color={isSelected ? theme.success : theme.muted}>
+									{isSelected ? '◉' : '○'}
+								</Text>{' '}
+								<Text color={statusColors[status] || theme.text}>{status}</Text>
+							</Text>
+						</Box>
+					);
+				})}
+			</Box>
+
+			<Box marginTop={1} flexDirection="column">
+				<Text color={theme.dim}>
+					{'↑↓ Move  ·  Space Toggle  ·  C Clear  ·  Esc Close'}
+				</Text>
+				{selectedStatuses.size > 0 && (
+					<Text color={theme.muted}>
+						Active: {Array.from(selectedStatuses).join(', ')}
+					</Text>
+				)}
+			</Box>
+		</Box>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STATUS BAR
 // ─────────────────────────────────────────────────────────────────────────────
 function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
@@ -1442,7 +1514,7 @@ function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
 			) : (
 				<Text color={theme.muted}>{labels[view]}</Text>
 			)}
-			<Text color={theme.dim}>q Quit</Text>
+			<Text color={theme.dim}>q to quit</Text>
 		</Box>
 	);
 }
@@ -1489,8 +1561,38 @@ export function Shell({
 	const [accountAction, setAccountAction] = useState(0);
 	const [actionLoading, setActionLoading] = useState(false);
 
+	// Filter state
+	const [showFilterModal, setShowFilterModal] = useState(false);
+	const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+	const [filterIndex, setFilterIndex] = useState(0);
+
 	const isHamster = storageType === 'api';
 	const currentTag = initialTag;
+	const { stdout } = useStdout();
+
+	// Available statuses for filtering
+	const availableStatuses = [
+		'done',
+		'in-progress',
+		'pending',
+		'blocked',
+		'deferred',
+		'cancelled'
+	];
+
+	// Filtered tasks based on status filter
+	const filteredTasks =
+		statusFilter.size > 0
+			? tasks.filter((t) => statusFilter.has(t.status))
+			: tasks;
+
+	// Keep cursor at top of terminal when view/content changes
+	useEffect(() => {
+		if (stdout && isInteractive) {
+			// Move cursor to home position (top-left)
+			stdout.write('\x1b[H');
+		}
+	}, [view, tasks, filteredTasks, stdout, isInteractive]);
 
 	// Load tasks using @tm/core
 	useEffect(() => {
@@ -1522,54 +1624,122 @@ export function Shell({
 		loadTasks();
 	}, [initialTasks, projectRoot, currentTag]);
 
-	// Execute auth command
-	const executeAuthCommand = useCallback(async (action: string) => {
-		try {
-			setStatusMessage(`Running tm auth ${action}...`);
-			const { spawn } = await import('child_process');
-			const child = spawn('tm', ['auth', action], {
-				stdio: 'inherit',
-				shell: true
-			});
-			child.on('close', (code) => {
-				if (code === 0) {
-					setStatusMessage(`Auth ${action} completed`);
-				} else {
-					setStatusMessage(`Auth ${action} failed`);
-				}
-			});
-		} catch (err: any) {
-			setStatusMessage(`Error: ${err.message}`);
-		}
-	}, []);
+	// Execute auth command using @tm/core directly
+	const executeAuthCommand = useCallback(
+		async (action: string) => {
+			try {
+				setStatusMessage(`Running auth ${action}...`);
+				setActionLoading(true);
 
-	// Execute init/setup
-	const executeSetup = useCallback(async (type: 'local' | 'cloud') => {
-		try {
-			if (type === 'cloud') {
-				setStatusMessage('Opening Hamster login...');
-				const { spawn } = await import('child_process');
-				const child = spawn('tm', ['auth', 'login'], {
-					stdio: 'inherit',
-					shell: true
-				});
-				child.on('close', (code) => {
-					if (code === 0) {
-						setStatusMessage('Hamster login completed');
-					} else {
-						setStatusMessage('Hamster login cancelled');
+				if (!tmCore) {
+					// Initialize tmCore if not available
+					const { createTmCore } = await import('@tm/core');
+					const root = projectRoot || process.cwd();
+					const core = await createTmCore({ projectPath: root });
+					setTmCore(core);
+
+					if (action === 'login') {
+						// Use OAuth flow from @tm/core
+						const creds = await core.auth.authenticateWithOAuth();
+						if (creds) {
+							setStatusMessage('Login successful! Refreshing...');
+							// Reload tasks after auth
+							const result = await core.tasks.list({ tag: currentTag });
+							setTasks(result.tasks || []);
+						}
+					} else if (action === 'logout') {
+						await core.auth.logout();
+						setStatusMessage('Logged out successfully');
+					} else if (action === 'status') {
+						const hasSession = await core.auth.hasValidSession();
+						const context = core.auth.getContext();
+						if (hasSession && context) {
+							setStatusMessage(
+								`Logged in as ${context.email || context.userId}`
+							);
+						} else {
+							setStatusMessage('Not authenticated');
+						}
+					} else if (action === 'refresh') {
+						await core.auth.refreshToken();
+						setStatusMessage('Token refreshed');
 					}
+				} else {
+					// Use existing tmCore instance
+					if (action === 'login') {
+						const creds = await tmCore.auth.authenticateWithOAuth();
+						if (creds) {
+							setStatusMessage('Login successful! Refreshing...');
+							const result = await tmCore.tasks.list({ tag: currentTag });
+							setTasks(result.tasks || []);
+						}
+					} else if (action === 'logout') {
+						await tmCore.auth.logout();
+						setStatusMessage('Logged out successfully');
+					} else if (action === 'status') {
+						const hasSession = await tmCore.auth.hasValidSession();
+						const context = tmCore.auth.getContext();
+						if (hasSession && context) {
+							setStatusMessage(
+								`Logged in as ${context.email || context.userId}`
+							);
+						} else {
+							setStatusMessage('Not authenticated');
+						}
+					} else if (action === 'refresh') {
+						await tmCore.auth.refreshToken();
+						setStatusMessage('Token refreshed');
+					}
+				}
+				setActionLoading(false);
+			} catch (err: any) {
+				setStatusMessage(`Error: ${err.message}`);
+				setActionLoading(false);
+			}
+		},
+		[tmCore, projectRoot, currentTag]
+	);
+
+	// Execute init/setup using @tm/core
+	const executeSetup = useCallback(
+		async (type: 'local' | 'cloud') => {
+			try {
+				if (type === 'cloud') {
+					setStatusMessage('Opening Hamster login...');
+					setActionLoading(true);
+
+					const { createTmCore } = await import('@tm/core');
+					const root = projectRoot || process.cwd();
+					const core = await createTmCore({ projectPath: root });
+
+					try {
+						const creds = await core.auth.authenticateWithOAuth();
+						if (creds) {
+							setTmCore(core);
+							setStatusMessage('Hamster login completed! Loading tasks...');
+							// Reload tasks after successful auth
+							const result = await core.tasks.list({ tag: currentTag });
+							setTasks(result.tasks || []);
+							setStatusMessage('Connected to Hamster');
+						}
+					} catch (authErr: any) {
+						setStatusMessage(`Login failed: ${authErr.message}`);
+					}
+
+					setActionLoading(false);
 					setView('dashboard');
-				});
-			} else {
-				setStatusMessage('Solo mode selected - tasks stored locally');
+				} else {
+					setStatusMessage('Solo mode selected - tasks stored locally');
+					setView('dashboard');
+				}
+			} catch (err: any) {
+				setStatusMessage(`Error: ${err.message}`);
+				setActionLoading(false);
 				setView('dashboard');
 			}
-		} catch (err: any) {
-			setStatusMessage(`Error: ${err.message}`);
-			setView('dashboard');
-		}
-	}, []);
+		},
+		[projectRoot, currentTag]
+	);
 
 	// Status update (for both tasks and subtasks) - uses @tm/core
 	const updateTaskStatus = useCallback(
@@ -1656,10 +1826,10 @@ export function Shell({
 
 	const handleSplashComplete = useCallback(() => setView('dashboard'), []);
 
-	// Build flat list for navigation
+	// Build flat list for navigation (uses filteredTasks)
 	const getFlatList = useCallback(() => {
 		const flat: { task: Task; subtask?: Subtask; isSubtask: boolean }[] = [];
-		tasks.forEach((task) => {
+		filteredTasks.forEach((task) => {
 			flat.push({ task, isSubtask: false });
 			const isExpanded = showAllSubtasks || expandedTasks.has(String(task.id));
 			if (isExpanded && task.subtasks) {
@@ -1669,7 +1839,7 @@ export function Shell({
 			}
 		});
 		return flat;
-	}, [tasks, expandedTasks, showAllSubtasks]);
+	}, [filteredTasks, expandedTasks, showAllSubtasks]);
 
 	// Keyboard
 	useInput(
@@ -1722,8 +1892,46 @@ export function Shell({
 				return;
 			}
 
-			// Task list - with D/S/P support
+			// Task list - with D/S/P support and F for filter
 			if (view === 'tasks') {
+				// Handle filter modal input first
+				if (showFilterModal) {
+					if (key.escape) {
+						setShowFilterModal(false);
+						return;
+					}
+					if (key.upArrow) {
+						setFilterIndex((p) => Math.max(0, p - 1));
+						return;
+					}
+					if (key.downArrow) {
+						setFilterIndex((p) =>
+							Math.min(availableStatuses.length - 1, p + 1)
+						);
+						return;
+					}
+					if (input === ' ') {
+						// Toggle status
+						const status = availableStatuses[filterIndex];
+						setStatusFilter((prev) => {
+							const next = new Set(prev);
+							if (next.has(status)) {
+								next.delete(status);
+							} else {
+								next.add(status);
+							}
+							return next;
+						});
+						return;
+					}
+					if (input === 'c' || input === 'C') {
+						// Clear all filters
+						setStatusFilter(new Set());
+						return;
+					}
+					return; // Consume all other input while modal is open
+				}
+
 				const flatList = getFlatList();
 				const currentItem = flatList[taskListIndex];
 
@@ -1746,6 +1954,18 @@ export function Shell({
 						updateTaskStatus(itemId, 'pending');
 						return;
 					}
+				}
+
+				// F for filter, C to clear filter
+				if (input === 'f' || input === 'F') {
+					setShowFilterModal(true);
+					setFilterIndex(0);
+					return;
+				}
+				if ((input === 'c' || input === 'C') && statusFilter.size > 0) {
+					setStatusFilter(new Set());
+					setStatusMessage('Filter cleared');
+					return;
 				}
 
 				if (key.upArrow) setTaskListIndex((p) => Math.max(0, p - 1));
@@ -1986,13 +2206,51 @@ export function Shell({
 				/>
 			)}
 			{view === 'tasks' && (
-				<TaskListView
-					tasks={tasks}
-					selectedIndex={taskListIndex}
-					expandedTasks={expandedTasks}
-					showAllSubtasks={showAllSubtasks}
-					loading={loading}
-				/>
+				<Box flexDirection="column">
+					{/* Filter status indicator */}
+					{statusFilter.size > 0 && (
+						<Box paddingX={2} marginBottom={1}>
+							<Text color={theme.accent.cyan}>
+								Filtering: {Array.from(statusFilter).join(', ')}
+							</Text>
+							<Text color={theme.muted}> (F to change, C to clear)</Text>
+						</Box>
+					)}
+					<TaskListView
+						tasks={filteredTasks}
+						selectedIndex={taskListIndex}
+						expandedTasks={expandedTasks}
+						showAllSubtasks={showAllSubtasks}
+						loading={loading}
+					/>
+					{/* Filter modal overlay */}
+					{showFilterModal && (
+						<Box
+							position="absolute"
+							flexDirection="column"
+							alignItems="center"
+							justifyContent="center"
+							width="100%"
+							height="100%"
+						>
+							<FilterModal
+								statuses={availableStatuses}
+								selectedStatuses={statusFilter}
+								focusedIndex={filterIndex}
+								onToggle={(status) => {
+									setStatusFilter((prev) => {
+										const next = new Set(prev);
+										if (next.has(status)) next.delete(status);
+										else next.add(status);
+										return next;
+									});
+								}}
+								onClose={() => setShowFilterModal(false)}
+								onClear={() => setStatusFilter(new Set())}
+							/>
+						</Box>
+					)}
+				</Box>
 			)}
 			{view === 'task-detail' && selectedTask && (
 				<TaskDetailView

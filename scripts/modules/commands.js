@@ -4612,7 +4612,63 @@ async function runCLI(argv = process.argv) {
 			if (tui) {
 				const { render, Shell } = tui;
 				const React = await import('react');
-				render(React.createElement(Shell));
+
+				// Check auth status to determine storage mode
+				let shellProps = {};
+				const projectRoot = process.cwd();
+				try {
+					const { createTmCore } = await import('@tm/core');
+					const core = await createTmCore({ projectPath: projectRoot });
+
+					// Check if user has valid auth session
+					const hasValidSession = await core.auth.hasValidSession();
+					const context = core.auth.getContext();
+
+					if (hasValidSession && context?.briefId) {
+						// User is authenticated with Hamster
+						shellProps = {
+							storageType: 'api',
+							authState: {
+								isAuthenticated: true,
+								email: context.email || context.userId,
+								userId: context.userId
+							},
+							brief: {
+								id: context.briefId,
+								name: context.briefName || 'Unknown Brief'
+							},
+							initialTag: context.briefName || 'master',
+							projectRoot
+						};
+					} else {
+						// Local mode
+						shellProps = {
+							storageType: 'local',
+							authState: { isAuthenticated: false },
+							initialTag: 'master',
+							projectRoot
+						};
+					}
+
+					// Clean up core instance
+					await core.tasks.close();
+				} catch (authErr) {
+					// If auth check fails, default to local mode
+					if (process.env.DEBUG || process.env.TM_DEBUG) {
+						console.error('Auth check error:', authErr.message);
+					}
+					shellProps = {
+						storageType: 'local',
+						authState: { isAuthenticated: false },
+						initialTag: 'master',
+						projectRoot
+					};
+				}
+
+				// Clear screen before rendering TUI for clean slate
+				console.clear();
+
+				render(React.createElement(Shell, shellProps));
 				return; // TUI takes over, don't continue to parse
 			}
 			// Fallback to help if TUI not available
