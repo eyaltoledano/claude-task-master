@@ -143,6 +143,7 @@ function ensureDirectoryExists(dirPath) {
 }
 
 // Function to add shell aliases to the user's shell configuration
+// Silently checks each alias individually and adds only missing ones
 function addShellAliases() {
 	const homeDir = process.env.HOME || process.env.USERPROFILE;
 	let shellConfigFile;
@@ -153,49 +154,53 @@ function addShellAliases() {
 	} else if (process.env.SHELL?.includes('bash')) {
 		shellConfigFile = path.join(homeDir, '.bashrc');
 	} else {
-		log('warn', 'Could not determine shell type. Aliases not added.');
+		log('debug', 'Could not determine shell type. Aliases not added.');
 		return false;
 	}
 
 	try {
 		// Check if file exists
 		if (!fs.existsSync(shellConfigFile)) {
-			log(
-				'warn',
-				`Shell config file ${shellConfigFile} not found. Aliases not added.`
-			);
+			log('debug', `Shell config file ${shellConfigFile} not found.`);
 			return false;
 		}
 
-		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
-		if (
-			configContent.includes("alias tm='task-master'") ||
-			configContent.includes("alias hamster='task-master'")
-		) {
-			log('debug', 'Task Master aliases already exist in shell config.');
+
+		// Define all aliases we want
+		const aliases = [
+			{ name: 'tm', line: "alias tm='task-master'" },
+			{ name: 'taskmaster', line: "alias taskmaster='task-master'" },
+			{ name: 'hamster', line: "alias hamster='task-master'" },
+			{ name: 'ham', line: "alias ham='task-master'" }
+		];
+
+		// Check which aliases are missing
+		const missingAliases = aliases.filter(
+			(alias) => !configContent.includes(alias.line)
+		);
+
+		if (missingAliases.length === 0) {
+			log('debug', 'All Task Master aliases already exist.');
 			return true;
 		}
 
-		// Add aliases to the shell config file
+		// Build alias block with only missing aliases
+		const aliasLines = missingAliases.map((a) => a.line).join('\n');
 		const aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
-alias tm='task-master'
-alias taskmaster='task-master'
-alias hamster='task-master'
-alias ham='task-master'
+${aliasLines}
 `;
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
-		log('success', `Added Task Master aliases to ${shellConfigFile}`);
 		log(
-			'info',
-			`To use the aliases in your current terminal, run: source ${shellConfigFile}`
+			'debug',
+			`Added ${missingAliases.length} alias(es): ${missingAliases.map((a) => a.name).join(', ')}`
 		);
 
 		return true;
 	} catch (error) {
-		log('error', `Failed to add aliases: ${error.message}`);
+		log('debug', `Failed to add aliases: ${error.message}`);
 		return false;
 	}
 }
@@ -313,14 +318,6 @@ async function initializeProject(options = {}) {
 	// 	console.log('==================================================');
 	// }
 
-	// Handle boolean aliases flags
-	if (options.aliases === true) {
-		options.addAliases = true; // --aliases flag provided
-	} else if (options.aliases === false) {
-		options.addAliases = false; // --no-aliases flag provided
-	}
-	// If options.aliases and options.noAliases are undefined, we'll prompt for it
-
 	// Handle boolean git flags
 	if (options.git === true) {
 		options.initGit = true; // --git flag provided
@@ -368,8 +365,6 @@ async function initializeProject(options = {}) {
 		const projectVersion = options.version || '0.1.0';
 		const authorName = options.author || 'Vibe coder';
 		const dryRun = options.dryRun || false;
-		const addAliases =
-			options.addAliases !== undefined ? options.addAliases : true; // Default to true if not specified
 		const initGit = options.initGit !== undefined ? options.initGit : true; // Default to true if not specified
 		const storeTasksInGit =
 			options.storeTasksInGit !== undefined ? options.storeTasksInGit : true; // Default to true if not specified
@@ -380,10 +375,6 @@ async function initializeProject(options = {}) {
 			log('info', 'Would create/update necessary project files');
 
 			// Show flag-specific behavior
-			log(
-				'info',
-				`${addAliases ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
-			);
 			log(
 				'info',
 				`${initGit ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
@@ -403,7 +394,7 @@ async function initializeProject(options = {}) {
 		const authCredentials = null; // No auth in non-interactive mode
 
 		await createProjectStructure(
-			addAliases,
+			true, // Always add aliases
 			initGit,
 			storeTasksInGit,
 			dryRun,
@@ -507,30 +498,6 @@ async function initializeProject(options = {}) {
 				input: process.stdin,
 				output: process.stdout
 			});
-			// Prompt for shell aliases (skip if --aliases or --no-aliases flag was provided)
-			let addAliasesPrompted = true; // Default to true
-			if (options.addAliases !== undefined) {
-				addAliasesPrompted = options.addAliases; // Use flag value if provided
-			} else {
-				const addAliasesInput = await promptQuestion(
-					rl,
-					chalk.cyan(
-						'Add shell aliases for task-master? This lets you type "tm", "hamster", or "ham" instead of "task-master" (Y/n): '
-					),
-					(answer) => {
-						const isYes = answer.trim().toLowerCase() !== 'n';
-						const icon = isYes ? chalk.green('✓') : chalk.red('✗');
-						return (
-							chalk.cyan('Add shell aliases for task-master?') +
-							' ' +
-							icon +
-							' ' +
-							chalk.dim(isYes ? 'Yes' : 'No')
-						);
-					}
-				);
-				addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
-			}
 
 			// Git-related prompts only make sense for local storage
 			// If cloud storage is selected, tasks are stored in Hamster, not Git
@@ -640,13 +607,6 @@ async function initializeProject(options = {}) {
 				)
 			);
 
-			// Shell aliases
-			const aliasIcon = addAliasesPrompted ? chalk.green('✓') : chalk.dim('✗');
-			console.log(
-				'  ' + chalk.dim('Shell aliases (tm/hamster/ham):'.padEnd(32)),
-				aliasIcon + ' ' + chalk.dim(addAliasesPrompted ? 'Yes' : 'No')
-			);
-
 			// AI IDE rules
 			const rulesIcon = shouldSetupRules ? chalk.green('✓') : chalk.dim('✗');
 			console.log(
@@ -702,10 +662,6 @@ async function initializeProject(options = {}) {
 				// Show flag-specific behavior
 				log(
 					'info',
-					`${addAliasesPrompted ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
-				);
-				log(
-					'info',
 					`${initGitPrompted ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
 				);
 				log(
@@ -719,8 +675,9 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
+			// Always add aliases - addShellAliases() handles checking for existing ones
 			await createProjectStructure(
-				addAliasesPrompted,
+				true, // Always add aliases
 				initGitPrompted,
 				storeGitPrompted,
 				dryRun,
@@ -1216,9 +1173,9 @@ async function createProjectStructure(
 				chalk.white('  • Connect your brief using ') +
 					chalk.bold('tm context <brief-url>') +
 					chalk.white(' to access tasks in Taskmaster'),
-				chalk.white('  • Orchestrate and implement tasks using') +
+				chalk.white('  • Orchestrate and implement tasks using ') +
 					chalk.bold('tm next') +
-					chalk.white('to kickoff any AI agent'),
+					chalk.white(' to kickoff any AI agent'),
 				chalk.white('  • Run ') +
 					chalk.bold('tm help') +
 					chalk.white(' to explore other available commands'),
@@ -1264,18 +1221,18 @@ async function createProjectStructure(
 			gettingStartedMessage = `${chalk.cyan.bold("Here's how to execute your Hamster briefs with Taskmaster")}\n\n${chalk.white('1. ')}${chalk.yellow(
 				'Create your first brief at'
 			)} ${chalk.cyan.underline('https://tryhamster.com')}\n${chalk.white('   └─ ')}${chalk.dim('Hamster will write your brief and generate the full task plan')}\n${chalk.white('2. ')}${chalk.yellow(
-				'Connect this project to your brief'
-			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm context <brief-url>')}\n${chalk.white('3. ')}${chalk.yellow(
+				'Add rules for your AI IDE(s)'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm rules --setup')}${chalk.dim(' - Opens interactive setup')}\n${chalk.white('3. ')}${chalk.yellow(
+				'Connect your brief to Taskmaster'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm context <brief-url> OR tm briefs')}\n${chalk.white('4. ')}${chalk.yellow(
 				'View your tasks from the brief'
-			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm list')}${chalk.dim(' or ')}${chalk.cyan('tm list all')}${chalk.dim(' (with subtasks)')}\n${chalk.white('4. ')}${chalk.yellow(
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm list')}${chalk.dim(' or ')}${chalk.cyan('tm list all')}${chalk.dim(' (with subtasks)')}\n${chalk.white('5. ')}${chalk.yellow(
 				'Work on tasks with any AI coding assistant or background agent'
-			)}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm next')}${chalk.dim(' - Find the next task to work on')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm show <id>')}${chalk.dim(' - View task details')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> in-progress')}${chalk.dim(' - Mark task started')}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> done')}${chalk.dim(' - Mark task complete')}\n${chalk.white('5. ')}${chalk.yellow(
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm next')}${chalk.dim(' - Find the next task to work on')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm show <id>')}${chalk.dim(' - View task details')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> in-progress')}${chalk.dim(' - Mark task started')}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> done')}${chalk.dim(' - Mark task complete')}\n${chalk.white('6. ')}${chalk.yellow(
 				'Add notes or updates to tasks'
-			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm update-task <id> <notes>')}\n${chalk.white('6. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm update-task <id> <notes>')}\n${chalk.white('7. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
 				'* Run '
-			)}${chalk.cyan('tm help')}${chalk.dim(' to see all available commands')}\n${chalk.dim(
-				'* Run '
-			)}${chalk.cyan('tm rules --setup')}${chalk.dim(' to configure AI IDE rules for better integration')}`;
+			)}${chalk.cyan('tm help')}${chalk.dim(' to see all available commands')}`;
 		} else {
 			// Local-specific getting started
 			gettingStartedMessage = `${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(

@@ -61,6 +61,5 @@ export {
 	performResearch,
 	scopeUpTask,
 	scopeDownTask,
-	validateStrength,
-	generateTaskFiles
+	validateStrength
 };

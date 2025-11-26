@@ -5,8 +5,6 @@ import {
 } from '@tm/mcp';
 import { z } from 'zod';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
-import { RULE_PROFILES } from '../../../src/constants/profiles.js';
-import { initializeProjectDirect } from '../core/task-master-core.js';
 import { initializeProjectDirect } from '../core/task-master-core.js';
 
 export function registerInitializeProjectTool(server) {

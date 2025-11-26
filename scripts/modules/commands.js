@@ -30,7 +30,6 @@ import {
 	expandAllTasks,
 	expandTask,
 	findTaskById,
-	generateTaskFiles,
 	migrateProject,
 	moveTask,
 	parsePRD,
@@ -141,13 +140,6 @@ import {
 	removeProfileRules
 } from '../../src/utils/rule-transformer.js';
 import { initializeProject } from '../init.js';
-import { syncTasksToReadme } from './sync-readme.js';
-import {
-	getApiKeyStatusReport,
-	getAvailableModelsList,
-	getModelConfiguration,
-	setModel
-} from './task-manager/models.js';
 
 /**
  * Check if the user is connected to a Hamster brief
@@ -251,6 +243,7 @@ function displayHamsterHelp() {
 				createCommandEntry('auth logout', 'Log out from Hamster\n') +
 				createCommandEntry('auth refresh', 'Refresh authentication token\n') +
 				createCommandEntry('auth status', 'Check authentication status\n') +
+				createCommandEntry('briefs', 'View and select from your briefs\n') +
 				createCommandEntry('context', 'Show current brief context\n') +
 				createCommandEntry('context org', 'Switch organization\n') +
 				createCommandEntry(
@@ -315,7 +308,7 @@ function displayHamsterHelp() {
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				createCommandEntry(
 					'tm briefs',
-					'View current brief info\n\n',
+					'View briefs and select one\n\n',
 					'  '
 				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
 				chalk.white.bold('» Need more commands?\n') +
@@ -4605,7 +4598,113 @@ Examples:
 			process.exit(1);
 		});
 
+	// tui / repl command - launches the interactive TUI
+	programInstance
+		.command('tui')
+		.alias('repl')
+		.description('Launch the interactive TUI/REPL mode')
+		.action(async () => {
+			await launchREPL();
+		});
+
 	return programInstance;
+}
+
+/**
+ * Launch the interactive TUI REPL
+ */
+async function launchREPL() {
+	const React = await import('react');
+	const tui = await loadTUI();
+
+	if (!tui) {
+		// Fallback to help if TUI not available
+		console.log(
+			chalk.yellow('TUI mode not available. Install @tm/tui to enable.')
+		);
+		console.log(chalk.dim('Showing help instead...\n'));
+		if (isConnectedToHamster()) {
+			displayHamsterHelp();
+		} else {
+			displayHelp();
+		}
+		return;
+	}
+
+	const { render, Shell } = tui;
+
+	// Get current context
+	let tag = 'master';
+	let storageType = 'local';
+	let brief = undefined;
+	let authState = { isAuthenticated: false };
+	let projectRoot = process.cwd();
+
+	try {
+		const taskMaster = initTaskMaster({});
+		tag = taskMaster.getCurrentTag();
+		projectRoot = taskMaster.getProjectRoot() || process.cwd();
+
+		// Check if connected to Hamster
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+		const storedContext = authManager.getStoredContext();
+
+		// Build auth state from stored context
+		if (storedContext && storedContext.email) {
+			authState = {
+				isAuthenticated: true,
+				email: storedContext.email,
+				userId: storedContext.userId
+			};
+		}
+
+		if (context && context.briefId) {
+			storageType = 'api';
+			brief = {
+				id: context.briefId,
+				name: context.briefName || tag
+			};
+		}
+	} catch (error) {
+		// Use defaults
+	}
+
+	// Check if stdin supports raw mode (required for interactive TUI)
+	const isInteractive =
+		process.stdin.isTTY && typeof process.stdin.setRawMode === 'function';
+
+	// Clear screen
+	console.clear();
+
+	// Shell props with interactive flag and auth state
+	const shellProps = {
+		showBanner: true,
+		showSplash: isInteractive,
+		initialTag: tag,
+		storageType: storageType,
+		brief: brief,
+		authState: authState,
+		isInteractive: isInteractive,
+		projectRoot: projectRoot,
+		onExit: () => {
+			console.log(chalk.dim('\nGoodbye! 👋'));
+			process.exit(0);
+		}
+	};
+
+	const instance = render(React.createElement(Shell, shellProps));
+
+	// In non-interactive mode, wait for render then exit
+	if (!isInteractive) {
+		setTimeout(() => {
+			instance.unmount();
+			console.log(
+				chalk.dim('\n💡 Run in an interactive terminal for full REPL mode.')
+			);
+			process.exit(0);
+		}, 200);
+	}
 }
 
 /**
@@ -4651,21 +4750,17 @@ function setupCLI() {
  */
 async function runCLI(argv = process.argv) {
 	try {
-		// Display banner if not in a pipe (except for init command which has its own banner)
-		const isInitCommand = argv.includes('init');
-		if (process.stdout.isTTY && !isInitCommand) {
-			displayBanner();
+		// If no arguments provided, launch the TUI REPL (which has its own banner)
+		if (argv.length <= 2) {
+			await launchREPL();
+			return;
 		}
 
-		// If no arguments provided, show help
-		if (argv.length <= 2) {
-			// Check if connected to Hamster and show appropriate help
-			if (isConnectedToHamster()) {
-				displayHamsterHelp();
-			} else {
-				displayHelp();
-			}
-			process.exit(0);
+		// Display banner if not in a pipe (except for init/start/repl commands which have their own)
+		const isInitCommand = argv.includes('init');
+		const isREPLCommand = argv.includes('tui') || argv.includes('repl');
+		if (process.stdout.isTTY && !isInitCommand && !isREPLCommand) {
+			displayBanner();
 		}
 
 		// Check for updates BEFORE executing the command
@@ -4814,4 +4909,4 @@ export function resolveComplexityReportPath({
 	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
-export { registerCommands, setupCLI, runCLI };
+export { registerCommands, setupCLI, runCLI, launchREPL };
