@@ -206,6 +206,36 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
   </Accordion>
 
+  <Accordion title="Manage Rules">
+    ```bash
+    # Add rules for specific editor/IDE profiles
+    task-master rules add <profile...>
+
+    # Remove rules for specific profiles  
+    task-master rules remove <profile...>
+
+    # Interactive setup to select rule profiles
+    task-master rules --setup
+
+    # Add multiple profiles at once
+    task-master rules add cursor windsurf vscode
+
+    # Remove rules with confirmation skip (dangerous)
+    task-master rules remove cursor --force
+    ```
+
+    **Available profiles:** amp, claude, cline, codex, cursor, gemini, kiro, opencode, kilo, roo, trae, vscode, windsurf, zed
+
+    **Rule sets included:**
+    - Editor-specific configuration files and workflows
+    - Task Master integration guidelines  
+    - Hamster brief integration workflows (goham.md, hamster rules)
+    - Development workflow patterns
+    - Self-improvement guidelines
+
+    The rules command creates editor-specific configuration directories (e.g., `.cursor/rules/`, `.vscode/rules/`) with tailored rule files for each editor's workflow patterns.
+  </Accordion>
+
   <Accordion title="TDD Workflow (Autopilot)">
     ```bash
     # Start autonomous TDD workflow for a task
