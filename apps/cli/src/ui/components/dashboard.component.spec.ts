@@ -19,22 +19,18 @@ import {
  * have sensible defaults.
  */
 const createTestTask = (
-	overrides: Omit<Partial<Task>, 'id'> & { id: number | string }
-): Task => {
-	const { id, ...rest } = overrides;
-	return {
-		title: '',
-		description: '',
-		status: 'pending',
-		priority: 'medium',
-		dependencies: [],
-		details: '',
-		testStrategy: '',
-		subtasks: [],
-		...rest,
-		id: String(id)
-	} as Task;
-};
+	overrides: Partial<Omit<Task, 'id'>> & Pick<Task, 'id'>
+): Task => ({
+	title: '',
+	description: '',
+	status: 'pending',
+	priority: 'medium',
+	dependencies: [],
+	details: '',
+	testStrategy: '',
+	subtasks: [],
+	...overrides
+});
 
 const createTestSubtask = (
 	id: string,
@@ -58,9 +54,9 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange: 14 done, 1 cancelled = 100% complete
 			const tasks: Task[] = [
 				...Array.from({ length: 14 }, (_, i) =>
-					createTestTask({ id: i + 1, status: 'done' })
+					createTestTask({ id: String(i + 1), status: 'done' })
 				),
-				createTestTask({ id: 15, status: 'cancelled' })
+				createTestTask({ id: '15', status: 'cancelled' })
 			];
 
 			// Act
@@ -77,10 +73,10 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as complete in percentage calculation', () => {
 			// Arrange: Mix of done, completed, cancelled, pending
 			const tasks: Task[] = [
-				createTestTask({ id: 1, status: 'done' }),
-				createTestTask({ id: 2, status: 'completed' }),
-				createTestTask({ id: 3, status: 'cancelled' }),
-				createTestTask({ id: 4, status: 'pending' })
+				createTestTask({ id: '1', status: 'done' }),
+				createTestTask({ id: '2', status: 'completed' }),
+				createTestTask({ id: '3', status: 'cancelled' }),
+				createTestTask({ id: '4', status: 'pending' })
 			];
 
 			// Act
@@ -98,8 +94,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 100% completion when all tasks are cancelled', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTestTask({ id: 1, status: 'cancelled' }),
-				createTestTask({ id: 2, status: 'cancelled' })
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'cancelled' })
 			];
 
 			// Act
@@ -115,8 +111,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 0% completion when no tasks are complete', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTestTask({ id: 1, status: 'pending' }),
-				createTestTask({ id: 2, status: 'in-progress' })
+				createTestTask({ id: '1', status: 'pending' }),
+				createTestTask({ id: '2', status: 'in-progress' })
 			];
 
 			// Act
@@ -132,7 +128,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange: Task with 3 done subtasks and 1 cancelled = 100%
 			const tasks: Task[] = [
 				createTestTask({
-					id: 1,
+					id: '1',
 					status: 'in-progress',
 					subtasks: [
 						createTestSubtask('1', '1', 'done'),
@@ -158,7 +154,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange
 			const tasks: Task[] = [
 				createTestTask({
-					id: 1,
+					id: '1',
 					status: 'in-progress',
 					subtasks: [
 						createTestSubtask('1', '1', 'done'),
@@ -184,10 +180,10 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange: Task 15 depends on cancelled task 14
 			const tasks: Task[] = [
 				...Array.from({ length: 13 }, (_, i) =>
-					createTestTask({ id: i + 1, status: 'done' })
+					createTestTask({ id: String(i + 1), status: 'done' })
 				),
-				createTestTask({ id: 14, status: 'cancelled' }),
-				createTestTask({ id: 15, status: 'pending', dependencies: ['14'] })
+				createTestTask({ id: '14', status: 'cancelled' }),
+				createTestTask({ id: '15', status: 'pending', dependencies: ['14'] })
 			];
 
 			// Act
@@ -201,8 +197,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as satisfied dependencies', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTestTask({ id: 1, status: 'completed' }),
-				createTestTask({ id: 2, status: 'pending', dependencies: ['1'] })
+				createTestTask({ id: '1', status: 'completed' }),
+				createTestTask({ id: '2', status: 'pending', dependencies: ['1'] })
 			];
 
 			// Act
@@ -216,9 +212,9 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should count tasks with cancelled dependencies as ready', () => {
 			// Arrange: Multiple tasks depending on cancelled task
 			const tasks: Task[] = [
-				createTestTask({ id: 1, status: 'cancelled' }),
-				createTestTask({ id: 2, status: 'pending', dependencies: ['1'] }),
-				createTestTask({ id: 3, status: 'pending', dependencies: ['1'] })
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'pending', dependencies: ['1'] }),
+				createTestTask({ id: '3', status: 'pending', dependencies: ['1'] })
 			];
 
 			// Act

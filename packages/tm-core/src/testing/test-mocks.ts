@@ -17,7 +17,12 @@
  * }));
  * ```
  */
-export const createMockLogger = () => ({
+export const createMockLogger = (): {
+	warn: () => void;
+	info: () => void;
+	debug: () => void;
+	error: () => void;
+} => ({
 	warn: () => {},
 	info: () => {},
 	debug: () => {},
