@@ -1,4 +1,5 @@
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import open from 'open';
 /**
  * Shell.tsx - Task Master TUI
  *
@@ -1828,65 +1829,58 @@ export function Shell({
 				setStatusMessage(`Running auth ${action}...`);
 				setActionLoading(true);
 
-				if (!tmCore) {
-					// Initialize tmCore if not available
+				// Initialize tmCore if not available
+				let core = tmCore;
+				if (!core) {
 					const { createTmCore } = await import('@tm/core');
 					const root = projectRoot || process.cwd();
-					const core = await createTmCore({ projectPath: root });
+					core = await createTmCore({ projectPath: root });
 					setTmCore(core);
+				}
 
-					if (action === 'login') {
-						// Use OAuth flow from @tm/core
-						const creds = await core.auth.authenticateWithOAuth();
-						if (creds) {
-							setStatusMessage('Login successful! Refreshing...');
-							// Reload tasks after auth
-							const result = await core.tasks.list({ tag: currentTag });
-							setTasks(result.tasks || []);
-						}
-					} else if (action === 'logout') {
-						await core.auth.logout();
-						setStatusMessage('Logged out successfully');
-					} else if (action === 'status') {
-						const hasSession = await core.auth.hasValidSession();
-						const context = core.auth.getContext();
-						if (hasSession && context) {
-							setStatusMessage(
-								`Logged in as ${context.email || context.userId}`
-							);
-						} else {
-							setStatusMessage('Not authenticated');
-						}
-					} else if (action === 'refresh') {
-						await core.auth.refreshToken();
-						setStatusMessage('Token refreshed');
+				if (action === 'login') {
+					// Use OAuth flow from @tm/core with browser opening
+					setStatusMessage('Opening browser for login...');
+					const creds = await core.auth.authenticateWithOAuth({
+						openBrowser: async (url: string) => {
+							await open(url);
+						},
+						onAuthUrl: (url: string) => {
+							setStatusMessage(`Auth URL: ${url.substring(0, 50)}...`);
+						},
+						onWaitingForAuth: () => {
+							setStatusMessage('Waiting for authentication...');
+						},
+						onSuccess: () => {
+							setStatusMessage('Authentication successful!');
+						},
+						onError: () => {
+							setStatusMessage('Authentication failed');
+						},
+						timeout: 5 * 60 * 1000 // 5 minutes
+					});
+					if (creds) {
+						setStatusMessage('Login successful! Refreshing...');
+						// Reload tasks after auth
+						const result = await core.tasks.list({ tag: currentTag });
+						setTasks(result.tasks || []);
 					}
-				} else {
-					// Use existing tmCore instance
-					if (action === 'login') {
-						const creds = await tmCore.auth.authenticateWithOAuth();
-						if (creds) {
-							setStatusMessage('Login successful! Refreshing...');
-							const result = await tmCore.tasks.list({ tag: currentTag });
-							setTasks(result.tasks || []);
-						}
-					} else if (action === 'logout') {
-						await tmCore.auth.logout();
-						setStatusMessage('Logged out successfully');
-					} else if (action === 'status') {
-						const hasSession = await tmCore.auth.hasValidSession();
-						const context = tmCore.auth.getContext();
-						if (hasSession && context) {
-							setStatusMessage(
-								`Logged in as ${context.email || context.userId}`
-							);
-						} else {
-							setStatusMessage('Not authenticated');
-						}
-					} else if (action === 'refresh') {
-						await tmCore.auth.refreshToken();
-						setStatusMessage('Token refreshed');
+				} else if (action === 'logout') {
+					await core.auth.logout();
+					setStatusMessage('Logged out successfully');
+				} else if (action === 'status') {
+					const hasSession = await core.auth.hasValidSession();
+					const context = core.auth.getContext();
+					if (hasSession && context) {
+						setStatusMessage(
+							`Logged in as ${context.email || context.userId}`
+						);
+					} else {
+						setStatusMessage('Not authenticated');
 					}
+				} else if (action === 'refresh') {
+					await core.auth.refreshToken();
+					setStatusMessage('Token refreshed');
 				}
 				setActionLoading(false);
 			} catch (err: any) {
@@ -1910,7 +1904,24 @@ export function Shell({
 					const core = await createTmCore({ projectPath: root });
 
 					try {
-						const creds = await core.auth.authenticateWithOAuth();
+						const creds = await core.auth.authenticateWithOAuth({
+							openBrowser: async (url: string) => {
+								await open(url);
+							},
+							onAuthUrl: (url: string) => {
+								setStatusMessage(`Opening browser...`);
+							},
+							onWaitingForAuth: () => {
+								setStatusMessage('Waiting for authentication...');
+							},
+							onSuccess: () => {
+								setStatusMessage('Authentication successful!');
+							},
+							onError: () => {
+								setStatusMessage('Authentication failed');
+							},
+							timeout: 5 * 60 * 1000 // 5 minutes
+						});
 						if (creds) {
 							setTmCore(core);
 							setStatusMessage('Hamster login completed! Loading tasks...');
@@ -2013,15 +2024,25 @@ export function Shell({
 		[tmCore, currentTag, initialTasks, selectedTask, selectedSubtaskObj]
 	);
 
-	// Load tags list (for Tags view)
+	// Load tags list (for Tags view) using tmCore.tasks.getTagsWithStats()
 	const loadTags = useCallback(async () => {
-		if (!tmCore) return;
 		try {
 			setTagsLoading(true);
-			const tagsResult = await tmCore.tags.list();
-			const formattedTags = (tagsResult || []).map((tag: any) => ({
+			
+			// Initialize tmCore if needed
+			let core = tmCore;
+			if (!core) {
+				const { createTmCore } = await import('@tm/core');
+				const root = projectRoot || process.cwd();
+				core = await createTmCore({ projectPath: root });
+				setTmCore(core);
+			}
+			
+			const tagsResult = await core.tasks.getTagsWithStats();
+			const formattedTags = (tagsResult?.tags || []).map((tag: any) => ({
 				name: tag.name || tag,
-				taskCount: tag.taskCount
+				taskCount: tag.taskCount || 0,
+				isCurrent: tag.isCurrent || tag.name === currentTag
 			}));
 			setTagsList(formattedTags);
 			setTagsIndex(0);
@@ -2030,22 +2051,32 @@ export function Shell({
 		} finally {
 			setTagsLoading(false);
 		}
-	}, [tmCore]);
+	}, [tmCore, projectRoot, currentTag]);
 
-	// Switch to a tag
+	// Switch to a tag using tmCore.tasks.switchTag()
 	const switchToTag = useCallback(
 		async (tagName: string) => {
-			if (!tmCore) return;
 			try {
 				setActionLoading(true);
-				await tmCore.tags.use(tagName);
+				
+				// Initialize tmCore if needed
+				let core = tmCore;
+				if (!core) {
+					const { createTmCore } = await import('@tm/core');
+					const root = projectRoot || process.cwd();
+					core = await createTmCore({ projectPath: root });
+					setTmCore(core);
+				}
+				
+				await core.tasks.switchTag(tagName);
 				setCurrentTag(tagName);
 				// Reload tasks for the new tag
-				const result = await tmCore.tasks.list({ tag: tagName });
+				const result = await core.tasks.list({ tag: tagName });
 				setTasks(result.tasks || []);
-				const next = await tmCore.tasks.getNext(tagName);
+				const next = await core.tasks.getNext(tagName);
 				setNextTask(next);
 				setStatusMessage(`Switched to tag: ${tagName}`);
+				console.clear();
 				setView('dashboard');
 			} catch (err: any) {
 				setStatusMessage(`Failed to switch tag: ${err.message}`);
@@ -2053,7 +2084,7 @@ export function Shell({
 				setActionLoading(false);
 			}
 		},
-		[tmCore]
+		[tmCore, projectRoot]
 	);
 
 	// Status message timeout
@@ -2112,6 +2143,7 @@ export function Shell({
 			}
 
 			if (key.escape) {
+				console.clear();
 				if (view === 'subtask-detail') {
 					setSelectedSubtaskObj(null);
 					setView('task-detail');
@@ -2128,8 +2160,10 @@ export function Shell({
 			if (view === 'dashboard') {
 				if (key.leftArrow) setDashboardMenu((p) => Math.max(0, p - 1));
 				else if (key.rightArrow) setDashboardMenu((p) => Math.min(5, p + 1));
-				else if (input === 'l' || input === 'L') setView('tasks');
-				else if (input === 'n' || input === 'N') {
+				else if (input === 'l' || input === 'L') {
+					console.clear();
+					setView('tasks');
+				} else if (input === 'n' || input === 'N') {
 					if (nextTask) {
 						setSelectedTask(nextTask);
 						setDetailTab(0);
@@ -2137,17 +2171,22 @@ export function Shell({
 						setView('task-detail');
 					}
 				} else if (input === 't' || input === 'T') {
+					console.clear();
 					loadTags();
 					setView('tags');
 				} else if (input === 's' || input === 'S') setView('init');
 				else if (input === 'a' || input === 'A') setView('account');
 				else if (input === '?') setView('help');
 				else if (key.return) {
-					if (dashboardMenu === 0) setView('tasks');
-					else if (dashboardMenu === 1 && nextTask) {
+					if (dashboardMenu === 0) {
+						console.clear();
+						setView('tasks');
+					} else if (dashboardMenu === 1 && nextTask) {
+						console.clear();
 						setSelectedTask(nextTask);
 						setView('task-detail');
 					} else if (dashboardMenu === 2) {
+						console.clear();
 						loadTags();
 						setView('tags');
 					} else if (dashboardMenu === 3) setView('init');
