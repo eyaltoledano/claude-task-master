@@ -103,7 +103,8 @@ type ViewMode =
 	| 'subtask-detail'
 	| 'account'
 	| 'init'
-	| 'help';
+	| 'help'
+	| 'tags';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKDOWN RENDERER (simple terminal-friendly)
@@ -398,17 +399,19 @@ function StatBox({
 	return (
 		<Box
 			flexDirection="column"
+			alignItems="center"
 			borderStyle="single"
 			borderColor={theme.border}
 			paddingX={3}
 			paddingY={1}
-			minWidth={16}
+			minWidth={14}
 		>
-			<Text color={theme.muted}>
-				{icon} {label}
-			</Text>
-			<Text color={color} bold>
-				{value}
+			<Text color={theme.muted}>{icon}</Text>
+			<Text>
+				<Text color={color} bold>
+					{value}
+				</Text>
+				<Text color={theme.muted}> {label}</Text>
 			</Text>
 		</Box>
 	);
@@ -421,12 +424,14 @@ function DashboardView({
 	tasks,
 	selectedMenu,
 	loading,
-	nextTask
+	nextTask,
+	isHamster = false
 }: {
 	tasks: Task[];
 	selectedMenu: number;
 	loading: boolean;
 	nextTask: Task | null;
+	isHamster?: boolean;
 }) {
 	const done = tasks.filter((t) => t.status === 'done').length;
 	const inProgress = tasks.filter((t) => t.status === 'in-progress').length;
@@ -434,11 +439,17 @@ function DashboardView({
 	const total = tasks.length;
 	const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
+	// Menu items: Tags in local mode, Briefs in authenticated mode
 	const menuItems = [
-		{ label: 'Tasks', key: 'T', color: theme.accent.cyan },
+		{ label: 'List', key: 'L', color: theme.accent.cyan },
 		{ label: 'Next', key: 'N', color: theme.accent.orange },
+		{
+			label: isHamster ? 'Briefs' : 'Tags',
+			key: 'T',
+			color: theme.accent.purple
+		},
 		{ label: 'Setup', key: 'S', color: theme.accent.green },
-		{ label: 'Account', key: 'A', color: theme.accent.purple },
+		{ label: 'Account', key: 'A', color: theme.accent.magenta },
 		{ label: 'Help', key: '?', color: theme.accent.yellow }
 	];
 
@@ -1419,6 +1430,113 @@ function HelpView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TAGS VIEW (Local mode: Tags, Authenticated mode: Briefs)
+// ─────────────────────────────────────────────────────────────────────────────
+function TagsView({
+	isHamster,
+	tags,
+	currentTag,
+	selectedIndex,
+	loading,
+	onCreateNew
+}: {
+	isHamster: boolean;
+	tags: Array<{ name: string; taskCount?: number; isCurrent?: boolean }>;
+	currentTag: string;
+	selectedIndex: number;
+	loading: boolean;
+	onCreateNew?: () => void;
+}) {
+	const title = isHamster ? 'Briefs' : 'Tags';
+	const itemLabel = isHamster ? 'brief' : 'tag';
+
+	if (loading) {
+		return (
+			<Box flexDirection="column" alignItems="center" paddingY={3}>
+				<Text color={theme.accent.cyan}>Loading {title.toLowerCase()}...</Text>
+			</Box>
+		);
+	}
+
+	return (
+		<Box flexDirection="column" paddingX={2} paddingY={2}>
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.accent.purple}
+				paddingX={2}
+				paddingY={1}
+			>
+				<Text color={theme.accent.purple} bold>
+					{title}
+				</Text>
+				<Text color={theme.muted}>
+					{isHamster
+						? 'Select a brief to work on'
+						: 'Select a tag context or create a new one'}
+				</Text>
+
+				<Box flexDirection="column" marginTop={1}>
+					{tags.length === 0 ? (
+						<Text color={theme.muted}>No {title.toLowerCase()} found</Text>
+					) : (
+						tags.map((tag, idx) => {
+							const isSelected = idx === selectedIndex;
+							const isCurrent = tag.name === currentTag;
+							return (
+								<Box key={tag.name}>
+									<Text color={isSelected ? theme.bright : theme.text}>
+										{isSelected ? '▸ ' : '  '}
+										<Text
+											color={
+												isCurrent
+													? theme.accent.cyan
+													: isSelected
+														? theme.bright
+														: theme.text
+											}
+											bold={isCurrent}
+										>
+											{tag.name}
+										</Text>
+										{tag.taskCount !== undefined && (
+											<Text color={theme.muted}> ({tag.taskCount} tasks)</Text>
+										)}
+										{isCurrent && (
+											<Text color={theme.accent.green}> ● current</Text>
+										)}
+									</Text>
+								</Box>
+							);
+						})
+					)}
+
+					{/* Create new option (only for local mode) */}
+					{!isHamster && (
+						<Box marginTop={1}>
+							<Text
+								color={
+									selectedIndex === tags.length ? theme.accent.green : theme.muted
+								}
+							>
+								{selectedIndex === tags.length ? '▸ ' : '  '}+ Create new{' '}
+								{itemLabel}
+							</Text>
+						</Box>
+					)}
+				</Box>
+			</Box>
+
+			<Box paddingX={1} marginTop={2}>
+				<Text color={theme.dim}>
+					↑↓ Navigate · ↵ Select · Esc Back
+				</Text>
+			</Box>
+		</Box>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FILTER MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function FilterModal({
@@ -1509,6 +1627,7 @@ function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
 		'task-detail': 'Task',
 		'subtask-detail': 'Subtask',
 		account: 'Account',
+		tags: 'Tags',
 		init: 'Setup',
 		help: 'Help'
 	};
@@ -1572,8 +1691,15 @@ export function Shell({
 	const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
 	const [filterIndex, setFilterIndex] = useState(0);
 
+	// Tags state
+	const [tagsList, setTagsList] = useState<
+		Array<{ name: string; taskCount?: number }>
+	>([]);
+	const [tagsIndex, setTagsIndex] = useState(0);
+	const [tagsLoading, setTagsLoading] = useState(false);
+
 	const isHamster = storageType === 'api';
-	const currentTag = initialTag;
+	const [currentTag, setCurrentTag] = useState(initialTag);
 
 	// Available statuses for filtering
 	const availableStatuses = [
@@ -1813,6 +1939,49 @@ export function Shell({
 		[tmCore, currentTag, initialTasks, selectedTask, selectedSubtaskObj]
 	);
 
+	// Load tags list (for Tags view)
+	const loadTags = useCallback(async () => {
+		if (!tmCore) return;
+		try {
+			setTagsLoading(true);
+			const tagsResult = await tmCore.tags.list();
+			const formattedTags = (tagsResult || []).map((tag: any) => ({
+				name: tag.name || tag,
+				taskCount: tag.taskCount
+			}));
+			setTagsList(formattedTags);
+			setTagsIndex(0);
+		} catch (err: any) {
+			setStatusMessage(`Failed to load tags: ${err.message}`);
+		} finally {
+			setTagsLoading(false);
+		}
+	}, [tmCore]);
+
+	// Switch to a tag
+	const switchToTag = useCallback(
+		async (tagName: string) => {
+			if (!tmCore) return;
+			try {
+				setActionLoading(true);
+				await tmCore.tags.use(tagName);
+				setCurrentTag(tagName);
+				// Reload tasks for the new tag
+				const result = await tmCore.tasks.list({ tag: tagName });
+				setTasks(result.tasks || []);
+				const next = await tmCore.tasks.getNext(tagName);
+				setNextTask(next);
+				setStatusMessage(`Switched to tag: ${tagName}`);
+				setView('dashboard');
+			} catch (err: any) {
+				setStatusMessage(`Failed to switch tag: ${err.message}`);
+			} finally {
+				setActionLoading(false);
+			}
+		},
+		[tmCore]
+	);
+
 	// Status message timeout
 	useEffect(() => {
 		if (statusMessage) {
@@ -1869,11 +2038,11 @@ export function Shell({
 				return;
 			}
 
-			// Dashboard
+			// Dashboard (6 items: List, Next, Tags/Briefs, Setup, Account, Help)
 			if (view === 'dashboard') {
 				if (key.leftArrow) setDashboardMenu((p) => Math.max(0, p - 1));
-				else if (key.rightArrow) setDashboardMenu((p) => Math.min(4, p + 1));
-				else if (input === 't' || input === 'T') setView('tasks');
+				else if (key.rightArrow) setDashboardMenu((p) => Math.min(5, p + 1));
+				else if (input === 'l' || input === 'L') setView('tasks');
 				else if (input === 'n' || input === 'N') {
 					if (nextTask) {
 						setSelectedTask(nextTask);
@@ -1881,6 +2050,9 @@ export function Shell({
 						setDetailFocus('tabs');
 						setView('task-detail');
 					}
+				} else if (input === 't' || input === 'T') {
+					loadTags();
+					setView('tags');
 				} else if (input === 's' || input === 'S') setView('init');
 				else if (input === 'a' || input === 'A') setView('account');
 				else if (input === '?') setView('help');
@@ -1889,9 +2061,12 @@ export function Shell({
 					else if (dashboardMenu === 1 && nextTask) {
 						setSelectedTask(nextTask);
 						setView('task-detail');
-					} else if (dashboardMenu === 2) setView('init');
-					else if (dashboardMenu === 3) setView('account');
-					else if (dashboardMenu === 4) setView('help');
+					} else if (dashboardMenu === 2) {
+						loadTags();
+						setView('tags');
+					} else if (dashboardMenu === 3) setView('init');
+					else if (dashboardMenu === 4) setView('account');
+					else if (dashboardMenu === 5) setView('help');
 				}
 				return;
 			}
@@ -2121,6 +2296,26 @@ export function Shell({
 			}
 
 			// Account
+			// Tags view
+			if (view === 'tags') {
+				// In local mode, last item is "Create new tag"
+				const maxIndex = isHamster ? tagsList.length - 1 : tagsList.length;
+				if (key.upArrow) setTagsIndex((p) => Math.max(0, p - 1));
+				else if (key.downArrow)
+					setTagsIndex((p) => Math.min(maxIndex, p + 1));
+				else if (key.return) {
+					if (!isHamster && tagsIndex === tagsList.length) {
+						// Create new tag - TODO: implement text input for tag name
+						setStatusMessage(
+							'Use CLI: tm add-tag <name> to create a new tag'
+						);
+					} else if (tagsList[tagsIndex]) {
+						switchToTag(tagsList[tagsIndex].name);
+					}
+				}
+				return;
+			}
+
 			if (view === 'account') {
 				const actions = authState?.isAuthenticated
 					? ['refresh', 'logout']
@@ -2176,6 +2371,7 @@ export function Shell({
 					selectedMenu={0}
 					loading={loading}
 					nextTask={nextTask}
+					isHamster={isHamster}
 				/>
 				<Box paddingX={2}>
 					<Text color={theme.dim}>
@@ -2209,6 +2405,7 @@ export function Shell({
 					selectedMenu={dashboardMenu}
 					loading={loading}
 					nextTask={nextTask}
+					isHamster={isHamster}
 				/>
 			)}
 			{view === 'tasks' && !showFilterModal && (
@@ -2275,6 +2472,15 @@ export function Shell({
 					brief={brief}
 					tag={currentTag}
 					selectedAction={accountAction}
+				/>
+			)}
+			{view === 'tags' && (
+				<TagsView
+					isHamster={isHamster}
+					tags={tagsList}
+					currentTag={currentTag}
+					selectedIndex={tagsIndex}
+					loading={tagsLoading}
 				/>
 			)}
 			{view === 'init' && <InitView selectedOption={initOption} />}
