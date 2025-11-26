@@ -1446,47 +1446,53 @@ function FilterModal({
 	};
 
 	return (
-		<Box
-			flexDirection="column"
-			borderStyle="round"
-			borderColor={theme.accent.cyan}
-			paddingX={2}
-			paddingY={1}
-			width={40}
-		>
-			<Box justifyContent="center" marginBottom={1}>
-				<Text bold color={theme.accent.cyan}>
-					Filter by Status
-				</Text>
-			</Box>
-
-			<Box flexDirection="column">
-				{statuses.map((status, idx) => {
-					const isSelected = selectedStatuses.has(status);
-					const isFocused = idx === focusedIndex;
-					return (
-						<Box key={status}>
-							<Text color={isFocused ? theme.bright : theme.text}>
-								{isFocused ? '▸ ' : '  '}
-								<Text color={isSelected ? theme.success : theme.muted}>
-									{isSelected ? '◉' : '○'}
-								</Text>{' '}
-								<Text color={statusColors[status] || theme.text}>{status}</Text>
-							</Text>
-						</Box>
-					);
-				})}
-			</Box>
-
-			<Box marginTop={1} flexDirection="column">
-				<Text color={theme.dim}>
-					{'↑↓ Move  ·  Space Toggle  ·  C Clear  ·  Esc Close'}
-				</Text>
-				{selectedStatuses.size > 0 && (
-					<Text color={theme.muted}>
-						Active: {Array.from(selectedStatuses).join(', ')}
+		<Box flexDirection="column" paddingX={2} paddingY={1}>
+			<Box
+				flexDirection="column"
+				borderStyle="round"
+				borderColor={theme.accent.cyan}
+				paddingX={3}
+				paddingY={1}
+			>
+				{/* Title */}
+				<Box justifyContent="center" marginBottom={1}>
+					<Text bold color={theme.accent.cyan}>
+						Filter by Status
 					</Text>
-				)}
+				</Box>
+
+				{/* Status options */}
+				<Box flexDirection="column">
+					{statuses.map((status, idx) => {
+						const isSelected = selectedStatuses.has(status);
+						const isFocused = idx === focusedIndex;
+						return (
+							<Box key={status}>
+								<Text color={isFocused ? theme.bright : theme.text}>
+									{isFocused ? '▸ ' : '  '}
+									<Text color={isSelected ? theme.success : theme.muted}>
+										{isSelected ? '◉' : '○'}
+									</Text>{' '}
+									<Text color={statusColors[status] || theme.text}>
+										{status}
+									</Text>
+								</Text>
+							</Box>
+						);
+					})}
+				</Box>
+
+				{/* Help text */}
+				<Box marginTop={1} flexDirection="column">
+					<Text color={theme.dim}>
+						↑↓ Move · Space Toggle · C Clear · ↵/Esc Done
+					</Text>
+					{selectedStatuses.size > 0 && (
+						<Text color={theme.accent.cyan}>
+							Active: {Array.from(selectedStatuses).join(', ')}
+						</Text>
+					)}
+				</Box>
 			</Box>
 		</Box>
 	);
@@ -1568,7 +1574,6 @@ export function Shell({
 
 	const isHamster = storageType === 'api';
 	const currentTag = initialTag;
-	const { stdout } = useStdout();
 
 	// Available statuses for filtering
 	const availableStatuses = [
@@ -1585,14 +1590,6 @@ export function Shell({
 		statusFilter.size > 0
 			? tasks.filter((t) => statusFilter.has(t.status))
 			: tasks;
-
-	// Keep cursor at top of terminal when view/content changes
-	useEffect(() => {
-		if (stdout && isInteractive) {
-			// Move cursor to home position (top-left)
-			stdout.write('\x1b[H');
-		}
-	}, [view, tasks, filteredTasks, stdout, isInteractive]);
 
 	// Load tasks using @tm/core
 	useEffect(() => {
@@ -1852,6 +1849,13 @@ export function Shell({
 				return;
 			}
 
+			// Handle filter modal close first (before global escape handler)
+			if ((key.escape || key.return) && view === 'tasks' && showFilterModal) {
+				setShowFilterModal(false);
+				setTaskListIndex(0); // Reset to first item after filtering
+				return;
+			}
+
 			if (key.escape) {
 				if (view === 'subtask-detail') {
 					setSelectedSubtaskObj(null);
@@ -1896,8 +1900,9 @@ export function Shell({
 			if (view === 'tasks') {
 				// Handle filter modal input first
 				if (showFilterModal) {
-					if (key.escape) {
+					if (key.escape || key.return) {
 						setShowFilterModal(false);
+						setTaskListIndex(0); // Reset to first item after filtering
 						return;
 					}
 					if (key.upArrow) {
@@ -1964,6 +1969,7 @@ export function Shell({
 				}
 				if ((input === 'c' || input === 'C') && statusFilter.size > 0) {
 					setStatusFilter(new Set());
+					setTaskListIndex(0); // Reset to first item
 					setStatusMessage('Filter cleared');
 					return;
 				}
@@ -2205,7 +2211,7 @@ export function Shell({
 					nextTask={nextTask}
 				/>
 			)}
-			{view === 'tasks' && (
+			{view === 'tasks' && !showFilterModal && (
 				<Box flexDirection="column">
 					{/* Filter status indicator */}
 					{statusFilter.size > 0 && (
@@ -2223,34 +2229,30 @@ export function Shell({
 						showAllSubtasks={showAllSubtasks}
 						loading={loading}
 					/>
-					{/* Filter modal overlay */}
-					{showFilterModal && (
-						<Box
-							position="absolute"
-							flexDirection="column"
-							alignItems="center"
-							justifyContent="center"
-							width="100%"
-							height="100%"
-						>
-							<FilterModal
-								statuses={availableStatuses}
-								selectedStatuses={statusFilter}
-								focusedIndex={filterIndex}
-								onToggle={(status) => {
-									setStatusFilter((prev) => {
-										const next = new Set(prev);
-										if (next.has(status)) next.delete(status);
-										else next.add(status);
-										return next;
-									});
-								}}
-								onClose={() => setShowFilterModal(false)}
-								onClear={() => setStatusFilter(new Set())}
-							/>
-						</Box>
-					)}
 				</Box>
+			)}
+			{view === 'tasks' && showFilterModal && (
+				<FilterModal
+					statuses={availableStatuses}
+					selectedStatuses={statusFilter}
+					focusedIndex={filterIndex}
+					onToggle={(status) => {
+						setStatusFilter((prev) => {
+							const next = new Set(prev);
+							if (next.has(status)) next.delete(status);
+							else next.add(status);
+							return next;
+						});
+					}}
+					onClose={() => {
+						setShowFilterModal(false);
+						setTaskListIndex(0);
+					}}
+					onClear={() => {
+						setStatusFilter(new Set());
+						setTaskListIndex(0);
+					}}
+				/>
 			)}
 			{view === 'task-detail' && selectedTask && (
 				<TaskDetailView

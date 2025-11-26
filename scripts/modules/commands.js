@@ -4665,7 +4665,7 @@ async function runCLI(argv = process.argv) {
 					};
 				}
 
-				// Clear screen before rendering TUI for clean slate
+				// Clear screen before rendering TUI
 				console.clear();
 
 				render(React.createElement(Shell, shellProps));
