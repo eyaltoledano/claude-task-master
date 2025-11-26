@@ -9,14 +9,14 @@
  *
  * USAGE:
  * ```ts
- * import { createStorageConfig, createApiStorageConfig } from '@tm/core/testing';
+ * import { createApiStorageConfig } from '@tm/core/testing';
  *
  * // Create API storage config with defaults
  * const config = createApiStorageConfig();
  *
  * // Create with custom endpoint
  * const customConfig = createApiStorageConfig({
- *   apiEndpoint: 'https://custom.api.com'
+ *   storage: { apiEndpoint: 'https://custom.api.com' }
  * });
  * ```
  */

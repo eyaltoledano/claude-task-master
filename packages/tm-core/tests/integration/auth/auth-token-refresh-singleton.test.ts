@@ -121,10 +121,16 @@ describe('Token Refresh - Singleton Integration', () => {
 		});
 
 		it('should prevent multiple refresh token uses by sharing single client', async () => {
-			// This test simulates the scenario where:
-			// 1. AuthManager checks session (would trigger refresh if expired)
-			// 2. StorageFactory creates API storage (would also trigger refresh)
-			// With singleton, both use the same client, so only one refresh happens
+			// This test validates that the singleton pattern enables proper mock tracking.
+			//
+			// The key insight: with a singleton, we can spy on the single shared client
+			// and verify that refresh is only called once. Before the singleton fix,
+			// AuthManager and StorageFactory each created their own SupabaseAuthClient,
+			// so we couldn't track refresh calls across all instances with a single spy.
+			//
+			// Note: This test explicitly calls refreshSession() once to verify the mock
+			// infrastructure works. The actual race condition prevention is validated in
+			// expired-token-refresh.test.ts which uses time-based simulation.
 
 			const supabaseAuthClient = SupabaseAuthClient.getInstance();
 			const internalClient = supabaseAuthClient.getClient();
@@ -159,18 +165,19 @@ describe('Token Refresh - Singleton Integration', () => {
 				}
 			);
 
-			// Simulate the typical flow when running a command with expired token:
+			// Verify AuthManager and StorageFactory share the same spied client
+			const authManager = AuthManager.getInstance();
+			const config = createApiStorageConfig();
+			await StorageFactory.create(config, '/test/project');
 
-			// 1. AuthManager tries to refresh
+			// Both should reference the same underlying Supabase client we spied on
+			expect(authManager.supabaseClient.getClient()).toBe(internalClient);
+			expect(SupabaseAuthClient.getInstance().getClient()).toBe(internalClient);
+
+			// Now trigger one refresh - our single spy tracks it
 			await supabaseAuthClient.refreshSession();
 
-			// 2. If we had multiple clients (the bug), both would try to refresh
-			// With singleton, the second call uses the same client
-			const sameClient = SupabaseAuthClient.getInstance().getClient();
-			expect(sameClient).toBe(internalClient);
-
-			// The key assertion: refreshSession is called on the SAME mock
-			// If there were multiple clients, we wouldn't be able to track this
+			// The key assertion: we can track refresh calls because there's only one client
 			expect(mockRefreshCount).toBe(1);
 
 			// Restore

@@ -14,6 +14,12 @@
  *
  * The fix: SupabaseAuthClient is now a proper singleton with getInstance().
  * All code paths use the same instance.
+ *
+ * Related tests:
+ * - auth-token-refresh-singleton.test.ts: Focuses on refresh behavior and mock infrastructure
+ * - expired-token-refresh.test.ts: Focuses on time-based token expiration simulation
+ * This file focuses on validating the singleton pattern itself (getInstance behavior,
+ * client identity checks). Some tests overlap intentionally for comprehensive coverage.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -125,20 +131,46 @@ describe('SupabaseAuthClient - Singleton Pattern Validation', () => {
 
 	describe('StorageFactory Integration', () => {
 		it('StorageFactory.createApiStorage should use the singleton Supabase client', async () => {
-			// Get the singleton client first
+			// Spy on getInstance to verify it's called during StorageFactory.create
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
+
+			// Get the singleton client first (this call is tracked)
 			const singletonClient = SupabaseAuthClient.getInstance().getClient();
+			const callCountBeforeStorage = getInstanceSpy.mock.calls.length;
 
 			// Create API storage using fixture
 			const config = createApiStorageConfig();
 			const storage = await StorageFactory.create(config, '/test/project');
 
+			// Verify getInstance was called during StorageFactory.create
+			// This ensures StorageFactory is using the singleton, not creating its own client
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(
+				callCountBeforeStorage
+			);
+
 			// The storage should use the same Supabase client instance
-			// We can verify this by checking that getInstance() still returns the same client
 			const clientAfterStorage = SupabaseAuthClient.getInstance().getClient();
 			expect(clientAfterStorage).toBe(singletonClient);
 
 			// Storage was created (basic sanity check)
 			expect(storage).toBeDefined();
+
+			getInstanceSpy.mockRestore();
+		});
+
+		it('StorageFactory should call getInstance (regression guard)', async () => {
+			// This test explicitly guards against StorageFactory creating its own
+			// SupabaseAuthClient instance, which caused "refresh_token_already_used" errors
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
+
+			const config = createApiStorageConfig();
+			await StorageFactory.create(config, '/test/project');
+
+			// StorageFactory MUST call getInstance at least once during API storage creation
+			// If this fails, StorageFactory is bypassing the singleton (the original bug)
+			expect(getInstanceSpy).toHaveBeenCalled();
+
+			getInstanceSpy.mockRestore();
 		});
 	});
 
@@ -157,18 +189,30 @@ describe('SupabaseAuthClient - Singleton Pattern Validation', () => {
 		});
 
 		it('AuthManager and StorageFactory should share the same Supabase client', async () => {
-			// This is the key test - both should use the exact same client instance
+			// Spy on getInstance to track all access paths
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
+
+			// AuthManager uses the singleton
 			const authManager = AuthManager.getInstance();
 			const authManagerClient = authManager.supabaseClient.getClient();
+			const callsAfterAuthManager = getInstanceSpy.mock.calls.length;
 
 			// Create storage (which internally uses SupabaseAuthClient.getInstance())
 			const config = createApiStorageConfig();
 			await StorageFactory.create(config, '/test/project');
 
+			// Verify both AuthManager and StorageFactory accessed the singleton
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(
+				callsAfterAuthManager
+			);
+
 			// After StorageFactory creates storage, the singleton should still be the same
 			const singletonClient = SupabaseAuthClient.getInstance().getClient();
 
+			// Critical assertion: both code paths share the same underlying client
 			expect(authManagerClient).toBe(singletonClient);
+
+			getInstanceSpy.mockRestore();
 		});
 	});
 });

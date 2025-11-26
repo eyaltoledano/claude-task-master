@@ -11,8 +11,15 @@ import {
 	calculateTaskStatistics
 } from './dashboard.component.js';
 
-// Helper to create minimal test tasks
-const createTask = (
+/**
+ * Local test helpers for dashboard statistics tests.
+ *
+ * Note: We use local helpers instead of @tm/core/testing because:
+ * 1. Dashboard tests only need minimal task structures for statistics calculations
+ * 2. The @tm/core/testing helpers require `title` as mandatory, but we only care about status
+ * 3. These local helpers allow creating tasks without titles for cleaner test data
+ */
+const createTestTask = (
 	overrides: Omit<Partial<Task>, 'id'> & { id: number | string }
 ): Task => {
 	const { id, ...rest } = overrides;
@@ -30,8 +37,7 @@ const createTask = (
 	} as Task;
 };
 
-// Helper to create minimal subtasks
-const createSubtask = (
+const createTestSubtask = (
 	id: string,
 	parentId: string,
 	status: TaskStatus
@@ -53,13 +59,13 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange: 14 done, 1 cancelled = 100% complete
 			const tasks: Task[] = [
 				...Array.from({ length: 14 }, (_, i) =>
-					createTask({
+					createTestTask({
 						id: i + 1,
 						title: `Task ${i + 1}`,
 						status: 'done'
 					})
 				),
-				createTask({
+				createTestTask({
 					id: 15,
 					title: 'Cancelled Task',
 					status: 'cancelled'
@@ -81,10 +87,10 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as complete in percentage calculation', () => {
 			// Arrange: Mix of done, completed, cancelled
 			const tasks: Task[] = [
-				createTask({ id: 1, title: 'Done Task', status: 'done' }),
-				createTask({ id: 2, title: 'Completed Task', status: 'completed' }),
-				createTask({ id: 3, title: 'Cancelled Task', status: 'cancelled' }),
-				createTask({ id: 4, title: 'Pending Task', status: 'pending' })
+				createTestTask({ id: 1, title: 'Done Task', status: 'done' }),
+				createTestTask({ id: 2, title: 'Completed Task', status: 'completed' }),
+				createTestTask({ id: 3, title: 'Cancelled Task', status: 'cancelled' }),
+				createTestTask({ id: 4, title: 'Pending Task', status: 'pending' })
 			];
 
 			// Act
@@ -102,8 +108,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 100% completion when all tasks are cancelled', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTask({ id: 1, title: 'Cancelled 1', status: 'cancelled' }),
-				createTask({ id: 2, title: 'Cancelled 2', status: 'cancelled' })
+				createTestTask({ id: 1, title: 'Cancelled 1', status: 'cancelled' }),
+				createTestTask({ id: 2, title: 'Cancelled 2', status: 'cancelled' })
 			];
 
 			// Act
@@ -120,8 +126,12 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 0% completion when no tasks are complete', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTask({ id: 1, title: 'Pending Task', status: 'pending' }),
-				createTask({ id: 2, title: 'In Progress Task', status: 'in-progress' })
+				createTestTask({ id: 1, title: 'Pending Task', status: 'pending' }),
+				createTestTask({
+					id: 2,
+					title: 'In Progress Task',
+					status: 'in-progress'
+				})
 			];
 
 			// Act
@@ -136,15 +146,15 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat cancelled subtasks as complete in percentage calculation', () => {
 			// Arrange: Task with 3 done subtasks and 1 cancelled = 100%
 			const tasks: Task[] = [
-				createTask({
+				createTestTask({
 					id: 1,
 					title: 'Parent Task',
 					status: 'in-progress',
 					subtasks: [
-						createSubtask('1', '1', 'done'),
-						createSubtask('2', '1', 'done'),
-						createSubtask('3', '1', 'done'),
-						createSubtask('4', '1', 'cancelled')
+						createTestSubtask('1', '1', 'done'),
+						createTestSubtask('2', '1', 'done'),
+						createTestSubtask('3', '1', 'done'),
+						createTestSubtask('4', '1', 'cancelled')
 					]
 				})
 			];
@@ -164,14 +174,14 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should handle completed status in subtasks', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTask({
+				createTestTask({
 					id: 1,
 					title: 'Parent Task',
 					status: 'in-progress',
 					subtasks: [
-						createSubtask('1', '1', 'done'),
-						createSubtask('2', '1', 'completed'),
-						createSubtask('3', '1', 'pending')
+						createTestSubtask('1', '1', 'done'),
+						createTestSubtask('2', '1', 'completed'),
+						createTestSubtask('3', '1', 'pending')
 					]
 				})
 			];
@@ -192,18 +202,18 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Arrange: Task 15 depends on cancelled task 14
 			const tasks: Task[] = [
 				...Array.from({ length: 13 }, (_, i) =>
-					createTask({
+					createTestTask({
 						id: i + 1,
 						title: `Task ${i + 1}`,
 						status: 'done'
 					})
 				),
-				createTask({
+				createTestTask({
 					id: 14,
 					title: 'Cancelled Dependency',
 					status: 'cancelled'
 				}),
-				createTask({
+				createTestTask({
 					id: 15,
 					title: 'Dependent Task',
 					status: 'pending',
@@ -224,12 +234,12 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as satisfied dependencies', () => {
 			// Arrange
 			const tasks: Task[] = [
-				createTask({
+				createTestTask({
 					id: 1,
 					title: 'Completed Dependency',
 					status: 'completed'
 				}),
-				createTask({
+				createTestTask({
 					id: 2,
 					title: 'Dependent Task',
 					status: 'pending',
@@ -248,18 +258,18 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should count tasks with cancelled dependencies as ready', () => {
 			// Arrange: Multiple tasks depending on cancelled tasks
 			const tasks: Task[] = [
-				createTask({
+				createTestTask({
 					id: 1,
 					title: 'Cancelled Task',
 					status: 'cancelled'
 				}),
-				createTask({
+				createTestTask({
 					id: 2,
 					title: 'Dependent 1',
 					status: 'pending',
 					dependencies: ['1']
 				}),
-				createTask({
+				createTestTask({
 					id: 3,
 					title: 'Dependent 2',
 					status: 'pending',

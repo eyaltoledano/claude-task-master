@@ -76,10 +76,12 @@ export class AuthManager {
 
 	/**
 	 * Reset the singleton instance (useful for testing)
+	 * Also resets SupabaseAuthClient to ensure clean state for test isolation
 	 */
 	static resetInstance(): void {
 		AuthManager.instance = null;
 		ContextStore.resetInstance();
+		SupabaseAuthClient.resetInstance();
 	}
 
 	/**

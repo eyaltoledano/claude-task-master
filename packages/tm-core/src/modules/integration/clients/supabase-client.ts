@@ -40,8 +40,13 @@ export class SupabaseAuthClient {
 
 	/**
 	 * Reset the singleton instance (for testing purposes only)
+	 * Also nullifies the internal client to ensure no stale Supabase client
+	 * references persist across test resets
 	 */
 	static resetInstance(): void {
+		if (SupabaseAuthClient.instance) {
+			SupabaseAuthClient.instance.client = null;
+		}
 		SupabaseAuthClient.instance = null;
 	}
 

@@ -130,7 +130,7 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 	});
 
 	describe('Time-Based Token Expiration', () => {
-		it('should detect expired token after time passes', async () => {
+		it('should detect expired token after time passes', () => {
 			// Set a fixed "now" time
 			const now = new Date('2024-01-15T10:00:00Z');
 			vi.useFakeTimers();
@@ -176,6 +176,9 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			vi.useFakeTimers();
 			vi.setSystemTime(now);
 
+			// Spy on getInstance to verify StorageFactory uses the singleton
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
+
 			// Simulate the bug scenario:
 
 			// T=0: User authenticates
@@ -186,6 +189,8 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			const authManager = AuthManager.getInstance();
 			expect(authManager.supabaseClient.getClient()).toBe(internalClient);
 
+			const callsBeforeStorage = getInstanceSpy.mock.calls.length;
+
 			// T+2h: Token expires, user runs a command
 			vi.setSystemTime(new Date(now.getTime() + 2 * 60 * 60 * 1000));
 
@@ -193,16 +198,27 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			const config = createApiStorageConfig();
 			await StorageFactory.create(config, '/test/project');
 
+			// REGRESSION GUARD: Verify StorageFactory called getInstance
+			// If this fails, StorageFactory bypassed the singleton (the original bug)
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(
+				callsBeforeStorage
+			);
+
 			// CRITICAL: The singleton should still return the same client
 			// Before the fix, StorageFactory would create a NEW SupabaseAuthClient
 			expect(SupabaseAuthClient.getInstance().getClient()).toBe(internalClient);
 			expect(authManager.supabaseClient.getClient()).toBe(internalClient);
+
+			getInstanceSpy.mockRestore();
 		});
 
 		it('should track refresh calls on the single shared client', async () => {
 			const now = new Date('2024-01-15T10:00:00Z');
 			vi.useFakeTimers();
 			vi.setSystemTime(now);
+
+			// Spy on getInstance to verify both code paths use the singleton
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
 
 			// Get the singleton
 			const supabaseAuthClient = SupabaseAuthClient.getInstance();
@@ -226,28 +242,45 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			// T+2h: Token expires
 			vi.setSystemTime(new Date(now.getTime() + 2 * 60 * 60 * 1000));
 
+			const callsBeforeAccess = getInstanceSpy.mock.calls.length;
+
 			// Multiple code paths access the singleton
 			const authManager = AuthManager.getInstance();
 			const config = createApiStorageConfig();
 			await StorageFactory.create(config, '/test/project');
 
+			// REGRESSION GUARD: Verify both AuthManager and StorageFactory called getInstance
+			// This proves they're using the singleton rather than creating independent clients
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(
+				callsBeforeAccess
+			);
+
 			// Trigger refresh from one path
 			await supabaseAuthClient.refreshSession();
 
-			// The key assertion: all code paths share the same mock
-			// If they had separate clients, we couldn't track this
+			// The key assertion: refreshCallCount is 1 because:
+			// 1. StorageFactory.create and AuthManager.getInstance don't trigger refresh on their own
+			// 2. Only the explicit refreshSession() call above triggered refresh
+			// 3. Because all code paths share the same SupabaseAuthClient singleton,
+			//    we can spy on a single mock and verify no other code path called refresh.
+			// Before the singleton fix, StorageFactory would create a new client that could
+			// trigger its own independent refresh, leading to "refresh_token_already_used" errors.
 			expect(refreshCallCount).toBe(1);
 
 			// Verify it's the same client everywhere
 			expect(authManager.supabaseClient.getClient()).toBe(internalClient);
 
 			vi.mocked(internalClient.auth.refreshSession).mockRestore();
+			getInstanceSpy.mockRestore();
 		});
 
 		it('should prevent the "refresh_token_already_used" race condition', async () => {
 			const now = new Date('2024-01-15T10:00:00Z');
 			vi.useFakeTimers();
 			vi.setSystemTime(now);
+
+			// Spy on getInstance to verify all code paths use the singleton
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
 
 			// Get the singleton
 			const supabaseAuthClient = SupabaseAuthClient.getInstance();
@@ -284,6 +317,8 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			// T+2h: Token expires
 			vi.setSystemTime(new Date(now.getTime() + 2 * 60 * 60 * 1000));
 
+			const callsBeforeFlow = getInstanceSpy.mock.calls.length;
+
 			// Simulate the typical command flow:
 			// 1. AuthManager checks session
 			const authManager = AuthManager.getInstance();
@@ -291,6 +326,9 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			// 2. StorageFactory creates storage
 			const config = createApiStorageConfig();
 			await StorageFactory.create(config, '/test/project');
+
+			// REGRESSION GUARD: Both code paths must use the singleton
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(callsBeforeFlow);
 
 			// 3. One of them triggers a refresh
 			const result1 = await authManager.supabaseClient.refreshSession();
@@ -304,6 +342,7 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			// With singleton, subsequent calls go through the same (now refreshed) client.
 
 			vi.mocked(internalClient.auth.refreshSession).mockRestore();
+			getInstanceSpy.mockRestore();
 		});
 	});
 
@@ -313,6 +352,9 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			const loginTime = new Date('2024-01-15T09:00:00Z');
 			vi.useFakeTimers();
 			vi.setSystemTime(loginTime);
+
+			// Spy on getInstance to verify StorageFactory uses the singleton
+			const getInstanceSpy = vi.spyOn(SupabaseAuthClient, 'getInstance');
 
 			// User logs in at 9:00 AM
 			const authManager = AuthManager.getInstance();
@@ -337,6 +379,8 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			const commandTime = new Date('2024-01-15T10:15:00Z');
 			vi.setSystemTime(commandTime);
 
+			const callsBeforeCommand = getInstanceSpy.mock.calls.length;
+
 			// User runs: tm show HAM-1945
 			// This triggers:
 			// 1. AuthManager.hasValidSession() -> getSession() -> auto-refresh
@@ -345,6 +389,11 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			// Simulate the command flow
 			const config = createApiStorageConfig();
 			await StorageFactory.create(config, '/test/project');
+
+			// REGRESSION GUARD: StorageFactory must call getInstance (not create its own client)
+			expect(getInstanceSpy.mock.calls.length).toBeGreaterThan(
+				callsBeforeCommand
+			);
 
 			// If we trigger a refresh, it should only happen once
 			await authManager.supabaseClient.refreshSession();
@@ -357,6 +406,7 @@ describe('Expired Token Refresh - Time-Based Integration', () => {
 			expect(SupabaseAuthClient.getInstance()).toBe(authManager.supabaseClient);
 
 			vi.mocked(supabaseClient.auth.refreshSession).mockRestore();
+			getInstanceSpy.mockRestore();
 		});
 	});
 });
