@@ -20,37 +20,23 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	MockSupabaseSessionStorage,
+	createMockLogger,
+	createApiStorageConfig
+} from '../../../src/testing/index.js';
 
-// Mock logger
+// Mock logger using shared mock factory
 vi.mock('../../../src/common/logger/index.js', () => ({
-	getLogger: () => ({
-		warn: vi.fn(),
-		info: vi.fn(),
-		debug: vi.fn(),
-		error: vi.fn()
-	})
+	getLogger: createMockLogger
 }));
 
-// Mock SupabaseSessionStorage
+// Mock SupabaseSessionStorage using shared Map-based mock
+// (this test may exercise storage behavior in future scenarios)
 vi.mock(
 	'../../../src/modules/auth/services/supabase-session-storage.js',
 	() => ({
-		SupabaseSessionStorage: class MockSupabaseSessionStorage {
-			private data = new Map<string, string>();
-
-			clear() {
-				this.data.clear();
-			}
-			async getItem(key: string) {
-				return this.data.get(key) ?? null;
-			}
-			async setItem(key: string, value: string) {
-				this.data.set(key, value);
-			}
-			async removeItem(key: string) {
-				this.data.delete(key);
-			}
-		}
+		SupabaseSessionStorage: MockSupabaseSessionStorage
 	})
 );
 
@@ -58,7 +44,6 @@ vi.mock(
 import { SupabaseAuthClient } from '../../../src/modules/integration/clients/supabase-client.js';
 import { AuthManager } from '../../../src/modules/auth/managers/auth-manager.js';
 import { StorageFactory } from '../../../src/modules/storage/services/storage-factory.js';
-import { createApiStorageConfig } from '../../../src/testing/index.js';
 
 describe('Token Refresh - Singleton Integration', () => {
 	let originalSupabaseUrl: string | undefined;

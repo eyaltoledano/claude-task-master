@@ -23,29 +23,23 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+	MockSupabaseSessionStorageMinimal,
+	createMockLogger,
+	createApiStorageConfig
+} from '../../../src/testing/index.js';
 
-// Mock logger
+// Mock logger using shared mock factory
 vi.mock('../../../src/common/logger/index.js', () => ({
-	getLogger: () => ({
-		warn: vi.fn(),
-		info: vi.fn(),
-		debug: vi.fn(),
-		error: vi.fn()
-	})
+	getLogger: createMockLogger
 }));
 
-// Mock SupabaseSessionStorage
+// Mock SupabaseSessionStorage using shared minimal mock
+// (this test doesn't exercise storage behavior, only singleton identity)
 vi.mock(
 	'../../../src/modules/auth/services/supabase-session-storage.js',
 	() => ({
-		SupabaseSessionStorage: class MockSupabaseSessionStorage {
-			clear() {}
-			async getItem() {
-				return null;
-			}
-			async setItem() {}
-			async removeItem() {}
-		}
+		SupabaseSessionStorage: MockSupabaseSessionStorageMinimal
 	})
 );
 
@@ -53,7 +47,6 @@ vi.mock(
 import { SupabaseAuthClient } from '../../../src/modules/integration/clients/supabase-client.js';
 import { AuthManager } from '../../../src/modules/auth/managers/auth-manager.js';
 import { StorageFactory } from '../../../src/modules/storage/services/storage-factory.js';
-import { createApiStorageConfig } from '../../../src/testing/index.js';
 
 describe('SupabaseAuthClient - Singleton Pattern Validation', () => {
 	let originalSupabaseUrl: string | undefined;

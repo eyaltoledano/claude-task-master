@@ -30,3 +30,10 @@ export {
 	createFileStorageConfig,
 	ConfigScenarios
 } from './config-fixtures.js';
+
+export {
+	MockSupabaseSessionStorage,
+	MockSupabaseSessionStorageMinimal
+} from './auth-mocks.js';
+
+export { createMockLogger } from './test-mocks.js';
