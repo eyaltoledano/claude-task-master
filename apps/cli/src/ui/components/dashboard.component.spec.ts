@@ -33,7 +33,7 @@ const createTestTask = (
 });
 
 const createTestSubtask = (
-	id: string,
+	id: number | string,
 	parentId: string,
 	status: TaskStatus
 ): Subtask => ({
@@ -191,7 +191,7 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 
 			// Assert: Task 15 should be ready since its dependency (14) is cancelled
 			expect(stats.tasksBlockedByDeps).toBe(0);
-			expect(stats.tasksReadyToWork).toBeGreaterThan(0);
+			expect(stats.tasksReadyToWork).toBe(1);
 		});
 
 		it('should treat completed status as satisfied dependencies', () => {
@@ -223,6 +223,22 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Assert
 			expect(stats.tasksBlockedByDeps).toBe(0);
 			expect(stats.tasksReadyToWork).toBe(2); // Both dependents should be ready
+		});
+
+		it('should block tasks when only some dependencies are complete', () => {
+			// Arrange: Task 3 depends on task 1 (cancelled) and task 2 (pending)
+			const tasks: Task[] = [
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'pending' }),
+				createTestTask({ id: '3', status: 'pending', dependencies: ['1', '2'] })
+			];
+
+			// Act
+			const stats = calculateDependencyStatistics(tasks);
+
+			// Assert: Task 3 blocked by pending task 2, only task 2 is ready
+			expect(stats.tasksBlockedByDeps).toBe(1);
+			expect(stats.tasksReadyToWork).toBe(1);
 		});
 	});
 });
