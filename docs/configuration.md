@@ -144,6 +144,49 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
+
+### Command-Based API Key Resolution (v0.30.0+)
+
+Instead of hardcoding API keys in your `.env` file, you can use shell commands to retrieve them from secure credential stores using the `!cmd:` prefix:
+
+```bash
+# macOS Keychain
+ANTHROPIC_API_KEY=!cmd:security find-generic-password -a taskmaster -s anthropic -w
+
+# pass (password-store)
+OPENAI_API_KEY=!cmd:pass show taskmaster/openai
+
+# 1Password CLI
+PERPLEXITY_API_KEY=!cmd:op item get "Perplexity API" --field credential
+
+# AWS Secrets Manager
+GOOGLE_API_KEY=!cmd:aws secretsmanager get-secret-value --secret-id taskmaster/google --query SecretString --output text
+```
+
+**Features:**
+- Commands are executed using the system shell (auto-detected per platform)
+- Output is automatically trimmed of whitespace
+- Commands that fail or return empty output are treated as missing keys
+- Timeout configurable via `TASKMASTER_CMD_TIMEOUT` (default: 5000ms)
+- Backward compatible: plain text keys continue to work
+- Cross-platform compatible (Windows, macOS, Linux)
+
+**Security Benefits:**
+- Keep API keys out of version control
+- Share `.env.example` files with command syntax instead of actual keys
+- Use your organization's preferred credential management system
+- Rotate keys without updating config files
+
+**Configuration:**
+- `TASKMASTER_CMD_TIMEOUT`: Command execution timeout
+  - Values ≤60 treated as seconds (e.g., `5` = 5 seconds)
+  - Values >60 treated as milliseconds (e.g., `10000` = 10 seconds)
+  - Default: 5000ms (5 seconds)
+
+**Error Handling:**
+- Failed commands return `null` (treated as missing key)
+- Error messages are logged without exposing command details or output
+- Only the key name and error type (e.g., "timeout", exit code) are logged
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -197,14 +240,26 @@ This file is automatically created during tagged system migration and should not
 
 ## Example `.env` File (for API Keys)
 
-```
+```bash
 # Required API keys for providers configured in .taskmaster/config.json
+
+# Option 1: Plain text keys (not recommended for production)
 ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 PERPLEXITY_API_KEY=pplx-your-key-here
-# OPENAI_API_KEY=sk-your-key-here
-# GOOGLE_API_KEY=AIzaSy...
-# AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
-# etc.
+
+# Option 2: Command-based resolution (recommended for security)
+# OPENAI_API_KEY=!cmd:security find-generic-password -a taskmaster -s openai -w
+# GOOGLE_API_KEY=!cmd:pass show taskmaster/google
+# AZURE_OPENAI_API_KEY=!cmd:op item get "Azure OpenAI" --field credential
+
+# Additional API keys
+# MISTRAL_API_KEY=your-mistral-key-here
+# GROQ_API_KEY=your-groq-key-here
+# OPENROUTER_API_KEY=your-openrouter-key-here
+# XAI_API_KEY=your-xai-key-here
+
+# Command timeout configuration (optional)
+# TASKMASTER_CMD_TIMEOUT=5           # Timeout: <=60 = seconds, >60 = milliseconds
 
 # Optional Endpoint Overrides
 # Use a specific provider's base URL, e.g., for an OpenAI-compatible API

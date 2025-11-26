@@ -129,6 +129,9 @@ export type {
 
 // ========== Advanced API (for CLI/Extension/MCP) ==========
 
+// Config - Advanced
+export { EnvironmentConfigProvider } from './modules/config/services/environment-config-provider.service.js';
+
 // Auth - Advanced
 export { AuthManager } from './modules/auth/managers/auth-manager.js';
 

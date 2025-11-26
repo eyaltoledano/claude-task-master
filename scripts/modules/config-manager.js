@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import chalk from 'chalk';
 import { z } from 'zod';
 import { AI_COMMAND_NAMES } from '../../src/constants/commands.js';
@@ -15,12 +14,12 @@ import {
 	VALIDATED_PROVIDERS
 } from '@tm/core';
 import { findConfigPath } from '../../src/utils/path-utils.js';
-import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
+import { findProjectRoot, isEmpty, log } from './utils.js';
 import MODEL_MAP from './supported-models.json' with { type: 'json' };
+import { EnvironmentConfigProvider } from '@tm/core';
 
-// Calculate __dirname in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Initialize environment config provider for !cmd: support
+const envProvider = new EnvironmentConfigProvider();
 
 // Default configuration values (used if config file is missing or incomplete)
 const DEFAULTS = {
@@ -82,9 +81,8 @@ class ConfigurationError extends Error {
 function _loadAndValidateConfig(explicitRoot = null) {
 	const defaults = DEFAULTS; // Use the defined defaults
 	let rootToUse = explicitRoot;
-	let configSource = explicitRoot
-		? `explicit root (${explicitRoot})`
-		: 'defaults (no root provided yet)';
+	let configExists = false;
+	let configSource = '';
 
 	// ---> If no explicit root, TRY to find it <---
 	if (!rootToUse) {
@@ -103,7 +101,6 @@ function _loadAndValidateConfig(explicitRoot = null) {
 	// --- Find configuration file ---
 	let configPath = null;
 	let config = { ...defaults }; // Start with a deep copy of defaults
-	let configExists = false;
 
 	// During initialization (no project markers), skip config file search entirely
 	const hasProjectMarkers =
@@ -533,23 +530,17 @@ function getResearchProvider(explicitRoot = null) {
  * @returns {boolean} True if codebase analysis is enabled
  */
 function isCodebaseAnalysisEnabled(session = null, projectRoot = null) {
-	// Priority 1: Environment variable
-	const envFlag = resolveEnvVariable(
+	// Priority 1: Environment variable (checks session?.env, .env file, then process.env)
+	const envFlag = envProvider.resolveVariable(
 		'TASKMASTER_ENABLE_CODEBASE_ANALYSIS',
-		session,
-		projectRoot
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
 	);
 	if (envFlag !== null && envFlag !== undefined && envFlag !== '') {
 		return envFlag.toLowerCase() === 'true' || envFlag === '1';
 	}
 
-	// Priority 2: MCP session environment
-	if (session?.env?.TASKMASTER_ENABLE_CODEBASE_ANALYSIS) {
-		const mcpFlag = session.env.TASKMASTER_ENABLE_CODEBASE_ANALYSIS;
-		return mcpFlag.toLowerCase() === 'true' || mcpFlag === '1';
-	}
-
-	// Priority 3: Configuration file
+	// Priority 1: Configuration file
 	const globalConfig = getGlobalConfig(projectRoot);
 	return globalConfig.enableCodebaseAnalysis !== false; // Default to true
 }
@@ -879,7 +870,11 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	}
 
 	const envVarName = keyMap[providerKey];
-	const apiKeyValue = resolveEnvVariable(envVarName, session, projectRoot);
+	const apiKeyValue = envProvider.resolveVariable(
+		envVarName,
+		session?.env,
+		projectRoot ? path.join(projectRoot, '.env') : undefined
+	);
 
 	// Check if the key exists, is not empty, and is not a placeholder
 	return (
@@ -924,7 +919,6 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 		}
 
 		let apiKeyToCheck = null;
-		let placeholderValue = null;
 
 		switch (providerName) {
 			case 'anthropic':
@@ -1147,7 +1141,11 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	const provider = roleConfig?.provider;
 	if (provider) {
 		const envVarName = `${provider.toUpperCase()}_BASE_URL`;
-		return resolveEnvVariable(envVarName, null, explicitRoot);
+		return envProvider.resolveVariable(
+			envVarName,
+			undefined,
+			explicitRoot ? path.join(explicitRoot, '.env') : undefined
+		);
 	}
 	return undefined;
 }
