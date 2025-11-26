@@ -42,7 +42,8 @@ export class AuthManager {
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.contextStore = ContextStore.getInstance();
-		this.supabaseClient = new SupabaseAuthClient();
+		// Use singleton SupabaseAuthClient to prevent refresh token race conditions
+		this.supabaseClient = SupabaseAuthClient.getInstance();
 
 		// Initialize session manager (handles session lifecycle)
 		this.sessionManager = new SessionManager(

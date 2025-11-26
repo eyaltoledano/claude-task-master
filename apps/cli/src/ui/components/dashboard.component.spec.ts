@@ -3,32 +3,63 @@
  * Bug fix: Cancelled tasks should be treated as complete
  */
 
-import type { Task } from '@tm/core';
+import type { Subtask, Task, TaskStatus } from '@tm/core';
 import { describe, expect, it } from 'vitest';
 import {
-	type TaskStatistics,
 	calculateDependencyStatistics,
 	calculateSubtaskStatistics,
 	calculateTaskStatistics
-} from '../../../src/ui/components/dashboard.component.js';
+} from './dashboard.component.js';
+
+// Helper to create minimal test tasks
+const createTask = (
+	overrides: Omit<Partial<Task>, 'id'> & { id: number | string }
+): Task => {
+	const { id, ...rest } = overrides;
+	return {
+		title: '',
+		description: '',
+		status: 'pending',
+		priority: 'medium',
+		dependencies: [],
+		details: '',
+		testStrategy: '',
+		subtasks: [],
+		...rest,
+		id: String(id)
+	} as Task;
+};
+
+// Helper to create minimal subtasks
+const createSubtask = (id: string, parentId: string, status: TaskStatus): Subtask => ({
+	id,
+	parentId,
+	title: `Subtask ${id}`,
+	status,
+	description: '',
+	priority: 'medium',
+	dependencies: [],
+	details: '',
+	testStrategy: ''
+});
 
 describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 	describe('calculateTaskStatistics', () => {
 		it('should treat cancelled tasks as complete in percentage calculation', () => {
 			// Arrange: 14 done, 1 cancelled = 100% complete
 			const tasks: Task[] = [
-				...Array.from({ length: 14 }, (_, i) => ({
-					id: i + 1,
-					title: `Task ${i + 1}`,
-					status: 'done' as const,
-					dependencies: []
-				})),
-				{
+				...Array.from({ length: 14 }, (_, i) =>
+					createTask({
+						id: i + 1,
+						title: `Task ${i + 1}`,
+						status: 'done'
+					})
+				),
+				createTask({
 					id: 15,
 					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				}
+					status: 'cancelled'
+				})
 			];
 
 			// Act
@@ -46,30 +77,10 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as complete in percentage calculation', () => {
 			// Arrange: Mix of done, completed, cancelled
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Done Task',
-					status: 'done' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Completed Task',
-					status: 'completed' as const,
-					dependencies: []
-				},
-				{
-					id: 3,
-					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 4,
-					title: 'Pending Task',
-					status: 'pending' as const,
-					dependencies: []
-				}
+				createTask({ id: 1, title: 'Done Task', status: 'done' }),
+				createTask({ id: 2, title: 'Completed Task', status: 'completed' }),
+				createTask({ id: 3, title: 'Cancelled Task', status: 'cancelled' }),
+				createTask({ id: 4, title: 'Pending Task', status: 'pending' })
 			];
 
 			// Act
@@ -87,18 +98,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 100% completion when all tasks are cancelled', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Cancelled 1',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Cancelled 2',
-					status: 'cancelled' as const,
-					dependencies: []
-				}
+				createTask({ id: 1, title: 'Cancelled 1', status: 'cancelled' }),
+				createTask({ id: 2, title: 'Cancelled 2', status: 'cancelled' })
 			];
 
 			// Act
@@ -115,18 +116,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 0% completion when no tasks are complete', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Pending Task',
-					status: 'pending' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'In Progress Task',
-					status: 'in-progress' as const,
-					dependencies: []
-				}
+				createTask({ id: 1, title: 'Pending Task', status: 'pending' }),
+				createTask({ id: 2, title: 'In Progress Task', status: 'in-progress' })
 			];
 
 			// Act
@@ -141,18 +132,17 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat cancelled subtasks as complete in percentage calculation', () => {
 			// Arrange: Task with 3 done subtasks and 1 cancelled = 100%
 			const tasks: Task[] = [
-				{
+				createTask({
 					id: 1,
 					title: 'Parent Task',
-					status: 'in-progress' as const,
-					dependencies: [],
+					status: 'in-progress',
 					subtasks: [
-						{ id: '1', title: 'Sub 1', status: 'done' },
-						{ id: '2', title: 'Sub 2', status: 'done' },
-						{ id: '3', title: 'Sub 3', status: 'done' },
-						{ id: '4', title: 'Sub 4', status: 'cancelled' }
+						createSubtask('1', '1', 'done'),
+						createSubtask('2', '1', 'done'),
+						createSubtask('3', '1', 'done'),
+						createSubtask('4', '1', 'cancelled')
 					]
-				}
+				})
 			];
 
 			// Act
@@ -170,17 +160,16 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should handle completed status in subtasks', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
+				createTask({
 					id: 1,
 					title: 'Parent Task',
-					status: 'in-progress' as const,
-					dependencies: [],
+					status: 'in-progress',
 					subtasks: [
-						{ id: '1', title: 'Sub 1', status: 'done' },
-						{ id: '2', title: 'Sub 2', status: 'completed' },
-						{ id: '3', title: 'Sub 3', status: 'pending' }
+						createSubtask('1', '1', 'done'),
+						createSubtask('2', '1', 'completed'),
+						createSubtask('3', '1', 'pending')
 					]
-				}
+				})
 			];
 
 			// Act
@@ -198,24 +187,24 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat cancelled tasks as satisfied dependencies', () => {
 			// Arrange: Task 15 depends on cancelled task 14
 			const tasks: Task[] = [
-				...Array.from({ length: 13 }, (_, i) => ({
-					id: i + 1,
-					title: `Task ${i + 1}`,
-					status: 'done' as const,
-					dependencies: []
-				})),
-				{
+				...Array.from({ length: 13 }, (_, i) =>
+					createTask({
+						id: i + 1,
+						title: `Task ${i + 1}`,
+						status: 'done'
+					})
+				),
+				createTask({
 					id: 14,
 					title: 'Cancelled Dependency',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
+					status: 'cancelled'
+				}),
+				createTask({
 					id: 15,
 					title: 'Dependent Task',
-					status: 'pending' as const,
-					dependencies: [14]
-				}
+					status: 'pending',
+					dependencies: ['14']
+				})
 			];
 
 			// Act
@@ -231,18 +220,17 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat completed status as satisfied dependencies', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
+				createTask({
 					id: 1,
 					title: 'Completed Dependency',
-					status: 'completed' as const,
-					dependencies: []
-				},
-				{
+					status: 'completed'
+				}),
+				createTask({
 					id: 2,
 					title: 'Dependent Task',
-					status: 'pending' as const,
-					dependencies: [1]
-				}
+					status: 'pending',
+					dependencies: ['1']
+				})
 			];
 
 			// Act
@@ -256,24 +244,23 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should count tasks with cancelled dependencies as ready', () => {
 			// Arrange: Multiple tasks depending on cancelled tasks
 			const tasks: Task[] = [
-				{
+				createTask({
 					id: 1,
 					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
+					status: 'cancelled'
+				}),
+				createTask({
 					id: 2,
 					title: 'Dependent 1',
-					status: 'pending' as const,
-					dependencies: [1]
-				},
-				{
+					status: 'pending',
+					dependencies: ['1']
+				}),
+				createTask({
 					id: 3,
 					title: 'Dependent 2',
-					status: 'pending' as const,
-					dependencies: [1]
-				}
+					status: 'pending',
+					dependencies: ['1']
+				})
 			];
 
 			// Act

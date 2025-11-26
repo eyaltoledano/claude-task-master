@@ -2,7 +2,7 @@
  * Tests for SupabaseAuthClient
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
 
 // Mock logger
@@ -34,7 +34,7 @@ import { SupabaseAuthClient } from './supabase-client.js';
 import { AuthenticationError } from '../../auth/types.js';
 
 describe('SupabaseAuthClient', () => {
-	let authClient: InstanceType<typeof SupabaseAuthClient>;
+	let authClient: SupabaseAuthClient;
 	let mockSupabaseClient: any;
 
 	// Store original env values for cleanup
@@ -42,6 +42,9 @@ describe('SupabaseAuthClient', () => {
 	let originalSupabaseAnonKey: string | undefined;
 
 	beforeEach(() => {
+		// Reset singleton before each test
+		SupabaseAuthClient.resetInstance();
+
 		// Store original values
 		originalSupabaseUrl = process.env.TM_SUPABASE_URL;
 		originalSupabaseAnonKey = process.env.TM_SUPABASE_ANON_KEY;
@@ -50,7 +53,8 @@ describe('SupabaseAuthClient', () => {
 		process.env.TM_SUPABASE_URL = 'https://test.supabase.co';
 		process.env.TM_SUPABASE_ANON_KEY = 'test-anon-key';
 
-		authClient = new SupabaseAuthClient();
+		// Use getInstance() instead of new
+		authClient = SupabaseAuthClient.getInstance();
 
 		// Create mock Supabase client
 		mockSupabaseClient = {
@@ -76,6 +80,9 @@ describe('SupabaseAuthClient', () => {
 	});
 
 	afterEach(() => {
+		// Reset singleton after each test
+		SupabaseAuthClient.resetInstance();
+
 		// Restore original env values
 		if (originalSupabaseUrl === undefined) {
 			delete process.env.TM_SUPABASE_URL;
@@ -88,6 +95,23 @@ describe('SupabaseAuthClient', () => {
 		} else {
 			process.env.TM_SUPABASE_ANON_KEY = originalSupabaseAnonKey;
 		}
+	});
+
+	describe('Singleton Pattern', () => {
+		it('should return the same instance on multiple getInstance() calls', () => {
+			const instance1 = SupabaseAuthClient.getInstance();
+			const instance2 = SupabaseAuthClient.getInstance();
+
+			expect(instance1).toBe(instance2);
+		});
+
+		it('should return a new instance after resetInstance()', () => {
+			const instance1 = SupabaseAuthClient.getInstance();
+			SupabaseAuthClient.resetInstance();
+			const instance2 = SupabaseAuthClient.getInstance();
+
+			expect(instance1).not.toBe(instance2);
+		});
 	});
 
 	describe('verifyMFA', () => {

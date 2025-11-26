@@ -7,9 +7,11 @@
  * @example
  * ```ts
  * import { createTask, createTasksFile, TaskScenarios } from '@tm/core/testing';
+ * import { createApiStorageConfig, ConfigScenarios } from '@tm/core/testing';
  *
  * const task = createTask({ id: 1, title: 'Test Task' });
  * const tasksFile = TaskScenarios.linearDependencyChain();
+ * const config = ConfigScenarios.apiStorage();
  * ```
  */
 
@@ -20,3 +22,11 @@ export {
 	TaskScenarios,
 	type TasksFile
 } from './task-fixtures.js';
+
+export {
+	createApiStorageSettings,
+	createFileStorageSettings,
+	createApiStorageConfig,
+	createFileStorageConfig,
+	ConfigScenarios
+} from './config-fixtures.js';

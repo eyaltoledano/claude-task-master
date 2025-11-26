@@ -16,7 +16,7 @@ describe('ConfigMerger', () => {
 		it('should add configuration source', () => {
 			const source = {
 				name: 'test',
-				config: { test: true },
+				config: { test: true } as any,
 				precedence: 1
 			};
 
@@ -48,13 +48,13 @@ describe('ConfigMerger', () => {
 		it('should merge configurations based on precedence', () => {
 			merger.addSource({
 				name: 'low',
-				config: { a: 1, b: 2 },
+				config: { a: 1, b: 2 } as any,
 				precedence: 1
 			});
 
 			merger.addSource({
 				name: 'high',
-				config: { a: 3, c: 4 },
+				config: { a: 3, c: 4 } as any,
 				precedence: 2
 			});
 
@@ -72,8 +72,8 @@ describe('ConfigMerger', () => {
 				name: 'base',
 				config: {
 					models: { main: 'model1', fallback: 'model2' },
-					storage: { type: 'file' as const }
-				},
+					storage: { type: 'file' }
+				} as any,
 				precedence: 1
 			});
 
@@ -81,8 +81,8 @@ describe('ConfigMerger', () => {
 				name: 'override',
 				config: {
 					models: { main: 'model3' },
-					storage: { encoding: 'utf8' as const }
-				},
+					storage: { encoding: 'utf8' }
+				} as any,
 				precedence: 2
 			});
 
@@ -103,17 +103,17 @@ describe('ConfigMerger', () => {
 		it('should handle arrays by replacement', () => {
 			merger.addSource({
 				name: 'base',
-				config: { items: [1, 2, 3] },
+				config: { items: [1, 2, 3] } as any,
 				precedence: 1
 			});
 
 			merger.addSource({
 				name: 'override',
-				config: { items: [4, 5] },
+				config: { items: [4, 5] } as any,
 				precedence: 2
 			});
 
-			const result = merger.merge();
+			const result = merger.merge() as any;
 
 			expect(result.items).toEqual([4, 5]); // Arrays are replaced, not merged
 		});
@@ -121,7 +121,7 @@ describe('ConfigMerger', () => {
 		it('should ignore null and undefined values', () => {
 			merger.addSource({
 				name: 'base',
-				config: { a: 1, b: 2 },
+				config: { a: 1, b: 2 } as any,
 				precedence: 1
 			});
 
@@ -148,23 +148,23 @@ describe('ConfigMerger', () => {
 		it('should use CONFIG_PRECEDENCE constants correctly', () => {
 			merger.addSource({
 				name: 'defaults',
-				config: { level: 'default' },
+				config: { level: 'default' } as any,
 				precedence: CONFIG_PRECEDENCE.DEFAULTS
 			});
 
 			merger.addSource({
 				name: 'local',
-				config: { level: 'local' },
+				config: { level: 'local' } as any,
 				precedence: CONFIG_PRECEDENCE.LOCAL
 			});
 
 			merger.addSource({
 				name: 'environment',
-				config: { level: 'env' },
+				config: { level: 'env' } as any,
 				precedence: CONFIG_PRECEDENCE.ENVIRONMENT
 			});
 
-			const result = merger.merge();
+			const result = merger.merge() as any;
 
 			expect(result.level).toBe('env'); // Highest precedence wins
 		});
