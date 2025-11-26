@@ -53,6 +53,9 @@
 	"author": "Eyal Toledano",
 	"license": "MIT WITH Commons-Clause",
 	"dependencies": {
+		"@tm/tui": "*",
+		"ink": "^5.2.0",
+		"react": "^18.3.1",
 		"@ai-sdk/amazon-bedrock": "^3.0.23",
 		"@ai-sdk/anthropic": "^2.0.18",
 		"@ai-sdk/azure": "^2.0.34",

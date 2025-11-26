@@ -132,6 +132,28 @@ import {
 	removeProfileRules
 } from '../../src/utils/rule-transformer.js';
 import { initializeProject } from '../init.js';
+
+// Import TUI for REPL mode
+let renderTUI = null;
+let TUIShell = null;
+
+// Lazy load TUI to avoid issues if not installed
+async function loadTUI() {
+	if (renderTUI && TUIShell) return { render: renderTUI, Shell: TUIShell };
+	try {
+		const ink = await import('ink');
+		const tui = await import('@tm/tui');
+		renderTUI = ink.render;
+		TUIShell = tui.Shell;
+		return { render: renderTUI, Shell: TUIShell };
+	} catch (error) {
+		// Log the actual error for debugging
+		if (process.env.DEBUG || process.env.TM_DEBUG) {
+			console.error('TUI load error:', error.message);
+		}
+		return null;
+	}
+}
 import { syncTasksToReadme } from './sync-readme.js';
 import {
 	getApiKeyStatusReport,
@@ -139,6 +161,191 @@ import {
 	getModelConfiguration,
 	setModel
 } from './task-manager/models.js';
+
+/**
+ * Check if the user is connected to a Hamster brief
+ * @returns {boolean} True if connected to Hamster (has brief context OR has API storage configured)
+ */
+function isConnectedToHamster() {
+	try {
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+
+		// Check if user has a brief context
+		if (context && context.briefId) {
+			return true;
+		}
+
+		// Fallback: Check if storage type is 'api' (user selected Hamster during init)
+		try {
+			const config = getConfig();
+			if (config?.storage?.type === 'api') {
+				return true;
+			}
+		} catch {
+			// Config check failed, continue
+		}
+
+		return false;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Helper to create aligned command entries
+ */
+function createCommandEntry(command, description, indent = '  ') {
+	const cmdColumn = 47; // Fixed column width for commands
+	const paddingNeeded = Math.max(1, cmdColumn - indent.length - command.length);
+	return (
+		chalk.cyan(indent + command) +
+		' '.repeat(paddingNeeded) +
+		chalk.gray(description)
+	);
+}
+
+/**
+ * Display Hamster-specific help (simplified command list)
+ */
+function displayHamsterHelp() {
+	// Calculate box width (use 90% of terminal width, min 80, max 120)
+	const terminalWidth = process.stdout.columns || 80;
+	const boxWidth = Math.min(120, Math.max(80, Math.floor(terminalWidth * 0.9)));
+
+	console.log(
+		boxen(
+			chalk.cyan.bold('Taskmaster CLI - Connected to Hamster\n\n') +
+				chalk.white(
+					'Taskmaster syncs tasks from your Hamster brief and provides a CLI\n'
+				) +
+				chalk.white(
+					'interface to execute the plan. Commands can be used by humans or AI agents.\n\n'
+				) +
+				chalk.dim(
+					'Tasks are managed in Hamster Studio. Changes sync automatically.\n'
+				) +
+				chalk.dim(
+					'Use these commands to view tasks and update their status:\n\n'
+				) +
+				boxen('  Task Management  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry('list', 'View all tasks from the brief\n') +
+				createCommandEntry(
+					'list <status>',
+					'Filter by status (e.g., pending, done, in-progress)\n'
+				) +
+				createCommandEntry(
+					'list all',
+					'View all tasks with subtasks expanded\n'
+				) +
+				createCommandEntry('show <id>', 'Show detailed task/subtask info\n') +
+				createCommandEntry('next', 'See the next task to work on\n') +
+				createCommandEntry(
+					'set-status|status <id> <status>',
+					'Update task status (pending, in-progress, done)\n'
+				) +
+				createCommandEntry(
+					'update-task <id> <prompt>',
+					'Add information to a task\n'
+				) +
+				'\n' +
+				boxen('  Authentication & Context  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry('auth login', 'Log in to Hamster\n') +
+				createCommandEntry('auth logout', 'Log out from Hamster\n') +
+				createCommandEntry('auth refresh', 'Refresh authentication token\n') +
+				createCommandEntry('auth status', 'Check authentication status\n') +
+				createCommandEntry('briefs', 'View and select from your briefs\n') +
+				createCommandEntry('context', 'Show current brief context\n') +
+				createCommandEntry('context org', 'Switch organization\n') +
+				createCommandEntry(
+					'context brief <url>',
+					'Switch to a different brief\n'
+				) +
+				'\n' +
+				boxen('  Configuration  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry(
+					'rules --setup',
+					'Configure AI IDE rules for better integration\n\n'
+				) +
+				boxen('  Examples  ', {
+					padding: 0,
+					borderStyle: 'round',
+					borderColor: 'yellow'
+				}) +
+				'\n' +
+				createCommandEntry('tm list', 'See all tasks\n', '  ').replace(
+					chalk.cyan('  tm'),
+					chalk.dim('  tm')
+				) +
+				createCommandEntry(
+					'tm list done',
+					'See completed tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm list in-progress',
+					'See tasks in progress\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm list all',
+					'View with all subtasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm show HAM-1,HAM-2',
+					'View multiple tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm status HAM-1,HAM-2 in-progress',
+					'Start tasks\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm status HAM-1 done',
+					'Mark task complete\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm update-task HAM-1 <content>',
+					'Add info/context/breadcrumbs to task\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				createCommandEntry(
+					'tm briefs',
+					'View briefs and select one\n\n',
+					'  '
+				).replace(chalk.cyan('  tm'), chalk.dim('  tm')) +
+				chalk.white.bold('» Need more commands?\n') +
+				chalk.gray(
+					'Advanced features (models, tags, PRD parsing) are managed in Hamster Studio.'
+				),
+			{
+				padding: 1,
+				margin: { top: 1 },
+				borderStyle: 'round',
+				borderColor: 'cyan',
+				width: boxWidth
+			}
+		)
+	);
+}
 
 /**
  * Configure and register CLI commands
