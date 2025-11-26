@@ -2,6 +2,7 @@
  * @fileoverview UI components exports
  */
 
+export * from './brand-banner.component.js';
 export * from './cardBox.component.js';
 export * from './dashboard.component.js';
 export * from './header.component.js';
