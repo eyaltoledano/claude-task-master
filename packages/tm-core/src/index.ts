@@ -124,6 +124,21 @@ export type {
 	TaskComplexityData
 } from './modules/reports/types.js';
 
+// Prompts types
+export type {
+	PromptAction,
+	PromptDisplayOptions,
+	PromptDisplayResult,
+	PromptMetrics,
+	PromptState,
+	PromptStateStore,
+	PromptType,
+	TriggerCondition,
+	TriggerEvaluationResult,
+	TriggerType,
+	UpgradePromptConfig
+} from './modules/prompts/index.js';
+
 // ========== Advanced API (for CLI/Extension/MCP) ==========
 
 // Auth - Advanced
@@ -154,6 +169,17 @@ export {
 
 // Integration - Advanced
 export { ExportService } from './modules/integration/services/export.service.js';
+
+// Prompts - Advanced
+export { PromptService } from './modules/prompts/services/prompt-service.js';
+export { PromptStateManager } from './modules/prompts/services/prompt-state-manager.js';
+export { TriggerEvaluator, type TriggerContext } from './modules/prompts/services/trigger-evaluator.js';
+export {
+	DEFAULT_PROMPT_CONFIG,
+	DEFAULT_TRIGGER_CONDITIONS,
+	PROMPT_STATE_KEY,
+	PROMPT_STATE_VERSION
+} from './modules/prompts/constants.js';
 
 // ========== Testing Utilities ==========
 
