@@ -46,6 +46,10 @@ description: "A comprehensive reference of all available Task Master commands"
 
     # View a specific subtask (e.g., subtask 2 of task 1)
     task-master show 1.2
+
+    # Show multiple tasks at once (comma-separated)
+    task-master show 1,2,3
+    task-master show 1.2,3.4,HAM-123
     ```
   </Accordion>
 
@@ -98,6 +102,12 @@ description: "A comprehensive reference of all available Task Master commands"
 
     # Set status for subtasks
     task-master set-status --id=1.1,1.2 --status=<status>
+
+    # Set status for alphanumeric display IDs (remote storage)
+    task-master set-status --id=HAM-123,PROJ-456 --status=<status>
+
+    # Mixed formats work together
+    task-master set-status --id=1,HAM-123,2.1 --status=<status>
     ```
 
     When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.

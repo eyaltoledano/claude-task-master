@@ -152,9 +152,9 @@ The MCP tools can be categorized in the same way as the core functionalities:
 ### 2. Task Information and Status
 
 -   **`get_tasks`**: Lists all tasks.
--   **`get_task`**: Shows the details of a specific task.
+-   **`get_task`**: Shows the details of a specific task. Supports comma-separated task IDs for bulk retrieval (e.g., `"1,2,3"` or `"HAM-123,1.2"`).
 -   **`next_task`**: Shows the next task to work on.
--   **`set_task_status`**: Sets the status of a task or subtask.
+-   **`set_task_status`**: Sets the status of a task or subtask. Supports comma-separated task IDs for bulk status updates (e.g., `"1.2,3.4"` or `"HAM-123,PROJ-456"`).
 
 ### 3. Task Analysis and Expansion
 

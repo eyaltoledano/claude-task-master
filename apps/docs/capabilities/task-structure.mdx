@@ -4,13 +4,32 @@ sidebarTitle: "Task Structure"
 description: "Tasks in Task Master follow a specific format designed to provide comprehensive information for both humans and AI assistants."
 ---
 
+## Task ID Formats
+
+Task Master supports multiple task ID formats depending on storage mode:
+
+| Format | Examples | Description |
+|--------|----------|-------------|
+| **Numeric** | `1`, `15`, `999` | Simple numeric IDs (local file storage) |
+| **Numeric Subtasks** | `1.2`, `15.3.1`, `2.1.4` | Dot notation for subtasks (local file storage) |
+| **Alphanumeric Display IDs** | `HAM-123`, `PROJ-456` | Display IDs for remote API storage (main tasks only) |
+
+**Note**: Alphanumeric IDs with dot notation (e.g., `HAM-123.2`) are not supported. In remote mode, subtasks also use alphanumeric IDs like `HAM-2`, `HAM-3` without dot notation.
+
+### Supported Operations with Task IDs
+
+- **Single task**: `task-master show 1` or `task-master show HAM-123`
+- **Subtask**: `task-master show 1.2` (local storage only)
+- **Multiple tasks**: `task-master set-status --id=1,2,3 --status=done`
+- **Mixed formats**: `task-master set-status --id=1.2,HAM-123 --status=done`
+
 ## Task Fields in tasks.json
 
 Tasks in tasks.json have the following structure:
 
 | Field          | Description                                    | Example                                                |
 | -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `id`           | Unique identifier for the task.                | `1`                                                    |
+| `id`           | Unique identifier for the task.                | `1`, `HAM-123`                                                    |
 | `title`        | Brief, descriptive title.                      | `"Initialize Repo"`                                    |
 | `description`  | What the task involves.                        | `"Create a new repository, set up initial structure."` |
 | `status`       | Current state.                                 | `"pending"`, `"done"`, `"deferred"`                    |
