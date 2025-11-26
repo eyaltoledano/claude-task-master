@@ -18,19 +18,12 @@ const SetTaskStatusSchema = z.object({
 	status: z
 		.enum(TASK_STATUSES as unknown as [string, ...string[]])
 		.describe(
-			"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled'."
+			"New status to set (e.g., 'pending', 'done', 'in-progress', 'review', 'deferred', 'cancelled')."
 		),
 	projectRoot: z
 		.string()
 		.describe('The directory of the project. Must be an absolute path.'),
-	tag: z.string().optional().describe('Optional tag context to operate on'),
-	file: z.string().optional().describe('Absolute path to the tasks file'),
-	complexityReport: z
-		.string()
-		.optional()
-		.describe(
-			'Path to the complexity report file (relative to project root or absolute)'
-		)
+	tag: z.string().optional().describe('Optional tag context to operate on')
 });
 
 type SetTaskStatusArgs = z.infer<typeof SetTaskStatusSchema>;
@@ -58,6 +51,21 @@ export function registerSetTaskStatusTool(server: FastMCP) {
 						.split(',')
 						.map((tid) => tid.trim())
 						.filter((tid) => tid.length > 0);
+
+					if (taskIds.length === 0) {
+						return handleApiResult({
+							result: {
+								success: false,
+								error: {
+									message: 'No valid task IDs provided'
+								}
+							},
+							log,
+							projectRoot,
+							tag
+						});
+					}
+
 					const results: Array<{
 						success: boolean;
 						oldStatus: TaskStatus;
@@ -93,20 +101,23 @@ export function registerSetTaskStatusTool(server: FastMCP) {
 						projectRoot,
 						tag
 					});
-				} catch (error: any) {
-					log.error(`Error in set-task-status: ${error.message}`);
-					if (error.stack) {
-						log.debug(error.stack);
+				} catch (error: unknown) {
+					const err =
+						error instanceof Error ? error : new Error(String(error));
+					log.error(`Error in set-task-status: ${err.message}`);
+					if (err.stack) {
+						log.debug(err.stack);
 					}
 					return handleApiResult({
 						result: {
 							success: false,
 							error: {
-								message: `Failed to set task status: ${error.message}`
+								message: `Failed to set task status: ${err.message}`
 							}
 						},
 						log,
-						projectRoot
+						projectRoot,
+						tag
 					});
 				}
 			}

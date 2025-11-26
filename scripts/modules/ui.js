@@ -2814,7 +2814,8 @@ export {
 	infoLoadingIndicator,
 	displayContextAnalysis,
 	displayCurrentTagIndicator,
-	formatTaskIdForDisplay
+	formatTaskIdForDisplay,
+	warmGradient
 };
 
 /**

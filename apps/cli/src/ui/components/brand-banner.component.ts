@@ -16,12 +16,17 @@ const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
  * Render ASCII banner text with gradient and creator credit
  */
 function renderBannerWithCredit(text: string): void {
-	const bannerText = figlet.textSync(text, {
-		font: 'Standard',
-		horizontalLayout: 'default',
-		verticalLayout: 'default'
-	});
-	console.log(coolGradient(bannerText));
+	try {
+		const bannerText = figlet.textSync(text, {
+			font: 'Standard',
+			horizontalLayout: 'default',
+			verticalLayout: 'default'
+		});
+		console.log(coolGradient(bannerText));
+	} catch (error) {
+		// Fallback to simple text if figlet fails
+		console.log(coolGradient(`=== ${text} ===`));
+	}
 	console.log(
 		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
 	);
