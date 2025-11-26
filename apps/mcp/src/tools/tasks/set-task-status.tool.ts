@@ -6,15 +6,13 @@
 import { z } from 'zod';
 import { handleApiResult, withToolContext } from '../../shared/utils.js';
 import type { ToolContext } from '../../shared/types.js';
-import { TASK_STATUSES, type TaskStatus } from '@tm/core';
+import { TASK_STATUSES, taskIdsSchema, parseTaskIds, type TaskStatus } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const SetTaskStatusSchema = z.object({
-	id: z
-		.string()
-		.describe(
-			"Task ID or subtask ID (e.g., '15', '15.2'). Can be comma-separated to update multiple tasks/subtasks at once."
-		),
+	id: taskIdsSchema.describe(
+		"Task ID or subtask ID (e.g., '15', '15.2'). Can be comma-separated to update multiple tasks/subtasks at once."
+	),
 	status: z
 		.enum(TASK_STATUSES as unknown as [string, ...string[]])
 		.describe(
@@ -46,25 +44,8 @@ export function registerSetTaskStatusTool(server: FastMCP) {
 						`Setting status of task(s) ${id} to: ${status}${tag ? ` in tag: ${tag}` : ' in current tag'}`
 					);
 
-					// Handle comma-separated IDs and ignore empty entries
-					const taskIds = id
-						.split(',')
-						.map((tid) => tid.trim())
-						.filter((tid) => tid.length > 0);
-
-					if (taskIds.length === 0) {
-						return handleApiResult({
-							result: {
-								success: false,
-								error: {
-									message: 'No valid task IDs provided'
-								}
-							},
-							log,
-							projectRoot,
-							tag
-						});
-					}
+					// Parse and validate task IDs (validation already done by schema, this handles splitting)
+					const taskIds = parseTaskIds(id);
 
 					const results: Array<{
 						success: boolean;

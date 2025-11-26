@@ -9,15 +9,13 @@ import {
 	withToolContext
 } from '../../shared/utils.js';
 import type { ToolContext } from '../../shared/types.js';
-import { Subtask, type Task } from '@tm/core';
+import { Subtask, taskIdsSchema, parseTaskIds, type Task } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const GetTaskSchema = z.object({
-	id: z
-		.string()
-		.describe(
-			'Task ID(s) to get (can be comma-separated for multiple tasks)'
-		),
+	id: taskIdsSchema.describe(
+		'Task ID(s) to get (can be comma-separated for multiple tasks)'
+	),
 	status: z
 		.string()
 		.optional()
@@ -50,8 +48,8 @@ export function registerGetTaskTool(server: FastMCP) {
 						`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${projectRoot}`
 					);
 
-					// Handle comma-separated IDs - parallelize for better performance
-					const taskIds = id.split(',').map((tid) => tid.trim());
+					// Parse and validate task IDs (validation already done by schema, this handles splitting)
+					const taskIds = parseTaskIds(id);
 					const results = await Promise.all(
 						taskIds.map((taskId) => tmCore.tasks.get(taskId, tag))
 					);
