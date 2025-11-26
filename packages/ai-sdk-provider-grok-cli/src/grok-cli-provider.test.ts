@@ -37,7 +37,7 @@ describe('createGrokCli', () => {
 		};
 		const provider = createGrokCli({ defaultSettings });
 
-		const model = provider('grok-2-mini');
+		provider('grok-2-mini');
 
 		expect(GrokCliLanguageModel).toHaveBeenCalledWith({
 			id: 'grok-2-mini',
@@ -50,7 +50,7 @@ describe('createGrokCli', () => {
 		const provider = createGrokCli({ defaultSettings });
 
 		const modelSettings = { apiKey: 'test-key' };
-		const model = provider('grok-2', modelSettings);
+		provider('grok-2', modelSettings);
 
 		expect(GrokCliLanguageModel).toHaveBeenCalledWith({
 			id: 'grok-2',
@@ -60,7 +60,7 @@ describe('createGrokCli', () => {
 
 	it('should create models via languageModel method', () => {
 		const provider = createGrokCli();
-		const model = provider.languageModel('grok-2-mini', { timeout: 1000 });
+		provider.languageModel('grok-2-mini', { timeout: 1000 });
 
 		expect(GrokCliLanguageModel).toHaveBeenCalledWith({
 			id: 'grok-2-mini',
@@ -70,7 +70,7 @@ describe('createGrokCli', () => {
 
 	it('should create models via chat method (alias)', () => {
 		const provider = createGrokCli();
-		const model = provider.chat('grok-2');
+		provider.chat('grok-2');
 
 		expect(GrokCliLanguageModel).toHaveBeenCalledWith({
 			id: 'grok-2',
@@ -111,7 +111,7 @@ describe('default grokCli provider', () => {
 	});
 
 	it('should create models with default configuration', () => {
-		const model = grokCli('grok-2-mini');
+		grokCli('grok-2-mini');
 
 		expect(GrokCliLanguageModel).toHaveBeenCalledWith({
 			id: 'grok-2-mini',

@@ -42,7 +42,8 @@ export class AuthManager {
 
 	private constructor(config?: Partial<AuthConfig>) {
 		this.contextStore = ContextStore.getInstance();
-		this.supabaseClient = new SupabaseAuthClient();
+		// Use singleton SupabaseAuthClient to prevent refresh token race conditions
+		this.supabaseClient = SupabaseAuthClient.getInstance();
 
 		// Initialize session manager (handles session lifecycle)
 		this.sessionManager = new SessionManager(
@@ -75,10 +76,12 @@ export class AuthManager {
 
 	/**
 	 * Reset the singleton instance (useful for testing)
+	 * Also resets SupabaseAuthClient to ensure clean state for test isolation
 	 */
 	static resetInstance(): void {
 		AuthManager.instance = null;
 		ContextStore.resetInstance();
+		SupabaseAuthClient.resetInstance();
 	}
 
 	/**

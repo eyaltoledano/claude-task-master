@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TestResultValidator } from './test-result-validator.js';
-import type {
-	TestPhase,
-	TestResult,
-	ValidationResult
-} from './test-result-validator.types.js';
+import type { TestResult } from './test-result-validator.types.js';
 
 describe('TestResultValidator - Input Validation', () => {
 	const validator = new TestResultValidator();
