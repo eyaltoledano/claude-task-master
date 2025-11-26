@@ -17,10 +17,11 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import chalk from 'chalk';
-import figlet from 'figlet';
 import boxen from 'boxen';
-import gradient from 'gradient-string';
+import figlet from 'figlet';
 import { isSilentMode } from './modules/utils.js';
+import { warmGradient } from './modules/ui.js';
+import { ui } from '@tm/cli';
 import { insideGitWorkTree } from './modules/utils/git-utils.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import { RULE_PROFILES } from '../src/constants/profiles.js';
@@ -61,36 +62,13 @@ const LOG_LEVEL = process.env.TASKMASTER_LOG_LEVEL
 	? LOG_LEVELS[process.env.TASKMASTER_LOG_LEVEL.toLowerCase()]
 	: LOG_LEVELS.info; // Default to info
 
-// Create a color gradient for the banner
-const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
-const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
-
-// Display a fancy banner
+/**
+ * Display a fancy banner for initialization
+ * Delegates to @tm/cli brand banner component
+ */
 function displayBanner() {
 	if (isSilentMode()) return;
-
-	console.clear();
-	const bannerText = figlet.textSync('Task Master AI', {
-		font: 'Standard',
-		horizontalLayout: 'default',
-		verticalLayout: 'default'
-	});
-
-	console.log(coolGradient(bannerText));
-
-	// Add creator credit line below the banner
-	console.log(
-		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
-	);
-
-	console.log(
-		boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {
-			padding: 1,
-			margin: { top: 0, bottom: 1 },
-			borderStyle: 'round',
-			borderColor: 'cyan'
-		})
-	);
+	ui.displayInitBanner();
 }
 
 // Logging function with icons and colors

@@ -3,7 +3,6 @@
  * Tool Registry - Maps tool names to registration functions
  */
 
-import { registerSetTaskStatusTool } from './set-task-status.js';
 import { registerParsePRDTool } from './parse-prd.js';
 import { registerUpdateTool } from './update.js';
 import { registerUpdateTaskTool } from './update-task.js';
@@ -49,7 +48,8 @@ import {
 	registerAutopilotAbortTool,
 	registerGetTasksTool,
 	registerGetTaskTool,
-	registerGenerateTool
+	registerGenerateTool,
+	registerSetTaskStatusTool
 } from '@tm/mcp';
 
 /**

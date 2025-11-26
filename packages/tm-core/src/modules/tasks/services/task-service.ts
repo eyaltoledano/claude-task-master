@@ -504,8 +504,19 @@ export class TaskService {
 
 	/**
 	 * Get current active tag
+	 * For API storage, uses the brief ID from auth context
+	 * For file storage, uses the tag from local config/state
 	 */
 	getActiveTag(): string {
+		// For API storage, use brief ID from auth context if available
+		if (this.initialized && this.getStorageType() === 'api') {
+			const briefName = this.storage.getCurrentBriefName();
+			if (briefName) {
+				return briefName;
+			}
+		}
+
+		// Fall back to config-based tag resolution
 		return this.configManager.getActiveTag();
 	}
 
