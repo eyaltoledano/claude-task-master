@@ -104,7 +104,8 @@ type ViewMode =
 	| 'account'
 	| 'init'
 	| 'help'
-	| 'tags';
+	| 'tags'
+	| 'goodbye';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MARKDOWN RENDERER (simple terminal-friendly)
@@ -1430,6 +1431,78 @@ function HelpView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// GOODBYE VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+const HAMSTER_ASCII = `
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒▒▒▒░▒▒░▒░░░▒░░
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░  ░░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░     ░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░▒███▓███▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░░▓███▓▓░░░░▒▒▒▒▒▒▒▒▒▒▒▒░▒▒▒▒▒░▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░█▓█████  ██▒░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░▒█▒ ░███▒▓░░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░▒██▓▓▒▒▓██▓ ▒█▓▒▒▒▒░░░░░░░░░░░░░  ░░░░░ ░█▒▒ ██▒▒▒██▓▒░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░█▒██▓▓▒▒▓▓██  ▒▒█▒░░▒▒▓██▓██▒█████▒█░▒▒▒██▒░░ █▓▓▒▒▒▓█▒▒░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█▓▓▒░░▒▒▒▒▒██░▒░░█████▓█▓▓█▒▒▒▒▒▓▒▓▒████▓▒▒▒░░█░░▒▒░ ▓▓█░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█▓▒▒▒▒▓███▓██▒▒▒░░▒▒▓▒▒▒▒▓███▓▓▓▓▓█░░▒▒▒▒▒░▒░██▓▒▓▒▒░▒▒█░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒█▒▒▓▓▓▒██████▓▒▓▓▒▒▒▒▒▒▒▒▒░▒▒▒▓▓▓▓▒▒▒▒▒▒▒▒▒▓██░▒▓▒▒▒▒▒▓▒░▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▓█▒▒▒▒▓▓▓▓█▒▒█▒▓▓▒▒▒░░░░░░░░▒▒▒▓█▓▒▒▒▒░░░░░░░▒▓▓█▒▓▒▒▒█░▒▒▒▒▒▒░ ░░▒░ ░░▒▒▒▒
+ ▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒░░█▒▓▒▒█▓████▒▓▓▒▒▒▒░░░░░░░░░░░▒▒▓░░░░░░░░░░░░░▓█▒▓▒█▓░░▒▒▒▒▒░▒██░░▒██░░▒▒▒
+ ▒▒▒░█▒▒█▒█░█▓▒▒▒▒▒▒▒███▓▒▒███▒▓▓▒▒▒▒░░▒▓█▒▒░░▒▒░░░▒░▒▒▒░▒████▒░░▒▓███░░░▒▒░░░░░█░▒▒█▓ ▓█ ░░▒
+ ▒▒█▓▓█░░██░░█▒▒▒▒▒▒▒░ ▒█▓▓█▒▓▒▒▓▓▒▒▒▓██████▒▒▒▒▒░░▒▒░▒▒░░░   ░░░░▒▓▓ ░▒▒▒░▒██░▒█ ███░░█░█▓░▒
+ ▒█▒░███░░█▓░█▒▒███▒▒▒░░███▓▒▒▒▒▒░░▒▒░░░░░░░▒▒▒▒▒░▒▒▒▒▒▒▒░░▓█▓░░░░░▓█░░▒▒▒░█▒░███    ▒██░░█▓▒
+ ▒▒██░ ▒░    ▓██░░█▒▒░███▓▓▒▓▓▓▒▒▒▒▒▒▒██████▒▒▒▒▒▒▒▒▒▒▒▒▒▒██ ██▒▒░▒▓▒█░░▒▒░░█▒░  ▒█▒░  ▒██▒ ░
+ █▒░░█▓░░▒██▓░░ ▒█▒░░▒██▓▓▓▓██▒▒▒▒▒▒▒████  ██▒▒▒▒▒▒▒▒▒▒▒░▒██ ███▒▒░░░▓█░░▒▒░▓█░  ░▒▓▓░ ░░░█▓▒
+ ▒███▒░ ░▒░▒▒  ░█▒░▒▒▓█▓▒▓▓▓█▓██▓▓▒▓██▓██████▒▒▒▒▒░▒░▒▒▒▒▓███████▒▒▓▓▓▓█░▒░░ █▓▒ ▒░   ░██▓░░▒
+ ▒░░▒██▒ ░░░▒▒▓▓█▒░░▒██▓██▓▒░▓▓████████▓█████▒▒▒▒▒░▒░░  ░░██████▒▒▓▓▓▒▒▓░░ ▒████▓▒▒▒░▓█▒░░▒▒▒
+ ▒▒▒▒░▓█▒░░░▒▓▒▓▒█▒▒███▓▓▓█▓▓█▒░    ▒▒██████▒░▒▒▒░░ ░░     ░░▒░▒▒▒  ░▒▓▒▓███▓█▒▒▒▓███▓░░▒▒▒▒▒
+ ▒▒▒▒▒░▒████▒▒░▒░▒███▓▒▓▓▒▒▒▒▒▒▒▒▓▓▓▓▒░░░░░▒▒▒▒▒▒░▒▓▒▒░░▒▒  ░▒▒ ░▓▓▓▓▒▒░▒▓█▒▒▒▒▒▒▒▒▒█░░▒▒▒▒▒▒
+ ▒▒▒▒▒░▓█▒▒▒▒▒▒▒▒░░░██▓▓▓▒▒▒▒▒▒▒▓▒░░ ░░░░░▓▒░░░ ░▒██▒▒▒▒██░░  ░▒░   ░▒▒░░▒█▓░▒░▒░▒░▓█░▒▒▒▒▒▒▒
+ ▒▒▒▒▒░██▓▓▒▓▒▒▒▒▒░░░█▓▓▒▒▒▒▒▒░░░▒▒▒▒░▒░░▒░░░░░░   ▓███▒█░   ░ ▒░░░▒░░░▒░▒▒▓▓▒▒▒▒▒▒▒█▓░▒▒▒▒▒▒
+ ▒▒▒▒▒░██▒▓▓▒▒▒▒▒▒▒▒▒██▒▒▒  ▒▓▓▒▒▒▓█▓▒░▒▓▒░░░░░░░░   ░█        ██▒▒▒▒▒▓▒▒░  ▒▒▓▒▒▒▒▓█░▒▒▒▒▒▒▒
+ ▒▒▒▒▒░▒█▒▓█▒▓▓▒▒▒▒▒░░█▓▓▒▒▓▒▒▒▒▒▒░ ▒░▓████░░░░▒▒▒▓▒░▓██   ░░░██▒▒░░░░▒▒░▒▒▓█▒░░▓▒▒▒█░▒▒▒▒▒▒▒
+ ▒▒▒▒▒░██▒▓██▒▒▒▒▒░▒▒▓██▓▒▒▒▓▒▒  ▒░▒▒▒▒░░████▓░░░  ▓█░ ░██████▒░░░▒▒░▒░ ▒▒▒▓▓▒▒▓▒▒▒██░▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒█▓▓▓▓▓▒▒▒▒▓▓▒▓▒██▒▓░░░ ▒▒░░░░▒▒░░░░████████░   ███▒▒▒▒▒▒░░░░░░░░ ░██▒▒▒▒▒▒▒█░░▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒░██▓▓▓▓▓▓▒▒▒▒▒▓▒▓▓▓▒▓ ▒▒▒▒░░░░▒▒▒▒░ ░█████████████▒░░▒▒░░░░▓░▒░▒▒▒█▒ ▒▒▒▒▓▒██░▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒█▓▓██▓▒▒▒▒▒▒▒▓███▒▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░█▓▒▒▓██▓▓▓██░░▒▒░▒░▒░▒▒▒▒░░██▓▓▒▒▒▒▒▓█▓░▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒░█▓▓▓▓██▓▓▒░▒▒▒░▓▒█▒▒░▒▒▒▒▒▒▒▒▒▒▒▒▒▒ ▒█▓░░▒▒░░▓█░ ▒▒░░▒▒▒▒▒▒░▒▒██▒▒▒▒▓▓▓▓█▒░▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒██▓█▒▓██▓▓▓▓▒▒▓▓██▓▓▒▒▒▒▒▒▒▒░▒▒▒▒▒░ ░███▓████░ ▒▒▒▒▒▒▒▒▒░░▒███▒▒▒▓▒▓▓███░▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒░██▒▒█▓▓▓▓▓▓▓█▓▒▒▓▓███▓▓▒▒▒▒▒▒▒▒▒▒▓▒▒░  ▒███   ▒▓▒▒▒▒▒░▓▓▓██▓▒░▒▒▒▒▒▓██▒░▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒░▒█▓▓▓▓▓▓▓▓▓▓▒▓▒▒▓▓▓▓█████▓▓░▒▒▒▒▒▓▓█▓░     ░█▓▒░▒▒▒▓███▓▒▒▒▓▓▒▒▒▒▓▒██▒▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒▓██▓▓▓█▓█▓▓▓▓▓▓▓▓▓▒▒▒▒░▒▒▓███▓▓▓▒▒▒▒████████▒▓▓▓█▓▓▓░░▒░░░░▒▒▓▓▒▓███░░▒▒▒▒▒▒▒▒▒▒▒▒
+ ▒▒▒▒▒▒▒▒▒▒░▓██▓▒▒▓█▓▓▓▓▓▓▒░▒▓▒▒░▒▒▒░░▒▓▒▒▒▒▒▓▓▒▒▒░▒▒▒▒▒▓▓▓▒▒▒░░░░░▒▒▒▒░▓▒▒▒▓█░▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+`.trim();
+
+function GoodbyeView({ version }: { version: string }) {
+	const lines = HAMSTER_ASCII.split('\n');
+
+	return (
+		<Box
+			flexDirection="column"
+			alignItems="center"
+			justifyContent="center"
+			paddingY={1}
+		>
+			{/* Hamster ASCII art */}
+			<Box flexDirection="column" alignItems="center">
+				{lines.map((line, i) => (
+					<Text key={i} color={theme.muted}>
+						{line}
+					</Text>
+				))}
+			</Box>
+
+			{/* Goodbye message */}
+			<Box marginTop={1} flexDirection="column" alignItems="center">
+				<Text color={theme.accent.cyan} bold>
+					Goodbye!
+				</Text>
+				<Text color={theme.muted}>
+					Task Master v{version}
+				</Text>
+			</Box>
+		</Box>
+	);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TAGS VIEW (Local mode: Tags, Authenticated mode: Briefs)
 // ─────────────────────────────────────────────────────────────────────────────
 function TagsView({
@@ -1516,7 +1589,9 @@ function TagsView({
 						<Box marginTop={1}>
 							<Text
 								color={
-									selectedIndex === tags.length ? theme.accent.green : theme.muted
+									selectedIndex === tags.length
+										? theme.accent.green
+										: theme.muted
 								}
 							>
 								{selectedIndex === tags.length ? '▸ ' : '  '}+ Create new{' '}
@@ -1528,9 +1603,7 @@ function TagsView({
 			</Box>
 
 			<Box paddingX={1} marginTop={2}>
-				<Text color={theme.dim}>
-					↑↓ Navigate · ↵ Select · Esc Back
-				</Text>
+				<Text color={theme.dim}>↑↓ Navigate · ↵ Select · Esc Back</Text>
 			</Box>
 		</Box>
 	);
@@ -1629,7 +1702,8 @@ function StatusBar({ view, message }: { view: ViewMode; message?: string }) {
 		account: 'Account',
 		tags: 'Tags',
 		init: 'Setup',
-		help: 'Help'
+		help: 'Help',
+		goodbye: 'Goodbye'
 	};
 
 	return (
@@ -2007,19 +2081,31 @@ export function Shell({
 		return flat;
 	}, [filteredTasks, expandedTasks, showAllSubtasks]);
 
+	// Handle goodbye view exit
+	useEffect(() => {
+		if (view === 'goodbye') {
+			const timer = setTimeout(() => {
+				onExit?.();
+				exit();
+			}, 1500);
+			return () => clearTimeout(timer);
+		}
+	}, [view, onExit, exit]);
+
 	// Keyboard
 	useInput(
 		(input, key) => {
-			if (!isInteractive || view === 'splash') return;
+			if (!isInteractive || view === 'splash' || view === 'goodbye') return;
 
 			if (input === 'q' || (key.ctrl && input === 'c')) {
-				onExit?.();
-				exit();
+				console.clear();
+				setView('goodbye');
 				return;
 			}
 
 			// Handle filter modal close first (before global escape handler)
 			if ((key.escape || key.return) && view === 'tasks' && showFilterModal) {
+				console.clear();
 				setShowFilterModal(false);
 				setTaskListIndex(0); // Reset to first item after filtering
 				return;
@@ -2076,6 +2162,7 @@ export function Shell({
 				// Handle filter modal input first
 				if (showFilterModal) {
 					if (key.escape || key.return) {
+						console.clear();
 						setShowFilterModal(false);
 						setTaskListIndex(0); // Reset to first item after filtering
 						return;
@@ -2138,6 +2225,7 @@ export function Shell({
 
 				// F for filter, C to clear filter
 				if (input === 'f' || input === 'F') {
+					console.clear();
 					setShowFilterModal(true);
 					setFilterIndex(0);
 					return;
@@ -2301,14 +2389,11 @@ export function Shell({
 				// In local mode, last item is "Create new tag"
 				const maxIndex = isHamster ? tagsList.length - 1 : tagsList.length;
 				if (key.upArrow) setTagsIndex((p) => Math.max(0, p - 1));
-				else if (key.downArrow)
-					setTagsIndex((p) => Math.min(maxIndex, p + 1));
+				else if (key.downArrow) setTagsIndex((p) => Math.min(maxIndex, p + 1));
 				else if (key.return) {
 					if (!isHamster && tagsIndex === tagsList.length) {
 						// Create new tag - TODO: implement text input for tag name
-						setStatusMessage(
-							'Use CLI: tm add-tag <name> to create a new tag'
-						);
+						setStatusMessage('Use CLI: tm add-tag <name> to create a new tag');
 					} else if (tagsList[tagsIndex]) {
 						switchToTag(tagsList[tagsIndex].name);
 					}
@@ -2442,6 +2527,7 @@ export function Shell({
 						});
 					}}
 					onClose={() => {
+						console.clear();
 						setShowFilterModal(false);
 						setTaskListIndex(0);
 					}}
@@ -2485,8 +2571,9 @@ export function Shell({
 			)}
 			{view === 'init' && <InitView selectedOption={initOption} />}
 			{view === 'help' && <HelpView />}
+			{view === 'goodbye' && <GoodbyeView version={version} />}
 
-			<StatusBar view={view} message={statusMessage} />
+			{view !== 'goodbye' && <StatusBar view={view} message={statusMessage} />}
 		</Box>
 	);
 }
