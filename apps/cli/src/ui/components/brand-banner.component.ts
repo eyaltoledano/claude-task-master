@@ -12,6 +12,21 @@ import gradient from 'gradient-string';
 // Create a cool color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 
+/**
+ * Render ASCII banner text with gradient and creator credit
+ */
+function renderBannerWithCredit(text: string): void {
+	const bannerText = figlet.textSync(text, {
+		font: 'Standard',
+		horizontalLayout: 'default',
+		verticalLayout: 'default'
+	});
+	console.log(coolGradient(bannerText));
+	console.log(
+		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
+	);
+}
+
 export interface AsciiBannerOptions {
 	/** Version string to display */
 	version?: string;
@@ -37,20 +52,8 @@ export function displayAsciiBanner(options: AsciiBannerOptions = {}): void {
 
 	const { version, projectName, skipInfoBox = false } = options;
 
-	// Generate ASCII art text
-	const bannerText = figlet.textSync('Task Master', {
-		font: 'Standard',
-		horizontalLayout: 'default',
-		verticalLayout: 'default'
-	});
-
-	// Display the gradient banner
-	console.log(coolGradient(bannerText));
-
-	// Add creator credit line below the banner
-	console.log(
-		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
-	);
+	// Display the banner with creator credit
+	renderBannerWithCredit('Task Master');
 
 	// Display version and project info if provided
 	if (!skipInfoBox && (version || projectName)) {
@@ -82,20 +85,8 @@ export function displayAsciiBanner(options: AsciiBannerOptions = {}): void {
 export function displayInitBanner(): void {
 	if (isBannerHidden()) return;
 
-	// Generate ASCII art text
-	const bannerText = figlet.textSync('Task Master AI', {
-		font: 'Standard',
-		horizontalLayout: 'default',
-		verticalLayout: 'default'
-	});
-
-	// Display the gradient banner
-	console.log(coolGradient(bannerText));
-
-	// Add creator credit line below the banner
-	console.log(
-		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
-	);
+	// Display the banner with creator credit
+	renderBannerWithCredit('Task Master AI');
 
 	console.log(
 		boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {

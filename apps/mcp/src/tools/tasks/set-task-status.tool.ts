@@ -53,8 +53,11 @@ export function registerSetTaskStatusTool(server: FastMCP) {
 						`Setting status of task(s) ${id} to: ${status}${tag ? ` in tag: ${tag}` : ' in current tag'}`
 					);
 
-					// Handle comma-separated IDs
-					const taskIds = id.split(',').map((tid) => tid.trim());
+					// Handle comma-separated IDs and ignore empty entries
+					const taskIds = id
+						.split(',')
+						.map((tid) => tid.trim())
+						.filter((tid) => tid.length > 0);
 					const results: Array<{
 						success: boolean;
 						oldStatus: TaskStatus;
