@@ -24,6 +24,7 @@ import {
 	validateTasks
 } from '../export/index.js';
 import { ensureAuthenticated } from '../utils/auth-guard.js';
+import { selectBriefFromInput } from '../utils/brief-selection.js';
 import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
@@ -140,9 +141,7 @@ export class ExportCommand extends Command {
 			const context = this.taskMasterCore!.auth.getContext();
 			if (context?.briefId) {
 				console.log(
-					chalk.yellow(
-						'\n  You are currently connected to a Hamster brief.'
-					)
+					chalk.yellow('\n  You are currently connected to a Hamster brief.')
 				);
 				console.log(
 					chalk.gray(
@@ -157,7 +156,8 @@ export class ExportCommand extends Command {
 					{
 						type: 'confirm',
 						name: 'wantsToExportDifferent',
-						message: 'Would you like to export a different tag from your local tasks.json?',
+						message:
+							'Would you like to export a different tag from your local tasks.json?',
 						default: true
 					}
 				]);
@@ -263,14 +263,10 @@ export class ExportCommand extends Command {
 			// Check if tag was already exported
 			if (exportedTags[selectedTag]) {
 				console.log(
-					chalk.yellow(
-						`\n  This tag was previously exported to Hamster.`
-					)
+					chalk.yellow(`\n  This tag was previously exported to Hamster.`)
 				);
 				console.log(
-					chalk.gray(
-						`  Brief URL: ${exportedTags[selectedTag].briefUrl}`
-					)
+					chalk.gray(`  Brief URL: ${exportedTags[selectedTag].briefUrl}`)
 				);
 
 				const { confirmReExport } = await inquirer.prompt<{
@@ -374,7 +370,11 @@ export class ExportCommand extends Command {
 
 				// Track exported tag for future reference
 				const exportedTag = options?.tag || 'master';
-				await this.trackExportedTag(exportedTag, result.brief.id, result.brief.url);
+				await this.trackExportedTag(
+					exportedTag,
+					result.brief.id,
+					result.brief.url
+				);
 
 				// Record export success for prompt metrics
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -513,7 +513,7 @@ export class ExportCommand extends Command {
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						generateTitle: !options?.title,
@@ -542,7 +542,11 @@ export class ExportCommand extends Command {
 
 				// Track exported tag for future reference
 				const exportedTag = options?.tag || 'master';
-				await this.trackExportedTag(exportedTag, result.brief.id, result.brief.url);
+				await this.trackExportedTag(
+					exportedTag,
+					result.brief.id,
+					result.brief.url
+				);
 
 				// Record success
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -692,24 +696,30 @@ export class ExportCommand extends Command {
 
 	/**
 	 * Set context to the newly created brief
+	 * Uses the selectBriefFromInput utility to properly resolve and set all context fields
 	 */
 	private async setContextToBrief(briefUrl: string): Promise<void> {
 		try {
 			if (!this.taskMasterCore) return;
 
-			// Extract briefId from URL
-			// URL format: http://localhost:3000/home/{org_slug}/briefs/{briefId}
-			const match = briefUrl.match(/\/briefs\/([a-f0-9-]+)/i);
-			if (!match) return;
+			// Get AuthManager from TmCore
+			const authManager = (this.taskMasterCore.auth as any).authManager;
+			if (!authManager) return;
 
-			const briefId = match[1];
+			// Use the selectBriefFromInput utility which properly resolves
+			// the brief and sets all context fields (org, brief details, etc.)
+			const result = await selectBriefFromInput(
+				authManager,
+				briefUrl,
+				this.taskMasterCore
+			);
 
-			// Set context using TmCore's auth domain
-			await this.taskMasterCore.auth.updateContext({ briefId });
-
-			console.log(chalk.gray('  Context set to new brief'));
+			if (!result.success) {
+				// Silently fail - already exported successfully
+			}
 		} catch {
 			// Silently fail - context setting is a nice-to-have
+			// The export was already successful, user can manually set context
 		}
 	}
 
