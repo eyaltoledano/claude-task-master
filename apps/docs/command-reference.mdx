@@ -85,7 +85,12 @@ description: "A comprehensive reference of all available Task Master commands"
     ```bash
     # Generate individual task files from tasks.json
     task-master generate
+
+    # Generate files with a specific tag
+    task-master generate --tag=<tag-name>
     ```
+    
+    Generated files are now created as `.md` files instead of `.txt` files and follow markdownlint formatting standards. Use the `--tag` parameter to generate files from a specific tag when you're on an active tag but want to generate from another tag.
   </Accordion>
 
   <Accordion title="Set Task Status">
@@ -203,7 +208,25 @@ description: "A comprehensive reference of all available Task Master commands"
     ```bash
     # Initialize a new project with Task Master structure
     task-master init
+    
+    # Initialize project with specific rules
+    task-master init --rules cursor,windsurf,vscode
     ```
+  </Accordion>
+
+  <Accordion title="Rules Management">
+    ```bash
+    # Set up IDE-specific rules and configuration files
+    task-master rules
+    
+    # Set rules for specific IDEs
+    task-master rules cursor
+    task-master rules windsurf  
+    task-master rules vscode
+    task-master rules hamster
+    ```
+    
+    The rules command creates IDE-specific configuration files that help AI assistants understand your project structure and development workflow. Available rule sets include Cursor, Windsurf, VS Code, and Hamster configurations.
   </Accordion>
 
   <Accordion title="TDD Workflow (Autopilot)">

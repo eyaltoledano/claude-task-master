@@ -78,6 +78,7 @@ Loads 15 commonly used tools. Balances functionality with context efficiency.
 - `add_subtask` - Add subtasks manually
 - `remove_task` - Remove tasks
 - `generate` - Generate task markdown files
+- `rules` - Set up IDE-specific configuration files
 - `add_task` - Create new tasks
 - `complexity_report` - View complexity analysis
 
@@ -174,7 +175,8 @@ The MCP tools can be categorized in the same way as the core functionalities:
 ### 5. Project and Configuration
 
 -   **`initialize_project`**: Initializes a new project.
--   **`generate`**: Generates individual task files.
+-   **`generate`**: Generates individual task files. Files are created as `.md` format with markdownlint standards. Supports `--tag` parameter to generate from specific tags.
+-   **`rules`**: Creates IDE-specific rules and configuration files for AI assistants.
 -   **`models`**: Manages AI model configurations.
 -   **`research`**: Performs AI-powered research.
 
