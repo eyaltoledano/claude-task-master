@@ -6,14 +6,14 @@
 import {
 	type LogLevel,
 	type TagInfo,
-	tryAddTagViaRemote,
-	tryListTagsViaRemote
+	tryAddTagViaRemote
 } from '@tm/bridge';
-import type { TmCore } from '@tm/core';
+import type { TmCore, Brief } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import ora from 'ora';
 import readline from 'readline';
 import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
@@ -183,41 +183,61 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				process.exit(1);
 			}
 
+			// Ensure org is selected - prompt if not
+			const orgId = await this.ensureOrgSelected();
+			if (!orgId) {
+				process.exit(1);
+			}
+
+			// Fetch briefs directly from AuthManager (bypasses storage layer issues)
+			const spinner = ora('Fetching briefs...').start();
+			const briefs = await this.authManager.getBriefs(orgId);
+			spinner.stop();
+
+			// Get current context to determine current brief
+			const context = this.authManager.getContext();
+			const currentBriefId = context?.briefId;
+
+			// Convert to TagInfo format for display
+			const tags: TagInfo[] = briefs.map((brief: Brief) => ({
+				name: brief.document?.title || `Brief ${brief.id.slice(-8)}`,
+				isCurrent: brief.id === currentBriefId,
+				taskCount: brief.taskCount || 0,
+				completedTasks: 0, // Not available from getBriefs
+				statusBreakdown: {},
+				created: brief.createdAt,
+				description: brief.document?.description,
+				status: brief.status,
+				briefId: brief.id,
+				updatedAt: brief.updatedAt
+			}));
+
+			// Sort: current first, then by updatedAt
+			tags.sort((a, b) => {
+				if (a.isCurrent) return -1;
+				if (b.isCurrent) return 1;
+				return 0;
+			});
+
+			this.setLastResult({
+				success: true,
+				action: 'list',
+				briefs: tags,
+				currentBrief: currentBriefId || null,
+				message: `Found ${tags.length} brief(s)`
+			});
+
 			// Determine if we should skip table display (when interactive selection follows)
 			const isInteractive = process.stdout.isTTY;
 
-			// Use the bridge to list briefs
-			const remoteResult = await tryListTagsViaRemote({
-				projectRoot: process.cwd(),
-				showMetadata: options?.showMetadata || false,
-				skipTableDisplay: isInteractive, // Skip table when we'll show integrated selection
-				report: (level: LogLevel, ...args: unknown[]) => {
-					const message = args[0] as string;
-					if (level === 'error') ui.displayError(message);
-					else if (level === 'warn') ui.displayWarning(message);
-					else if (level === 'info') ui.displayInfo(message);
-				}
-			});
-
-			if (!remoteResult) {
-				throw new Error('Failed to fetch briefs from API');
-			}
-
-			this.setLastResult({
-				success: remoteResult.success,
-				action: 'list',
-				briefs: remoteResult.tags,
-				currentBrief: remoteResult.currentTag,
-				message: remoteResult.message
-			});
-
 			// If interactive mode and briefs available, show integrated table selection
-			if (
-				isInteractive &&
-				remoteResult.tags &&
-				remoteResult.tags.length > 0
-			) {
-				await this.promptBriefSelection(remoteResult.tags);
+			if (isInteractive && tags.length > 0) {
+				await this.promptBriefSelection(tags);
+			} else if (tags.length === 0) {
+				ui.displayWarning('No briefs found in this organization');
+			} else {
+				// Non-interactive: display table
+				this.displayBriefsTable(tags, options?.showMetadata);
 			}
 		} catch (error) {
 			ui.displayError(`Failed to list briefs: ${(error as Error).message}`);
@@ -228,6 +248,116 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			});
 			process.exit(1);
 		}
+	}
+
+	/**
+	 * Ensure an organization is selected, prompting if necessary
+	 */
+	private async ensureOrgSelected(): Promise<string | null> {
+		const context = this.authManager.getContext();
+		
+		// If org is already selected, return it
+		if (context?.orgId) {
+			return context.orgId;
+		}
+
+		// No org selected - check if we can auto-select
+		const orgs = await this.authManager.getOrganizations();
+		
+		if (orgs.length === 0) {
+			ui.displayError('No organizations available. Please create or join an organization first.');
+			return null;
+		}
+
+		if (orgs.length === 1) {
+			// Auto-select the only org
+			await this.authManager.updateContext({
+				orgId: orgs[0].id,
+				orgName: orgs[0].name,
+				orgSlug: orgs[0].slug
+			});
+			console.log(chalk.gray(`  Auto-selected organization: ${orgs[0].name}`));
+			return orgs[0].id;
+		}
+
+		// Multiple orgs - prompt for selection
+		console.log(chalk.yellow('No organization selected.'));
+		
+		const response = await inquirer.prompt<{ orgId: string }>([
+			{
+				type: 'list',
+				name: 'orgId',
+				message: 'Select an organization:',
+				choices: orgs.map((org) => ({
+					name: org.name,
+					value: org.id
+				}))
+			}
+		]);
+
+		const selectedOrg = orgs.find((o) => o.id === response.orgId);
+		if (selectedOrg) {
+			await this.authManager.updateContext({
+				orgId: selectedOrg.id,
+				orgName: selectedOrg.name,
+				orgSlug: selectedOrg.slug
+			});
+			ui.displaySuccess(`Selected organization: ${selectedOrg.name}`);
+			return selectedOrg.id;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Display briefs in a table format (for non-interactive mode)
+	 */
+	private displayBriefsTable(tags: TagInfo[], showMetadata?: boolean): void {
+		const Table = require('cli-table3');
+		
+		const terminalWidth = Math.max(process.stdout.columns || 120, 80);
+		const usableWidth = Math.floor(terminalWidth * 0.95);
+		const widths = [0.35, 0.25, 0.2, 0.1, 0.1];
+		const colWidths = widths.map((w, i) =>
+			Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 8)
+		);
+
+		const table = new Table({
+			head: [
+				chalk.cyan.bold('Brief Name'),
+				chalk.cyan.bold('Status'),
+				chalk.cyan.bold('Updated'),
+				chalk.cyan.bold('Tasks'),
+				chalk.cyan.bold('Completed')
+			],
+			colWidths: colWidths,
+			wordWrap: true
+		});
+
+		tags.forEach((tag) => {
+			const shortId = tag.briefId ? tag.briefId.slice(-8) : 'unknown';
+			const tagDisplay = tag.isCurrent
+				? `${chalk.green('●')} ${chalk.green.bold(tag.name)} ${chalk.gray(`(current - ${shortId})`)}`
+				: `  ${tag.name} ${chalk.gray(`(${shortId})`)}`;
+
+			const updatedDate = tag.updatedAt
+				? new Date(tag.updatedAt).toLocaleDateString('en-US', {
+						month: 'short',
+						day: 'numeric',
+						year: 'numeric'
+					})
+				: chalk.gray('N/A');
+
+			table.push([
+				tagDisplay,
+				getBriefStatusWithColor(tag.status, true),
+				chalk.gray(updatedDate),
+				chalk.white(String(tag.taskCount || 0)),
+				chalk.green(String(tag.completedTasks || 0))
+			]);
+		});
+
+		console.log(table.toString());
 	}
 
 	/**
