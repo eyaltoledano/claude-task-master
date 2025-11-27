@@ -55,6 +55,9 @@ export * from './common/errors/index.js';
 export * from './common/utils/index.js';
 export * from './utils/time.utils.js';
 
+// Task validation schemas
+export * from './modules/tasks/validation/index.js';
+
 // ========== Domain-Specific Type Exports ==========
 
 // Task types

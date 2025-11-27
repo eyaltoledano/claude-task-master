@@ -11,6 +11,7 @@ import {
 } from '../../../common/errors/task-master-error.js';
 import type { PartialConfiguration } from '../../../common/interfaces/configuration.interface.js';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
+import { getLogger } from '../../../common/logger/index.js';
 
 /**
  * ConfigLoader handles loading configuration from files
@@ -19,6 +20,7 @@ import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.
 export class ConfigLoader {
 	private localConfigPath: string;
 	private globalConfigPath: string;
+	private readonly logger = getLogger('ConfigLoader');
 
 	constructor(projectRoot: string) {
 		this.localConfigPath = path.join(projectRoot, '.taskmaster', 'config.json');
@@ -89,7 +91,7 @@ export class ConfigLoader {
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				// File doesn't exist, return null
-				console.debug('No local config.json found, using defaults');
+				this.logger.debug('No local config.json found, using defaults');
 				return null;
 			}
 			throw new TaskMasterError(

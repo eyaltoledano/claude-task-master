@@ -174,11 +174,15 @@ export class StorageFactory {
 
 	/**
 	 * Create API storage implementation
+	 *
+	 * IMPORTANT: Uses SupabaseAuthClient.getInstance() singleton to prevent
+	 * "refresh_token_already_used" errors. Multiple SupabaseAuthClient instances
+	 * each have their own Supabase client with autoRefreshToken enabled, causing
+	 * race conditions when both try to refresh an expired token simultaneously.
 	 */
 	private static createApiStorage(config: Partial<IConfiguration>): ApiStorage {
-		// Use our SupabaseAuthClient instead of creating a raw Supabase client
-		const supabaseAuthClient = new SupabaseAuthClient();
-		const supabaseClient = supabaseAuthClient.getClient();
+		// Use singleton SupabaseAuthClient to prevent refresh token race conditions
+		const supabaseClient = SupabaseAuthClient.getInstance().getClient();
 
 		return new ApiStorage({
 			supabaseClient,
