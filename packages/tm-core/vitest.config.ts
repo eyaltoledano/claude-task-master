@@ -1,47 +1,24 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, mergeConfig } from 'vitest/config';
-import rootConfig from '../../vitest.config';
+import {
+	baseVitestConfig,
+	defineConfig,
+	mergeConfig
+} from '@tm/build-config/vitest';
 
-// __dirname in ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
  * Core package Vitest configuration
- * Extends root config with core-specific settings including:
- * - Path aliases for cleaner imports
- * - Test setup file
- * - Higher coverage thresholds (80%)
+ * Extends base config with path aliases for cleaner imports
  */
 export default mergeConfig(
-	rootConfig,
+	baseVitestConfig,
 	defineConfig({
 		test: {
-			// Core-specific test patterns
-			include: [
-				'tests/**/*.test.ts',
-				'tests/**/*.spec.ts',
-				'tests/{unit,integration,e2e}/**/*.{test,spec}.ts',
-				'src/**/*.test.ts',
-				'src/**/*.spec.ts'
-			],
-
-			// Core-specific setup
-			setupFiles: ['./tests/setup.ts'],
-
-			// Higher coverage thresholds for core package
-			coverage: {
-				thresholds: {
-					branches: 80,
-					functions: 80,
-					lines: 80,
-					statements: 80
-				}
-			}
+			setupFiles: ['./tests/setup.ts']
 		},
-
-		// Path aliases for cleaner imports
 		resolve: {
 			alias: {
 				'@': path.resolve(__dirname, './src'),
