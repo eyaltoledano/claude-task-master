@@ -49,6 +49,15 @@ describe('createAPICallError', () => {
 		expect(error.message).toBe('Simple error');
 		expect(error.isRetryable).toBe(false);
 	});
+
+	it('should set requestBodyValues when promptExcerpt is provided', () => {
+		const error = createAPICallError({
+			message: 'Test error',
+			promptExcerpt: 'Sample prompt'
+		});
+
+		expect(error.requestBodyValues).toEqual({ prompt: 'Sample prompt' });
+	});
 });
 
 describe('createAuthenticationError', () => {

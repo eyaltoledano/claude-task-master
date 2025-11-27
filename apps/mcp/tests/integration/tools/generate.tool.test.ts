@@ -77,6 +77,11 @@ describe('generate MCP tool', () => {
 
 		// Parse the MCP protocol response: { content: [{ type: "text", text: "<json>" }] }
 		const mcpResponse = JSON.parse(output);
+		if (!mcpResponse.content?.[0]?.text) {
+			throw new Error(
+				`Unexpected MCP response format: ${JSON.stringify(mcpResponse)}`
+			);
+		}
 		const resultText = mcpResponse.content[0].text;
 		return JSON.parse(resultText);
 	};

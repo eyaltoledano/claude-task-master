@@ -101,7 +101,7 @@ export async function downloadTarballWithProgress(
 
 		const options = {
 			hostname: url.hostname,
-			path: url.pathname,
+			path: url.pathname + url.search,
 			method: 'GET',
 			headers: {
 				'User-Agent': `task-master-ai/${version}`

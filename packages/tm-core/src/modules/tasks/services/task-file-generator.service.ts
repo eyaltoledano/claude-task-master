@@ -334,6 +334,8 @@ export class TaskFileGeneratorService {
 				return ' ✗';
 			case 'deferred':
 				return ' ⏸';
+			case 'review':
+				return ' 👁';
 			default:
 				return '';
 		}

@@ -70,6 +70,7 @@ export function parseChangelogHighlights(
 		}
 
 		// Find the version section
+		// Version validated above (semver format), safe to construct regex
 		const versionRegex = new RegExp(
 			`## ${version.replace(/\./g, '\\.')}\\s*\\n`,
 			'i'
