@@ -4,7 +4,6 @@
  */
 
 import chalk from 'chalk';
-import figlet from 'figlet';
 import boxen from 'boxen';
 import ora from 'ora';
 import Table from 'cli-table3';
@@ -31,9 +30,10 @@ import {
 	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
+// Import brand banner from @tm/cli
+import { ui } from '@tm/cli';
 
-// Create a color gradient for the banner
-const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
+// Create a color gradient for the banner (still used by warmGradient in other places)
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 
 /**
@@ -85,41 +85,15 @@ function displayCurrentTagIndicator(tag, options = {}) {
 }
 
 /**
- * Display a fancy banner for the CLI
+ * Display the fancy ASCII art banner for the CLI
+ * Delegates to @tm/cli brand banner component
  */
-function displayBanner() {
+function displayAsciiBanner() {
 	if (isSilentMode()) return;
-
-	// console.clear(); // Removing this to avoid clearing the terminal per command
-	const bannerText = figlet.textSync('Task Master', {
-		font: 'Standard',
-		horizontalLayout: 'default',
-		verticalLayout: 'default'
+	ui.displayAsciiBanner({
+		version: getTaskMasterVersion(),
+		projectName: getProjectName(null)
 	});
-
-	console.log(coolGradient(bannerText));
-
-	// Add creator credit line below the banner
-	console.log(
-		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
-	);
-
-	// Read version directly from package.json
-	const version = getTaskMasterVersion();
-
-	console.log(
-		boxen(
-			chalk.white(
-				`${chalk.bold('Version:')} ${version}   ${chalk.bold('Project:')} ${getProjectName(null)}`
-			),
-			{
-				padding: 1,
-				margin: { top: 0, bottom: 1 },
-				borderStyle: 'round',
-				borderColor: 'cyan'
-			}
-		)
-	);
 }
 
 /**
@@ -2355,7 +2329,7 @@ async function displayMultipleTasksSummary(
 	statusFilter = null,
 	context = {}
 ) {
-	displayBanner();
+	displayAsciiBanner();
 
 	// Extract projectRoot and tag from context
 	const projectRoot = context.projectRoot || null;
@@ -2813,7 +2787,9 @@ function displayContextAnalysis(analysisData, semanticQuery, contextSize) {
 
 // Export UI functions
 export {
-	displayBanner,
+	displayAsciiBanner,
+	// Alias for backwards compatibility
+	displayAsciiBanner as displayBanner,
 	displayTaggedTasksFYI,
 	startLoadingIndicator,
 	stopLoadingIndicator,
@@ -2838,7 +2814,8 @@ export {
 	infoLoadingIndicator,
 	displayContextAnalysis,
 	displayCurrentTagIndicator,
-	formatTaskIdForDisplay
+	formatTaskIdForDisplay,
+	warmGradient
 };
 
 /**

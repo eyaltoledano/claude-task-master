@@ -5,3 +5,5 @@
 
 export { registerGetTasksTool } from './get-tasks.tool.js';
 export { registerGetTaskTool } from './get-task.tool.js';
+export { registerGenerateTool } from './generate.tool.js';
+export { registerSetTaskStatusTool } from './set-task-status.tool.js';

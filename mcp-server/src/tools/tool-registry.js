@@ -3,7 +3,6 @@
  * Tool Registry - Maps tool names to registration functions
  */
 
-import { registerSetTaskStatusTool } from './set-task-status.js';
 import { registerParsePRDTool } from './parse-prd.js';
 import { registerUpdateTool } from './update.js';
 import { registerUpdateTaskTool } from './update-task.js';
@@ -48,11 +47,13 @@ import {
 	registerAutopilotFinalizeTool,
 	registerAutopilotAbortTool,
 	registerGetTasksTool,
-	registerGetTaskTool
+	registerGetTaskTool,
+	registerGenerateTool,
+	registerSetTaskStatusTool
 } from '@tm/mcp';
 
 /**
- * Comprehensive tool registry mapping all 44 tool names to their registration functions
+ * Comprehensive tool registry mapping tool names to their registration functions
  * Used for dynamic tool registration and validation
  */
 export const toolRegistry = {
@@ -98,7 +99,8 @@ export const toolRegistry = {
 	autopilot_complete: registerAutopilotCompleteTool,
 	autopilot_commit: registerAutopilotCommitTool,
 	autopilot_finalize: registerAutopilotFinalizeTool,
-	autopilot_abort: registerAutopilotAbortTool
+	autopilot_abort: registerAutopilotAbortTool,
+	generate: registerGenerateTool
 };
 
 /**

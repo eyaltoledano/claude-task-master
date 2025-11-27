@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
 import { TestResultValidator } from '../services/test-result-validator.js';
-import type { TestResult } from '../services/test-result-validator.types.js';
 import type {
 	WorkflowContext,
 	WorkflowError,
@@ -1458,7 +1457,7 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
 		it('should support git adapter hooks', () => {
 			const gitOperations: string[] = [];
 
-			orchestrator.onGitOperation((operation, data) => {
+			orchestrator.onGitOperation((operation, _data) => {
 				gitOperations.push(operation);
 			});
 
@@ -1475,7 +1474,7 @@ describe('WorkflowOrchestrator - State Machine Structure', () => {
 		it('should support executor adapter hooks', () => {
 			const executions: string[] = [];
 
-			orchestrator.onExecute((command, context) => {
+			orchestrator.onExecute((command, _context) => {
 				executions.push(command);
 			});
 

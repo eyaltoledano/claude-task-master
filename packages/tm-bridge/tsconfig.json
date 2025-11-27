@@ -9,7 +9,7 @@
 		"sourceMap": true,
 		"outDir": "./dist",
 		"baseUrl": ".",
-		"rootDir": "./src",
+		"rootDir": ".",
 		"strict": true,
 		"noImplicitAny": true,
 		"strictNullChecks": true,
@@ -27,11 +27,11 @@
 		"forceConsistentCasingInFileNames": true,
 		"moduleResolution": "NodeNext",
 		"moduleDetection": "force",
-		"types": ["node"],
+		"types": ["node", "vitest/globals"],
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"allowImportingTsExtensions": false
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "tests", "**/*.test.ts", "**/*.spec.ts"]
+	"include": ["src/**/*", "tests/**/*"],
+	"exclude": ["node_modules", "dist"]
 }

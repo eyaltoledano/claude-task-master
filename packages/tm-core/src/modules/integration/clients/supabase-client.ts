@@ -13,12 +13,41 @@ import { SupabaseSessionStorage } from '../../auth/services/supabase-session-sto
 import { AuthenticationError } from '../../auth/types.js';
 
 export class SupabaseAuthClient {
+	private static instance: SupabaseAuthClient | null = null;
 	private client: SupabaseJSClient | null = null;
 	private sessionStorage: SupabaseSessionStorage;
 	private logger = getLogger('SupabaseAuthClient');
 
-	constructor() {
+	/**
+	 * Private constructor to enforce singleton pattern.
+	 * Use SupabaseAuthClient.getInstance() instead.
+	 */
+	private constructor() {
 		this.sessionStorage = new SupabaseSessionStorage();
+	}
+
+	/**
+	 * Get the singleton instance of SupabaseAuthClient.
+	 * This ensures only one Supabase client exists to prevent
+	 * "refresh_token_already_used" errors from concurrent refresh attempts.
+	 */
+	static getInstance(): SupabaseAuthClient {
+		if (!SupabaseAuthClient.instance) {
+			SupabaseAuthClient.instance = new SupabaseAuthClient();
+		}
+		return SupabaseAuthClient.instance;
+	}
+
+	/**
+	 * Reset the singleton instance (for testing purposes only)
+	 * Also nullifies the internal client to ensure no stale Supabase client
+	 * references persist across test resets
+	 */
+	static resetInstance(): void {
+		if (SupabaseAuthClient.instance) {
+			SupabaseAuthClient.instance.client = null;
+		}
+		SupabaseAuthClient.instance = null;
 	}
 
 	/**

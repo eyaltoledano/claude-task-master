@@ -117,6 +117,8 @@ describe('isAuthenticationError', () => {
 	it('should return true for APICallError with 401 exit code', () => {
 		const error = new APICallError({
 			message: 'Unauthorized',
+			url: 'grok-cli://command',
+			requestBodyValues: {},
 			data: { exitCode: 401 }
 		});
 		expect(isAuthenticationError(error)).toBe(true);
@@ -132,13 +134,19 @@ describe('isTimeoutError', () => {
 	it('should return true for timeout APICallError', () => {
 		const error = new APICallError({
 			message: 'Timeout',
+			url: 'grok-cli://command',
+			requestBodyValues: {},
 			data: { code: 'TIMEOUT' }
 		});
 		expect(isTimeoutError(error)).toBe(true);
 	});
 
 	it('should return false for other errors', () => {
-		const error = new APICallError({ message: 'Other error' });
+		const error = new APICallError({
+			message: 'Other error',
+			url: 'grok-cli://command',
+			requestBodyValues: {}
+		});
 		expect(isTimeoutError(error)).toBe(false);
 	});
 });
@@ -147,13 +155,18 @@ describe('isInstallationError', () => {
 	it('should return true for installation APICallError', () => {
 		const error = new APICallError({
 			message: 'Not installed',
-			url: 'grok-cli://installation'
+			url: 'grok-cli://installation',
+			requestBodyValues: {}
 		});
 		expect(isInstallationError(error)).toBe(true);
 	});
 
 	it('should return false for other errors', () => {
-		const error = new APICallError({ message: 'Other error' });
+		const error = new APICallError({
+			message: 'Other error',
+			url: 'grok-cli://command',
+			requestBodyValues: {}
+		});
 		expect(isInstallationError(error)).toBe(false);
 	});
 });
@@ -167,6 +180,8 @@ describe('getErrorMetadata', () => {
 		};
 		const error = new APICallError({
 			message: 'Test error',
+			url: 'grok-cli://command',
+			requestBodyValues: {},
 			data: metadata
 		});
 
@@ -181,7 +196,11 @@ describe('getErrorMetadata', () => {
 	});
 
 	it('should return undefined for APICallError without data', () => {
-		const error = new APICallError({ message: 'Test error' });
+		const error = new APICallError({
+			message: 'Test error',
+			url: 'grok-cli://command',
+			requestBodyValues: {}
+		});
 		const result = getErrorMetadata(error);
 		expect(result).toBeUndefined();
 	});
