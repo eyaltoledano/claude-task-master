@@ -381,8 +381,24 @@ export class ExportService {
 	private transformTasksForBulkImport(tasks: Task[]): any[] {
 		const flatTasks: any[] = [];
 
+		// Build a set of all valid task/subtask IDs for dependency validation
+		const validIds = new Set<string>();
+		for (const task of tasks) {
+			validIds.add(String(task.id));
+			if (task.subtasks) {
+				for (const subtask of task.subtasks) {
+					validIds.add(`${task.id}.${subtask.id}`);
+				}
+			}
+		}
+
 		// Process each task and its subtasks
 		tasks.forEach((task) => {
+			// Filter dependencies to only include valid (existing) task IDs
+			const validDependencies = (task.dependencies || [])
+				.map(String)
+				.filter((dep) => validIds.has(dep));
+
 			// Add parent task
 			flatTasks.push({
 				externalId: String(task.id),
@@ -390,7 +406,7 @@ export class ExportService {
 				description: this.enrichDescription(task),
 				status: this.mapStatusForAPI(task.status),
 				priority: task.priority || 'medium',
-				dependencies: task.dependencies?.map(String) || [],
+				dependencies: validDependencies,
 				details: task.details,
 				testStrategy: task.testStrategy,
 				complexity: task.complexity,
@@ -406,6 +422,17 @@ export class ExportService {
 			// Add subtasks if they exist
 			if (task.subtasks && task.subtasks.length > 0) {
 				task.subtasks.forEach((subtask) => {
+					// Convert and filter subtask dependencies
+					const subtaskDependencies = (subtask.dependencies || [])
+						.map((dep) => {
+							// Convert subtask dependencies to full ID format
+							if (String(dep).includes('.')) {
+								return String(dep);
+							}
+							return `${task.id}.${dep}`;
+						})
+						.filter((dep) => validIds.has(dep));
+
 					flatTasks.push({
 						externalId: `${task.id}.${subtask.id}`,
 						parentExternalId: String(task.id),
@@ -413,14 +440,7 @@ export class ExportService {
 						description: this.enrichDescription(subtask),
 						status: this.mapStatusForAPI(subtask.status),
 						priority: subtask.priority || 'medium',
-						dependencies:
-							subtask.dependencies?.map((dep) => {
-								// Convert subtask dependencies to full ID format
-								if (String(dep).includes('.')) {
-									return String(dep);
-								}
-								return `${task.id}.${dep}`;
-							}) || [],
+						dependencies: subtaskDependencies,
 						details: subtask.details,
 						testStrategy: subtask.testStrategy,
 						complexity: subtask.complexity,
@@ -718,7 +738,23 @@ export class ExportService {
 	private transformTasksForImport(tasks: Task[]): ImportTask[] {
 		const importTasks: ImportTask[] = [];
 
+		// Build a set of all valid task/subtask IDs for dependency validation
+		const validIds = new Set<string>();
 		for (const task of tasks) {
+			validIds.add(String(task.id));
+			if (task.subtasks) {
+				for (const subtask of task.subtasks) {
+					validIds.add(`${task.id}.${subtask.id}`);
+				}
+			}
+		}
+
+		for (const task of tasks) {
+			// Filter dependencies to only include valid (existing) task IDs
+			const validDependencies = (task.dependencies || [])
+				.map(String)
+				.filter((dep) => validIds.has(dep));
+
 			// Add parent task
 			importTasks.push({
 				externalId: String(task.id),
@@ -727,7 +763,7 @@ export class ExportService {
 				details: task.details,
 				status: this.mapStatusForImport(task.status),
 				priority: this.mapPriorityForImport(task.priority),
-				dependencies: task.dependencies?.map(String) || [],
+				dependencies: validDependencies,
 				metadata: {
 					originalStatus: task.status,
 					originalPriority: task.priority,
@@ -739,6 +775,17 @@ export class ExportService {
 			// Add subtasks if they exist
 			if (task.subtasks && task.subtasks.length > 0) {
 				for (const subtask of task.subtasks) {
+					// Convert and filter subtask dependencies
+					const subtaskDependencies = (subtask.dependencies || [])
+						.map((dep) => {
+							// Convert subtask dependencies to full ID format
+							if (String(dep).includes('.')) {
+								return String(dep);
+							}
+							return `${task.id}.${dep}`;
+						})
+						.filter((dep) => validIds.has(dep));
+
 					importTasks.push({
 						externalId: `${task.id}.${subtask.id}`,
 						parentId: String(task.id),
@@ -747,14 +794,7 @@ export class ExportService {
 						details: subtask.details,
 						status: this.mapStatusForImport(subtask.status),
 						priority: this.mapPriorityForImport(subtask.priority),
-						dependencies:
-							subtask.dependencies?.map((dep) => {
-								// Convert subtask dependencies to full ID format
-								if (String(dep).includes('.')) {
-									return String(dep);
-								}
-								return `${task.id}.${dep}`;
-							}) || [],
+						dependencies: subtaskDependencies,
 						metadata: {
 							originalStatus: subtask.status,
 							originalPriority: subtask.priority,
