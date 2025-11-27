@@ -201,12 +201,13 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Show invitation results if any, otherwise show invite URL
+				// Show invitation results if any
 				if (result.invitations && result.invitations.length > 0) {
 					this.displayInvitationResults(result.invitations);
-				} else {
-					this.showInviteUrl(result.brief.url);
 				}
+
+				// Always show the invite URL
+				this.showInviteUrl(result.brief.url);
 
 				// Record export success for prompt metrics
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -364,10 +365,10 @@ export class ExportCommand extends Command {
 				// Show invitation results if any
 				if (result.invitations && result.invitations.length > 0) {
 					this.displayInvitationResults(result.invitations);
-				} else if (!wantsToInvite) {
-					// If user didn't want to invite, show the URL anyway
-					this.showInviteUrl(result.brief.url);
 				}
+
+				// Always show the invite URL (whether they invited or not)
+				this.showInviteUrl(result.brief.url);
 
 				// Record success
 				await this.promptService?.recordAction('export_attempt', 'accepted');
