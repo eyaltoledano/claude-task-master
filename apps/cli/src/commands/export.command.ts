@@ -5,6 +5,7 @@
 
 import {
 	type GenerateBriefResult,
+	type InvitationResult,
 	PromptService,
 	type TmCore,
 	createTmCore
@@ -63,6 +64,10 @@ export class ExportCommand extends Command {
 		this.option(
 			'--description <description>',
 			'Specify a description for the generated brief (non-interactive)'
+		);
+		this.option(
+			'-I, --invite',
+			'Prompt for email addresses to invite collaborators to the brief'
 		);
 
 		// Default action
@@ -132,7 +137,7 @@ export class ExportCommand extends Command {
 
 			if (isInteractive) {
 				await this.executeInteractiveExport(options);
-			} else {
+				} else {
 				await this.executeStandardExport(options);
 			}
 		} catch (error: any) {
@@ -168,12 +173,19 @@ export class ExportCommand extends Command {
 			// Show what will be exported
 			this.showTaskPreview(taskList.tasks);
 
+			// Prompt for invite emails if --invite flag is set
+			let inviteEmails: string[] = [];
+			if (options?.invite) {
+				inviteEmails = await this.promptForInviteEmails();
+			}
+
 			// Perform export
 			spinner = ora('Creating brief and exporting tasks...').start();
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
+					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						// Always generate title/description unless manually specified
 						generateTitle: !options?.title,
@@ -189,8 +201,10 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Prompt to invite teammates
-				await this.promptInviteTeammates(result.brief.url);
+				// Show invitation results if any
+				if (result.invitations && result.invitations.length > 0) {
+					this.displayInvitationResults(result.invitations);
+				}
 
 				// Record export success for prompt metrics
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -304,6 +318,23 @@ export class ExportCommand extends Command {
 				return;
 			}
 
+			// Ask about inviting collaborators BEFORE export
+			let inviteEmails: string[] = [];
+			const { wantsToInvite } = await inquirer.prompt<{
+				wantsToInvite: boolean;
+			}>([
+				{
+					type: 'confirm',
+					name: 'wantsToInvite',
+					message: 'Invite collaborators to this brief?',
+					default: false
+				}
+			]);
+
+			if (wantsToInvite) {
+				inviteEmails = await this.promptForInviteEmails();
+			}
+
 			// Perform export
 			spinner = ora('Creating brief and exporting tasks...').start();
 
@@ -311,7 +342,8 @@ export class ExportCommand extends Command {
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
+					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						generateTitle: !options?.title,
 						generateDescription: !options?.description,
@@ -326,8 +358,10 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Prompt to invite teammates
-				await this.promptInviteTeammates(result.brief.url);
+				// Show invitation results if any
+				if (result.invitations && result.invitations.length > 0) {
+					this.displayInvitationResults(result.invitations);
+				}
 
 				// Record success
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -393,38 +427,70 @@ export class ExportCommand extends Command {
 	}
 
 	/**
-	 * Prompt user to invite teammates after successful export
+	 * Prompt for email addresses to invite collaborators
+	 * @returns Array of validated email addresses, or empty array if none/cancelled
 	 */
-	private async promptInviteTeammates(briefUrl: string): Promise<void> {
-		const { wantsToInvite } = await inquirer.prompt<{ wantsToInvite: boolean }>(
-			[
-				{
-					type: 'confirm',
-					name: 'wantsToInvite',
-					message:
-						'Do you want to invite teammates to collaborate on these tasks together?',
-					default: false
+	private async promptForInviteEmails(): Promise<string[]> {
+		const { emails } = await inquirer.prompt<{ emails: string }>([
+			{
+				type: 'input',
+				name: 'emails',
+				message: 'Enter email addresses to invite (comma-separated, max 10):',
+				validate: (input: string) => {
+					if (!input.trim()) {
+						return true; // Empty is valid - means no invites
+					}
+					const emailList = input
+						.split(',')
+						.map((e) => e.trim())
+						.filter(Boolean);
+					if (emailList.length > 10) {
+						return 'Maximum 10 email addresses allowed';
+					}
+					// Basic email format validation
+					const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+					const invalid = emailList.filter((e) => !emailRegex.test(e));
+					if (invalid.length > 0) {
+						return `Invalid email format: ${invalid.join(', ')}`;
+					}
+					return true;
 				}
-			]
-		);
+			}
+		]);
 
-		if (wantsToInvite) {
-			// Extract base URL and org slug from brief URL
-			// briefUrl format: http://localhost:3000/home/{org_slug}/briefs/{briefId}
-			const urlMatch = briefUrl.match(
-				/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
-			);
-			if (urlMatch) {
-				const [, baseUrl, orgSlug] = urlMatch;
-				const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
-				const open = await import('open');
-				await open.default(membersUrl);
-				console.log(chalk.gray('  Opened team members page in browser'));
-			} else {
-				// Fallback to brief URL if pattern doesn't match
-				const open = await import('open');
-				await open.default(briefUrl);
-				console.log(chalk.gray('  Opened brief in browser'));
+		if (!emails.trim()) {
+			return [];
+		}
+
+		return emails
+			.split(',')
+			.map((e) => e.trim())
+			.filter(Boolean)
+			.slice(0, 10);
+	}
+
+	/**
+	 * Display invitation results
+	 */
+	private displayInvitationResults(invitations: InvitationResult[]): void {
+		if (!invitations || invitations.length === 0) return;
+
+		console.log(chalk.cyan('\n  Collaborator Invitations:'));
+		for (const inv of invitations) {
+			switch (inv.status) {
+				case 'sent':
+					console.log(chalk.green(`    ${inv.email}: Invitation sent`));
+					break;
+				case 'already_member':
+					console.log(
+						chalk.gray(`    ${inv.email}: Already a team member`)
+					);
+					break;
+				case 'error':
+					console.log(
+						chalk.red(`    ${inv.email}: ${inv.error || 'Failed to invite'}`)
+					);
+					break;
 			}
 		}
 	}

@@ -79,6 +79,8 @@ export interface GenerateBriefOptions {
 	excludeSubtasks?: boolean;
 	/** Optional organization ID (uses default if not provided) */
 	orgId?: string;
+	/** Email addresses to invite to the brief (max 10) */
+	inviteEmails?: string[];
 	/** Generation options */
 	options?: {
 		/** Use AI to generate a brief title from task content */
@@ -94,6 +96,15 @@ export interface GenerateBriefOptions {
 		/** Optional explicit description (overrides generation) */
 		description?: string;
 	};
+}
+
+/**
+ * Result of an invitation attempt
+ */
+export interface InvitationResult {
+	email: string;
+	status: 'sent' | 'already_member' | 'error';
+	error?: string;
 }
 
 /**
@@ -114,6 +125,8 @@ export interface GenerateBriefResponse {
 		hamsterId: string;
 		parentHamsterId?: string;
 	}>;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
 	warnings?: string[];
 	error?: {
 		code: string;
@@ -142,6 +155,8 @@ export interface GenerateBriefResult {
 		hamsterId: string;
 		parentHamsterId?: string;
 	}>;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
 	/** Any warnings during import */
 	warnings?: string[];
 	/** Error details if failed */
@@ -692,6 +707,7 @@ export class ExportService {
 				projectName: projectName
 			},
 			orgId,
+			inviteEmails: options.inviteEmails,
 			options: options.options
 		});
 	}
@@ -832,6 +848,7 @@ export class ExportService {
 			projectName?: string;
 		};
 		orgId?: string;
+		inviteEmails?: string[];
 		options?: GenerateBriefOptions['options'];
 	}): Promise<GenerateBriefResult> {
 		// Use AuthDomain to get the properly formatted API base URL
@@ -870,7 +887,7 @@ export class ExportService {
 			};
 		}
 
-		const requestBody = {
+		const requestBody: Record<string, unknown> = {
 			tasks: request.tasks,
 			source: request.source,
 			accountId, // Hamster expects accountId, not orgId
@@ -883,6 +900,11 @@ export class ExportService {
 				description: request.options?.description
 			}
 		};
+
+		// Add invite emails if provided (max 10)
+		if (request.inviteEmails && request.inviteEmails.length > 0) {
+			requestBody.inviteEmails = request.inviteEmails.slice(0, 10);
+		}
 
 		try {
 			const response = await fetch(apiUrl, {
@@ -939,6 +961,7 @@ export class ExportService {
 				success: true,
 				brief: result.brief,
 				taskMapping: result.taskMapping,
+				invitations: result.invitations,
 				warnings: result.warnings
 			};
 		} catch (error) {

@@ -172,7 +172,12 @@ export {
 } from './modules/tasks/services/task-file-generator.service.js';
 
 // Integration - Advanced
-export { ExportService } from './modules/integration/services/export.service.js';
+export {
+	ExportService,
+	type GenerateBriefOptions,
+	type GenerateBriefResult,
+	type InvitationResult
+} from './modules/integration/services/export.service.js';
 
 // Prompts - Advanced
 export { PromptService } from './modules/prompts/services/prompt-service.js';
