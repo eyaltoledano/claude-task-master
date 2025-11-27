@@ -125,8 +125,9 @@ export class ExportCommand extends Command {
 			// Initialize services
 			await this.initializeServices();
 
-			// Show upgrade message
-			showUpgradeMessage();
+			// Show upgrade message with tag info
+			const tagToExport = options?.tag || 'master';
+			showUpgradeMessage(tagToExport);
 
 			// Determine if we should be interactive:
 			// - Interactive by default (no flags passed)
@@ -527,17 +528,21 @@ export class ExportCommand extends Command {
 	 */
 	private async setContextToBrief(briefUrl: string): Promise<void> {
 		try {
-			// Use the ContextCommand to set the context
-			const { ContextCommand } = await import('./context.command.js');
-			const contextCmd = new ContextCommand();
+			if (!this.taskMasterCore) return;
 
-			// Execute the set command with the brief URL
-			await (contextCmd as any).executeSetFromBriefInput(briefUrl, false);
+			// Extract briefId from URL
+			// URL format: http://localhost:3000/home/{org_slug}/briefs/{briefId}
+			const match = briefUrl.match(/\/briefs\/([a-f0-9-]+)/i);
+			if (!match) return;
+
+			const briefId = match[1];
+
+			// Set context using TmCore's auth domain
+			await this.taskMasterCore.auth.setContext({ briefId });
 
 			console.log(chalk.gray('  Context set to new brief'));
-		} catch (error) {
+		} catch {
 			// Silently fail - context setting is a nice-to-have
-			// The user can manually set context if needed
 		}
 	}
 

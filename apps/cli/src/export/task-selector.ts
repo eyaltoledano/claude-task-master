@@ -185,19 +185,25 @@ export async function showExportPreview(
 /**
  * Shows value prop message for Hamster export
  */
-export function showUpgradeMessage(): void {
+export function showUpgradeMessage(tagName?: string): void {
+	const tagLine = tagName
+		? chalk.cyan(`  Exporting tag: ${chalk.white.bold(tagName)}`)
+		: '';
+
 	const content = [
 		chalk.white.bold('Export to Hamster'),
 		'',
 		chalk.gray('Your tasks will live on Hamster where you can:'),
 		chalk.white('  Invite teammates to collaborate on the brief'),
 		chalk.white('  Chat with AI alongside your team in real-time'),
-		chalk.white('  Track progress and ship faster together')
+		chalk.white('  Track progress and ship faster together'),
+		...(tagLine ? ['', tagLine] : [])
 	].join('\n');
 
 	console.log(
 		boxen(content, {
-			padding: { top: 0, bottom: 0, left: 1, right: 1 },
+			padding: { top: 1, bottom: 1, left: 2, right: 2 },
+			margin: { top: 1, bottom: 1 },
 			borderStyle: 'round',
 			borderColor: 'cyan',
 			dimBorder: true
