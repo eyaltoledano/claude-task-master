@@ -220,8 +220,7 @@ Use the .mdc extension for all rule files.`;
 			'rules/self_improve.mdc': 'self_improve.md',
 			'rules/taskmaster.mdc': 'taskmaster.md',
 			'rules/taskmaster_hooks_workflow.mdc': 'taskmaster_hooks_workflow.md',
-			'rules/hamster.mdc': 'hamster.md',
-			'rules/goham.md': 'goham.md'
+			'rules/hamster.mdc': 'hamster.md'
 		});
 	});
 

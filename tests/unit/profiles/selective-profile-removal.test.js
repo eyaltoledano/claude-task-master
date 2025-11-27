@@ -116,8 +116,7 @@ describe('Selective Rules Removal', () => {
 				.mockReturnValueOnce([
 					'dev_workflow.mdc', // Task Master file in subdirectory
 					'taskmaster.mdc', // Task Master file in subdirectory
-					'hamster.mdc', // Task Master file in subdirectory
-					'goham.mdc' // Task Master file in subdirectory
+					'hamster.mdc' // Task Master file in subdirectory
 				])
 				// Third call - check remaining files after removal
 				.mockReturnValueOnce([
@@ -140,8 +139,7 @@ describe('Selective Rules Removal', () => {
 				'taskmaster/dev_workflow.mdc',
 				'self_improve.mdc',
 				'taskmaster/taskmaster.mdc',
-				'taskmaster/hamster.mdc',
-				'taskmaster/goham.mdc'
+				'taskmaster/hamster.mdc'
 			]);
 			expect(result.notice).toContain('Preserved 2 existing rule files');
 
@@ -170,6 +168,10 @@ describe('Selective Rules Removal', () => {
 			);
 			expect(mockRmSync).toHaveBeenCalledWith(
 				path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc'),
+				{ force: true }
+			);
+			expect(mockRmSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.cursor/rules/taskmaster/hamster.mdc'),
 				{ force: true }
 			);
 
@@ -221,8 +223,7 @@ describe('Selective Rules Removal', () => {
 				.mockReturnValueOnce([
 					'dev_workflow.mdc',
 					'taskmaster.mdc',
-					'hamster.mdc',
-					'goham.mdc'
+					'hamster.mdc'
 				])
 				// Third call - check remaining files after removal (should be empty)
 				.mockReturnValueOnce([]) // Empty after removal
@@ -237,8 +238,7 @@ describe('Selective Rules Removal', () => {
 				'taskmaster/dev_workflow.mdc',
 				'self_improve.mdc',
 				'taskmaster/taskmaster.mdc',
-				'taskmaster/hamster.mdc',
-				'taskmaster/goham.mdc'
+				'taskmaster/hamster.mdc'
 			]);
 
 			// The function may fail due to directory reading issues in the test environment,

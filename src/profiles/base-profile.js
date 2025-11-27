@@ -58,8 +58,7 @@ export function createProfile(editorConfig) {
 		'rules/dev_workflow.mdc': `${taskmasterPrefix}dev_workflow${targetExtension}`,
 		'rules/self_improve.mdc': `self_improve${targetExtension}`,
 		'rules/taskmaster.mdc': `${taskmasterPrefix}taskmaster${targetExtension}`,
-		'rules/hamster.mdc': `${taskmasterPrefix}hamster${targetExtension}`,
-		'rules/goham.md': `${taskmasterPrefix}goham${targetExtension}`
+		'rules/hamster.mdc': `${taskmasterPrefix}hamster${targetExtension}`
 	};
 
 	// Build final fileMap - merge defaults with custom entries when includeDefaultRules is true

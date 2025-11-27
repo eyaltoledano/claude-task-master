@@ -8,7 +8,7 @@ import * as profilesModule from '../../../src/profiles/index.js';
 /**
  * Integration tests for hamster rules distribution across all profiles.
  *
- * These tests verify that hamster.mdc and goham.md are correctly distributed
+ * These tests verify that hamster.mdc is correctly distributed
  * to all profiles that include default rules when running `rules add`.
  */
 describe('Hamster Rules Distribution', () => {
@@ -29,21 +29,17 @@ describe('Hamster Rules Distribution', () => {
 		(p) => !PROFILES_WITHOUT_DEFAULT_RULES.includes(p)
 	);
 
-	// Get expected hamster file paths by reading from the actual profile object
-	const getExpectedHamsterPaths = (profileName, tempDir) => {
+	// Get expected hamster file path by reading from the actual profile object
+	const getExpectedHamsterPath = (profileName, tempDir) => {
 		const profile = profilesModule[`${profileName}Profile`];
 		if (!profile || !profile.fileMap) return null;
 
 		const rulesDir = profile.rulesDir;
 		const hamsterTarget = profile.fileMap['rules/hamster.mdc'];
-		const gohamTarget = profile.fileMap['rules/goham.md'];
 
-		if (!hamsterTarget || !gohamTarget) return null;
+		if (!hamsterTarget) return null;
 
-		return {
-			hamster: path.join(tempDir, rulesDir, hamsterTarget),
-			goham: path.join(tempDir, rulesDir, gohamTarget)
-		};
+		return path.join(tempDir, rulesDir, hamsterTarget);
 	};
 
 	describe('Source files exist', () => {
@@ -55,11 +51,6 @@ describe('Hamster Rules Distribution', () => {
 				'hamster.mdc'
 			);
 			expect(fs.existsSync(hamsterPath)).toBe(true);
-		});
-
-		test('goham.md exists in assets/rules', () => {
-			const gohamPath = path.join(process.cwd(), 'assets', 'rules', 'goham.md');
-			expect(fs.existsSync(gohamPath)).toBe(true);
 		});
 
 		test('hamster.mdc has correct frontmatter', () => {
@@ -78,7 +69,7 @@ describe('Hamster Rules Distribution', () => {
 		});
 	});
 
-	describe('Rules add command distributes hamster files', () => {
+	describe('Rules add command distributes hamster file', () => {
 		// Test each profile that should receive hamster rules
 		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
 			test(`${profile} profile receives hamster rules via 'rules add'`, () => {
@@ -95,30 +86,20 @@ describe('Hamster Rules Distribution', () => {
 						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
 					});
 
-					// Get expected paths for this profile
-					const expectedPaths = getExpectedHamsterPaths(profile, tempDir);
+					// Get expected path for this profile
+					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 
-					if (expectedPaths) {
-						// Verify hamster.* file exists
-						expect(fs.existsSync(expectedPaths.hamster)).toBe(true);
+					// Strictly enforce that all profiles with default rules must have hamster mapping
+					expect(expectedPath).not.toBeNull();
 
-						// Verify goham.* file exists
-						expect(fs.existsSync(expectedPaths.goham)).toBe(true);
+					// Verify hamster.* file exists
+					expect(fs.existsSync(expectedPath)).toBe(true);
 
-						// Verify hamster file contains expected content
-						const hamsterContent = fs.readFileSync(
-							expectedPaths.hamster,
-							'utf8'
-						);
-						expect(hamsterContent).toContain('Hamster Integration Workflow');
-						expect(hamsterContent).toContain('tm list');
-						expect(hamsterContent).toContain('tm set-status');
-
-						// Verify goham file contains expected content
-						const gohamContent = fs.readFileSync(expectedPaths.goham, 'utf8');
-						expect(gohamContent).toContain('Start Working with Hamster Brief');
-						expect(gohamContent).toContain('tm context');
-					}
+					// Verify hamster file contains expected content
+					const hamsterContent = fs.readFileSync(expectedPath, 'utf8');
+					expect(hamsterContent).toContain('Hamster Integration Workflow');
+					expect(hamsterContent).toContain('tm list');
+					expect(hamsterContent).toContain('tm set-status');
 				} finally {
 					// Cleanup temp directory
 					fs.rmSync(tempDir, { recursive: true, force: true });
