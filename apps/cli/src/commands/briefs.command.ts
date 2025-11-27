@@ -312,7 +312,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	/**
 	 * Display briefs in a table format (for non-interactive mode)
 	 */
-	private displayBriefsTable(tags: TagInfo[], showMetadata?: boolean): void {
+	private displayBriefsTable(tags: TagInfo[], _showMetadata?: boolean): void {
 		const Table = require('cli-table3');
 		
 		const terminalWidth = Math.max(process.stdout.columns || 120, 80);

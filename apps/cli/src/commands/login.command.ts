@@ -78,7 +78,7 @@ Examples:
 		const spinner = ora('Authenticating with token...').start();
 
 		try {
-			await this.authManager.authenticateWithToken(token);
+			await this.authManager.authenticateWithCode(token);
 			spinner.succeed('Authenticated successfully');
 			ui.displaySuccess('You are now logged in');
 			return { success: true };
@@ -91,7 +91,8 @@ Examples:
 				error.code === 'MFA_REQUIRED'
 			) {
 				spinner.stop();
-				return this.handleMFAVerification(skipPrompts);
+				const factorId = (error as any).factorId;
+				return this.handleMFAVerification(factorId, skipPrompts);
 			}
 
 			throw error;
@@ -109,9 +110,9 @@ Examples:
 		try {
 			// Check if already authenticated
 			if (await this.authManager.hasValidSession()) {
-				const credentials = await this.authManager.getCredentials();
+				const credentials = await this.authManager.getAuthCredentials();
 				ui.displayInfo(
-					`Already authenticated as ${credentials?.user?.email || 'unknown user'}`
+					`Already authenticated as ${credentials?.email || 'unknown user'}`
 				);
 
 				if (!skipPrompts) {
@@ -133,8 +134,8 @@ Examples:
 			// Start browser auth flow
 			spinner = ora('Starting browser authentication...').start();
 
-			const authUrl = await this.authManager.authenticateWithBrowser(
-				async (url: string) => {
+			await this.authManager.authenticateWithOAuth({
+				onAuthUrl: async (url: string) => {
 					spinner?.succeed('Opening browser for authentication');
 					console.log(chalk.gray(`  ${url}`));
 
@@ -145,13 +146,9 @@ Examples:
 						console.log(chalk.yellow('  Please open the URL above manually.\n'));
 					}
 				}
-			);
+			});
 
-			if (!authUrl) {
-				ui.displaySuccess('Authentication successful');
-				return { success: true };
-			}
-
+			ui.displaySuccess('Authentication successful');
 			return { success: true };
 		} catch (error) {
 			if (spinner?.isSpinning) {
@@ -163,7 +160,8 @@ Examples:
 				error instanceof AuthenticationError &&
 				error.code === 'MFA_REQUIRED'
 			) {
-				return this.handleMFAVerification(skipPrompts);
+				const factorId = (error as any).factorId;
+				return this.handleMFAVerification(factorId, skipPrompts);
 			}
 
 			throw error;
@@ -174,6 +172,7 @@ Examples:
 	 * Handle MFA verification flow
 	 */
 	private async handleMFAVerification(
+		factorId: string,
 		skipPrompts?: boolean
 	): Promise<{ success: boolean; message?: string }> {
 		console.log(chalk.yellow('\nMulti-factor authentication required'));
@@ -186,31 +185,42 @@ Examples:
 		}
 
 		try {
-			await this.authManager.verifyMFAWithRetry(async (attempt) => {
-				const response = await inquirer.prompt<{ code: string }>([
-					{
-						type: 'input',
-						name: 'code',
-						message:
-							attempt > 1
-								? `Enter verification code (attempt ${attempt}/3):`
-								: 'Enter verification code:',
-						validate: (input: string) => {
-							if (!input || input.trim().length === 0) {
-								return 'Verification code is required';
+			const result = await this.authManager.verifyMFAWithRetry(
+				factorId,
+				async () => {
+					const response = await inquirer.prompt<{ code: string }>([
+						{
+							type: 'input',
+							name: 'code',
+							message: 'Enter verification code:',
+							validate: (input: string) => {
+								if (!input || input.trim().length === 0) {
+									return 'Verification code is required';
+								}
+								if (!/^\d{6}$/.test(input.trim())) {
+									return 'Please enter a 6-digit code';
+								}
+								return true;
 							}
-							if (!/^\d{6}$/.test(input.trim())) {
-								return 'Please enter a 6-digit code';
-							}
-							return true;
 						}
+					]);
+					return response.code.trim();
+				},
+				{
+					maxAttempts: 3,
+					onInvalidCode: (_attempt, remaining) => {
+						console.log(chalk.yellow(`Invalid code. ${remaining} attempts remaining.`));
 					}
-				]);
-				return response.code.trim();
-			});
+				}
+			);
 
-			ui.displaySuccess('MFA verification successful');
-			return { success: true };
+			if (result.success) {
+				ui.displaySuccess('MFA verification successful');
+				return { success: true };
+			} else {
+				ui.displayError('MFA verification failed after maximum attempts');
+				return { success: false, message: 'MFA verification failed' };
+			}
 		} catch (error) {
 			if (error instanceof AuthenticationError) {
 				ui.displayError(`MFA verification failed: ${error.message}`);

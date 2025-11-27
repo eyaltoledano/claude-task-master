@@ -286,7 +286,7 @@ export class ListTasksCommand extends Command {
 	private displayText(
 		data: ListTasksResult,
 		withSubtasks?: boolean,
-		statusFilter?: string
+		_statusFilter?: string
 	): void {
 		const { tasks, tag, storageType } = data;
 

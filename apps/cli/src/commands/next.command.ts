@@ -138,7 +138,7 @@ export class NextCommand extends Command {
 
 		// Check if there are ANY tasks at all
 		const allTasks = await this.tmCore.tasks.list({ tag: options.tag });
-		const hasAnyTasks = allTasks && allTasks.length > 0;
+		const hasAnyTasks = allTasks && allTasks.tasks.length > 0;
 
 		return {
 			task,
