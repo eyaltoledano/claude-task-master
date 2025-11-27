@@ -61,13 +61,9 @@ export async function removeDependencyDirect(args, log) {
 		// Use provided path
 		const tasksPath = tasksJsonPath;
 
-		// Format IDs for the core function
-		const taskId =
-			id && id.includes && id.includes('.') ? id : parseInt(id, 10);
-		const dependencyId =
-			dependsOn && dependsOn.includes && dependsOn.includes('.')
-				? dependsOn
-				: parseInt(dependsOn, 10);
+		// Preserve raw IDs for bulk operations (ranges and comma-separated lists)
+		const taskId = id;
+		const dependencyId = dependsOn;
 
 		log.info(
 			`Removing dependency: task ${taskId} no longer depends on ${dependencyId}`

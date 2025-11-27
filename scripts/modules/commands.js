@@ -1796,9 +1796,17 @@ ${result.result}
 	// add-dependency command
 	programInstance
 		.command('add-dependency')
-		.description('Add a dependency to a task')
-		.option('-i, --id <id>', 'Task ID to add dependency to')
-		.option('-d, --depends-on <id>', 'Task ID that will become a dependency')
+		.description(
+			'Add dependencies to task(s). Supports ranges and comma-separated lists.'
+		)
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to add dependencies to (e.g., "7", "7-10", "7,8,9")'
+		)
+		.option(
+			'-d, --depends-on <id>',
+			'Task ID(s) that will become dependencies (e.g., "1", "1-5", "1,3,5")'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -1830,32 +1838,27 @@ ${result.result}
 				process.exit(1);
 			}
 
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await addDependency(
-				taskMaster.getTasksPath(),
-				formattedTaskId,
-				formattedDependencyId,
-				{
-					projectRoot: taskMaster.getProjectRoot(),
-					tag
-				}
-			);
+			// Pass raw IDs (supporting ranges/lists and dot notation)
+			await addDependency(taskMaster.getTasksPath(), taskId, dependencyId, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// remove-dependency command
 	programInstance
 		.command('remove-dependency')
-		.description('Remove a dependency from a task')
-		.option('-i, --id <id>', 'Task ID to remove dependency from')
-		.option('-d, --depends-on <id>', 'Task ID to remove as a dependency')
+		.description(
+			'Remove dependencies from task(s). Supports ranges and comma-separated lists.'
+		)
+		.option(
+			'-i, --id <id>',
+			'Task ID(s) to remove dependencies from (e.g., "7", "7-10", "7,8,9")'
+		)
+		.option(
+			'-d, --depends-on <id>',
+			'Task ID(s) to remove as dependencies (e.g., "1", "1-5", "1,3,5")'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -1887,24 +1890,11 @@ ${result.result}
 				process.exit(1);
 			}
 
-			// Handle subtask IDs correctly by preserving the string format for IDs containing dots
-			// Only use parseInt for simple numeric IDs
-			const formattedTaskId = taskId.includes('.')
-				? taskId
-				: parseInt(taskId, 10);
-			const formattedDependencyId = dependencyId.includes('.')
-				? dependencyId
-				: parseInt(dependencyId, 10);
-
-			await removeDependency(
-				taskMaster.getTasksPath(),
-				formattedTaskId,
-				formattedDependencyId,
-				{
-					projectRoot: taskMaster.getProjectRoot(),
-					tag
-				}
-			);
+			// Pass raw IDs (supporting ranges/lists and dot notation)
+			await removeDependency(taskMaster.getTasksPath(), taskId, dependencyId, {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			});
 		});
 
 	// validate-dependencies command
