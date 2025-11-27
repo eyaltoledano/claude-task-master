@@ -186,7 +186,10 @@ export {
 // Prompts - Advanced
 export { PromptService } from './modules/prompts/services/prompt-service.js';
 export { PromptStateManager } from './modules/prompts/services/prompt-state-manager.js';
-export { TriggerEvaluator, type TriggerContext } from './modules/prompts/services/trigger-evaluator.js';
+export {
+	TriggerEvaluator,
+	type TriggerContext
+} from './modules/prompts/services/trigger-evaluator.js';
 export {
 	DEFAULT_PROMPT_CONFIG,
 	DEFAULT_TRIGGER_CONDITIONS,

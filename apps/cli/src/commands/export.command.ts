@@ -252,13 +252,17 @@ export class ExportCommand extends Command {
 			);
 			if (unexportedTags.length === 0) {
 				console.log(
-					chalk.yellow('\n  All local tags have already been exported to Hamster.\n')
+					chalk.yellow(
+						'\n  All local tags have already been exported to Hamster.\n'
+					)
 				);
 				console.log(chalk.gray('  Previously exported briefs:'));
 				for (const tag of tagsResult.tags) {
 					if (exportedTags[tag.name]) {
 						console.log(
-							chalk.gray(`    - ${tag.name}: ${exportedTags[tag.name].briefUrl}`)
+							chalk.gray(
+								`    - ${tag.name}: ${exportedTags[tag.name].briefUrl}`
+							)
 						);
 					}
 				}
@@ -300,11 +304,14 @@ export class ExportCommand extends Command {
 			});
 
 			// Prompt for tag selection (multi-select checkbox)
-			const { selectedTags } = await inquirer.prompt<{ selectedTags: string[] }>([
+			const { selectedTags } = await inquirer.prompt<{
+				selectedTags: string[];
+			}>([
 				{
 					type: 'checkbox',
 					name: 'selectedTags',
-					message: 'Select tag(s) to export to Hamster (space to select, enter to confirm):',
+					message:
+						'Select tag(s) to export to Hamster (space to select, enter to confirm):',
 					choices: tagChoices,
 					pageSize: 12,
 					validate: (answer: string[]) => {
@@ -370,9 +377,9 @@ export class ExportCommand extends Command {
 
 			if (!tasks || tasks.length === 0) {
 				console.log(chalk.yellow('\nNo tasks found to export.\n'));
-					this.lastResult = {
-						success: false,
-						action: 'cancelled',
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
 					message: 'No tasks found'
 				};
 				return;
@@ -392,7 +399,7 @@ export class ExportCommand extends Command {
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
+					tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						// Always generate title/description unless manually specified
@@ -474,7 +481,9 @@ export class ExportCommand extends Command {
 			const tasks = await fileStorage.loadTasks(options?.tag);
 
 			if (!tasks || tasks.length === 0) {
-				console.log(chalk.yellow('\nNo tasks available for export in this tag.\n'));
+				console.log(
+					chalk.yellow('\nNo tasks available for export in this tag.\n')
+				);
 				this.lastResult = {
 					success: false,
 					action: 'cancelled',
@@ -575,7 +584,7 @@ export class ExportCommand extends Command {
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
+					tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						generateTitle: !options?.title,
@@ -640,9 +649,7 @@ export class ExportCommand extends Command {
 		_options?: any
 	): Promise<void> {
 		console.log('');
-		console.log(
-			chalk.cyan(`  Exporting ${tags.length} tags to Hamster...\n`)
-		);
+		console.log(chalk.cyan(`  Exporting ${tags.length} tags to Hamster...\n`));
 
 		// Show which tags will be exported
 		for (const tag of tags) {
@@ -754,7 +761,9 @@ export class ExportCommand extends Command {
 		console.log('');
 		if (successful.length > 0) {
 			console.log(
-				chalk.green.bold(`  ${successful.length} tag(s) exported successfully:\n`)
+				chalk.green.bold(
+					`  ${successful.length} tag(s) exported successfully:\n`
+				)
 			);
 			for (const result of successful) {
 				console.log(chalk.white(`    ${result.tag}`));
@@ -762,7 +771,8 @@ export class ExportCommand extends Command {
 					console.log(chalk.gray(`      ${result.brief.title}`));
 					console.log(chalk.cyan(`      ${result.brief.url}`));
 					const taskInfo =
-						result.parentTaskCount !== undefined && result.subtaskCount !== undefined
+						result.parentTaskCount !== undefined &&
+						result.subtaskCount !== undefined
 							? `${result.parentTaskCount} tasks, ${result.subtaskCount} subtasks`
 							: `${result.brief.taskCount} tasks`;
 					console.log(chalk.gray(`      ${taskInfo}`));

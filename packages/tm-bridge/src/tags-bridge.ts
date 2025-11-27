@@ -43,7 +43,13 @@ export interface RemoteTagsResult {
 export async function tryListTagsViaRemote(
 	params: TagsBridgeParams
 ): Promise<RemoteTagsResult | null> {
-	const { projectRoot, isMCP = false, outputFormat = 'text', report, skipTableDisplay = false } = params;
+	const {
+		projectRoot,
+		isMCP = false,
+		outputFormat = 'text',
+		report,
+		skipTableDisplay = false
+	} = params;
 
 	// Check storage type using shared utility
 	const { isApiStorage, tmCore } = await checkStorageType(

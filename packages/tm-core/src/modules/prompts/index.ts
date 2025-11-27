@@ -31,4 +31,3 @@ export { PromptService } from './services/prompt-service.js';
 export { PromptStateManager } from './services/prompt-state-manager.js';
 export { TriggerEvaluator } from './services/trigger-evaluator.js';
 export type { TriggerContext } from './services/trigger-evaluator.js';
-

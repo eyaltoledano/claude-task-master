@@ -142,8 +142,12 @@ Examples:
 					try {
 						await open(url);
 					} catch {
-						console.log(chalk.yellow('\n  Could not open browser automatically.'));
-						console.log(chalk.yellow('  Please open the URL above manually.\n'));
+						console.log(
+							chalk.yellow('\n  Could not open browser automatically.')
+						);
+						console.log(
+							chalk.yellow('  Please open the URL above manually.\n')
+						);
 					}
 				}
 			});
@@ -209,7 +213,9 @@ Examples:
 				{
 					maxAttempts: 3,
 					onInvalidCode: (_attempt, remaining) => {
-						console.log(chalk.yellow(`Invalid code. ${remaining} attempts remaining.`));
+						console.log(
+							chalk.yellow(`Invalid code. ${remaining} attempts remaining.`)
+						);
 					}
 				}
 			);
@@ -251,4 +257,3 @@ Examples:
 		return cmd;
 	}
 }
-

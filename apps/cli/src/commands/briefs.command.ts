@@ -3,11 +3,7 @@
  * Provides brief-specific commands that only work with API storage
  */
 
-import {
-	type LogLevel,
-	type TagInfo,
-	tryAddTagViaRemote
-} from '@tm/bridge';
+import { type LogLevel, type TagInfo, tryAddTagViaRemote } from '@tm/bridge';
 import type { TmCore, Brief } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
 import { Command } from 'commander';
@@ -255,7 +251,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private async ensureOrgSelected(): Promise<string | null> {
 		const context = this.authManager.getContext();
-		
+
 		// If org is already selected, return it
 		if (context?.orgId) {
 			return context.orgId;
@@ -263,9 +259,11 @@ Note: Briefs must be created through the Hamster Studio web interface.
 
 		// No org selected - check if we can auto-select
 		const orgs = await this.authManager.getOrganizations();
-		
+
 		if (orgs.length === 0) {
-			ui.displayError('No organizations available. Please create or join an organization first.');
+			ui.displayError(
+				'No organizations available. Please create or join an organization first.'
+			);
 			return null;
 		}
 
@@ -282,7 +280,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 
 		// Multiple orgs - prompt for selection
 		console.log(chalk.yellow('No organization selected.'));
-		
+
 		const response = await inquirer.prompt<{ orgId: string }>([
 			{
 				type: 'list',
@@ -314,7 +312,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private displayBriefsTable(tags: TagInfo[], _showMetadata?: boolean): void {
 		const Table = require('cli-table3');
-		
+
 		const terminalWidth = Math.max(process.stdout.columns || 120, 80);
 		const usableWidth = Math.floor(terminalWidth * 0.95);
 		const widths = [0.35, 0.25, 0.2, 0.1, 0.1];
@@ -365,42 +363,46 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private formatBriefAsTableRow(
 		brief: TagInfo,
-		colWidths: { name: number; status: number; updated: number; tasks: number; done: number }
+		colWidths: {
+			name: number;
+			status: number;
+			updated: number;
+			tasks: number;
+			done: number;
+		}
 	): string {
 		const shortId = brief.briefId ? brief.briefId.slice(-8) : 'unknown';
 		const isCurrent = brief.isCurrent;
-		
+
 		// Current indicator
 		const currentMarker = isCurrent ? chalk.green('●') : ' ';
-		
+
 		// Calculate max name length (leave room for marker, spaces, and ID)
 		const idSuffix = isCurrent ? '(current)' : `(${shortId})`;
 		const maxNameLen = colWidths.name - 4 - idSuffix.length; // 4 = "● " + " " before id
-		
+
 		// Truncate name if too long
 		let displayName = brief.name;
 		if (displayName.length > maxNameLen) {
 			displayName = displayName.substring(0, maxNameLen - 1) + '…';
 		}
-		
-		const nameText = isCurrent 
-			? chalk.green.bold(displayName) 
-			: displayName;
-		const idText = isCurrent 
+
+		const nameText = isCurrent ? chalk.green.bold(displayName) : displayName;
+		const idText = isCurrent
 			? chalk.gray(`(current)`)
 			: chalk.gray(`(${shortId})`);
-		
+
 		// Calculate visual length and pad
 		const nameVisualLength = 2 + displayName.length + 1 + idSuffix.length;
 		const namePadding = Math.max(0, colWidths.name - nameVisualLength);
 		const nameCol = `${currentMarker} ${nameText} ${idText}${' '.repeat(namePadding)}`;
-		
+
 		// Status column - fixed width with padding
 		const statusDisplay = getBriefStatusWithColor(brief.status, true);
 		const statusVisual = (brief.status || 'unknown').length + 2; // icon + space + status
 		const statusPadding = Math.max(0, colWidths.status - statusVisual);
 		const statusCol = `${statusDisplay}${' '.repeat(statusPadding)}`;
-		
+
 		// Updated column
 		const updatedDate = brief.updatedAt
 			? new Date(brief.updatedAt).toLocaleDateString('en-US', {
@@ -410,13 +412,17 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				})
 			: 'N/A';
 		const updatedCol = chalk.gray(updatedDate.padEnd(colWidths.updated));
-		
+
 		// Tasks column
-		const tasksCol = chalk.white(String(brief.taskCount || 0).padStart(colWidths.tasks));
-		
+		const tasksCol = chalk.white(
+			String(brief.taskCount || 0).padStart(colWidths.tasks)
+		);
+
 		// Done column
-		const doneCol = chalk.green(String(brief.completedTasks || 0).padStart(colWidths.done));
-		
+		const doneCol = chalk.green(
+			String(brief.completedTasks || 0).padStart(colWidths.done)
+		);
+
 		return `${nameCol}  ${statusCol}  ${updatedCol}  ${tasksCol}  ${doneCol}`;
 	}
 
@@ -436,7 +442,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			const terminalWidth = Math.max(process.stdout.columns || 120, 80);
 			const usableWidth = Math.floor(terminalWidth * 0.95);
 			const colWidths = {
-				name: Math.floor(usableWidth * 0.42),  // More room for long names
+				name: Math.floor(usableWidth * 0.42), // More room for long names
 				status: Math.floor(usableWidth * 0.14),
 				updated: Math.floor(usableWidth * 0.16),
 				tasks: 6,
@@ -444,7 +450,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			};
 
 			// Create table header
-			const headerLine = 
+			const headerLine =
 				chalk.cyan.bold('Brief Name'.padEnd(colWidths.name)) +
 				chalk.cyan.bold('Status'.padEnd(colWidths.status)) +
 				chalk.cyan.bold('Updated'.padEnd(colWidths.updated)) +
@@ -518,7 +524,9 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			if (answer.selectedBrief && answer.selectedBrief !== null) {
 				// Find the selected brief
 				const selectedBrief = briefs.find(
-					(b) => b.briefId === answer.selectedBrief || b.name === answer.selectedBrief
+					(b) =>
+						b.briefId === answer.selectedBrief ||
+						b.name === answer.selectedBrief
 				);
 
 				if (selectedBrief) {
@@ -547,7 +555,9 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			}
 			// Other errors - log but don't fail the command
 			console.error(
-				chalk.yellow(`\nNote: Could not prompt for brief selection: ${(error as Error).message}`)
+				chalk.yellow(
+					`\nNote: Could not prompt for brief selection: ${(error as Error).message}`
+				)
 			);
 		}
 	}

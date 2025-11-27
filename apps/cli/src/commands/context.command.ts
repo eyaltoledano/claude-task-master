@@ -144,7 +144,9 @@ export class ContextCommand extends Command {
 	/**
 	 * Display current context
 	 */
-	private async displayContext(showHeader: boolean = true): Promise<ContextResult> {
+	private async displayContext(
+		showHeader: boolean = true
+	): Promise<ContextResult> {
 		// Check authentication first
 		const isAuthenticated = await checkAuthentication(this.authManager, {
 			message:

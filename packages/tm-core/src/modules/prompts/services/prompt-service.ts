@@ -12,10 +12,7 @@ import type {
 	UpgradePromptConfig
 } from '../types.js';
 import { PromptStateManager } from './prompt-state-manager.js';
-import {
-	TriggerContext,
-	TriggerEvaluator
-} from './trigger-evaluator.js';
+import { TriggerContext, TriggerEvaluator } from './trigger-evaluator.js';
 
 /**
  * Main service for managing upgrade prompts
@@ -211,4 +208,3 @@ export class PromptService {
 		};
 	}
 }
-

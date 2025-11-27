@@ -6,7 +6,11 @@
  * Includes MFA (Multi-Factor Authentication) support.
  */
 
-import { AuthDomain, type AuthCredentials, AuthenticationError } from '@tm/core';
+import {
+	AuthDomain,
+	type AuthCredentials,
+	AuthenticationError
+} from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import open from 'open';
@@ -169,10 +173,7 @@ async function authenticateWithBrowser(
 		return credentials;
 	} catch (error: unknown) {
 		// Check if MFA is required BEFORE showing failure message
-		if (
-			error instanceof AuthenticationError &&
-			error.code === 'MFA_REQUIRED'
-		) {
+		if (error instanceof AuthenticationError && error.code === 'MFA_REQUIRED') {
 			// Stop spinner without showing failure - MFA is required, not a failure
 			if (authSpinner) {
 				(authSpinner as Ora).stop();

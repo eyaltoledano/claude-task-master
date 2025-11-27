@@ -191,18 +191,13 @@ export class NextCommand extends Command {
 			// Only show warning box if there are literally NO tasks at all
 			if (!result.hasAnyTasks) {
 				console.log(
-					boxen(
-						chalk.yellow(
-							'No tasks found in this project.'
-						),
-						{
-							padding: 1,
-							borderStyle: 'round',
-							borderColor: 'yellow',
-							title: '⚠️ NO TASKS AVAILABLE ⚠️',
-							titleAlignment: 'center'
-						}
-					)
+					boxen(chalk.yellow('No tasks found in this project.'), {
+						padding: 1,
+						borderStyle: 'round',
+						borderColor: 'yellow',
+						title: '⚠️ NO TASKS AVAILABLE ⚠️',
+						titleAlignment: 'center'
+					})
 				);
 				console.log(
 					`\n${chalk.dim('Tip: Create tasks with')} ${chalk.cyan('task-master parse-prd')} ${chalk.dim('or')} ${chalk.cyan('task-master add-task')}`
@@ -210,7 +205,9 @@ export class NextCommand extends Command {
 			} else {
 				// Tasks exist but none are available to work on - just show a simple message
 				console.log(
-					chalk.yellow('✓ All tasks are either completed, blocked by dependencies, or in progress.')
+					chalk.yellow(
+						'✓ All tasks are either completed, blocked by dependencies, or in progress.'
+					)
 				);
 				console.log(
 					`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list')} ${chalk.dim('to see all tasks')}`

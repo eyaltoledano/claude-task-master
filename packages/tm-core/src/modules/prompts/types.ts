@@ -150,4 +150,3 @@ export interface UpgradePromptConfig {
 	/** Whether to respect dismissed state */
 	respectDismissed: boolean;
 }
-

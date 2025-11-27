@@ -3,7 +3,12 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { type TaskStatus, type TmCore, createTmCore, normalizeDisplayId } from '@tm/core';
+import {
+	type TaskStatus,
+	type TmCore,
+	createTmCore,
+	normalizeDisplayId
+} from '@tm/core';
 import type { StorageType } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';

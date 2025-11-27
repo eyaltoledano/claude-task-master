@@ -83,7 +83,11 @@ Examples:
 					token?: string,
 					options?: { yes?: boolean; header?: boolean }
 				) => {
-					await this.executeLogin(token, options?.yes, options?.header !== false);
+					await this.executeLogin(
+						token,
+						options?.yes,
+						options?.header !== false
+					);
 				}
 			);
 	}

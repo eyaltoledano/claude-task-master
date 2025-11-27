@@ -121,11 +121,7 @@ function detectCircularDependencies(tasks: ExportableTask[]): string[][] {
 	const cycles: string[][] = [];
 	const taskMap = new Map(tasks.map((t) => [t.id, t]));
 
-	function dfs(
-		taskId: string,
-		path: string[],
-		visited: Set<string>
-	): boolean {
+	function dfs(taskId: string, path: string[], visited: Set<string>): boolean {
 		if (path.includes(taskId)) {
 			// Found a cycle
 			const cycleStart = path.indexOf(taskId);
@@ -189,4 +185,3 @@ function detectMissingDependencies(
 export function filterValidTasks(tasks: ExportableTask[]): ExportableTask[] {
 	return tasks.filter((task) => validateTask(task).isValid);
 }
-

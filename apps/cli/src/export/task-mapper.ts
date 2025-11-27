@@ -11,7 +11,7 @@ import type { ExportableTask, MappedTask } from './types.js';
 const STATUS_MAP: Record<string, MappedTask['status']> = {
 	pending: 'todo',
 	'in-progress': 'in_progress',
-	'in_progress': 'in_progress',
+	in_progress: 'in_progress',
 	done: 'done',
 	completed: 'done',
 	blocked: 'blocked',
@@ -135,4 +135,3 @@ export function getDisplayPriority(priority?: string): string {
 	};
 	return displayMap[mapped] || '→ Medium';
 }
-

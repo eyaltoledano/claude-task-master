@@ -1,46 +1,46 @@
 {
-  "models": {
-    "main": {
-      "provider": "claude-code",
-      "modelId": "haiku",
-      "maxTokens": 200000,
-      "temperature": 0.2
-    },
-    "research": {
-      "provider": "perplexity",
-      "modelId": "sonar-reasoning-pro",
-      "maxTokens": 8700,
-      "temperature": 0.1
-    },
-    "fallback": {
-      "provider": "claude-code",
-      "modelId": "sonnet",
-      "maxTokens": 64000,
-      "temperature": 0.2
-    }
-  },
-  "global": {
-    "logLevel": "silent",
-    "debug": false,
-    "defaultNumTasks": 10,
-    "defaultSubtasks": 5,
-    "defaultPriority": "medium",
-    "projectName": "Taskmaster",
-    "ollamaBaseURL": "http://localhost:11434/api",
-    "bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
-    "responseLanguage": "English",
-    "enableCodebaseAnalysis": true,
-    "enableProxy": false,
-    "anonymousTelemetry": true,
-    "userId": "1234567890",
-    "azureBaseURL": "https://your-endpoint.azure.com/",
-    "defaultTag": "master"
-  },
-  "claudeCode": {},
-  "codexCli": {},
-  "grokCli": {
-    "timeout": 120000,
-    "workingDirectory": null,
-    "defaultModel": "grok-4-latest"
-  }
+	"models": {
+		"main": {
+			"provider": "claude-code",
+			"modelId": "haiku",
+			"maxTokens": 200000,
+			"temperature": 0.2
+		},
+		"research": {
+			"provider": "perplexity",
+			"modelId": "sonar-reasoning-pro",
+			"maxTokens": 8700,
+			"temperature": 0.1
+		},
+		"fallback": {
+			"provider": "claude-code",
+			"modelId": "sonnet",
+			"maxTokens": 64000,
+			"temperature": 0.2
+		}
+	},
+	"global": {
+		"logLevel": "silent",
+		"debug": false,
+		"defaultNumTasks": 10,
+		"defaultSubtasks": 5,
+		"defaultPriority": "medium",
+		"projectName": "Taskmaster",
+		"ollamaBaseURL": "http://localhost:11434/api",
+		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
+		"responseLanguage": "English",
+		"enableCodebaseAnalysis": true,
+		"enableProxy": false,
+		"anonymousTelemetry": true,
+		"userId": "1234567890",
+		"azureBaseURL": "https://your-endpoint.azure.com/",
+		"defaultTag": "master"
+	},
+	"claudeCode": {},
+	"codexCli": {},
+	"grokCli": {
+		"timeout": 120000,
+		"workingDirectory": null,
+		"defaultModel": "grok-4-latest"
+	}
 }

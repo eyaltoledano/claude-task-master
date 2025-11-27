@@ -29,19 +29,19 @@ const turndownService = new TurndownService({
  */
 export function renderContent(content: string): string {
 	if (!content) return '';
-	
+
 	// Clean up escape characters first
 	let cleaned = content
 		.replace(/\\n/g, '\n')
 		.replace(/\\t/g, '\t')
 		.replace(/\\"/g, '"')
 		.replace(/\\\\/g, '\\');
-	
+
 	// Check if content has HTML tags - if so, convert to markdown first
 	if (/<[^>]+>/.test(cleaned)) {
 		cleaned = turndownService.turndown(cleaned);
 	}
-	
+
 	// Render markdown to terminal
 	const result = marked(cleaned);
 	return typeof result === 'string' ? result.trim() : cleaned;

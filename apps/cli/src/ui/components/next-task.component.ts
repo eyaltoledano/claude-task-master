@@ -34,23 +34,20 @@ export function displayRecommendedNextTask(
 		// Only show warning box if there are literally NO tasks at all
 		if (!hasAnyTasks) {
 			console.log(
-				boxen(
-					chalk.yellow(
-						'No tasks found in this project.'
-					),
-					{
-						padding: 1,
-						borderStyle: 'round',
-						borderColor: 'yellow',
-						title: '⚠️ NO TASKS AVAILABLE ⚠️',
-						titleAlignment: 'center'
-					}
-				)
+				boxen(chalk.yellow('No tasks found in this project.'), {
+					padding: 1,
+					borderStyle: 'round',
+					borderColor: 'yellow',
+					title: '⚠️ NO TASKS AVAILABLE ⚠️',
+					titleAlignment: 'center'
+				})
 			);
 		} else {
 			// Tasks exist but none are available to work on - show simple message
 			console.log(
-				chalk.yellow('✓ All tasks are either completed, blocked by dependencies, or in progress.')
+				chalk.yellow(
+					'✓ All tasks are either completed, blocked by dependencies, or in progress.'
+				)
 			);
 		}
 		return;
@@ -102,7 +99,9 @@ export function displayRecommendedNextTask(
 	// Description if available (render HTML from Hamster properly)
 	if (task.description) {
 		content.push('');
-		content.push(`Description: ${chalk.white(renderContent(task.description))}`);
+		content.push(
+			`Description: ${chalk.white(renderContent(task.description))}`
+		);
 	}
 
 	// Action commands

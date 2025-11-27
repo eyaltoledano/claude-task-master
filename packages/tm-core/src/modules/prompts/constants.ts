@@ -110,4 +110,3 @@ export const PROMPT_STATE_VERSION = '1.0.0';
  * Key for storing prompt state in config.custom
  */
 export const PROMPT_STATE_KEY = 'upgradePrompts';
-

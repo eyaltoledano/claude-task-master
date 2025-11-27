@@ -292,4 +292,3 @@ export class TriggerEvaluator {
 		return this.config.enabled;
 	}
 }
-
