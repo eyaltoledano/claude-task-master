@@ -170,6 +170,10 @@ describe('Selective Rules Removal', () => {
 				path.join(projectRoot, '.cursor/rules/taskmaster/taskmaster.mdc'),
 				{ force: true }
 			);
+			expect(mockRmSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.cursor/rules/taskmaster/hamster.mdc'),
+				{ force: true }
+			);
 
 			// Verify rules directory was NOT removed (still has other files)
 			expect(mockRmSync).not.toHaveBeenCalledWith(

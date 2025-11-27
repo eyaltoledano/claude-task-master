@@ -89,16 +89,17 @@ describe('Hamster Rules Distribution', () => {
 					// Get expected path for this profile
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 
-					if (expectedPath) {
-						// Verify hamster.* file exists
-						expect(fs.existsSync(expectedPath)).toBe(true);
+					// Strictly enforce that all profiles with default rules must have hamster mapping
+					expect(expectedPath).not.toBeNull();
 
-						// Verify hamster file contains expected content
-						const hamsterContent = fs.readFileSync(expectedPath, 'utf8');
-						expect(hamsterContent).toContain('Hamster Integration Workflow');
-						expect(hamsterContent).toContain('tm list');
-						expect(hamsterContent).toContain('tm set-status');
-					}
+					// Verify hamster.* file exists
+					expect(fs.existsSync(expectedPath)).toBe(true);
+
+					// Verify hamster file contains expected content
+					const hamsterContent = fs.readFileSync(expectedPath, 'utf8');
+					expect(hamsterContent).toContain('Hamster Integration Workflow');
+					expect(hamsterContent).toContain('tm list');
+					expect(hamsterContent).toContain('tm set-status');
 				} finally {
 					// Cleanup temp directory
 					fs.rmSync(tempDir, { recursive: true, force: true });
