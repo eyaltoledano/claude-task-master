@@ -42,6 +42,9 @@ export type {
 	TagsWithStatsResult
 } from './common/interfaces/storage.interface.js';
 
+// Storage adapters - FileStorage for direct local file access
+export { FileStorage } from './modules/storage/index.js';
+
 // Constants
 export * from './common/constants/index.js';
 

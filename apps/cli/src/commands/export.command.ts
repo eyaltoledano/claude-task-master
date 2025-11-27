@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
+	FileStorage,
 	type GenerateBriefResult,
 	type InvitationResult,
 	PromptService,
@@ -202,8 +203,22 @@ export class ExportCommand extends Command {
 	 */
 	private async executeInteractiveTagSelection(options?: any): Promise<void> {
 		try {
-			// Get available local tags with stats
-			const tagsResult = await this.taskMasterCore!.tasks.getTagsWithStats();
+			// Get available local tags from file storage DIRECTLY
+			// (not via taskMasterCore which may be using API storage when connected to a brief)
+			const projectRoot = getProjectRoot();
+			if (!projectRoot) {
+				console.log(chalk.yellow('\nNo project root found.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No project root found'
+				};
+				return;
+			}
+
+			const fileStorage = new FileStorage(projectRoot);
+			await fileStorage.initialize();
+			const tagsResult = await fileStorage.getTagsWithStats();
 
 			if (!tagsResult.tags || tagsResult.tags.length === 0) {
 				console.log(chalk.yellow('\nNo local tags found in tasks.json.\n'));
