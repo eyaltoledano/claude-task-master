@@ -2,6 +2,8 @@
  * Shared types and interfaces for bridge functions
  */
 
+import type { TmCore } from '@tm/core';
+
 /**
  * Log levels used by bridge report functions
  */
@@ -40,7 +42,7 @@ export interface StorageCheckResult {
 	/** Whether API storage is being used */
 	isApiStorage: boolean;
 	/** TmCore instance if initialization succeeded */
-	tmCore?: import('@tm/core').TmCore;
+	tmCore?: TmCore;
 	/** Error message if initialization failed */
 	error?: string;
 }

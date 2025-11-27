@@ -103,13 +103,6 @@ task-master update-subtask --id=<parentId.subtaskId> --prompt="<prompt>" --resea
 
 Unlike the `update-task` command which replaces task information, the `update-subtask` command _appends_ new information to the existing subtask details, marking it with a timestamp. This is useful for iteratively enhancing subtasks while preserving the original content.
 
-## Generate Task Files
-
-```bash
-# Generate individual task files from tasks.json
-task-master generate
-```
-
 ## Set Task Status
 
 ```bash

@@ -121,14 +121,6 @@ jest.unstable_mockModule('../../scripts/modules/ui.js', () => ({
 	displayAiUsageSummary: jest.fn()
 }));
 
-// Mock task generation to prevent file operations
-jest.unstable_mockModule(
-	'../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn()
-	})
-);
-
 // Mock stream parser
 jest.unstable_mockModule('../../src/utils/stream-parser.js', () => {
 	// Define mock StreamingError class

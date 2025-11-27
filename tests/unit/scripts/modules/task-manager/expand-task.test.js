@@ -154,13 +154,6 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
-jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
@@ -245,12 +238,6 @@ const {
 const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
-
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 
 const { getDefaultSubtasks } = await import(
 	'../../../../../scripts/modules/config-manager.js'
@@ -365,7 +352,6 @@ describe('expandTask', () => {
 		findProjectRoot.mockReturnValue('/mock/project/root');
 
 		writeJSON.mockResolvedValue();
-		generateTaskFiles.mockResolvedValue();
 		log.mockImplementation(() => {});
 
 		// Mock console.log to avoid output during tests

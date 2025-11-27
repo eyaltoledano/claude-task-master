@@ -8,7 +8,6 @@ import { registerParsePRDTool } from './parse-prd.js';
 import { registerUpdateTool } from './update.js';
 import { registerUpdateTaskTool } from './update-task.js';
 import { registerUpdateSubtaskTool } from './update-subtask.js';
-import { registerGenerateTool } from './generate.js';
 import { registerNextTaskTool } from './next-task.js';
 import { registerExpandTaskTool } from './expand-task.js';
 import { registerAddTaskTool } from './add-task.js';
@@ -72,7 +71,6 @@ export const toolRegistry = {
 	next_task: registerNextTaskTool,
 	complexity_report: registerComplexityReportTool,
 	set_task_status: registerSetTaskStatusTool,
-	generate: registerGenerateTool,
 	add_task: registerAddTaskTool,
 	add_subtask: registerAddSubtaskTool,
 	update: registerUpdateTool,
@@ -128,7 +126,6 @@ export const standardTools = [
 	'expand_all',
 	'add_subtask',
 	'remove_task',
-	'generate',
 	'add_task',
 	'complexity_report'
 ];

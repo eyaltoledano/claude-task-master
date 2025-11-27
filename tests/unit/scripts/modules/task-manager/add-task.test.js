@@ -119,13 +119,6 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
-jest.unstable_mockModule(
 	'../../../../../scripts/modules/prompt-manager.js',
 	() => ({
 		getPromptManager: jest.fn().mockReturnValue({
@@ -172,12 +165,6 @@ const { readJSON, writeJSON, log } = await import(
 const { generateObjectService } = await import(
 	'../../../../../scripts/modules/ai-services-unified.js'
 );
-
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 
 // Import the module under test
 const { default: addTask } = await import(

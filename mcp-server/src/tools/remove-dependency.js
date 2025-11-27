@@ -3,15 +3,11 @@
  * Tool for removing a dependency from a task
  */
 
+import { createErrorResponse, handleApiResult, withToolContext } from '@tm/mcp';
 import { z } from 'zod';
-import {
-	handleApiResult,
-	createErrorResponse,
-	withNormalizedProjectRoot
-} from './utils.js';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { removeDependencyDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the removeDependency tool with the MCP server
@@ -35,25 +31,25 @@ export function registerRemoveDependencyTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
-		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
+		execute: withToolContext('remove-dependency', async (args, context) => {
 			try {
 				const resolvedTag = resolveTag({
 					projectRoot: args.projectRoot,
 					tag: args.tag
 				});
-				log.info(
+				context.log.info(
 					`Removing dependency for task ${args.id} from ${args.dependsOn} with args: ${JSON.stringify(args)}`
 				);
 
-				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
+				// Use args.projectRoot directly (guaranteed by withToolContext)
 				let tasksJsonPath;
 				try {
 					tasksJsonPath = findTasksPath(
 						{ projectRoot: args.projectRoot, file: args.file },
-						log
+						context.log
 					);
 				} catch (error) {
-					log.error(`Error finding tasks.json: ${error.message}`);
+					context.log.error(`Error finding tasks.json: ${error.message}`);
 					return createErrorResponse(
 						`Failed to find tasks.json: ${error.message}`
 					);
@@ -67,24 +63,27 @@ export function registerRemoveDependencyTool(server) {
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},
-					log
+					context.log
 				);
 
 				if (result.success) {
-					log.info(`Successfully removed dependency: ${result.data.message}`);
+					context.log.info(
+						`Successfully removed dependency: ${result.data.message}`
+					);
 				} else {
-					log.error(`Failed to remove dependency: ${result.error.message}`);
+					context.log.error(
+						`Failed to remove dependency: ${result.error.message}`
+					);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error removing dependency',
-					undefined,
-					args.projectRoot
-				);
+					log: context.log,
+					errorPrefix: 'Error removing dependency',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
-				log.error(`Error in removeDependency tool: ${error.message}`);
+				context.log.error(`Error in removeDependency tool: ${error.message}`);
 				return createErrorResponse(error.message);
 			}
 		})

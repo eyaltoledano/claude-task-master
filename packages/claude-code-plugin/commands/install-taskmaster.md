@@ -91,10 +91,10 @@ npm install -g task-master-ai --registry https://registry.npmjs.org/
 
 **Node Version Issues:**
 ```bash
-# Install Node 18+ via nvm
+# Install Node 20+ via nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 18
-nvm use 18
+nvm install 20
+nvm use 20
 ```
 
 ## Success Confirmation

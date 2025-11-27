@@ -193,13 +193,6 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: jest.fn().mockResolvedValue()
-	})
-);
-
-jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager/models.js',
 	() => ({
 		getModelConfiguration: jest.fn(() => ({
@@ -352,13 +345,6 @@ const { createParsePrdTracker } = await import(
 const { displayParsePrdStart, displayParsePrdSummary } = await import(
 	'../../../../../src/ui/parse-prd.js'
 );
-
-// Note: getDefaultNumTasks validation happens at CLI/MCP level, not in the main parse-prd module
-const generateTaskFiles = (
-	await import(
-		'../../../../../scripts/modules/task-manager/generate-task-files.js'
-	)
-).default;
 
 const fs = await import('fs');
 const path = await import('path');

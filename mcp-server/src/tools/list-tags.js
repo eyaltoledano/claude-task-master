@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { listTagsDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 
@@ -62,13 +62,12 @@ export function registerListTagsTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error listing tags',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error listing tags',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in list-tags tool: ${error.message}`);
 				return createErrorResponse(error.message);

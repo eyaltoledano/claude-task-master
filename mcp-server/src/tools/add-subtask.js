@@ -8,7 +8,7 @@ import {
 	handleApiResult,
 	createErrorResponse,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { addSubtaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -108,13 +108,12 @@ export function registerAddSubtaskTool(server) {
 					log.error(`Failed to add subtask: ${result.error.message}`);
 				}
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error adding subtask',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error adding subtask',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in addSubtask tool: ${error.message}`);
 				return createErrorResponse(error.message);

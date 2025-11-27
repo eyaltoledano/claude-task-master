@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { addTaskDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -88,7 +88,7 @@ export function registerAddTaskTool(server) {
 					);
 				}
 
-				// Call the direct functionP
+				// Call the direct function
 				const result = await addTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -107,13 +107,12 @@ export function registerAddTaskTool(server) {
 					{ session }
 				);
 
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error adding task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error adding task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error in add-task tool: ${error.message}`);
 				return createErrorResponse(error.message);

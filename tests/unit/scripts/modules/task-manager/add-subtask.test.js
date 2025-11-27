@@ -23,12 +23,6 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager.js',
 	() => mockTaskManager
 );
-jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager/generate-task-files.js',
-	() => ({
-		default: mockGenerateTaskFiles
-	})
-);
 
 const addSubtask = (
 	await import('../../../../../scripts/modules/task-manager/add-subtask.js')

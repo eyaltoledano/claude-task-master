@@ -8,7 +8,7 @@ import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
-} from './utils.js';
+} from '@tm/mcp';
 import { nextTaskDirect } from '../core/task-master-core.js';
 import {
 	resolveTasksPath,
@@ -82,13 +82,12 @@ export function registerNextTaskTool(server) {
 				);
 
 				log.info(`Next task result: ${result.success ? 'found' : 'none'}`);
-				return handleApiResult(
+				return handleApiResult({
 					result,
-					log,
-					'Error finding next task',
-					undefined,
-					args.projectRoot
-				);
+					log: log,
+					errorPrefix: 'Error finding next task',
+					projectRoot: args.projectRoot
+				});
 			} catch (error) {
 				log.error(`Error finding next task: ${error.message}`);
 				return createErrorResponse(error.message);

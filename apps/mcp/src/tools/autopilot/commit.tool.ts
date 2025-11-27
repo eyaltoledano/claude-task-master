@@ -3,14 +3,11 @@
  * Create a git commit with automatic staging and message generation
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withNormalizedProjectRoot
-} from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
-import { WorkflowService, GitAdapter, CommitMessageGenerator } from '@tm/core';
+import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const CommitSchema = z.object({
 	projectRoot: z
@@ -39,12 +36,13 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 		description:
 			'Create a git commit with automatic staging, message generation, and metadata embedding. Generates appropriate commit messages based on subtask context and TDD phase.',
 		parameters: CommitSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: CommitArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-commit',
+			async (args: CommitArgs, { log }: ToolContext) => {
 				const { projectRoot, files, customMessage } = args;
 
 				try {
-					context.log.info(`Creating commit for workflow in ${projectRoot}`);
+					log.info(`Creating commit for workflow in ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -58,7 +56,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 										'No active workflow found. Start a workflow with autopilot_start'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -70,9 +68,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 
 					// Verify we're in COMMIT phase
 					if (status.tddPhase !== 'COMMIT') {
-						context.log.warn(
-							`Not in COMMIT phase (currently in ${status.tddPhase})`
-						);
+						log.warn(`Not in COMMIT phase (currently in ${status.tddPhase})`);
 						return handleApiResult({
 							result: {
 								success: false,
@@ -80,7 +76,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 									message: `Cannot commit: currently in ${status.tddPhase} phase. Complete the ${status.tddPhase} phase first using autopilot_complete_phase`
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -92,7 +88,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 								success: false,
 								error: { message: 'No active subtask to commit' }
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -104,19 +100,19 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					try {
 						if (files && files.length > 0) {
 							await gitAdapter.stageFiles(files);
-							context.log.info(`Staged ${files.length} files`);
+							log.info(`Staged ${files.length} files`);
 						} else {
 							await gitAdapter.stageFiles(['.']);
-							context.log.info('Staged all changes');
+							log.info('Staged all changes');
 						}
 					} catch (error: any) {
-						context.log.error(`Failed to stage files: ${error.message}`);
+						log.error(`Failed to stage files: ${error.message}`);
 						return handleApiResult({
 							result: {
 								success: false,
 								error: { message: `Failed to stage files: ${error.message}` }
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -124,7 +120,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					// Check if there are staged changes
 					const hasStagedChanges = await gitAdapter.hasStagedChanges();
 					if (!hasStagedChanges) {
-						context.log.warn('No staged changes to commit');
+						log.warn('No staged changes to commit');
 						return handleApiResult({
 							result: {
 								success: false,
@@ -133,7 +129,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 										'No staged changes to commit. Make code changes before committing'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -145,7 +141,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					let commitMessage: string;
 					if (customMessage) {
 						commitMessage = customMessage;
-						context.log.info('Using custom commit message');
+						log.info('Using custom commit message');
 					} else {
 						const messageGenerator = new CommitMessageGenerator();
 
@@ -168,21 +164,21 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 						};
 
 						commitMessage = messageGenerator.generateMessage(options);
-						context.log.info('Generated commit message automatically');
+						log.info('Generated commit message automatically');
 					}
 
 					// Create commit
 					try {
 						await gitAdapter.createCommit(commitMessage);
-						context.log.info('Commit created successfully');
+						log.info('Commit created successfully');
 					} catch (error: any) {
-						context.log.error(`Failed to create commit: ${error.message}`);
+						log.error(`Failed to create commit: ${error.message}`);
 						return handleApiResult({
 							result: {
 								success: false,
 								error: { message: `Failed to create commit: ${error.message}` }
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -193,7 +189,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					// Complete COMMIT phase and advance workflow
 					const newStatus = await workflowService.commit();
 
-					context.log.info(
+					log.info(
 						`Commit completed. Current phase: ${newStatus.tddPhase || newStatus.phase}`
 					);
 
@@ -217,20 +213,20 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 								nextSteps: nextAction.nextSteps
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-commit: ${error.message}`);
+					log.error(`Error in autopilot-commit: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
 							success: false,
 							error: { message: `Failed to commit: ${error.message}` }
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

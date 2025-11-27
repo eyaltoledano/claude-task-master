@@ -2,6 +2,8 @@
  * Shared types for MCP tools
  */
 
+import type { TmCore } from '@tm/core';
+
 export interface MCPResponse<T = any> {
 	success: boolean;
 	data?: T;
@@ -29,6 +31,29 @@ export interface MCPContext {
 		debug: (message: string) => void;
 	};
 	session: any;
+}
+
+/**
+ * Enhanced MCP context with tmCore instance
+ */
+export interface ToolContext {
+	/** Logger instance (matches fastmcp's Context.log signature) */
+	log: {
+		info: (message: string, data?: any) => void;
+		warn: (message: string, data?: any) => void;
+		error: (message: string, data?: any) => void;
+		debug: (message: string, data?: any) => void;
+	};
+	/** MCP session */
+	session?: {
+		roots?: Array<{ uri: string; name?: string }>;
+		env?: Record<string, string>;
+		clientCapabilities?: {
+			sampling?: Record<string, unknown>;
+		};
+	};
+	/** TmCore instance (already initialized) */
+	tmCore: TmCore;
 }
 
 export interface WithProjectRoot {

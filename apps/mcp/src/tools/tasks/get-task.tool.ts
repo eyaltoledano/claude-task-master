@@ -6,10 +6,10 @@
 import { z } from 'zod';
 import {
 	handleApiResult,
-	withNormalizedProjectRoot
+	withToolContext
 } from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
-import { createTmCore, Subtask, type Task } from '@tm/core';
+import type { ToolContext } from '../../shared/types.js';
+import { Subtask, type Task } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
 const GetTaskSchema = z.object({
@@ -40,23 +40,15 @@ export function registerGetTaskTool(server: FastMCP) {
 		name: 'get_task',
 		description: 'Get detailed information about a specific task',
 		parameters: GetTaskSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: GetTaskArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'get-task',
+			async (args: GetTaskArgs, { log, tmCore }: ToolContext) => {
 				const { id, status, projectRoot, tag } = args;
 
 				try {
-					context.log.info(
+					log.info(
 						`Getting task details for ID: ${id}${status ? ` (filtering subtasks by status: ${status})` : ''} in root: ${projectRoot}`
 					);
-
-					// Create tm-core with logging callback
-					const tmCore = await createTmCore({
-						projectPath: projectRoot,
-						loggerConfig: {
-							mcpMode: true,
-							logCallback: context.log
-						}
-					});
 
 					// Handle comma-separated IDs - parallelize for better performance
 					const taskIds = id.split(',').map((tid) => tid.trim());
@@ -83,7 +75,7 @@ export function registerGetTaskTool(server: FastMCP) {
 					}
 
 					if (tasks.length === 0) {
-						context.log.warn(`No tasks found for ID(s): ${id}`);
+						log.warn(`No tasks found for ID(s): ${id}`);
 						return handleApiResult({
 							result: {
 								success: false,
@@ -91,12 +83,12 @@ export function registerGetTaskTool(server: FastMCP) {
 									message: `No tasks found for ID(s): ${id}`
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
 
-					context.log.info(
+					log.info(
 						`Successfully retrieved ${tasks.length} task(s) for ID(s): ${id}`
 					);
 
@@ -108,14 +100,14 @@ export function registerGetTaskTool(server: FastMCP) {
 							success: true,
 							data: responseData
 						},
-						log: context.log,
+						log,
 						projectRoot,
 						tag
 					});
 				} catch (error: any) {
-					context.log.error(`Error in get-task: ${error.message}`);
+					log.error(`Error in get-task: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
@@ -124,7 +116,7 @@ export function registerGetTaskTool(server: FastMCP) {
 								message: `Failed to get task: ${error.message}`
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

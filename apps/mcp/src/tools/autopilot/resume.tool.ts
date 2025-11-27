@@ -4,11 +4,8 @@
  */
 
 import { z } from 'zod';
-import {
-	handleApiResult,
-	withNormalizedProjectRoot
-} from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
+import type { ToolContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 
@@ -29,12 +26,13 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 		description:
 			'Resume a previously started TDD workflow from saved state. Restores the workflow state machine and continues from where it left off.',
 		parameters: ResumeWorkflowSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: ResumeWorkflowArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-resume',
+			async (args: ResumeWorkflowArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
-					context.log.info(`Resuming autopilot workflow in ${projectRoot}`);
+					log.info(`Resuming autopilot workflow in ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -48,7 +46,7 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 										'No workflow state found. Start a new workflow with autopilot_start'
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -57,9 +55,7 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 					const status = await workflowService.resumeWorkflow();
 					const nextAction = workflowService.getNextAction();
 
-					context.log.info(
-						`Workflow resumed successfully for task ${status.taskId}`
-					);
+					log.info(`Workflow resumed successfully for task ${status.taskId}`);
 
 					return handleApiResult({
 						result: {
@@ -72,20 +68,20 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 								nextSteps: nextAction.nextSteps
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-resume: ${error.message}`);
+					log.error(`Error in autopilot-resume: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
 							success: false,
 							error: { message: `Failed to resume workflow: ${error.message}` }
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}

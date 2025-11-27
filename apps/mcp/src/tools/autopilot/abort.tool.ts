@@ -3,14 +3,11 @@
  * Abort a running TDD workflow and clean up state
  */
 
-import { z } from 'zod';
-import {
-	handleApiResult,
-	withNormalizedProjectRoot
-} from '../../shared/utils.js';
-import type { MCPContext } from '../../shared/types.js';
 import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
+import { z } from 'zod';
+import type { ToolContext } from '../../shared/types.js';
+import { handleApiResult, withToolContext } from '../../shared/utils.js';
 
 const AbortSchema = z.object({
 	projectRoot: z
@@ -29,12 +26,13 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 		description:
 			'Abort the current TDD workflow and clean up workflow state. This will remove the workflow state file but will NOT delete the git branch or any code changes.',
 		parameters: AbortSchema,
-		execute: withNormalizedProjectRoot(
-			async (args: AbortArgs, context: MCPContext) => {
+		execute: withToolContext(
+			'autopilot-abort',
+			async (args: AbortArgs, { log }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
-					context.log.info(`Aborting autopilot workflow in ${projectRoot}`);
+					log.info(`Aborting autopilot workflow in ${projectRoot}`);
 
 					const workflowService = new WorkflowService(projectRoot);
 
@@ -42,7 +40,7 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 					const hasWorkflow = await workflowService.hasWorkflow();
 
 					if (!hasWorkflow) {
-						context.log.warn('No active workflow to abort');
+						log.warn('No active workflow to abort');
 						return handleApiResult({
 							result: {
 								success: true,
@@ -51,7 +49,7 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 									hadWorkflow: false
 								}
 							},
-							log: context.log,
+							log,
 							projectRoot
 						});
 					}
@@ -63,7 +61,7 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 					// Abort workflow
 					await workflowService.abortWorkflow();
 
-					context.log.info('Workflow state deleted');
+					log.info('Workflow state deleted');
 
 					return handleApiResult({
 						result: {
@@ -76,20 +74,20 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 								note: 'Git branch and code changes were preserved. You can manually clean them up if needed.'
 							}
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				} catch (error: any) {
-					context.log.error(`Error in autopilot-abort: ${error.message}`);
+					log.error(`Error in autopilot-abort: ${error.message}`);
 					if (error.stack) {
-						context.log.debug(error.stack);
+						log.debug(error.stack);
 					}
 					return handleApiResult({
 						result: {
 							success: false,
 							error: { message: `Failed to abort workflow: ${error.message}` }
 						},
-						log: context.log,
+						log,
 						projectRoot
 					});
 				}
