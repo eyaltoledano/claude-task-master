@@ -1,21 +1,7 @@
-import { defineConfig, mergeConfig } from 'vitest/config';
-import rootConfig from '../../vitest.config';
+import { baseVitestConfig } from '@tm/build-config/vitest';
 
 /**
  * CLI package Vitest configuration
- * Extends root config with CLI-specific settings
+ * Uses base config from @tm/build-config
  */
-export default mergeConfig(
-	rootConfig,
-	defineConfig({
-		test: {
-			// CLI-specific test patterns
-			include: [
-				'tests/**/*.test.ts',
-				'tests/**/*.spec.ts',
-				'src/**/*.test.ts',
-				'src/**/*.spec.ts'
-			]
-		}
-	})
-);
+export default baseVitestConfig;

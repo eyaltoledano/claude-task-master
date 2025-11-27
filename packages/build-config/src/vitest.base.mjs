@@ -1,11 +1,14 @@
+/**
+ * Base Vitest configuration for Task Master monorepo
+ * Provides shared configuration that can be extended by individual packages
+ */
 import { defineConfig } from 'vitest/config';
 
 /**
- * Root Vitest configuration for Task Master monorepo
- * Provides shared defaults for all packages
- * Individual packages can extend this config with package-specific settings
+ * Base Vitest configuration for all packages
+ * Import and use with mergeConfig in package-specific vitest.config.ts
  */
-export default defineConfig({
+export const baseVitestConfig = defineConfig({
 	test: {
 		// Enable global test APIs (describe, it, expect, etc.)
 		globals: true,
@@ -43,7 +46,6 @@ export default defineConfig({
 				'vitest.config.ts',
 				'src/index.ts'
 			],
-			// Default thresholds (can be overridden per package)
 			thresholds: {
 				branches: 70,
 				functions: 70,
@@ -59,3 +61,6 @@ export default defineConfig({
 		mockReset: true
 	}
 });
+
+// Re-export vitest utilities for convenience
+export { defineConfig, mergeConfig } from 'vitest/config';
