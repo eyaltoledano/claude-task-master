@@ -3,6 +3,8 @@
  * Creates a new brief from local tasks and imports them atomically
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {
 	type GenerateBriefResult,
 	type InvitationResult,
@@ -24,6 +26,15 @@ import {
 import { ensureAuthenticated } from '../utils/auth-guard.js';
 import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
+
+/**
+ * Exported tag tracking in state.json
+ */
+interface ExportedTagInfo {
+	briefId: string;
+	briefUrl: string;
+	exportedAt: string;
+}
 
 /**
  * Result type from export command
@@ -125,6 +136,46 @@ export class ExportCommand extends Command {
 			// Initialize services
 			await this.initializeServices();
 
+			// Check if a brief is already in context (meaning we're working with remote tasks)
+			const context = this.taskMasterCore!.auth.getContext();
+			if (context?.briefId) {
+				console.log(
+					chalk.yellow(
+						'\n  You are currently connected to a Hamster brief.'
+					)
+				);
+				console.log(
+					chalk.gray(
+						'  Tasks in this context already live on Hamster - export is unnecessary.\n'
+					)
+				);
+
+				// Ask if they want to export a different tag
+				const { wantsToExportDifferent } = await inquirer.prompt<{
+					wantsToExportDifferent: boolean;
+				}>([
+					{
+						type: 'confirm',
+						name: 'wantsToExportDifferent',
+						message: 'Would you like to export a different tag from your local tasks.json?',
+						default: true
+					}
+				]);
+
+				if (!wantsToExportDifferent) {
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
+						message: 'Export cancelled - already connected to brief'
+					};
+					return;
+				}
+
+				// Force interactive tag selection
+				await this.executeInteractiveTagSelection(options);
+				return;
+			}
+
 			// Show upgrade message with tag info
 			const tagToExport = options?.tag || 'master';
 			showUpgradeMessage(tagToExport);
@@ -137,10 +188,118 @@ export class ExportCommand extends Command {
 			const isInteractive = !hasDirectFlags;
 
 			if (isInteractive) {
-				await this.executeInteractiveExport(options);
+				await this.executeInteractiveTagSelection(options);
 			} else {
 				await this.executeStandardExport(options);
 			}
+		} catch (error: any) {
+			displayError(error);
+		}
+	}
+
+	/**
+	 * Interactive tag selection before export
+	 */
+	private async executeInteractiveTagSelection(options?: any): Promise<void> {
+		try {
+			// Get available local tags with stats
+			const tagsResult = await this.taskMasterCore!.tasks.getTagsWithStats();
+
+			if (!tagsResult.tags || tagsResult.tags.length === 0) {
+				console.log(chalk.yellow('\nNo local tags found in tasks.json.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No local tags available'
+				};
+				return;
+			}
+
+			// Get already exported tags
+			const exportedTags = await this.getExportedTags();
+
+			// Build choices for tag selection
+			const tagChoices = tagsResult.tags.map((tag) => {
+				const taskInfo = `${tag.taskCount} tasks, ${tag.completedTasks} done`;
+				const currentMarker = tag.isCurrent ? chalk.cyan(' (current)') : '';
+				const exportedMarker = exportedTags[tag.name]
+					? chalk.green(' [exported]')
+					: '';
+				return {
+					name: `${tag.name}${currentMarker}${exportedMarker} - ${chalk.gray(taskInfo)}`,
+					value: tag.name,
+					short: tag.name
+				};
+			});
+
+			// Add cancel option
+			tagChoices.push({
+				name: chalk.gray('Cancel'),
+				value: '__cancel__',
+				short: 'Cancel'
+			});
+
+			// Prompt for tag selection
+			const { selectedTag } = await inquirer.prompt<{ selectedTag: string }>([
+				{
+					type: 'list',
+					name: 'selectedTag',
+					message: 'Which tag would you like to export to Hamster?',
+					choices: tagChoices,
+					pageSize: 10
+				}
+			]);
+
+			if (selectedTag === '__cancel__') {
+				console.log(chalk.gray('\n  Export cancelled.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'User cancelled tag selection'
+				};
+				return;
+			}
+
+			// Check if tag was already exported
+			if (exportedTags[selectedTag]) {
+				console.log(
+					chalk.yellow(
+						`\n  This tag was previously exported to Hamster.`
+					)
+				);
+				console.log(
+					chalk.gray(
+						`  Brief URL: ${exportedTags[selectedTag].briefUrl}`
+					)
+				);
+
+				const { confirmReExport } = await inquirer.prompt<{
+					confirmReExport: boolean;
+				}>([
+					{
+						type: 'confirm',
+						name: 'confirmReExport',
+						message: 'Export again? (This will create a new brief)',
+						default: false
+					}
+				]);
+
+				if (!confirmReExport) {
+					console.log(chalk.gray('\n  Export cancelled.\n'));
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
+						message: 'User cancelled re-export'
+					};
+					return;
+				}
+			}
+
+			// Show upgrade message with selected tag
+			showUpgradeMessage(selectedTag);
+
+			// Execute interactive export with selected tag
+			await this.executeInteractiveExport({ ...options, tag: selectedTag });
 		} catch (error: any) {
 			displayError(error);
 		}
@@ -212,6 +371,10 @@ export class ExportCommand extends Command {
 
 				// Auto-set context to the new brief
 				await this.setContextToBrief(result.brief.url);
+
+				// Track exported tag for future reference
+				const exportedTag = options?.tag || 'master';
+				await this.trackExportedTag(exportedTag, result.brief.id, result.brief.url);
 
 				// Record export success for prompt metrics
 				await this.promptService?.recordAction('export_attempt', 'accepted');
@@ -377,6 +540,10 @@ export class ExportCommand extends Command {
 				// Auto-set context to the new brief
 				await this.setContextToBrief(result.brief.url);
 
+				// Track exported tag for future reference
+				const exportedTag = options?.tag || 'master';
+				await this.trackExportedTag(exportedTag, result.brief.id, result.brief.url);
+
 				// Record success
 				await this.promptService?.recordAction('export_attempt', 'accepted');
 			} else {
@@ -519,7 +686,7 @@ export class ExportCommand extends Command {
 		if (urlMatch) {
 			const [, baseUrl, orgSlug] = urlMatch;
 			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
-			console.log(chalk.gray(`\n  Invite teammates: ${membersUrl}`));
+			console.log(chalk.gray(`  Invite teammates: ${membersUrl}`));
 		}
 	}
 
@@ -538,7 +705,7 @@ export class ExportCommand extends Command {
 			const briefId = match[1];
 
 			// Set context using TmCore's auth domain
-			await this.taskMasterCore.auth.setContext({ briefId });
+			await this.taskMasterCore.auth.updateContext({ briefId });
 
 			console.log(chalk.gray('  Context set to new brief'));
 		} catch {
@@ -575,6 +742,67 @@ export class ExportCommand extends Command {
 	 */
 	async cleanup(): Promise<void> {
 		// No resources to clean up
+	}
+
+	/**
+	 * Get exported tags from state.json
+	 */
+	private async getExportedTags(): Promise<Record<string, ExportedTagInfo>> {
+		const projectRoot = getProjectRoot();
+		if (!projectRoot) return {};
+
+		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+
+		try {
+			const stateData = await fs.readFile(statePath, 'utf-8');
+			const state = JSON.parse(stateData);
+			return state.metadata?.exportedTags || {};
+		} catch {
+			return {};
+		}
+	}
+
+	/**
+	 * Track an exported tag in state.json
+	 */
+	private async trackExportedTag(
+		tagName: string,
+		briefId: string,
+		briefUrl: string
+	): Promise<void> {
+		const projectRoot = getProjectRoot();
+		if (!projectRoot) return;
+
+		const statePath = path.join(projectRoot, '.taskmaster', 'state.json');
+
+		try {
+			let state: Record<string, any> = {};
+
+			try {
+				const stateData = await fs.readFile(statePath, 'utf-8');
+				state = JSON.parse(stateData);
+			} catch {
+				// State file doesn't exist, create new
+			}
+
+			// Initialize metadata if needed
+			if (!state.metadata) state.metadata = {};
+			if (!state.metadata.exportedTags) state.metadata.exportedTags = {};
+
+			// Track the exported tag
+			state.metadata.exportedTags[tagName] = {
+				briefId,
+				briefUrl,
+				exportedAt: new Date().toISOString()
+			};
+
+			state.lastUpdated = new Date().toISOString();
+
+			// Write back
+			await fs.writeFile(statePath, JSON.stringify(state, null, 2), 'utf-8');
+		} catch {
+			// Silently fail - tracking is nice-to-have
+		}
 	}
 
 	/**

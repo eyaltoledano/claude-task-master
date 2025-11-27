@@ -3,11 +3,11 @@
  * Interactive task selection interface using Inquirer.js
  */
 
+import boxen from 'boxen';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import boxen from 'boxen';
-import type { ExportableTask, TaskSelectionResult } from './types.js';
 import { validateTasks } from './export-validator.js';
+import type { ExportableTask, TaskSelectionResult } from './types.js';
 
 /**
  * Choice item for Inquirer checkbox
@@ -101,9 +101,7 @@ function buildTaskChoices(
 	return tasks.map((task) => {
 		const statusIcon = getStatusIcon(task.status);
 		const title =
-			task.title.length > 45
-				? task.title.substring(0, 42) + '...'
-				: task.title;
+			task.title.length > 45 ? task.title.substring(0, 42) + '...' : task.title;
 
 		return {
 			name: `${chalk.cyan(task.id.padEnd(6))} ${statusIcon} ${title}`,
@@ -191,12 +189,14 @@ export function showUpgradeMessage(tagName?: string): void {
 		: '';
 
 	const content = [
-		chalk.white.bold('Export to Hamster'),
+		chalk.white.bold('Exporting your tasks to Hamster'),
 		'',
 		chalk.gray('Your tasks will live on Hamster where you can:'),
-		chalk.white('  Invite teammates to collaborate on the brief'),
-		chalk.white('  Chat with AI alongside your team in real-time'),
-		chalk.white('  Track progress and ship faster together'),
+		chalk.white('  • Invite teammates to collaborate on the brief together'),
+		chalk.white('  • Chat with AI alongside your team in real-time'),
+		chalk.white(
+			'  • Draft, refine, align briefs and ship them faster together'
+		),
 		...(tagLine ? ['', tagLine] : [])
 	].join('\n');
 
