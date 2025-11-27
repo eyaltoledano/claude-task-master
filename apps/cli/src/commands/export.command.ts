@@ -137,7 +137,7 @@ export class ExportCommand extends Command {
 
 			if (isInteractive) {
 				await this.executeInteractiveExport(options);
-				} else {
+			} else {
 				await this.executeStandardExport(options);
 			}
 		} catch (error: any) {
@@ -184,7 +184,7 @@ export class ExportCommand extends Command {
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
+					tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						// Always generate title/description unless manually specified
@@ -201,9 +201,11 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Show invitation results if any
+				// Show invitation results if any, otherwise show invite URL
 				if (result.invitations && result.invitations.length > 0) {
 					this.displayInvitationResults(result.invitations);
+				} else {
+					this.showInviteUrl(result.brief.url);
 				}
 
 				// Record export success for prompt metrics
@@ -326,7 +328,8 @@ export class ExportCommand extends Command {
 				{
 					type: 'confirm',
 					name: 'wantsToInvite',
-					message: 'Invite collaborators to this brief?',
+					message:
+						'Do you want to invite teammates to collaborate on these tasks together?',
 					default: false
 				}
 			]);
@@ -342,7 +345,7 @@ export class ExportCommand extends Command {
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
+					tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						generateTitle: !options?.title,
@@ -361,6 +364,9 @@ export class ExportCommand extends Command {
 				// Show invitation results if any
 				if (result.invitations && result.invitations.length > 0) {
 					this.displayInvitationResults(result.invitations);
+				} else if (!wantsToInvite) {
+					// If user didn't want to invite, show the URL anyway
+					this.showInviteUrl(result.brief.url);
 				}
 
 				// Record success
@@ -482,9 +488,7 @@ export class ExportCommand extends Command {
 					console.log(chalk.green(`    ${inv.email}: Invitation sent`));
 					break;
 				case 'already_member':
-					console.log(
-						chalk.gray(`    ${inv.email}: Already a team member`)
-					);
+					console.log(chalk.gray(`    ${inv.email}: Already a team member`));
 					break;
 				case 'error':
 					console.log(
@@ -492,6 +496,22 @@ export class ExportCommand extends Command {
 					);
 					break;
 			}
+		}
+	}
+
+	/**
+	 * Show invite URL for team members (without auto-opening)
+	 */
+	private showInviteUrl(briefUrl: string): void {
+		// Extract base URL and org slug from brief URL
+		// briefUrl format: http://localhost:3000/home/{org_slug}/briefs/{briefId}
+		const urlMatch = briefUrl.match(
+			/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
+		);
+		if (urlMatch) {
+			const [, baseUrl, orgSlug] = urlMatch;
+			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
+			console.log(chalk.gray(`\n  Invite teammates: ${membersUrl}`));
 		}
 	}
 

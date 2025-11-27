@@ -33,13 +33,23 @@ export async function selectTasks(
 	const { preselectAll = true, showStatus = true } = options;
 
 	if (tasks.length === 0) {
-		console.log(chalk.yellow('\n⚠ No tasks available for export.\n'));
+		console.log(chalk.yellow('\nNo tasks available for export.\n'));
 		return {
 			selectedTasks: [],
 			totalAvailable: 0,
 			cancelled: false
 		};
 	}
+
+	// Count subtasks for display
+	const subtaskCount = tasks.reduce(
+		(sum, t) => sum + (t.subtasks?.length || 0),
+		0
+	);
+	const availableMessage =
+		subtaskCount > 0
+			? `${tasks.length} tasks + ${subtaskCount} subtasks available`
+			: `${tasks.length} available`;
 
 	// Build choices for Inquirer
 	const choices = buildTaskChoices(tasks, { preselectAll, showStatus });
@@ -51,7 +61,7 @@ export async function selectTasks(
 			{
 				type: 'checkbox',
 				name: 'selectedTasks',
-				message: `Select tasks to export (${tasks.length} available):`,
+				message: `Select tasks to export (${availableMessage}):`,
 				choices,
 				pageSize: 12,
 				loop: false,
@@ -129,16 +139,20 @@ export async function showExportPreview(
 	tasks: ExportableTask[],
 	_destination?: { briefName?: string; orgName?: string }
 ): Promise<boolean> {
-	// Count tasks vs subtasks
-	const parentTasks = tasks.filter((t) => !t.id.includes('.'));
-	const subtasks = tasks.filter((t) => t.id.includes('.'));
+	// Count tasks and subtasks (subtasks are nested inside tasks)
+	const taskCount = tasks.length;
+	const subtaskCount = tasks.reduce(
+		(sum, t) => sum + (t.subtasks?.length || 0),
+		0
+	);
+	const totalCount = taskCount + subtaskCount;
 
 	// Compact summary
 	console.log('');
 	const taskSummary =
-		subtasks.length > 0
-			? `${parentTasks.length} tasks + ${subtasks.length} subtasks`
-			: `${parentTasks.length} tasks`;
+		subtaskCount > 0
+			? `${taskCount} tasks + ${subtaskCount} subtasks (${totalCount} total)`
+			: `${taskCount} tasks`;
 	console.log(chalk.white(`  ${taskSummary} ready to export`));
 
 	// Validation check

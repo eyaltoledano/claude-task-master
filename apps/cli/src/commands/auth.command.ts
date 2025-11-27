@@ -67,6 +67,7 @@ export class AuthCommand extends Command {
 				'Authentication token (optional, for SSH/remote environments)'
 			)
 			.option('-y, --yes', 'Skip interactive prompts')
+			.option('--no-header', 'Suppress the Task Master header banner')
 			.addHelpText(
 				'after',
 				`
@@ -77,9 +78,14 @@ Examples:
                              # Note: MFA prompts cannot be skipped if enabled
 `
 			)
-			.action(async (token?: string, options?: { yes?: boolean }) => {
-				await this.executeLogin(token, options?.yes);
-			});
+			.action(
+				async (
+					token?: string,
+					options?: { yes?: boolean; header?: boolean }
+				) => {
+					await this.executeLogin(token, options?.yes, options?.header !== false);
+				}
+			);
 	}
 
 	/**
@@ -88,6 +94,7 @@ Examples:
 	private addLogoutCommand(): void {
 		this.command('logout')
 			.description('Logout and clear credentials')
+			.option('--no-header', 'Suppress the Task Master header banner')
 			.action(async () => {
 				await this.executeLogout();
 			});
@@ -99,6 +106,7 @@ Examples:
 	private addStatusCommand(): void {
 		this.command('status')
 			.description('Display authentication status')
+			.option('--no-header', 'Suppress the Task Master header banner')
 			.action(async () => {
 				await this.executeStatus();
 			});
@@ -110,6 +118,7 @@ Examples:
 	private addRefreshCommand(): void {
 		this.command('refresh')
 			.description('Refresh authentication token')
+			.option('--no-header', 'Suppress the Task Master header banner')
 			.action(async () => {
 				await this.executeRefresh();
 			});
@@ -131,11 +140,15 @@ Examples:
 	/**
 	 * Execute login command
 	 */
-	private async executeLogin(token?: string, yes?: boolean): Promise<void> {
+	private async executeLogin(
+		token?: string,
+		yes?: boolean,
+		showHeader: boolean = true
+	): Promise<void> {
 		try {
 			const result = token
-				? await this.performTokenAuth(token, yes)
-				: await this.performInteractiveAuth(yes);
+				? await this.performTokenAuth(token, yes, showHeader)
+				: await this.performInteractiveAuth(yes, showHeader);
 			this.setLastResult(result);
 
 			if (!result.success) {
@@ -363,8 +376,13 @@ Examples:
 	/**
 	 * Perform interactive authentication
 	 */
-	private async performInteractiveAuth(yes?: boolean): Promise<AuthResult> {
-		ui.displayBanner('Task Master Authentication');
+	private async performInteractiveAuth(
+		yes?: boolean,
+		showHeader: boolean = true
+	): Promise<AuthResult> {
+		if (showHeader) {
+			ui.displayBanner('Task Master Authentication');
+		}
 		const isAuthenticated = await this.authManager.hasValidSession();
 
 		// Check if already authenticated (skip if --yes is used)
@@ -643,9 +661,12 @@ Examples:
 	 */
 	private async performTokenAuth(
 		token: string,
-		yes?: boolean
+		yes?: boolean,
+		showHeader: boolean = true
 	): Promise<AuthResult> {
-		ui.displayBanner('Task Master Authentication');
+		if (showHeader) {
+			ui.displayBanner('Task Master Authentication');
+		}
 
 		try {
 			// Authenticate with the token
