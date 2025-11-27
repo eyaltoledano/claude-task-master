@@ -177,10 +177,6 @@ export class ExportCommand extends Command {
 				return;
 			}
 
-			// Show upgrade message with tag info
-			const tagToExport = options?.tag || 'master';
-			showUpgradeMessage(tagToExport);
-
 			// Determine if we should be interactive:
 			// - Interactive by default (no flags passed)
 			// - Non-interactive if --tag, --title, or --description are specified
@@ -189,8 +185,11 @@ export class ExportCommand extends Command {
 			const isInteractive = !hasDirectFlags;
 
 			if (isInteractive) {
+				// Interactive mode - tag selection will show upgrade message after selection
 				await this.executeInteractiveTagSelection(options);
 			} else {
+				// Non-interactive mode with explicit --tag flag
+				showUpgradeMessage(options?.tag || 'master');
 				await this.executeStandardExport(options);
 			}
 		} catch (error: any) {
@@ -254,6 +253,9 @@ export class ExportCommand extends Command {
 				short: 'Cancel'
 			});
 
+			// Find the current tag to use as default selection
+			const currentTag = tagsResult.tags.find((t) => t.isCurrent)?.name || tagsResult.currentTag;
+
 			// Prompt for tag selection
 			const { selectedTag } = await inquirer.prompt<{ selectedTag: string }>([
 				{
@@ -261,6 +263,7 @@ export class ExportCommand extends Command {
 					name: 'selectedTag',
 					message: 'Which tag would you like to export to Hamster?',
 					choices: tagChoices,
+					default: currentTag, // Pre-select the current tag
 					pageSize: 10
 				}
 			]);
