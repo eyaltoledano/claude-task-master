@@ -70,9 +70,9 @@ describe('Hamster Rules Distribution', () => {
 	});
 
 	describe('Rules add command distributes hamster file', () => {
-		// Test each profile that should receive hamster rules
-		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
-			test(`${profile} profile receives hamster rules via 'rules add'`, () => {
+		test.each(PROFILES_WITH_DEFAULT_RULES)(
+			'%s profile receives hamster rules via "rules add"',
+			(profile) => {
 				// Create a unique temp directory for this test
 				const tempDir = fs.mkdtempSync(
 					path.join(os.tmpdir(), `tm-hamster-test-${profile}-`)
@@ -104,15 +104,16 @@ describe('Hamster Rules Distribution', () => {
 					// Cleanup temp directory
 					fs.rmSync(tempDir, { recursive: true, force: true });
 				}
-			});
-		});
+			}
+		);
 	});
 
 	describe('Profiles without default rules', () => {
 		// These profiles use different mechanisms (CLAUDE.md, AGENTS.md, etc.)
 		// and don't include the defaultFileMap rules
-		PROFILES_WITHOUT_DEFAULT_RULES.forEach((profile) => {
-			test(`${profile} profile does not use defaultFileMap (has custom mechanism)`, async () => {
+		test.each(PROFILES_WITHOUT_DEFAULT_RULES)(
+			'%s profile does not use defaultFileMap (has custom mechanism)',
+			async (profile) => {
 				// Dynamically import the profile to check its configuration
 				const profileModule = await import(
 					`../../../src/profiles/${profile}.js`
@@ -122,7 +123,7 @@ describe('Hamster Rules Distribution', () => {
 				// These profiles should have includeDefaultRules: false
 				// which means they won't automatically get hamster files via defaultFileMap
 				expect(profileExport.includeDefaultRules).toBe(false);
-			});
-		});
+			}
+		);
 	});
 });

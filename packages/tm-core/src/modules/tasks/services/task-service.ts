@@ -809,9 +809,12 @@ export class TaskService {
 	 * Releases file locks and other storage resources
 	 */
 	async close(): Promise<void> {
-		if (this.storage) {
+		if (!this.storage) return;
+
+		try {
 			await this.storage.close();
+		} finally {
+			this.initialized = false;
 		}
-		this.initialized = false;
 	}
 }

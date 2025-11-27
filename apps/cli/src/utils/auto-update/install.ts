@@ -26,6 +26,9 @@ const INSTALL_PHASES = [
 /** Total weight for percentage calculation */
 const TOTAL_WEIGHT = INSTALL_PHASES.reduce((sum, p) => sum + p.weight, 0);
 
+/** Timeout for npm install operations (5 minutes) */
+const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
  * Parse npm output to determine current installation phase index
  */
@@ -152,6 +155,21 @@ async function installFromTarball(tarballPath: string): Promise<boolean> {
 		);
 
 		let errorOutput = '';
+		let completed = false;
+
+		// Set timeout for npm install
+		const installTimeout = setTimeout(() => {
+			if (completed) return;
+			completed = true;
+			installProcess.kill('SIGTERM');
+			clearInterval(progressInterval);
+			progressBar.stop();
+			console.log(chalk.red('✖') + chalk.red(' Installation timed out'));
+			if (fs.existsSync(tarballPath)) {
+				fs.unlink(tarballPath, () => {});
+			}
+			resolve(false);
+		}, INSTALL_TIMEOUT_MS);
 
 		// Parse stdout for progress hints
 		installProcess.stdout.on('data', (data) => {
@@ -188,6 +206,9 @@ async function installFromTarball(tarballPath: string): Promise<boolean> {
 		});
 
 		installProcess.on('close', (code) => {
+			if (completed) return;
+			completed = true;
+			clearTimeout(installTimeout);
 			clearInterval(progressInterval);
 
 			// Complete the progress bar
@@ -227,6 +248,9 @@ async function installFromTarball(tarballPath: string): Promise<boolean> {
 		});
 
 		installProcess.on('error', (error) => {
+			if (completed) return;
+			completed = true;
+			clearTimeout(installTimeout);
 			clearInterval(progressInterval);
 			progressBar.stop();
 
@@ -270,6 +294,21 @@ async function performDirectNpmInstall(
 		);
 
 		let errorOutput = '';
+		let completed = false;
+
+		// Set timeout for npm install
+		const installTimeout = setTimeout(() => {
+			if (completed) return;
+			completed = true;
+			updateProcess.kill('SIGTERM');
+			spinner.fail(chalk.red('Auto-update timed out'));
+			console.log(
+				chalk.cyan(
+					`Please run manually: npm install -g task-master-ai@${latestVersion}`
+				)
+			);
+			resolve(false);
+		}, INSTALL_TIMEOUT_MS);
 
 		updateProcess.stdout.on('data', () => {
 			spinner.text = chalk.blue(
@@ -282,6 +321,10 @@ async function performDirectNpmInstall(
 		});
 
 		updateProcess.on('close', (code) => {
+			if (completed) return;
+			completed = true;
+			clearTimeout(installTimeout);
+
 			if (code === 0) {
 				spinner.succeed(
 					chalk.green(
@@ -304,6 +347,10 @@ async function performDirectNpmInstall(
 		});
 
 		updateProcess.on('error', (error) => {
+			if (completed) return;
+			completed = true;
+			clearTimeout(installTimeout);
+
 			spinner.fail(chalk.red('Auto-update failed'));
 			console.log(chalk.red('Error:'), error.message);
 			console.log(
