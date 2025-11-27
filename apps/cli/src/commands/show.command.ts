@@ -3,7 +3,7 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { type Task, type TmCore, createTmCore } from '@tm/core';
+import { type Task, type TmCore, createTmCore, normalizeDisplayId } from '@tm/core';
 import type { StorageType, Subtask } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -102,9 +102,10 @@ export class ShowCommand extends Command {
 			}
 
 			// Check if multiple IDs are provided (comma-separated)
+			// Normalize display IDs (e.g., "ham31" → "HAM-31")
 			const taskIds = idArg
 				.split(',')
-				.map((id) => id.trim())
+				.map((id) => normalizeDisplayId(id.trim()))
 				.filter((id) => id.length > 0);
 
 			// Get tasks from core

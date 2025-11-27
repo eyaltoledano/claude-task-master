@@ -140,3 +140,72 @@ export function getParentTaskId(subtaskId: string): string | null {
 	const parts = subtaskId.split('.');
 	return parts[0];
 }
+
+/**
+ * Normalizes a display ID to the standard format (PREFIX-NUMBER)
+ * Handles various input formats:
+ * - "ham31" → "HAM-31"
+ * - "HAM31" → "HAM-31"
+ * - "ham-31" → "HAM-31"
+ * - "HAM-31" → "HAM-31" (already normalized)
+ * - "31" → "31" (plain number, no change)
+ * - "abc" → "abc" (no change if doesn't match pattern)
+ *
+ * @param id - The display ID to normalize
+ * @returns The normalized display ID
+ * @example
+ * ```typescript
+ * normalizeDisplayId("ham31"); // "HAM-31"
+ * normalizeDisplayId("HAM-31"); // "HAM-31"
+ * normalizeDisplayId("tas123"); // "TAS-123"
+ * normalizeDisplayId("123"); // "123"
+ * ```
+ */
+export function normalizeDisplayId(id: string): string {
+	if (!id) return id;
+
+	// Trim whitespace
+	const trimmed = id.trim();
+
+	// Pattern: 3 letters followed by numbers (no hyphen)
+	// e.g., "ham31", "HAM31", "tas123"
+	const noHyphenPattern = /^([a-zA-Z]{3})(\d+)$/;
+	const noHyphenMatch = trimmed.match(noHyphenPattern);
+	if (noHyphenMatch) {
+		const prefix = noHyphenMatch[1].toUpperCase();
+		const number = noHyphenMatch[2];
+		return `${prefix}-${number}`;
+	}
+
+	// Pattern: 3 letters, hyphen, numbers (already has hyphen, just normalize case)
+	// e.g., "ham-31", "HAM-31"
+	const withHyphenPattern = /^([a-zA-Z]{3})-(\d+)$/;
+	const withHyphenMatch = trimmed.match(withHyphenPattern);
+	if (withHyphenMatch) {
+		const prefix = withHyphenMatch[1].toUpperCase();
+		const number = withHyphenMatch[2];
+		return `${prefix}-${number}`;
+	}
+
+	// Also handle subtask format: ham31.1, HAM-31.1
+	const subtaskNoHyphenPattern = /^([a-zA-Z]{3})(\d+)\.(\d+)$/;
+	const subtaskNoHyphenMatch = trimmed.match(subtaskNoHyphenPattern);
+	if (subtaskNoHyphenMatch) {
+		const prefix = subtaskNoHyphenMatch[1].toUpperCase();
+		const taskNum = subtaskNoHyphenMatch[2];
+		const subtaskNum = subtaskNoHyphenMatch[3];
+		return `${prefix}-${taskNum}.${subtaskNum}`;
+	}
+
+	const subtaskWithHyphenPattern = /^([a-zA-Z]{3})-(\d+)\.(\d+)$/;
+	const subtaskWithHyphenMatch = trimmed.match(subtaskWithHyphenPattern);
+	if (subtaskWithHyphenMatch) {
+		const prefix = subtaskWithHyphenMatch[1].toUpperCase();
+		const taskNum = subtaskWithHyphenMatch[2];
+		const subtaskNum = subtaskWithHyphenMatch[3];
+		return `${prefix}-${taskNum}.${subtaskNum}`;
+	}
+
+	// No pattern matched, return as-is
+	return trimmed;
+}

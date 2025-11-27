@@ -3,7 +3,7 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import { type TaskStatus, type TmCore, createTmCore } from '@tm/core';
+import { type TaskStatus, type TmCore, createTmCore, normalizeDisplayId } from '@tm/core';
 import type { StorageType } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -146,7 +146,10 @@ export class SetStatusCommand extends Command {
 			});
 
 			// Parse task IDs (handle comma-separated values)
-			const taskIds = options.id.split(',').map((id) => id.trim());
+			// Normalize display IDs (e.g., "ham31" → "HAM-31")
+			const taskIds = options.id
+				.split(',')
+				.map((id) => normalizeDisplayId(id.trim()));
 
 			// Update each task
 			const updatedTasks: Array<{
