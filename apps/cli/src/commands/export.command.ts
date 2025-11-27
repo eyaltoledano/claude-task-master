@@ -681,15 +681,26 @@ export class ExportCommand extends Command {
 			invitations?: any[];
 		}
 
+		// Get FileStorage instance once for all tags
+		const projectRoot = getProjectRoot();
+		if (!projectRoot) {
+			console.log(chalk.yellow('\nNo project root found.\n'));
+			this.lastResult = {
+				success: false,
+				action: 'cancelled',
+				message: 'No project root'
+			};
+			return;
+		}
+		const fileStorage = new FileStorage(projectRoot);
+		await fileStorage.initialize();
+
 		const exportPromises: Promise<ExportResult>[] = tags.map(async (tag) => {
 			try {
-				// Load tasks to count parent tasks vs subtasks
-				const taskList = await this.taskMasterCore!.tasks.list({
-					tag,
-					includeSubtasks: true
-				});
-				const parentTaskCount = taskList.tasks.length;
-				const subtaskCount = taskList.tasks.reduce(
+				// Load tasks from LOCAL FileStorage to count parent tasks vs subtasks
+				const tasks = await fileStorage.loadTasks(tag);
+				const parentTaskCount = tasks.length;
+				const subtaskCount = tasks.reduce(
 					(acc, t) => acc + (t.subtasks?.length || 0),
 					0
 				);
