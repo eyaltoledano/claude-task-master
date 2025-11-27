@@ -272,7 +272,18 @@ export class ExportCommand extends Command {
 			}
 
 			// Build choices for multi-select tag selection
-			const tagChoices = tagsResult.tags.map((tag) => {
+			// Sort: unexported tags first, then already exported tags at the bottom
+			const sortedTags = [...tagsResult.tags].sort((a, b) => {
+				const aExported = !!exportedTags[a.name];
+				const bExported = !!exportedTags[b.name];
+				if (aExported !== bExported) return aExported ? 1 : -1;
+				// Within each group, put current tag first
+				if (a.isCurrent) return -1;
+				if (b.isCurrent) return 1;
+				return 0;
+			});
+
+			const tagChoices = sortedTags.map((tag) => {
 				const isExported = !!exportedTags[tag.name];
 				const taskInfo = `${tag.taskCount} tasks, ${tag.completedTasks} done`;
 				const currentMarker = tag.isCurrent ? chalk.cyan(' (current)') : '';
@@ -339,15 +350,25 @@ export class ExportCommand extends Command {
 		let spinner: Ora | undefined;
 
 		try {
-			// Load tasks to show preview
-			spinner = ora('Loading tasks...').start();
-			const taskList = await this.taskMasterCore!.tasks.list({
-				tag: options?.tag,
-				includeSubtasks: true
-			});
-			spinner.succeed(`${taskList.tasks.length} tasks`);
+			// Load tasks from LOCAL FileStorage directly (not from context/brief)
+			const projectRoot = getProjectRoot();
+			if (!projectRoot) {
+				console.log(chalk.yellow('\nNo project root found.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No project root'
+				};
+				return;
+			}
 
-			if (taskList.tasks.length === 0) {
+			spinner = ora('Loading tasks...').start();
+			const fileStorage = new FileStorage(projectRoot);
+			await fileStorage.initialize();
+			const tasks = await fileStorage.loadTasks(options?.tag);
+			spinner.succeed(`${tasks.length} tasks`);
+
+			if (!tasks || tasks.length === 0) {
 				console.log(chalk.yellow('\nNo tasks found to export.\n'));
 					this.lastResult = {
 						success: false,
@@ -358,7 +379,7 @@ export class ExportCommand extends Command {
 			}
 
 			// Show what will be exported
-			this.showTaskPreview(taskList.tasks);
+			this.showTaskPreview(tasks);
 
 			// Prompt for invite emails if --invite flag is set
 			let inviteEmails: string[] = [];
@@ -436,14 +457,24 @@ export class ExportCommand extends Command {
 		let spinner: Ora | undefined;
 
 		try {
-			// Load tasks
-			const taskList = await this.taskMasterCore!.tasks.list({
-				tag: options?.tag,
-				includeSubtasks: true
-			});
+			// Load tasks from LOCAL FileStorage directly (not from context/brief)
+			const projectRoot = getProjectRoot();
+			if (!projectRoot) {
+				console.log(chalk.yellow('\nNo project root found.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No project root'
+				};
+				return;
+			}
 
-			if (taskList.tasks.length === 0) {
-				console.log(chalk.yellow('\nNo tasks available for export.\n'));
+			const fileStorage = new FileStorage(projectRoot);
+			await fileStorage.initialize();
+			const tasks = await fileStorage.loadTasks(options?.tag);
+
+			if (!tasks || tasks.length === 0) {
+				console.log(chalk.yellow('\nNo tasks available for export in this tag.\n'));
 				this.lastResult = {
 					success: false,
 					action: 'cancelled',
@@ -453,7 +484,7 @@ export class ExportCommand extends Command {
 			}
 
 			// Convert to exportable format
-			const exportableTasks: ExportableTask[] = taskList.tasks.map((task) => ({
+			const exportableTasks: ExportableTask[] = tasks.map((task) => ({
 				id: String(task.id),
 				title: task.title,
 				description: task.description,

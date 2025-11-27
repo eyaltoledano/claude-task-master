@@ -76,6 +76,7 @@
 		"@sentry/node": "^10.25.0",
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
+		"@types/turndown": "^5.0.6",
 		"ai": "^5.0.51",
 		"ai-sdk-provider-claude-code": "^2.2.0",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
@@ -111,6 +112,7 @@
 		"ora": "^8.2.0",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
+		"turndown": "^7.2.2",
 		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
 		"zod": "^4.1.12"

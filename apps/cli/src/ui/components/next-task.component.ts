@@ -7,6 +7,7 @@ import type { Task } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import { getBoxWidth, getComplexityWithColor } from '../../utils/ui.js';
+import { renderContent } from './task-detail.component.js';
 
 /**
  * Next task display options
@@ -98,10 +99,10 @@ export function displayRecommendedNextTask(
 		content.push(`Complexity: ${getComplexityWithColor(task.complexity)}`);
 	}
 
-	// Description if available
+	// Description if available (render HTML from Hamster properly)
 	if (task.description) {
 		content.push('');
-		content.push(`Description: ${chalk.white(task.description)}`);
+		content.push(`Description: ${chalk.white(renderContent(task.description))}`);
 	}
 
 	// Action commands

@@ -1,6 +1,6 @@
 {
   "currentTag": "tm-core-phase-1",
-  "lastUpdated": "2025-11-27T19:58:15.386Z",
+  "lastUpdated": "2025-11-27T21:51:39.557Z",
   "metadata": {
     "upgradePrompts": {
       "triggers": {
@@ -10,7 +10,7 @@
           "showCount": 1,
           "dismissed": false,
           "action": "accepted",
-          "actionAt": "2025-11-27T19:58:15.385Z"
+          "actionAt": "2025-11-27T21:41:38.822Z"
         }
       },
       "metrics": {
@@ -19,8 +19,25 @@
         "listCommandCount": 0,
         "tasksWithDependencies": 0
       },
-      "lastUpdated": "2025-11-27T19:58:15.386Z",
+      "lastUpdated": "2025-11-27T21:41:38.822Z",
       "version": "1.0.0"
+    },
+    "exportedTags": {
+      "tm-core-phase-1": {
+        "briefId": "5f36141d-9749-47b4-b64b-7841a42cf68e",
+        "briefUrl": "http://localhost:3000/home/hamster/briefs/5f36141d-9749-47b4-b64b-7841a42cf68e",
+        "exportedAt": "2025-11-27T21:41:38.821Z"
+      },
+      "tdd-workflow-phase-0": {
+        "briefId": "b137627a-0573-4ae6-bda6-afea97e31b4f",
+        "briefUrl": "http://localhost:3000/home/hamster/briefs/b137627a-0573-4ae6-bda6-afea97e31b4f",
+        "exportedAt": "2025-11-27T21:51:39.086Z"
+      },
+      "autonomous-tdd-git-workflow": {
+        "briefId": "3f0e8ef0-c79d-4942-92be-0c9f2b6db0eb",
+        "briefUrl": "http://localhost:3000/home/hamster/briefs/3f0e8ef0-c79d-4942-92be-0c9f2b6db0eb",
+        "exportedAt": "2025-11-27T21:51:39.557Z"
+      }
     }
   },
   "migrationNoticeShown": true
