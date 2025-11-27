@@ -1,21 +1,27 @@
 /**
- * @fileoverview Export command for exporting tasks to external systems
- * Provides functionality to export tasks to Hamster briefs
+ * @fileoverview Export command for exporting tasks to Hamster
+ * Creates a new brief from local tasks and imports them atomically
  */
 
 import {
-	AuthManager,
-	type ExportResult,
+	type GenerateBriefResult,
+	PromptService,
 	type TmCore,
-	type UserContext,
 	createTmCore
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
-import ora, { Ora } from 'ora';
+import ora, { type Ora } from 'ora';
+import {
+	type ExportableTask,
+	selectTasks,
+	showExportPreview,
+	showUpgradeMessage,
+	validateTasks
+} from '../export/index.js';
+import { ensureAuthenticated } from '../utils/auth-guard.js';
 import { displayError } from '../utils/error-handler.js';
-import * as ui from '../utils/ui.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**
@@ -24,50 +30,49 @@ import { getProjectRoot } from '../utils/project-root.js';
 export interface ExportCommandResult {
 	success: boolean;
 	action: 'export' | 'validate' | 'cancelled';
-	result?: ExportResult;
+	result?: GenerateBriefResult;
 	message?: string;
 }
 
 /**
  * ExportCommand extending Commander's Command class
- * Handles task export to external systems
+ * Handles task export to Hamster by generating a new brief
  */
 export class ExportCommand extends Command {
-	private authManager: AuthManager;
 	private taskMasterCore?: TmCore;
+	private promptService?: PromptService;
 	private lastResult?: ExportCommandResult;
 
 	constructor(name?: string) {
 		super(name || 'export');
 
-		// Initialize auth manager
-		this.authManager = AuthManager.getInstance();
-
 		// Configure the command
-		this.description('Export tasks to external systems (e.g., Hamster briefs)');
-
-		// Add options
-		this.option('--org <id>', 'Organization ID to export to');
-		this.option('--brief <id>', 'Brief ID to export tasks to');
-		this.option('--tag <tag>', 'Export tasks from a specific tag');
-		this.option(
-			'--status <status>',
-			'Filter tasks by status (pending, in-progress, done, etc.)'
+		this.description(
+			'Export tasks to Hamster by creating a new brief from your local tasks'
 		);
-		this.option('--exclude-subtasks', 'Exclude subtasks from export');
-		this.option('-y, --yes', 'Skip confirmation prompt');
 
-		// Accept optional positional argument for brief ID or Hamster URL
-		this.argument('[briefOrUrl]', 'Brief ID or Hamster brief URL');
+		// Options - interactive by default, direct export when flags are passed
+		this.option(
+			'--tag <tag>',
+			'Export tasks from a specific tag (non-interactive)'
+		);
+		this.option(
+			'--title <title>',
+			'Specify a title for the generated brief (non-interactive)'
+		);
+		this.option(
+			'--description <description>',
+			'Specify a description for the generated brief (non-interactive)'
+		);
 
 		// Default action
-		this.action(async (briefOrUrl?: string, options?: any) => {
-			await this.executeExport(briefOrUrl, options);
+		this.action(async (options?: any) => {
+			await this.executeExport(options);
 		});
 	}
 
 	/**
-	 * Initialize the TmCore
+	 * Initialize the TmCore and PromptService
 	 */
 	private async initializeServices(): Promise<void> {
 		if (this.taskMasterCore) {
@@ -75,10 +80,15 @@ export class ExportCommand extends Command {
 		}
 
 		try {
+			const projectRoot = getProjectRoot();
+
 			// Initialize TmCore
 			this.taskMasterCore = await createTmCore({
-				projectPath: getProjectRoot()
+				projectPath: projectRoot
 			});
+
+			// Initialize PromptService for upgrade prompts
+			this.promptService = new PromptService(projectRoot);
 		} catch (error) {
 			throw new Error(
 				`Failed to initialize services: ${(error as Error).message}`
@@ -89,253 +99,351 @@ export class ExportCommand extends Command {
 	/**
 	 * Execute the export command
 	 */
-	private async executeExport(
-		briefOrUrl?: string,
-		options?: any
-	): Promise<void> {
-		let spinner: Ora | undefined;
-
+	private async executeExport(options?: any): Promise<void> {
 		try {
-			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
-			if (!hasSession) {
-				ui.displayError('Not authenticated. Run "tm auth login" first.');
-				process.exit(1);
+			// Ensure user is authenticated (will prompt and trigger OAuth if not)
+			const authResult = await ensureAuthenticated({
+				actionName: 'export tasks to Hamster'
+			});
+
+			if (!authResult.authenticated) {
+				if (authResult.cancelled) {
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
+						message: 'User cancelled authentication'
+					};
+				}
+				return;
 			}
 
 			// Initialize services
 			await this.initializeServices();
 
-			// Get current context
-			const context = await this.authManager.getContext();
+			// Show upgrade message
+			showUpgradeMessage();
 
-			// Determine org and brief IDs
-			let orgId = options?.org || context?.orgId;
-			let briefId = options?.brief || briefOrUrl || context?.briefId;
+			// Determine if we should be interactive:
+			// - Interactive by default (no flags passed)
+			// - Non-interactive if --tag, --title, or --description are specified
+			const hasDirectFlags =
+				options?.tag || options?.title || options?.description;
+			const isInteractive = !hasDirectFlags;
 
-			// If a URL/ID was provided as argument, resolve it
-			if (briefOrUrl && !options?.brief) {
-				spinner = ora('Resolving brief...').start();
-				const resolvedBrief = await this.resolveBriefInput(briefOrUrl);
-				if (resolvedBrief) {
-					briefId = resolvedBrief.briefId;
-					orgId = resolvedBrief.orgId;
-					spinner.succeed('Brief resolved');
-				} else {
-					spinner.fail('Could not resolve brief');
-					process.exit(1);
-				}
-			}
-
-			// Validate we have necessary IDs
-			if (!orgId) {
-				ui.displayError(
-					'No organization selected. Run "tm context org" or use --org flag.'
-				);
-				process.exit(1);
-			}
-
-			if (!briefId) {
-				ui.displayError(
-					'No brief specified. Run "tm context brief", provide a brief ID/URL, or use --brief flag.'
-				);
-				process.exit(1);
-			}
-
-			// Confirm export if not auto-confirmed
-			if (!options?.yes) {
-				const confirmed = await this.confirmExport(orgId, briefId, context);
-				if (!confirmed) {
-					ui.displayWarning('Export cancelled');
-					this.lastResult = {
-						success: false,
-						action: 'cancelled',
-						message: 'User cancelled export'
-					};
-					process.exit(0);
-				}
-			}
-
-			// Perform export
-			spinner = ora('Exporting tasks...').start();
-
-			// Use integration domain facade
-			const exportResult = await this.taskMasterCore!.integration.exportTasks({
-				orgId,
-				briefId,
-				tag: options?.tag,
-				status: options?.status,
-				excludeSubtasks: options?.excludeSubtasks || false
-			});
-
-			if (exportResult.success) {
-				spinner.succeed(
-					`Successfully exported ${exportResult.taskCount} task(s) to brief`
-				);
-
-				// Display summary
-				console.log(chalk.cyan('\n📤 Export Summary\n'));
-				console.log(chalk.white(`  Organization: ${orgId}`));
-				console.log(chalk.white(`  Brief: ${briefId}`));
-				console.log(chalk.white(`  Tasks exported: ${exportResult.taskCount}`));
-				if (options?.tag) {
-					console.log(chalk.gray(`  Tag: ${options.tag}`));
-				}
-				if (options?.status) {
-					console.log(chalk.gray(`  Status filter: ${options.status}`));
-				}
-
-				if (exportResult.message) {
-					console.log(chalk.gray(`\n  ${exportResult.message}`));
-				}
+			if (isInteractive) {
+				await this.executeInteractiveExport(options);
 			} else {
-				spinner.fail('Export failed');
-				if (exportResult.error) {
-					console.error(chalk.red(`\n✗ ${exportResult.error.message}`));
-				}
+				await this.executeStandardExport(options);
 			}
-
-			this.lastResult = {
-				success: exportResult.success,
-				action: 'export',
-				result: exportResult
-			};
 		} catch (error: any) {
-			if (spinner?.isSpinning) spinner.fail('Export failed');
 			displayError(error);
 		}
 	}
 
 	/**
-	 * Resolve brief input to get brief and org IDs
+	 * Execute standard (non-interactive) export
 	 */
-	private async resolveBriefInput(
-		briefOrUrl: string
-	): Promise<{ briefId: string; orgId: string } | null> {
+	private async executeStandardExport(options: any): Promise<void> {
+		let spinner: Ora | undefined;
+
 		try {
-			// Extract brief ID from input
-			const briefId = this.extractBriefId(briefOrUrl);
-			if (!briefId) {
-				return null;
+			// Load tasks to show preview
+			spinner = ora('Loading tasks...').start();
+			const taskList = await this.taskMasterCore!.tasks.list({
+				tag: options?.tag,
+				includeSubtasks: true
+			});
+			spinner.succeed(`${taskList.tasks.length} tasks`);
+
+			if (taskList.tasks.length === 0) {
+				console.log(chalk.yellow('\nNo tasks found to export.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No tasks found'
+				};
+				return;
 			}
 
-			// Fetch brief to get organization
-			const brief = await this.authManager.getBrief(briefId);
-			if (!brief) {
-				ui.displayError('Brief not found or you do not have access');
-				return null;
-			}
+			// Show what will be exported
+			this.showTaskPreview(taskList.tasks);
 
-			return {
-				briefId: brief.id,
-				orgId: brief.accountId
-			};
-		} catch (error) {
-			console.error(chalk.red(`Failed to resolve brief: ${error}`));
-			return null;
-		}
-	}
+			// Perform export
+			spinner = ora('Creating brief and exporting tasks...').start();
 
-	/**
-	 * Extract a brief ID from raw input (ID or URL)
-	 */
-	private extractBriefId(input: string): string | null {
-		const raw = input?.trim() ?? '';
-		if (!raw) return null;
+			const result =
+				await this.taskMasterCore!.integration.generateBriefFromTasks({
+					tag: options?.tag,
+					options: {
+						// Always generate title/description unless manually specified
+						generateTitle: !options?.title,
+						generateDescription: !options?.description,
+						title: options?.title,
+						description: options?.description,
+						preserveHierarchy: true,
+						preserveDependencies: true
+					}
+				});
 
-		const parseUrl = (s: string): URL | null => {
-			try {
-				return new URL(s);
-			} catch {}
-			try {
-				return new URL(`https://${s}`);
-			} catch {}
-			return null;
-		};
+			if (result.success && result.brief) {
+				spinner.succeed('Export complete');
+				this.displaySuccessResult(result);
 
-		const fromParts = (path: string): string | null => {
-			const parts = path.split('/').filter(Boolean);
-			const briefsIdx = parts.lastIndexOf('briefs');
-			const candidate =
-				briefsIdx >= 0 && parts.length > briefsIdx + 1
-					? parts[briefsIdx + 1]
-					: parts[parts.length - 1];
-			return candidate?.trim() || null;
-		};
+				// Prompt to invite teammates
+				await this.promptInviteTeammates(result.brief.url);
 
-		// Try URL parsing
-		const url = parseUrl(raw);
-		if (url) {
-			const qId = url.searchParams.get('id') || url.searchParams.get('briefId');
-			const candidate = (qId || fromParts(url.pathname)) ?? null;
-			if (candidate) {
-				if (this.isLikelyId(candidate) || candidate.length >= 8) {
-					return candidate;
+				// Record export success for prompt metrics
+				await this.promptService?.recordAction('export_attempt', 'accepted');
+			} else {
+				spinner.fail('Export failed');
+				const errorMsg = result.error?.message || 'Unknown error occurred';
+				console.error(chalk.red(`\n${errorMsg}`));
+				if (result.error?.code) {
+					console.error(chalk.gray(`  Error code: ${result.error.code}`));
 				}
 			}
-		}
 
-		// Check if it looks like a path
-		if (raw.includes('/')) {
-			const candidate = fromParts(raw);
-			if (candidate && (this.isLikelyId(candidate) || candidate.length >= 8)) {
-				return candidate;
-			}
+			this.lastResult = {
+				success: result.success,
+				action: 'export',
+				result
+			};
+		} catch (error: any) {
+			if (spinner?.isSpinning) spinner.fail('Export failed');
+			throw error;
 		}
-
-		// Return raw if it looks like an ID
-		return raw;
 	}
 
 	/**
-	 * Check if a string looks like a brief ID
+	 * Execute interactive export with task selection
 	 */
-	private isLikelyId(value: string): boolean {
-		const uuidRegex =
-			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
-		const slugRegex = /^[A-Za-z0-9_-]{16,}$/;
-		return (
-			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
+	private async executeInteractiveExport(options: any): Promise<void> {
+		let spinner: Ora | undefined;
+
+		try {
+			// Load tasks
+			const taskList = await this.taskMasterCore!.tasks.list({
+				tag: options?.tag,
+				includeSubtasks: true
+			});
+
+			if (taskList.tasks.length === 0) {
+				console.log(chalk.yellow('\nNo tasks available for export.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No tasks available'
+				};
+				return;
+			}
+
+			// Convert to exportable format
+			const exportableTasks: ExportableTask[] = taskList.tasks.map((task) => ({
+				id: String(task.id),
+				title: task.title,
+				description: task.description,
+				status: task.status,
+				priority: task.priority,
+				dependencies: task.dependencies?.map(String),
+				subtasks: task.subtasks?.map((st) => ({
+					id: String(st.id),
+					title: st.title,
+					description: st.description,
+					status: st.status,
+					priority: st.priority
+				}))
+			}));
+
+			// Interactive task selection (all pre-selected by default)
+			const selectionResult = await selectTasks(exportableTasks, {
+				preselectAll: true,
+				showStatus: true,
+				showPriority: true
+			});
+
+			if (
+				selectionResult.cancelled ||
+				selectionResult.selectedTasks.length === 0
+			) {
+				console.log(chalk.yellow('\nExport cancelled.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'User cancelled selection'
+				};
+				return;
+			}
+
+			// Validate selected tasks
+			const validation = validateTasks(selectionResult.selectedTasks);
+			if (!validation.isValid) {
+				console.log(chalk.red('\nCannot export due to validation errors:\n'));
+				for (const error of validation.errors) {
+					console.log(chalk.red(`  - ${error}`));
+				}
+				this.lastResult = {
+					success: false,
+					action: 'validate',
+					message: 'Validation failed'
+				};
+				return;
+			}
+
+			// Show preview and confirm
+			const confirmed = await showExportPreview(selectionResult.selectedTasks, {
+				briefName: options?.title || '(will be generated)'
+			});
+
+			if (!confirmed) {
+				console.log(chalk.yellow('\nExport cancelled.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'User cancelled after preview'
+				};
+				return;
+			}
+
+			// Perform export
+			spinner = ora('Creating brief and exporting tasks...').start();
+
+			// TODO: Support exporting specific selected tasks
+			// For now, we export all tasks from the tag
+			const result =
+				await this.taskMasterCore!.integration.generateBriefFromTasks({
+					tag: options?.tag,
+					options: {
+						generateTitle: !options?.title,
+						generateDescription: !options?.description,
+						title: options?.title,
+						description: options?.description,
+						preserveHierarchy: true,
+						preserveDependencies: true
+					}
+				});
+
+			if (result.success && result.brief) {
+				spinner.succeed('Export complete');
+				this.displaySuccessResult(result);
+
+				// Prompt to invite teammates
+				await this.promptInviteTeammates(result.brief.url);
+
+				// Record success
+				await this.promptService?.recordAction('export_attempt', 'accepted');
+			} else {
+				spinner.fail('Export failed');
+				const errorMsg = result.error?.message || 'Unknown error occurred';
+				console.error(chalk.red(`\n${errorMsg}`));
+				if (result.error?.code) {
+					console.error(chalk.gray(`  Error code: ${result.error.code}`));
+				}
+			}
+
+			this.lastResult = {
+				success: result.success,
+				action: 'export',
+				result
+			};
+		} catch (error: any) {
+			if (spinner?.isSpinning) spinner.fail('Export failed');
+			throw error;
+		}
+	}
+
+	/**
+	 * Show a preview of tasks to be exported
+	 */
+	private showTaskPreview(tasks: any[]): void {
+		console.log(chalk.cyan('\nTasks to Export\n'));
+
+		const previewTasks = tasks.slice(0, 10);
+		for (const task of previewTasks) {
+			const statusIcon = this.getStatusIcon(task.status);
+			console.log(chalk.white(`  ${statusIcon} [${task.id}] ${task.title}`));
+		}
+
+		if (tasks.length > 10) {
+			console.log(chalk.gray(`  ... and ${tasks.length - 10} more tasks`));
+		}
+		console.log('');
+	}
+
+	/**
+	 * Display success result with brief URL
+	 */
+	private displaySuccessResult(result: GenerateBriefResult): void {
+		if (!result.brief) return;
+
+		console.log('');
+		console.log(chalk.green('  Done! ') + chalk.white.bold(result.brief.title));
+		console.log(chalk.gray(`  ${result.brief.taskCount} tasks exported`));
+		console.log('');
+		console.log(chalk.white(`  ${result.brief.url}`));
+
+		// Warnings if any
+		if (result.warnings && result.warnings.length > 0) {
+			console.log('');
+			for (const warning of result.warnings) {
+				console.log(chalk.yellow(`  Warning: ${warning}`));
+			}
+		}
+
+		console.log('');
+	}
+
+	/**
+	 * Prompt user to invite teammates after successful export
+	 */
+	private async promptInviteTeammates(briefUrl: string): Promise<void> {
+		const { wantsToInvite } = await inquirer.prompt<{ wantsToInvite: boolean }>(
+			[
+				{
+					type: 'confirm',
+					name: 'wantsToInvite',
+					message:
+						'Do you want to invite teammates to collaborate on these tasks together?',
+					default: false
+				}
+			]
 		);
+
+		if (wantsToInvite) {
+			// Extract base URL and org slug from brief URL
+			// briefUrl format: http://localhost:3000/home/{org_slug}/briefs/{briefId}
+			const urlMatch = briefUrl.match(
+				/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
+			);
+			if (urlMatch) {
+				const [, baseUrl, orgSlug] = urlMatch;
+				const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
+				const open = await import('open');
+				await open.default(membersUrl);
+				console.log(chalk.gray('  Opened team members page in browser'));
+			} else {
+				// Fallback to brief URL if pattern doesn't match
+				const open = await import('open');
+				await open.default(briefUrl);
+				console.log(chalk.gray('  Opened brief in browser'));
+			}
+		}
 	}
 
 	/**
-	 * Confirm export with the user
+	 * Get status icon for display
 	 */
-	private async confirmExport(
-		orgId: string,
-		briefId: string,
-		context: UserContext | null
-	): Promise<boolean> {
-		console.log(chalk.cyan('\n📤 Export Tasks\n'));
-
-		// Show org name if available
-		if (context?.orgName) {
-			console.log(chalk.white(`  Organization: ${context.orgName}`));
-			console.log(chalk.gray(`  ID: ${orgId}`));
-		} else {
-			console.log(chalk.white(`  Organization ID: ${orgId}`));
+	private getStatusIcon(status?: string): string {
+		switch (status) {
+			case 'done':
+				return chalk.green('●');
+			case 'in-progress':
+			case 'in_progress':
+				return chalk.yellow('◐');
+			case 'blocked':
+				return chalk.red('⊘');
+			default:
+				return chalk.gray('○');
 		}
-
-		// Show brief info
-		if (context?.briefName) {
-			console.log(chalk.white(`\n  Brief: ${context.briefName}`));
-			console.log(chalk.gray(`  ID: ${briefId}`));
-		} else {
-			console.log(chalk.white(`\n  Brief ID: ${briefId}`));
-		}
-
-		const { confirmed } = await inquirer.prompt([
-			{
-				type: 'confirm',
-				name: 'confirmed',
-				message: 'Do you want to proceed with export?',
-				default: true
-			}
-		]);
-
-		return confirmed;
 	}
 
 	/**
@@ -359,5 +467,48 @@ export class ExportCommand extends Command {
 		const exportCommand = new ExportCommand(name);
 		program.addCommand(exportCommand);
 		return exportCommand;
+	}
+}
+
+/**
+ * ExportTagCommand - Alias for export with --tag
+ * Allows: tm export-tag <tagName>
+ */
+export class ExportTagCommand extends Command {
+	constructor() {
+		super('export-tag');
+
+		this.description(
+			'Export a specific tag to Hamster (alias for: tm export --tag <tag>)'
+		);
+		this.argument('<tag>', 'Name of the tag to export');
+		this.option('--title <title>', 'Specify a title for the generated brief');
+		this.option(
+			'--description <description>',
+			'Specify a description for the generated brief'
+		);
+
+		this.action(async (tag: string, options: any) => {
+			// Create and execute ExportCommand with tag option
+			const exportCmd = new ExportCommand();
+			// Call the private method via the public action
+			await exportCmd.parseAsync([
+				'node',
+				'export',
+				'--tag',
+				tag,
+				...(options.title ? ['--title', options.title] : []),
+				...(options.description ? ['--description', options.description] : [])
+			]);
+		});
+	}
+
+	/**
+	 * Register this command on an existing program
+	 */
+	static register(program: Command): ExportTagCommand {
+		const exportTagCommand = new ExportTagCommand();
+		program.addCommand(exportTagCommand);
+		return exportTagCommand;
 	}
 }

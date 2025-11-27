@@ -1,9 +1,27 @@
 {
-  "currentTag": "master",
-  "lastSwitched": "2025-11-18T00:32:35.954Z",
-  "branchTagMapping": {
-    "v017-adds": "v017-adds",
-    "next": "next"
+  "currentTag": "tm-core-phase-1",
+  "lastUpdated": "2025-11-27T19:58:15.386Z",
+  "metadata": {
+    "upgradePrompts": {
+      "triggers": {
+        "export_attempt": {
+          "firstShownAt": "2025-11-26T21:02:12.322Z",
+          "lastShownAt": "2025-11-26T21:02:12.322Z",
+          "showCount": 1,
+          "dismissed": false,
+          "action": "accepted",
+          "actionAt": "2025-11-27T19:58:15.385Z"
+        }
+      },
+      "metrics": {
+        "totalTaskCount": 0,
+        "tagCount": 0,
+        "listCommandCount": 0,
+        "tasksWithDependencies": 0
+      },
+      "lastUpdated": "2025-11-27T19:58:15.386Z",
+      "version": "1.0.0"
+    }
   },
   "migrationNoticeShown": true
 }

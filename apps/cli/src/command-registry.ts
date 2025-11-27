@@ -9,7 +9,7 @@ import { AuthCommand } from './commands/auth.command.js';
 import { AutopilotCommand } from './commands/autopilot/index.js';
 import { BriefsCommand } from './commands/briefs.command.js';
 import { ContextCommand } from './commands/context.command.js';
-import { ExportCommand } from './commands/export.command.js';
+import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
@@ -70,8 +70,14 @@ export class CommandRegistry {
 		},
 		{
 			name: 'export',
-			description: 'Export tasks to external systems',
+			description: 'Export tasks to Hamster by creating a new brief',
 			commandClass: ExportCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'export-tag',
+			description: 'Export a specific tag to Hamster',
+			commandClass: ExportTagCommand as any,
 			category: 'task'
 		},
 		{

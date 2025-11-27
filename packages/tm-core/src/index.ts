@@ -113,7 +113,10 @@ export type { CommitMessageOptions } from './modules/git/services/commit-message
 // Integration types
 export type {
 	ExportTasksOptions,
-	ExportResult
+	ExportResult,
+	GenerateBriefOptions,
+	GenerateBriefResult,
+	ImportTask
 } from './modules/integration/services/export.service.js';
 
 // Reports types
@@ -143,6 +146,7 @@ export type {
 
 // Auth - Advanced
 export { AuthManager } from './modules/auth/managers/auth-manager.js';
+export { AuthDomain } from './modules/auth/auth-domain.js';
 
 // Briefs - Advanced
 export { BriefsDomain } from './modules/briefs/briefs-domain.js';

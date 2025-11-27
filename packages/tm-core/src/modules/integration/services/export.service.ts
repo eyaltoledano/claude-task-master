@@ -8,9 +8,10 @@ import {
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import type { Task, TaskStatus } from '../../../common/types/index.js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { AuthDomain } from '../../auth/auth-domain.js';
+import type { AuthManager } from '../../auth/managers/auth-manager.js';
 import type { UserContext } from '../../auth/types.js';
-import { ConfigManager } from '../../config/managers/config-manager.js';
+import type { ConfigManager } from '../../config/managers/config-manager.js';
 import { FileStorage } from '../../storage/adapters/file-storage/index.js';
 
 // Type definitions for the bulk API response
@@ -33,6 +34,120 @@ interface BulkTasksResponse {
 	summary: {
 		message: string;
 		duration: number;
+	};
+}
+
+// ========== Generate Brief From Tasks Types ==========
+
+/**
+ * Task format for generating a brief
+ */
+export interface ImportTask {
+	/** External ID from source system (for sync/mapping) */
+	externalId: string;
+	/** Task content */
+	title: string;
+	description?: string;
+	details?: string;
+	/** Status */
+	status: 'todo' | 'in_progress' | 'done' | 'blocked';
+	/** Priority - Note: Hamster uses 'urgent' not 'critical' */
+	priority: 'low' | 'medium' | 'high' | 'urgent';
+	/** Relationships (using externalIds) */
+	dependencies?: string[];
+	parentId?: string;
+	/** Optional metadata */
+	metadata?: {
+		originalStatus?: string;
+		originalPriority?: string;
+		createdAt?: string;
+		updatedAt?: string;
+		testStrategy?: string;
+		[key: string]: unknown;
+	};
+}
+
+/**
+ * Options for generating a brief from tasks
+ */
+export interface GenerateBriefOptions {
+	/** Optional tag to export tasks from (uses active tag if not provided) */
+	tag?: string;
+	/** Filter by task status */
+	status?: TaskStatus;
+	/** Exclude subtasks from export */
+	excludeSubtasks?: boolean;
+	/** Optional organization ID (uses default if not provided) */
+	orgId?: string;
+	/** Generation options */
+	options?: {
+		/** Use AI to generate a brief title from task content */
+		generateTitle?: boolean;
+		/** Use AI to generate a brief description */
+		generateDescription?: boolean;
+		/** Preserve task hierarchy */
+		preserveHierarchy?: boolean;
+		/** Preserve dependency relationships */
+		preserveDependencies?: boolean;
+		/** Optional explicit title (overrides generation) */
+		title?: string;
+		/** Optional explicit description (overrides generation) */
+		description?: string;
+	};
+}
+
+/**
+ * Response from generate brief from tasks endpoint
+ */
+export interface GenerateBriefResponse {
+	success: boolean;
+	brief: {
+		id: string;
+		url: string;
+		title: string;
+		description: string;
+		taskCount: number;
+		createdAt: string;
+	};
+	taskMapping: Array<{
+		externalId: string;
+		hamsterId: string;
+		parentHamsterId?: string;
+	}>;
+	warnings?: string[];
+	error?: {
+		code: string;
+		message: string;
+		details?: unknown;
+	};
+}
+
+/**
+ * Result of the generate brief operation
+ */
+export interface GenerateBriefResult {
+	/** Whether the operation was successful */
+	success: boolean;
+	/** Created brief details */
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description: string;
+		taskCount: number;
+	};
+	/** Task mapping for future sync */
+	taskMapping?: Array<{
+		externalId: string;
+		hamsterId: string;
+		parentHamsterId?: string;
+	}>;
+	/** Any warnings during import */
+	warnings?: string[];
+	/** Error details if failed */
+	error?: {
+		code: string;
+		message: string;
 	};
 }
 
@@ -112,8 +227,8 @@ export class ExportService {
 		const context = await this.authManager.getContext();
 
 		// Determine org and brief IDs
-		let orgId = options.orgId || context?.orgId;
-		let briefId = options.briefId || context?.briefId;
+		const orgId = options.orgId || context?.orgId;
+		const briefId = options.briefId || context?.briefId;
 
 		// Validate we have necessary IDs
 		if (!orgId) {
@@ -361,13 +476,13 @@ export class ExportService {
 		briefId: string,
 		tasks: any[]
 	): Promise<void> {
-		// Check if we should use the API endpoint or direct Supabase
-		const apiEndpoint =
-			process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
 
-		if (apiEndpoint) {
+		if (apiBaseUrl) {
 			// Use the new bulk import API endpoint
-			const apiUrl = `${apiEndpoint}/ai/api/v1/briefs/${briefId}/tasks`;
+			const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/${briefId}/tasks`;
 
 			// Transform tasks to flat structure for API
 			const flatTasks = this.transformTasksForBulkImport(tasks);
@@ -497,5 +612,346 @@ export class ExportService {
 		return (
 			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
 		);
+	}
+
+	// ========== Generate Brief From Tasks ==========
+
+	/**
+	 * Generate a new brief from local tasks
+	 * This is the primary export method - creates a brief and imports all tasks atomically
+	 */
+	async generateBriefFromTasks(
+		options: GenerateBriefOptions = {}
+	): Promise<GenerateBriefResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			throw new TaskMasterError(
+				'Authentication required for export',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Get current context for org ID
+		const context = await this.authManager.getContext();
+		let orgId = options.orgId || context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!orgId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length === 0) {
+				return {
+					success: false,
+					error: {
+						code: 'NO_ORGANIZATIONS',
+						message:
+							'No organizations available. Please create an organization in Hamster first.'
+					}
+				};
+			}
+			// Use the first organization (most common case: user has one org)
+			orgId = organizations[0].id;
+		}
+
+		// Get tasks from the specified or active tag
+		const activeTag = this.configManager.getActiveTag();
+		const tag = options.tag || activeTag;
+
+		// Always read tasks from local file storage for export
+		const fileStorage = new FileStorage(this.configManager.getProjectRoot());
+		await fileStorage.initialize();
+
+		// Load tasks with filters applied
+		const tasks = await fileStorage.loadTasks(tag, {
+			status: options.status,
+			excludeSubtasks: options.excludeSubtasks
+		});
+
+		if (tasks.length === 0) {
+			return {
+				success: false,
+				error: {
+					code: 'NO_TASKS',
+					message: 'No tasks found to export'
+				}
+			};
+		}
+
+		// Transform tasks to import format
+		const importTasks = this.transformTasksForImport(tasks);
+
+		// Get project name from project root directory name
+		const projectName = this.getProjectName();
+
+		// Call the generate brief endpoint
+		return this.callGenerateBriefEndpoint({
+			tasks: importTasks,
+			source: {
+				tool: 'task-master',
+				version: this.getVersion(),
+				tag: tag,
+				projectName: projectName
+			},
+			orgId,
+			options: options.options
+		});
+	}
+
+	/**
+	 * Transform tasks to import format for the API
+	 */
+	private transformTasksForImport(tasks: Task[]): ImportTask[] {
+		const importTasks: ImportTask[] = [];
+
+		for (const task of tasks) {
+			// Add parent task
+			importTasks.push({
+				externalId: String(task.id),
+				title: task.title,
+				description: this.enrichDescription(task),
+				details: task.details,
+				status: this.mapStatusForImport(task.status),
+				priority: this.mapPriorityForImport(task.priority),
+				dependencies: task.dependencies?.map(String) || [],
+				metadata: {
+					originalStatus: task.status,
+					originalPriority: task.priority,
+					testStrategy: task.testStrategy,
+					complexity: task.complexity
+				}
+			});
+
+			// Add subtasks if they exist
+			if (task.subtasks && task.subtasks.length > 0) {
+				for (const subtask of task.subtasks) {
+					importTasks.push({
+						externalId: `${task.id}.${subtask.id}`,
+						parentId: String(task.id),
+						title: subtask.title,
+						description: this.enrichDescription(subtask),
+						details: subtask.details,
+						status: this.mapStatusForImport(subtask.status),
+						priority: this.mapPriorityForImport(subtask.priority),
+						dependencies:
+							subtask.dependencies?.map((dep) => {
+								// Convert subtask dependencies to full ID format
+								if (String(dep).includes('.')) {
+									return String(dep);
+								}
+								return `${task.id}.${dep}`;
+							}) || [],
+						metadata: {
+							originalStatus: subtask.status,
+							originalPriority: subtask.priority,
+							testStrategy: subtask.testStrategy,
+							complexity: subtask.complexity
+						}
+					});
+				}
+			}
+		}
+
+		return importTasks;
+	}
+
+	/**
+	 * Map internal status to import format
+	 */
+	private mapStatusForImport(status?: string): ImportTask['status'] {
+		switch (status) {
+			case 'pending':
+				return 'todo';
+			case 'in-progress':
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+			case 'completed':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			default:
+				return 'todo';
+		}
+	}
+
+	/**
+	 * Map internal priority to import format
+	 * Note: Hamster uses 'urgent' instead of 'critical'
+	 */
+	private mapPriorityForImport(priority?: string): ImportTask['priority'] {
+		switch (priority?.toLowerCase()) {
+			case 'low':
+				return 'low';
+			case 'medium':
+				return 'medium';
+			case 'high':
+				return 'high';
+			case 'critical':
+			case 'urgent':
+				return 'urgent';
+			default:
+				return 'medium';
+		}
+	}
+
+	/**
+	 * Get the current version of task-master
+	 */
+	private getVersion(): string {
+		// Try to get version from package.json or config
+		try {
+			// This will be populated at build time or from package.json
+			return process.env.npm_package_version || '1.0.0';
+		} catch {
+			return '1.0.0';
+		}
+	}
+
+	/**
+	 * Get the project name from the project root directory
+	 */
+	private getProjectName(): string | undefined {
+		try {
+			const projectRoot = this.configManager.getProjectRoot();
+			// Use the directory name as project name
+			const path = projectRoot.split('/');
+			return path[path.length - 1] || undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Call the generate brief from tasks endpoint
+	 */
+	private async callGenerateBriefEndpoint(request: {
+		tasks: ImportTask[];
+		source: {
+			tool: string;
+			version: string;
+			tag?: string;
+			projectName?: string;
+		};
+		orgId?: string;
+		options?: GenerateBriefOptions['options'];
+	}): Promise<GenerateBriefResult> {
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			throw new TaskMasterError(
+				'Export API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+				ERROR_CODES.MISSING_CONFIGURATION,
+				{ operation: 'generateBriefFromTasks' }
+			);
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/generate-from-tasks`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			throw new TaskMasterError(
+				'Not authenticated',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Build request body - use accountId for Hamster API
+		const accountId = request.orgId;
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message:
+						'No organization selected. Please run "tm auth" and select an organization first.'
+				}
+			};
+		}
+
+		const requestBody = {
+			tasks: request.tasks,
+			source: request.source,
+			accountId, // Hamster expects accountId, not orgId
+			options: {
+				generateTitle: request.options?.generateTitle ?? true,
+				generateDescription: request.options?.generateDescription ?? true,
+				preserveHierarchy: request.options?.preserveHierarchy ?? true,
+				preserveDependencies: request.options?.preserveDependencies ?? true,
+				title: request.options?.title,
+				description: request.options?.description
+			}
+		};
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId // Also send as header for redundancy
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			// Check content type to avoid JSON parse errors on HTML responses (e.g., 404 pages)
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				const text = await response.text();
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`
+					}
+				};
+			}
+
+			const jsonData = await response.json();
+			const result = jsonData as GenerateBriefResponse;
+
+			if (!response.ok || !result.success) {
+				// Try to extract error from various possible response formats
+				const errorMessage =
+					result.error?.message ||
+					(jsonData as any)?.message ||
+					(jsonData as any)?.error ||
+					`API request failed: ${response.status} - ${response.statusText}`;
+
+				const errorCode =
+					result.error?.code ||
+					(jsonData as any)?.code ||
+					(jsonData as any)?.statusCode ||
+					'API_ERROR';
+
+				return {
+					success: false,
+					warnings: result.warnings,
+					error: {
+						code: String(errorCode),
+						message: String(errorMessage)
+					}
+				};
+			}
+
+			return {
+				success: true,
+				brief: result.brief,
+				taskMapping: result.taskMapping,
+				warnings: result.warnings
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to connect to API: ${errorMessage}`
+				}
+			};
+		}
 	}
 }

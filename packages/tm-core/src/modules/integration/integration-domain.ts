@@ -8,7 +8,9 @@ import type { ConfigManager } from '../config/managers/config-manager.js';
 import { ExportService } from './services/export.service.js';
 import type {
 	ExportResult,
-	ExportTasksOptions
+	ExportTasksOptions,
+	GenerateBriefOptions,
+	GenerateBriefResult
 } from './services/export.service.js';
 
 /**
@@ -26,7 +28,21 @@ export class IntegrationDomain {
 	// ========== Export Operations ==========
 
 	/**
-	 * Export tasks to external systems (e.g., Hamster briefs)
+	 * Generate a new brief from local tasks
+	 * This is the primary export method - creates a brief and imports all tasks atomically
+	 *
+	 * @param options - Options for generating the brief
+	 * @returns Result with created brief details and task mapping
+	 */
+	async generateBriefFromTasks(
+		options?: GenerateBriefOptions
+	): Promise<GenerateBriefResult> {
+		return this.exportService.generateBriefFromTasks(options);
+	}
+
+	/**
+	 * Export tasks to an existing brief
+	 * @deprecated Use generateBriefFromTasks instead - briefs are now created from tasks
 	 */
 	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
 		return this.exportService.exportTasks(options);
