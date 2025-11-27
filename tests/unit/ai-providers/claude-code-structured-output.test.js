@@ -62,7 +62,8 @@ jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getSupportedModelsForProvider: jest.fn(() => ['opus', 'sonnet', 'haiku']),
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info'),
-	isProxyEnabled: jest.fn(() => false)
+	isProxyEnabled: jest.fn(() => false),
+	getAnonymousTelemetryEnabled: jest.fn(() => true)
 }));
 
 // Mock utils

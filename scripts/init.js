@@ -51,6 +51,9 @@ import {
 	TASKMASTER_TEMPLATES_DIR
 } from '../src/constants/paths.js';
 
+// Define box width for boxen displays
+const BOX_WIDTH = 60;
+
 // Define log levels
 const LOG_LEVELS = {
 	debug: 0,

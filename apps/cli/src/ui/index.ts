@@ -27,6 +27,15 @@ export {
 // Dependency formatters
 export { formatDependenciesWithStatus } from './formatters/dependency-formatters.js';
 
+// Link formatters (clickable terminal links)
+export {
+	createLink,
+	createUrlLink,
+	createBriefLink,
+	createTaskLink,
+	supportsLinks
+} from './formatters/link-formatters.js';
+
 // Layout helpers
 export {
 	getBoxWidth,

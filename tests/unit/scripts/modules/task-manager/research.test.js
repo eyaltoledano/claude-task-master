@@ -89,6 +89,10 @@ jest.unstable_mockModule(
 			mainResult:
 				'Test research result with ```javascript\nconsole.log("test");\n```',
 			telemetryData: {}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: 'Streamed result',
+			telemetryData: {}
 		})
 	})
 );

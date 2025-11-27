@@ -137,6 +137,7 @@ const DEFAULT_CONFIG = {
 		}
 	},
 	global: {
+		anonymousTelemetry: true,
 		logLevel: 'info',
 		debug: false,
 		defaultNumTasks: 10,

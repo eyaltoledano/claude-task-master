@@ -171,7 +171,7 @@ cache/`;
 
 			// Verify log message
 			expect(logs).toContainEqual({
-				level: 'success',
+				level: 'debug',
 				message: expect.stringContaining('Updated')
 			});
 		});

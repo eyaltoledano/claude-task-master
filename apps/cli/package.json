@@ -8,7 +8,10 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
-	"files": ["dist", "README.md"],
+	"files": [
+		"dist",
+		"README.md"
+	],
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
@@ -32,7 +35,8 @@
 		"figlet": "^1.9.4",
 		"gradient-string": "^3.0.0",
 		"inquirer": "^12.5.0",
-		"ora": "^8.2.0"
+		"ora": "^8.2.0",
+		"terminal-link": "^5.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
@@ -49,12 +53,19 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"keywords": ["task-master", "cli", "task-management", "productivity"],
+	"keywords": [
+		"task-master",
+		"cli",
+		"task-management",
+		"productivity"
+	],
 	"author": "",
 	"license": "MIT",
 	"typesVersions": {
 		"*": {
-			"*": ["src/*"]
+			"*": [
+				"src/*"
+			]
 		}
 	},
 	"version": ""

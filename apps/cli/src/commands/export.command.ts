@@ -24,6 +24,7 @@ import {
 	showUpgradeMessage,
 	validateTasks
 } from '../export/index.js';
+import { createUrlLink } from '../ui/index.js';
 import { ensureAuthenticated } from '../utils/auth-guard.js';
 import { selectBriefFromInput } from '../utils/brief-selection.js';
 import { displayError } from '../utils/error-handler.js';
@@ -377,9 +378,9 @@ export class ExportCommand extends Command {
 
 			if (!tasks || tasks.length === 0) {
 				console.log(chalk.yellow('\nNo tasks found to export.\n'));
-				this.lastResult = {
-					success: false,
-					action: 'cancelled',
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
 					message: 'No tasks found'
 				};
 				return;
@@ -399,7 +400,7 @@ export class ExportCommand extends Command {
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						// Always generate title/description unless manually specified
@@ -584,7 +585,7 @@ export class ExportCommand extends Command {
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						generateTitle: !options?.title,
@@ -769,7 +770,7 @@ export class ExportCommand extends Command {
 				console.log(chalk.white(`    ${result.tag}`));
 				if (result.brief) {
 					console.log(chalk.gray(`      ${result.brief.title}`));
-					console.log(chalk.cyan(`      ${result.brief.url}`));
+					console.log(`      ${createUrlLink(result.brief.url)}`);
 					const taskInfo =
 						result.parentTaskCount !== undefined &&
 						result.subtaskCount !== undefined
@@ -857,7 +858,7 @@ export class ExportCommand extends Command {
 		console.log(chalk.green('  Done! ') + chalk.white.bold(result.brief.title));
 		console.log(chalk.gray(`  ${result.brief.taskCount} tasks exported`));
 		console.log('');
-		console.log(chalk.white(`  ${result.brief.url}`));
+		console.log(`  ${createUrlLink(result.brief.url)}`);
 
 		// Warnings if any
 		if (result.warnings && result.warnings.length > 0) {
@@ -949,7 +950,9 @@ export class ExportCommand extends Command {
 		if (urlMatch) {
 			const [, baseUrl, orgSlug] = urlMatch;
 			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
-			console.log(chalk.gray(`  Invite teammates: ${membersUrl}\n`));
+			console.log(
+				chalk.gray('  Invite teammates: ') + createUrlLink(membersUrl) + '\n'
+			);
 		}
 	}
 
