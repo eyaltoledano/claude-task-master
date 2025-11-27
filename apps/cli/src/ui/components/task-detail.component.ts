@@ -101,6 +101,23 @@ export function displayTaskProperties(
 	// Use originalTaskId if provided (for subtasks like "104.1")
 	const displayId = originalTaskId || String(task.id);
 
+	// Render description with markdown/HTML support
+	const rawDescription = task.description || '';
+	let renderedDescription = rawDescription;
+	if (rawDescription) {
+		// Clean up escape characters and render markdown
+		const cleanDescription = rawDescription
+			.replace(/\\n/g, '\n')
+			.replace(/\\t/g, '\t')
+			.replace(/\\"/g, '"')
+			.replace(/\\\\/g, '\\');
+		const markdownResult = marked(cleanDescription);
+		renderedDescription =
+			typeof markdownResult === 'string'
+				? markdownResult.trim()
+				: cleanDescription;
+	}
+
 	// Build the left column (labels) and right column (values)
 	const labels = [
 		chalk.cyan('ID:'),
@@ -121,7 +138,7 @@ export function displayTaskProperties(
 		typeof task.complexity === 'number'
 			? getComplexityWithColor(task.complexity)
 			: chalk.gray('N/A'),
-		task.description || ''
+		renderedDescription
 	].join('\n');
 
 	table.push([labels, values]);

@@ -209,6 +209,9 @@ export class ExportCommand extends Command {
 				// Always show the invite URL
 				this.showInviteUrl(result.brief.url);
 
+				// Auto-set context to the new brief
+				await this.setContextToBrief(result.brief.url);
+
 				// Record export success for prompt metrics
 				await this.promptService?.recordAction('export_attempt', 'accepted');
 			} else {
@@ -370,6 +373,9 @@ export class ExportCommand extends Command {
 				// Always show the invite URL (whether they invited or not)
 				this.showInviteUrl(result.brief.url);
 
+				// Auto-set context to the new brief
+				await this.setContextToBrief(result.brief.url);
+
 				// Record success
 				await this.promptService?.recordAction('export_attempt', 'accepted');
 			} else {
@@ -513,6 +519,25 @@ export class ExportCommand extends Command {
 			const [, baseUrl, orgSlug] = urlMatch;
 			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
 			console.log(chalk.gray(`\n  Invite teammates: ${membersUrl}`));
+		}
+	}
+
+	/**
+	 * Set context to the newly created brief
+	 */
+	private async setContextToBrief(briefUrl: string): Promise<void> {
+		try {
+			// Use the ContextCommand to set the context
+			const { ContextCommand } = await import('./context.command.js');
+			const contextCmd = new ContextCommand();
+
+			// Execute the set command with the brief URL
+			await (contextCmd as any).executeSetFromBriefInput(briefUrl, false);
+
+			console.log(chalk.gray('  Context set to new brief'));
+		} catch (error) {
+			// Silently fail - context setting is a nice-to-have
+			// The user can manually set context if needed
 		}
 	}
 
