@@ -117,8 +117,6 @@ export type { CommitMessageOptions } from './modules/git/services/commit-message
 export type {
 	ExportTasksOptions,
 	ExportResult,
-	GenerateBriefOptions,
-	GenerateBriefResult,
 	ImportTask
 } from './modules/integration/services/export.service.js';
 
