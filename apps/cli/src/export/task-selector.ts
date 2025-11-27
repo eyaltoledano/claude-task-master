@@ -156,7 +156,10 @@ export async function showExportPreview(
 	// Validation check
 	const validation = validateTasks(tasks);
 	if (validation.warnings.length > 0) {
-		console.log(chalk.yellow(`  ${validation.warnings.length} warning(s)`));
+		console.log(chalk.yellow(`  ${validation.warnings.length} warning(s):`));
+		for (const warning of validation.warnings) {
+			console.log(chalk.gray(`    - ${warning}`));
+		}
 	}
 
 	if (!validation.isValid) {
