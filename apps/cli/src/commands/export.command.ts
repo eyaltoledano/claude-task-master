@@ -43,9 +43,23 @@ interface ExportedTagInfo {
  */
 export interface ExportCommandResult {
 	success: boolean;
-	action: 'export' | 'validate' | 'cancelled';
-	result?: GenerateBriefResult;
+	action: 'export' | 'export_multiple' | 'validate' | 'cancelled';
+	result?: GenerateBriefResult | MultiExportResult;
 	message?: string;
+}
+
+interface MultiExportResult {
+	successful: Array<{
+		tag: string;
+		success: boolean;
+		brief?: { id: string; url: string; title: string; taskCount: number };
+		invitations?: any[];
+	}>;
+	failed: Array<{
+		tag: string;
+		success: boolean;
+		error?: string;
+	}>;
 }
 
 /**
@@ -232,84 +246,83 @@ export class ExportCommand extends Command {
 			// Get already exported tags
 			const exportedTags = await this.getExportedTags();
 
-			// Build choices for tag selection
-			const tagChoices = tagsResult.tags.map((tag) => {
-				const taskInfo = `${tag.taskCount} tasks, ${tag.completedTasks} done`;
-				const currentMarker = tag.isCurrent ? chalk.cyan(' (current)') : '';
-				const exportedMarker = exportedTags[tag.name]
-					? chalk.green(' [exported]')
-					: '';
-				return {
-					name: `${tag.name}${currentMarker}${exportedMarker} - ${chalk.gray(taskInfo)}`,
-					value: tag.name,
-					short: tag.name
-				};
-			});
-
-			// Add cancel option
-			tagChoices.push({
-				name: chalk.gray('Cancel'),
-				value: '__cancel__',
-				short: 'Cancel'
-			});
-
-			// Find the current tag to use as default selection
-			const currentTag = tagsResult.tags.find((t) => t.isCurrent)?.name || tagsResult.currentTag;
-
-			// Prompt for tag selection
-			const { selectedTag } = await inquirer.prompt<{ selectedTag: string }>([
-				{
-					type: 'list',
-					name: 'selectedTag',
-					message: 'Which tag would you like to export to Hamster?',
-					choices: tagChoices,
-					default: currentTag, // Pre-select the current tag
-					pageSize: 10
+			// Check if all tags are already exported
+			const unexportedTags = tagsResult.tags.filter(
+				(tag) => !exportedTags[tag.name]
+			);
+			if (unexportedTags.length === 0) {
+				console.log(
+					chalk.yellow('\n  All local tags have already been exported to Hamster.\n')
+				);
+				console.log(chalk.gray('  Previously exported briefs:'));
+				for (const tag of tagsResult.tags) {
+					if (exportedTags[tag.name]) {
+						console.log(
+							chalk.gray(`    - ${tag.name}: ${exportedTags[tag.name].briefUrl}`)
+						);
+					}
 				}
-			]);
-
-			if (selectedTag === '__cancel__') {
-				console.log(chalk.gray('\n  Export cancelled.\n'));
+				console.log('');
 				this.lastResult = {
 					success: false,
 					action: 'cancelled',
-					message: 'User cancelled tag selection'
+					message: 'All tags already exported'
 				};
 				return;
 			}
 
-			// Check if tag was already exported
-			if (exportedTags[selectedTag]) {
-				console.log(
-					chalk.yellow(`\n  This tag was previously exported to Hamster.`)
-				);
-				console.log(
-					chalk.gray(`  Brief URL: ${exportedTags[selectedTag].briefUrl}`)
-				);
+			// Build choices for multi-select tag selection
+			const tagChoices = tagsResult.tags.map((tag) => {
+				const isExported = !!exportedTags[tag.name];
+				const taskInfo = `${tag.taskCount} tasks, ${tag.completedTasks} done`;
+				const currentMarker = tag.isCurrent ? chalk.cyan(' (current)') : '';
+				const exportedMarker = isExported
+					? chalk.gray(' [already exported]')
+					: '';
+				return {
+					name: `${tag.name}${currentMarker}${exportedMarker} - ${chalk.gray(taskInfo)}`,
+					value: tag.name,
+					short: tag.name,
+					checked: tag.isCurrent && !isExported, // Pre-select current tag only if not exported
+					disabled: isExported ? 'already exported' : false
+				};
+			});
 
-				const { confirmReExport } = await inquirer.prompt<{
-					confirmReExport: boolean;
-				}>([
-					{
-						type: 'confirm',
-						name: 'confirmReExport',
-						message: 'Export again? (This will create a new brief)',
-						default: false
+			// Prompt for tag selection (multi-select checkbox)
+			const { selectedTags } = await inquirer.prompt<{ selectedTags: string[] }>([
+				{
+					type: 'checkbox',
+					name: 'selectedTags',
+					message: 'Select tag(s) to export to Hamster (space to select, enter to confirm):',
+					choices: tagChoices,
+					pageSize: 12,
+					validate: (answer: string[]) => {
+						if (answer.length === 0) {
+							return 'Please select at least one tag to export.';
+						}
+						return true;
 					}
-				]);
-
-				if (!confirmReExport) {
-					console.log(chalk.gray('\n  Export cancelled.\n'));
-					this.lastResult = {
-						success: false,
-						action: 'cancelled',
-						message: 'User cancelled re-export'
-					};
-					return;
 				}
+			]);
+
+			if (selectedTags.length === 0) {
+				console.log(chalk.gray('\n  Export cancelled.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: 'No tags selected'
+				};
+				return;
 			}
 
-			// Show upgrade message with selected tag
+			// Handle multiple tags export
+			if (selectedTags.length > 1) {
+				await this.executeExportMultipleTags(selectedTags, options);
+				return;
+			}
+
+			// Single tag export - show upgrade message
+			const selectedTag = selectedTags[0];
 			showUpgradeMessage(selectedTag);
 
 			// Execute interactive export with selected tag
@@ -336,9 +349,9 @@ export class ExportCommand extends Command {
 
 			if (taskList.tasks.length === 0) {
 				console.log(chalk.yellow('\nNo tasks found to export.\n'));
-				this.lastResult = {
-					success: false,
-					action: 'cancelled',
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
 					message: 'No tasks found'
 				};
 				return;
@@ -358,7 +371,7 @@ export class ExportCommand extends Command {
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-					tag: options?.tag,
+				tag: options?.tag,
 					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 					options: {
 						// Always generate title/description unless manually specified
@@ -589,6 +602,182 @@ export class ExportCommand extends Command {
 	}
 
 	/**
+	 * Execute export for multiple tags in parallel
+	 */
+	private async executeExportMultipleTags(
+		tags: string[],
+		_options?: any
+	): Promise<void> {
+		console.log('');
+		console.log(
+			chalk.cyan(`  Exporting ${tags.length} tags to Hamster...\n`)
+		);
+
+		// Show which tags will be exported
+		for (const tag of tags) {
+			console.log(chalk.gray(`    - ${tag}`));
+		}
+		console.log('');
+
+		// Ask about inviting collaborators once for all briefs
+		let inviteEmails: string[] = [];
+		const { wantsToInvite } = await inquirer.prompt<{
+			wantsToInvite: boolean;
+		}>([
+			{
+				type: 'confirm',
+				name: 'wantsToInvite',
+				message:
+					'Do you want to invite teammates to collaborate on these tasks?',
+				default: false
+			}
+		]);
+
+		if (wantsToInvite) {
+			inviteEmails = await this.promptForInviteEmails();
+		}
+
+		// Create export promises for all tags
+		const spinner = ora(`Exporting ${tags.length} tags...`).start();
+
+		interface ExportResult {
+			tag: string;
+			success: boolean;
+			brief?: { id: string; url: string; title: string; taskCount: number };
+			parentTaskCount?: number;
+			subtaskCount?: number;
+			error?: string;
+			invitations?: any[];
+		}
+
+		const exportPromises: Promise<ExportResult>[] = tags.map(async (tag) => {
+			try {
+				// Load tasks to count parent tasks vs subtasks
+				const taskList = await this.taskMasterCore!.tasks.list({
+					tag,
+					includeSubtasks: true
+				});
+				const parentTaskCount = taskList.tasks.length;
+				const subtaskCount = taskList.tasks.reduce(
+					(acc, t) => acc + (t.subtasks?.length || 0),
+					0
+				);
+
+				const result =
+					await this.taskMasterCore!.integration.generateBriefFromTasks({
+						tag,
+						inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+						options: {
+							generateTitle: true,
+							generateDescription: true,
+							preserveHierarchy: true,
+							preserveDependencies: true
+						}
+					});
+
+				if (result.success && result.brief) {
+					// Track exported tag
+					await this.trackExportedTag(tag, result.brief.id, result.brief.url);
+					return {
+						tag,
+						success: true,
+						brief: result.brief,
+						parentTaskCount,
+						subtaskCount,
+						invitations: result.invitations
+					};
+				}
+				return {
+					tag,
+					success: false,
+					error: result.error?.message || 'Unknown error'
+				};
+			} catch (error: any) {
+				return {
+					tag,
+					success: false,
+					error: error.message || 'Export failed'
+				};
+			}
+		});
+
+		// Wait for all exports to complete
+		const results = await Promise.all(exportPromises);
+		spinner.stop();
+
+		// Display results
+		const successful = results.filter((r) => r.success);
+		const failed = results.filter((r) => !r.success);
+
+		console.log('');
+		if (successful.length > 0) {
+			console.log(
+				chalk.green.bold(`  ${successful.length} tag(s) exported successfully:\n`)
+			);
+			for (const result of successful) {
+				console.log(chalk.white(`    ${result.tag}`));
+				if (result.brief) {
+					console.log(chalk.gray(`      ${result.brief.title}`));
+					console.log(chalk.cyan(`      ${result.brief.url}`));
+					const taskInfo =
+						result.parentTaskCount !== undefined && result.subtaskCount !== undefined
+							? `${result.parentTaskCount} tasks, ${result.subtaskCount} subtasks`
+							: `${result.brief.taskCount} tasks`;
+					console.log(chalk.gray(`      ${taskInfo}`));
+				}
+				console.log('');
+			}
+		}
+
+		if (failed.length > 0) {
+			console.log(chalk.red.bold(`  ${failed.length} tag(s) failed:\n`));
+			for (const result of failed) {
+				console.log(chalk.red(`    ${result.tag}: ${result.error}`));
+			}
+			console.log('');
+		}
+
+		// Show invitation results if any invites were sent
+		const allInvitations = successful.flatMap((r) => r.invitations || []);
+		if (allInvitations.length > 0) {
+			this.displayInvitationResults(allInvitations);
+		}
+
+		// If only one successful, auto-set context to it
+		if (successful.length === 1 && successful[0].brief) {
+			await this.setContextToBrief(successful[0].brief.url);
+		} else if (successful.length > 1) {
+			// For multiple successful exports, show option to set context
+			const briefChoices = successful.map((r) => ({
+				name: `${r.tag} - ${r.brief?.title}`,
+				value: r.brief?.url
+			}));
+			briefChoices.push({ name: chalk.gray('Skip'), value: '__skip__' });
+
+			const { selectedBrief } = await inquirer.prompt<{
+				selectedBrief: string;
+			}>([
+				{
+					type: 'list',
+					name: 'selectedBrief',
+					message: 'Which brief would you like to set as current context?',
+					choices: briefChoices
+				}
+			]);
+
+			if (selectedBrief !== '__skip__') {
+				await this.setContextToBrief(selectedBrief);
+			}
+		}
+
+		this.lastResult = {
+			success: failed.length === 0,
+			action: 'export_multiple',
+			result: { successful, failed }
+		};
+	}
+
+	/**
 	 * Show a preview of tasks to be exported
 	 */
 	private showTaskPreview(tasks: any[]): void {
@@ -708,7 +897,7 @@ export class ExportCommand extends Command {
 		if (urlMatch) {
 			const [, baseUrl, orgSlug] = urlMatch;
 			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
-			console.log(chalk.gray(`  Invite teammates: ${membersUrl}`));
+			console.log(chalk.gray(`  Invite teammates: ${membersUrl}\n`));
 		}
 	}
 
