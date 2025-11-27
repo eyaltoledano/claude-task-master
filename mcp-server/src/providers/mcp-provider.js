@@ -6,7 +6,7 @@
  * Follows the Claude Code provider pattern for session-based providers.
  */
 
-import { createMCP } from '../custom-sdk/index.js';
+import { createMCPSampling } from '@tm/ai-sdk-provider-mcp-sampling';
 import { BaseAIProvider } from '../../../src/ai-providers/base-provider.js';
 
 export class MCPProvider extends BaseAIProvider {
@@ -47,8 +47,8 @@ export class MCPProvider extends BaseAIProvider {
 	 */
 	getClient(params) {
 		try {
-			// Pass MCP session to AI SDK implementation
-			return createMCP({
+			// Pass MCP session to AI SDK v5 implementation
+			return createMCPSampling({
 				session: this.session,
 				defaultSettings: {
 					temperature: params.temperature,
