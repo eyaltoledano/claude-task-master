@@ -3,23 +3,23 @@
  * Provides a clean interface for workspace context management
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import inquirer from 'inquirer';
-import ora from 'ora';
 import {
 	AuthManager,
-	createTmCore,
+	type TmCore,
 	type UserContext,
-	type TmCore
+	createTmCore
 } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { checkAuthentication } from '../utils/auth-helpers.js';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import inquirer from 'inquirer';
+import ora from 'ora';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
+import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
-	selectBriefInteractive,
-	selectBriefFromInput
+	selectBriefFromInput,
+	selectBriefInteractive
 } from '../utils/brief-selection.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Result type from context command

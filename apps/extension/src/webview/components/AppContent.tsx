@@ -1,8 +1,8 @@
-import React from 'react';
-import { TaskMasterKanban } from './TaskMasterKanban';
-import TaskDetailsView from '@/components/TaskDetailsView';
 import { ConfigView } from '@/components/ConfigView';
+import TaskDetailsView from '@/components/TaskDetailsView';
+import React from 'react';
 import { useVSCodeContext } from '../contexts/VSCodeContext';
+import { TaskMasterKanban } from './TaskMasterKanban';
 
 export const AppContent: React.FC = () => {
 	const { state, dispatch, sendMessage } = useVSCodeContext();

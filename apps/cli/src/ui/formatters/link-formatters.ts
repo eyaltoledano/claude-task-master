@@ -3,8 +3,8 @@
  * Uses OSC 8 protocol for terminals that support it, with graceful fallback
  */
 
-import terminalLink from 'terminal-link';
 import chalk from 'chalk';
+import terminalLink from 'terminal-link';
 
 /**
  * Creates a clickable terminal link if supported, otherwise returns styled text
@@ -21,7 +21,7 @@ export function createLink(
 
 	// terminal-link automatically falls back to plain text if unsupported
 	const link = terminalLink(text, url, {
-		fallback: (displayText) => displayText
+		fallback: (displayText, linkUrl) => `${displayText} (${linkUrl})`
 	});
 
 	return colorFn(link);

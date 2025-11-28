@@ -1017,8 +1017,7 @@ export class ExportService {
 		try {
 			const projectRoot = this.configManager.getProjectRoot();
 			// Use the directory name as project name
-			const path = projectRoot.split('/');
-			return path[path.length - 1] || undefined;
+			return projectRoot.split(/[/\\]/).pop() || undefined;
 		} catch {
 			return undefined;
 		}

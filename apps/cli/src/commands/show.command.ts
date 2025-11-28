@@ -16,8 +16,8 @@ import { Command } from 'commander';
 import { displayTaskDetails } from '../ui/components/task-detail.component.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
-import * as ui from '../utils/ui.js';
 import { getProjectRoot } from '../utils/project-root.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Options interface for the show command

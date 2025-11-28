@@ -91,7 +91,10 @@ Examples:
 				error.code === 'MFA_REQUIRED'
 			) {
 				spinner.stop();
-				const factorId = (error as any).factorId;
+				const factorId = error.mfaChallenge?.factorId;
+				if (!factorId) {
+					throw new Error('MFA required but no factor ID provided');
+				}
 				return this.handleMFAVerification(factorId, skipPrompts);
 			}
 
@@ -164,7 +167,10 @@ Examples:
 				error instanceof AuthenticationError &&
 				error.code === 'MFA_REQUIRED'
 			) {
-				const factorId = (error as any).factorId;
+				const factorId = error.mfaChallenge?.factorId;
+				if (!factorId) {
+					throw new Error('MFA required but no factor ID provided');
+				}
 				return this.handleMFAVerification(factorId, skipPrompts);
 			}
 

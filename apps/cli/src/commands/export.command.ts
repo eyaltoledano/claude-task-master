@@ -1037,7 +1037,7 @@ export class ExportCommand extends Command {
 	 * Send invitations for a brief using the separate team invitations API
 	 */
 	private async sendInvitationsForBrief(
-		briefUrl: string,
+		_briefUrl: string,
 		inviteEmails: string[]
 	): Promise<void> {
 		if (!inviteEmails.length || !this.taskMasterCore) return;

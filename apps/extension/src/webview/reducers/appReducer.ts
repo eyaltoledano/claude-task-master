@@ -2,7 +2,7 @@
  * Main application state reducer
  */
 
-import type { AppState, AppAction } from '../types';
+import type { AppAction, AppState } from '../types';
 import { logger } from '../utils/logger';
 
 export const appReducer = (state: AppState, action: AppAction): AppState => {

@@ -3,10 +3,10 @@
  * Verifies session persistence with steno atomic writes
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fsSync from 'fs';
 import os from 'os';
 import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SupabaseSessionStorage } from './supabase-session-storage.js';
 
 describe('SupabaseSessionStorage', () => {

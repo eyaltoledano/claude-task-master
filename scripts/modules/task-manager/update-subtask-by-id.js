@@ -1,30 +1,30 @@
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 
-import {
-	getStatusWithColor,
-	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
-} from '../ui.js';
-import {
-	log as consoleLog,
-	readJSON,
-	writeJSON,
-	truncate,
-	isSilentMode,
-	findProjectRoot,
-	flattenTasksWithSubtasks
-} from '../utils.js';
+import { tryUpdateViaRemote } from '@tm/bridge';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
+import {
+	displayAiUsageSummary,
+	getStatusWithColor,
+	startLoadingIndicator,
+	stopLoadingIndicator
+} from '../ui.js';
+import {
+	log as consoleLog,
+	findProjectRoot,
+	flattenTasksWithSubtasks,
+	isSilentMode,
+	readJSON,
+	truncate,
+	writeJSON
+} from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { tryUpdateViaRemote } from '@tm/bridge';
 
 /**
  * Update a subtask by appending additional timestamped information using the unified AI service.

@@ -6,8 +6,8 @@
  * Follows the Claude Code provider pattern for session-based providers.
  */
 
-import { createMCP } from '../custom-sdk/index.js';
 import { BaseAIProvider } from '../../../src/ai-providers/base-provider.js';
+import { createMCP } from '../custom-sdk/index.js';
 
 export class MCPProvider extends BaseAIProvider {
 	constructor() {

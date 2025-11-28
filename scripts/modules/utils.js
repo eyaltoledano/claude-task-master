@@ -7,14 +7,14 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
-// Import specific config getters needed here
-import { getLogLevel, getDebugFlag } from './config-manager.js';
-import * as gitUtils from './utils/git-utils.js';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_COMPLEXITY_REPORT_FILE,
 	LEGACY_CONFIG_FILE
 } from '../../src/constants/paths.js';
+// Import specific config getters needed here
+import { getDebugFlag, getLogLevel } from './config-manager.js';
+import * as gitUtils from './utils/git-utils.js';
 
 // Global silent mode flag
 let silentMode = false;

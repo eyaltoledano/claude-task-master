@@ -3,52 +3,52 @@
  * Tool Registry - Maps tool names to registration functions
  */
 
-import { registerParsePRDTool } from './parse-prd.js';
-import { registerUpdateTool } from './update.js';
-import { registerUpdateTaskTool } from './update-task.js';
-import { registerUpdateSubtaskTool } from './update-subtask.js';
-import { registerNextTaskTool } from './next-task.js';
-import { registerExpandTaskTool } from './expand-task.js';
-import { registerAddTaskTool } from './add-task.js';
+import { registerAddDependencyTool } from './add-dependency.js';
 import { registerAddSubtaskTool } from './add-subtask.js';
-import { registerRemoveSubtaskTool } from './remove-subtask.js';
+import { registerAddTagTool } from './add-tag.js';
+import { registerAddTaskTool } from './add-task.js';
 import { registerAnalyzeProjectComplexityTool } from './analyze.js';
 import { registerClearSubtasksTool } from './clear-subtasks.js';
-import { registerExpandAllTool } from './expand-all.js';
-import { registerRemoveDependencyTool } from './remove-dependency.js';
-import { registerValidateDependenciesTool } from './validate-dependencies.js';
-import { registerFixDependenciesTool } from './fix-dependencies.js';
 import { registerComplexityReportTool } from './complexity-report.js';
-import { registerAddDependencyTool } from './add-dependency.js';
-import { registerRemoveTaskTool } from './remove-task.js';
+import { registerCopyTagTool } from './copy-tag.js';
+import { registerDeleteTagTool } from './delete-tag.js';
+import { registerExpandAllTool } from './expand-all.js';
+import { registerExpandTaskTool } from './expand-task.js';
+import { registerFixDependenciesTool } from './fix-dependencies.js';
 import { registerInitializeProjectTool } from './initialize-project.js';
+import { registerListTagsTool } from './list-tags.js';
 import { registerModelsTool } from './models.js';
 import { registerMoveTaskTool } from './move-task.js';
-import { registerResponseLanguageTool } from './response-language.js';
-import { registerAddTagTool } from './add-tag.js';
-import { registerDeleteTagTool } from './delete-tag.js';
-import { registerListTagsTool } from './list-tags.js';
-import { registerUseTagTool } from './use-tag.js';
+import { registerNextTaskTool } from './next-task.js';
+import { registerParsePRDTool } from './parse-prd.js';
+import { registerRemoveDependencyTool } from './remove-dependency.js';
+import { registerRemoveSubtaskTool } from './remove-subtask.js';
+import { registerRemoveTaskTool } from './remove-task.js';
 import { registerRenameTagTool } from './rename-tag.js';
-import { registerCopyTagTool } from './copy-tag.js';
 import { registerResearchTool } from './research.js';
+import { registerResponseLanguageTool } from './response-language.js';
 import { registerRulesTool } from './rules.js';
-import { registerScopeUpTool } from './scope-up.js';
 import { registerScopeDownTool } from './scope-down.js';
+import { registerScopeUpTool } from './scope-up.js';
+import { registerUpdateSubtaskTool } from './update-subtask.js';
+import { registerUpdateTaskTool } from './update-task.js';
+import { registerUpdateTool } from './update.js';
+import { registerUseTagTool } from './use-tag.js';
+import { registerValidateDependenciesTool } from './validate-dependencies.js';
 
 // Import TypeScript tools from apps/mcp
 import {
-	registerAutopilotStartTool,
-	registerAutopilotResumeTool,
-	registerAutopilotNextTool,
-	registerAutopilotStatusTool,
-	registerAutopilotCompleteTool,
-	registerAutopilotCommitTool,
-	registerAutopilotFinalizeTool,
 	registerAutopilotAbortTool,
-	registerGetTasksTool,
-	registerGetTaskTool,
+	registerAutopilotCommitTool,
+	registerAutopilotCompleteTool,
+	registerAutopilotFinalizeTool,
+	registerAutopilotNextTool,
+	registerAutopilotResumeTool,
+	registerAutopilotStartTool,
+	registerAutopilotStatusTool,
 	registerGenerateTool,
+	registerGetTaskTool,
+	registerGetTasksTool,
 	registerSetTaskStatusTool
 } from '@tm/mcp';
 

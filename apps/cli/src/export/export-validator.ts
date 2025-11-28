@@ -4,8 +4,8 @@
  */
 
 import type {
-	ExportableTask,
 	ExportValidationResult,
+	ExportableTask,
 	TaskValidationResult
 } from './types.js';
 

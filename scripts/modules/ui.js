@@ -3,35 +3,35 @@
  * User interface functions for the Task Master CLI
  */
 
-import chalk from 'chalk';
+import fs from 'fs';
+import readline from 'readline';
+// Import brand banner from @tm/cli
+import { ui } from '@tm/cli';
 import boxen from 'boxen';
-import ora from 'ora';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
-import readline from 'readline';
-import {
-	log,
-	findTaskById,
-	readJSON,
-	truncate,
-	isSilentMode,
-	formatTaskId
-} from './utils.js';
-import fs from 'fs';
-import {
-	findNextTask,
-	analyzeTaskComplexity,
-	readComplexityReport
-} from './task-manager.js';
-import { getProjectName, getDefaultSubtasks } from './config-manager.js';
-import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import ora from 'ora';
 import {
 	TASKMASTER_CONFIG_FILE,
 	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
+import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
-// Import brand banner from @tm/cli
-import { ui } from '@tm/cli';
+import { getDefaultSubtasks, getProjectName } from './config-manager.js';
+import {
+	analyzeTaskComplexity,
+	findNextTask,
+	readComplexityReport
+} from './task-manager.js';
+import {
+	findTaskById,
+	formatTaskId,
+	isSilentMode,
+	log,
+	readJSON,
+	truncate
+} from './utils.js';
 
 // Create a color gradient for the banner (still used by warmGradient in other places)
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
@@ -62,10 +62,15 @@ function displayTaggedTasksFYI(data) {
 
 /**
  * Display a small, non-intrusive indicator showing the current tag context
- * @param {string} tagName - The tag name to display
+ * Note: This is an async function - callers should await it.
+ * @param {string} tag - The tag name to display
  * @param {Object} options - Display options
  * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
  * @param {boolean} [options.dim=false] - Use dimmed styling
+ * @param {'api'|'file'} [options.storageType] - Storage type (auto-detected if not provided)
+ * @param {Object} [options.briefInfo] - Brief info for API storage (auto-detected if not provided)
+ * @param {string} [options.briefInfo.briefId] - Brief ID
+ * @param {string} [options.briefInfo.briefName] - Brief name
  */
 async function displayCurrentTagIndicator(tag, options = {}) {
 	if (isSilentMode()) return;
@@ -76,6 +81,7 @@ async function displayCurrentTagIndicator(tag, options = {}) {
 	if (skipIfMaster && tag === 'master') return;
 
 	// Auto-detect storage type and brief info if not provided
+	// Dynamic import is used to avoid circular dependencies with @tm/core
 	if (!storageType || !briefInfo) {
 		try {
 			const { AuthManager } = await import('@tm/core');
@@ -93,22 +99,28 @@ async function displayCurrentTagIndicator(tag, options = {}) {
 			}
 		} catch (error) {
 			// Fallback to file storage if AuthManager is not available
+			log('debug', `Failed to detect storage type: ${error.message}`);
 			storageType = 'file';
 		}
 	}
 
+	// Validate storageType - default to 'file' for unknown values
+	if (storageType !== 'api' && storageType !== 'file') {
+		storageType = 'file';
+	}
+
 	// Display different indicator based on storage type
+	// Using ASCII characters for consistent cross-platform display
 	let displayText;
 
 	if (storageType === 'api' && briefInfo) {
 		// API storage: Show brief information (matching new CLI pattern)
-		displayText = `🏷  Brief: ${chalk.cyan(briefInfo.briefName)} ${chalk.gray(`(${briefInfo.briefId})`)}`;
+		displayText = `[brief] ${chalk.cyan(briefInfo.briefName)} ${chalk.gray(`(${briefInfo.briefId})`)}`;
 	} else {
 		// File storage: Show tag information
-		const tagIcon = '🏷️';
 		displayText = dim
-			? chalk.gray(`${tagIcon} tag: ${tag}`)
-			: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+			? chalk.gray(`[tag] ${tag}`)
+			: chalk.dim('[tag] ') + chalk.cyan(tag);
 	}
 
 	console.log(displayText);

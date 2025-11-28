@@ -6,14 +6,14 @@
  * an optional OPENAI_CODEX_API_KEY if provided.
  */
 
-import { createCodexCli } from 'ai-sdk-provider-codex-cli';
-import { BaseAIProvider } from './base-provider.js';
 import { execSync } from 'child_process';
-import { log } from '../../scripts/modules/utils.js';
+import { createCodexCli } from 'ai-sdk-provider-codex-cli';
 import {
 	getCodexCliSettingsForCommand,
 	getSupportedModelsForProvider
 } from '../../scripts/modules/config-manager.js';
+import { log } from '../../scripts/modules/utils.js';
+import { BaseAIProvider } from './base-provider.js';
 
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {

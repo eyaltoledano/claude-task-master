@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext } from 'react';
-import type { AppState, AppAction, ToastNotification } from '../types';
+import type { AppAction, AppState, ToastNotification } from '../types';
 
 export interface VSCodeContextValue {
 	vscode?: ReturnType<NonNullable<typeof window.acquireVsCodeApi>>;

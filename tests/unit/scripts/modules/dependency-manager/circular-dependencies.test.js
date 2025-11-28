@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 import {
-	validateCrossTagMove,
+	canMoveWithDependencies,
 	findCrossTagDependencies,
 	getDependentTaskIds,
-	validateSubtaskMove,
-	canMoveWithDependencies
+	validateCrossTagMove,
+	validateSubtaskMove
 } from '../../../../../scripts/modules/dependency-manager.js';
 
 describe('Circular Dependency Scenarios', () => {

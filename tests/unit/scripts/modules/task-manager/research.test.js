@@ -62,7 +62,6 @@ jest.unstable_mockModule('chalk', () => ({
 				underline: jest.fn((text) => text)
 			}
 		),
-		bold: jest.fn((text) => text),
 		dim: Object.assign(
 			jest.fn((text) => text),
 			{

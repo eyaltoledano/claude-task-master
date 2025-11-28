@@ -1,8 +1,8 @@
 import { ui } from '@tm/cli';
+import type { TagInfo } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import type { TagInfo } from '@tm/core';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
 

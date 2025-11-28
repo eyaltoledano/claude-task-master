@@ -4,21 +4,21 @@
  */
 
 import { z } from 'zod';
-import {
-	log,
-	readJSON,
-	writeJSON,
-	getCurrentTag,
-	readComplexityReport,
-	findTaskInComplexityReport
-} from '../utils.js';
+import { findComplexityReportPath } from '../../../src/utils/path-utils.js';
 import {
 	generateObjectService,
 	generateTextService
 } from '../ai-services-unified.js';
 import { findTaskById, taskExists } from '../task-manager.js';
+import {
+	findTaskInComplexityReport,
+	getCurrentTag,
+	log,
+	readComplexityReport,
+	readJSON,
+	writeJSON
+} from '../utils.js';
 import analyzeTaskComplexity from './analyze-task-complexity.js';
-import { findComplexityReportPath } from '../../../src/utils/path-utils.js';
 
 /**
  * Valid strength levels for scope adjustments

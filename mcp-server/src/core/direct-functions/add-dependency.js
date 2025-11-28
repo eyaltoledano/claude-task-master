@@ -5,8 +5,8 @@
 
 import { addDependency } from '../../../../scripts/modules/dependency-manager.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 
 /**

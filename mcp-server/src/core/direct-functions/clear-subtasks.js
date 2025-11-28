@@ -2,14 +2,14 @@
  * Direct function wrapper for clearSubtasks
  */
 
-import { clearSubtasks } from '../../../../scripts/modules/task-manager.js';
-import {
-	enableSilentMode,
-	disableSilentMode,
-	readJSON
-} from '../../../../scripts/modules/utils.js';
 import fs from 'fs';
 import path from 'path';
+import { clearSubtasks } from '../../../../scripts/modules/task-manager.js';
+import {
+	disableSilentMode,
+	enableSilentMode,
+	readJSON
+} from '../../../../scripts/modules/utils.js';
 
 /**
  * Clear subtasks from specified tasks

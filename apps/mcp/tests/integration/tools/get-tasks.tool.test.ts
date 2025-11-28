@@ -11,8 +11,8 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTask, createTasksFile } from '@tm/core/testing';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('get_tasks MCP tool', () => {
 	let testDir: string;

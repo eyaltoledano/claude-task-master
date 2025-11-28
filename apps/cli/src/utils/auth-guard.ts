@@ -7,8 +7,8 @@
  */
 
 import {
-	AuthDomain,
 	type AuthCredentials,
+	AuthDomain,
 	AuthenticationError
 } from '@tm/core';
 import chalk from 'chalk';

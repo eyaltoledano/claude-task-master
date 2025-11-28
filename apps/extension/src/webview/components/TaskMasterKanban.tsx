@@ -2,9 +2,6 @@
  * Main Kanban Board Component
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
 import {
 	type DragEndEvent,
 	KanbanBoard,
@@ -12,20 +9,23 @@ import {
 	KanbanHeader,
 	KanbanProvider
 } from '@/components/ui/shadcn-io/kanban';
-import { TaskCard } from './TaskCard';
-import { TaskEditModal } from './TaskEditModal';
-import { PollingStatus } from './PollingStatus';
-import { TagDropdown } from './TagDropdown';
-import { EmptyState } from './EmptyState';
+import { useQueryClient } from '@tanstack/react-query';
+import { RefreshCw } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { HEADER_HEIGHT, kanbanStatuses } from '../constants';
 import { useVSCodeContext } from '../contexts/VSCodeContext';
 import {
+	taskKeys,
 	useTasks,
-	useUpdateTaskStatus,
 	useUpdateTask,
-	taskKeys
+	useUpdateTaskStatus
 } from '../hooks/useTaskQueries';
-import { kanbanStatuses, HEADER_HEIGHT } from '../constants';
 import type { TaskMasterTask, TaskUpdates } from '../types';
+import { EmptyState } from './EmptyState';
+import { PollingStatus } from './PollingStatus';
+import { TagDropdown } from './TagDropdown';
+import { TaskCard } from './TaskCard';
+import { TaskEditModal } from './TaskEditModal';
 
 export const TaskMasterKanban: React.FC = () => {
 	const { state, dispatch, sendMessage, availableHeight } = useVSCodeContext();

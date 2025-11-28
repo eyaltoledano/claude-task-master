@@ -1,21 +1,21 @@
-import type React from 'react';
-import { useState } from 'react';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import {
-	Wand2,
 	Loader2,
 	PlusCircle,
+	TrendingDown,
 	TrendingUp,
-	TrendingDown
+	Wand2
 } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import {
-	useUpdateTask,
-	useUpdateSubtask,
+	useScopeDownTask,
 	useScopeUpTask,
-	useScopeDownTask
+	useUpdateSubtask,
+	useUpdateTask
 } from '../../webview/hooks/useTaskQueries';
 import type { TaskMasterTask } from '../../webview/types';
 

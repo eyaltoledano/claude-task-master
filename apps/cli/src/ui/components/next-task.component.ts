@@ -20,7 +20,6 @@ export interface NextTaskDisplayOptions {
 	dependencies?: (string | number)[];
 	description?: string;
 	complexity?: number;
-	hasAnyTasks?: boolean; // Whether there are ANY tasks in the project
 }
 
 /**

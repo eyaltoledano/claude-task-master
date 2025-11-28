@@ -2,9 +2,9 @@
  * Integration test for direct function imports in MCP server
  */
 
-import { jest } from '@jest/globals';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 
 // Get the current module's directory
 const __filename = fileURLToPath(import.meta.url);

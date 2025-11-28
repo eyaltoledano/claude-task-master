@@ -3,21 +3,21 @@
  * Provides brief-specific commands that only work with API storage
  */
 
+import readline from 'readline';
 import { type LogLevel, type TagInfo, tryAddTagViaRemote } from '@tm/bridge';
-import type { TmCore, Brief } from '@tm/core';
+import type { Brief, TmCore } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
-import { Command } from 'commander';
 import chalk from 'chalk';
+import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import readline from 'readline';
+import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
 import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
 	selectBriefFromInput,
 	selectBriefInteractive
 } from '../utils/brief-selection.js';
 import * as ui from '../utils/ui.js';
-import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
 
 /**
  * Result type from briefs command

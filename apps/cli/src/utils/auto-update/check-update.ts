@@ -4,9 +4,9 @@
 
 import https from 'https';
 
+import { fetchChangelogHighlights } from './changelog.js';
 import type { UpdateInfo } from './types.js';
 import { compareVersions, getCurrentVersion } from './version.js';
-import { fetchChangelogHighlights } from './changelog.js';
 
 /**
  * Check for newer version of task-master-ai

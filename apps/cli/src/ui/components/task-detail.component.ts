@@ -30,12 +30,12 @@ const turndownService = new TurndownService({
 export function renderContent(content: string): string {
 	if (!content) return '';
 
-	// Clean up escape characters first
+	// Clean up escape characters first - order matters: handle escaped backslashes first
 	let cleaned = content
+		.replace(/\\\\/g, '\\')
 		.replace(/\\n/g, '\n')
 		.replace(/\\t/g, '\t')
-		.replace(/\\"/g, '"')
-		.replace(/\\\\/g, '\\');
+		.replace(/\\"/g, '"');
 
 	// Check if content has HTML tags - if so, convert to markdown first
 	if (/<[^>]+>/.test(cleaned)) {
