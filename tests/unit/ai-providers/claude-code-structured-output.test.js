@@ -69,7 +69,8 @@ jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 // Mock utils
 jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
-	findProjectRoot: jest.fn(() => '/test/project')
+	findProjectRoot: jest.fn(() => '/test/project'),
+	resolveEnvVariable: jest.fn((key) => process.env[key])
 }));
 
 // Import after mocking

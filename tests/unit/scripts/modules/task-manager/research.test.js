@@ -31,14 +31,26 @@ jest.unstable_mockModule('chalk', () => ({
 		),
 		yellow: jest.fn((text) => text),
 		red: jest.fn((text) => text),
-		gray: jest.fn((text) => text),
+		gray: Object.assign(
+			jest.fn((text) => text),
+			{
+				italic: jest.fn((text) => text)
+			}
+		),
 		blue: Object.assign(
 			jest.fn((text) => text),
 			{
-				bold: jest.fn((text) => text)
+				bold: jest.fn((text) => text),
+				underline: jest.fn((text) => text)
 			}
 		),
-		bold: jest.fn((text) => text)
+		bold: jest.fn((text) => text),
+		dim: Object.assign(
+			jest.fn((text) => text),
+			{
+				strikethrough: jest.fn((text) => text)
+			}
+		)
 	}
 }));
 
