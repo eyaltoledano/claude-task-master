@@ -129,10 +129,54 @@ export async function ensureAuthenticated(
 async function authenticateWithBrowser(
 	authDomain: AuthDomain
 ): Promise<AuthCredentials> {
-	let authSpinner: Ora | null = null;
-
 	// 10 minute timeout to allow for email confirmation during sign-up
 	const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+	let countdownInterval: NodeJS.Timeout | null = null;
+	let countdownSpinner: Ora | null = null;
+
+	const startCountdown = (totalMs: number) => {
+		const startTime = Date.now();
+		const endTime = startTime + totalMs;
+
+		const updateCountdown = () => {
+			const remaining = Math.max(0, endTime - Date.now());
+			const mins = Math.floor(remaining / 60000);
+			const secs = Math.floor((remaining % 60000) / 1000);
+			const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+			if (countdownSpinner) {
+				countdownSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
+			}
+
+			if (remaining <= 0 && countdownInterval) {
+				clearInterval(countdownInterval);
+			}
+		};
+
+		countdownSpinner = ora({
+			text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
+			spinner: 'dots'
+		}).start();
+
+		countdownInterval = setInterval(updateCountdown, 1000);
+	};
+
+	const stopCountdown = (success: boolean | 'mfa') => {
+		if (countdownInterval) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
+		if (countdownSpinner) {
+			if (success === 'mfa') {
+				countdownSpinner.stop(); // MFA required, not success/failure
+			} else if (success) {
+				countdownSpinner.succeed('Authentication successful!');
+			} else {
+				countdownSpinner.fail('Authentication failed');
+			}
+			countdownSpinner = null;
+		}
+	};
 
 	try {
 		const credentials = await authDomain.authenticateWithOAuth({
@@ -153,26 +197,24 @@ async function authenticateWithBrowser(
 			// Callback when waiting for authentication
 			onWaitingForAuth: () => {
 				console.log(
-					chalk.dim('  If signing up, check your email to confirm your account.')
+					chalk.dim(
+						'  If you signed up, check your email to confirm your account.'
+					)
 				);
-				authSpinner = ora({
-					text: 'Waiting for authentication (10 min timeout)...',
-					spinner: 'dots'
-				}).start();
+				console.log(
+					chalk.dim('  The CLI will automatically detect when you log in.\n')
+				);
+				startCountdown(AUTH_TIMEOUT_MS);
 			},
 
 			// Callback on success
 			onSuccess: () => {
-				if (authSpinner) {
-					authSpinner.succeed('Authentication successful!');
-				}
+				stopCountdown(true);
 			},
 
 			// Callback on error
 			onError: () => {
-				if (authSpinner) {
-					authSpinner.fail('Authentication failed');
-				}
+				stopCountdown(false);
 			}
 		});
 
@@ -181,15 +223,19 @@ async function authenticateWithBrowser(
 		// Check if MFA is required BEFORE showing failure message
 		if (error instanceof AuthenticationError && error.code === 'MFA_REQUIRED') {
 			// Stop spinner without showing failure - MFA is required, not a failure
-			if (authSpinner) {
-				(authSpinner as Ora).stop();
-			}
+			stopCountdown('mfa');
 
 			// MFA is required - prompt the user for their MFA code
 			return handleMFAVerification(authDomain, error);
 		}
 
+		stopCountdown(false);
 		throw error;
+	} finally {
+		// Ensure cleanup
+		if (countdownInterval) {
+			clearInterval(countdownInterval);
+		}
 	}
 }
 

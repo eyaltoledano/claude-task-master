@@ -139,41 +139,98 @@ Examples:
 
 			// 10 minute timeout to allow for email confirmation during sign-up
 			const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
-			const AUTH_TIMEOUT_MINUTES = AUTH_TIMEOUT_MS / 60000;
+			let countdownInterval: NodeJS.Timeout | null = null;
+			let countdownSpinner: ReturnType<typeof ora> | null = null;
 
-			await this.authManager.authenticateWithOAuth({
-				timeout: AUTH_TIMEOUT_MS,
-				onAuthUrl: async (url: string) => {
-					spinner?.succeed('Opening browser for authentication');
-					console.log(chalk.gray(`  ${url}`));
+			const startCountdown = (totalMs: number) => {
+				const startTime = Date.now();
+				const endTime = startTime + totalMs;
 
-					try {
-						await open(url);
-					} catch {
-						console.log(
-							chalk.yellow('\n  Could not open browser automatically.')
-						);
-						console.log(
-							chalk.yellow('  Please open the URL above manually.\n')
-						);
+				const updateCountdown = () => {
+					const remaining = Math.max(0, endTime - Date.now());
+					const mins = Math.floor(remaining / 60000);
+					const secs = Math.floor((remaining % 60000) / 1000);
+					const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+					if (countdownSpinner) {
+						countdownSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
 					}
-				},
-				onWaitingForAuth: () => {
-					console.log(
-						chalk.dim(
-							`\n  Waiting for authentication (${AUTH_TIMEOUT_MINUTES} min timeout)...`
-						)
-					);
-					console.log(
-						chalk.dim(
-							'  If signing up, check your email to confirm your account.\n'
-						)
-					);
-				}
-			});
 
-			ui.displaySuccess('Authentication successful');
-			return { success: true };
+					if (remaining <= 0 && countdownInterval) {
+						clearInterval(countdownInterval);
+					}
+				};
+
+				countdownSpinner = ora({
+					text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
+					spinner: 'dots'
+				}).start();
+
+				countdownInterval = setInterval(updateCountdown, 1000);
+			};
+
+			const stopCountdown = (success: boolean) => {
+				if (countdownInterval) {
+					clearInterval(countdownInterval);
+					countdownInterval = null;
+				}
+				if (countdownSpinner) {
+					if (success) {
+						countdownSpinner.succeed('Authentication successful!');
+					} else {
+						countdownSpinner.fail('Authentication failed');
+					}
+					countdownSpinner = null;
+				}
+			};
+
+			try {
+				await this.authManager.authenticateWithOAuth({
+					timeout: AUTH_TIMEOUT_MS,
+					onAuthUrl: async (url: string) => {
+						spinner?.succeed('Opening browser for authentication');
+						console.log(chalk.gray(`  ${url}`));
+
+						try {
+							await open(url);
+						} catch {
+							console.log(
+								chalk.yellow('\n  Could not open browser automatically.')
+							);
+							console.log(
+								chalk.yellow('  Please open the URL above manually.\n')
+							);
+						}
+					},
+					onWaitingForAuth: () => {
+						console.log(
+							chalk.dim(
+								'\n  If you signed up, check your email to confirm your account.'
+							)
+						);
+						console.log(
+							chalk.dim('  The CLI will automatically detect when you log in.\n')
+						);
+						startCountdown(AUTH_TIMEOUT_MS);
+					},
+					onSuccess: () => {
+						stopCountdown(true);
+					},
+					onError: () => {
+						stopCountdown(false);
+					}
+				});
+
+				return { success: true };
+			} catch (error) {
+				stopCountdown(false);
+				throw error;
+			} finally {
+				// Ensure cleanup even if something unexpected happens
+				if (countdownInterval) {
+					clearInterval(countdownInterval);
+				}
+			}
 		} catch (error) {
 			if (spinner?.isSpinning) {
 				spinner.fail('Authentication failed');

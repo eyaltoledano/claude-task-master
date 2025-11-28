@@ -433,13 +433,60 @@ async function initializeProject(options = {}) {
 						// Import open for browser opening
 						const { default: open } = await import('open');
 
+						// 10 minute timeout to allow for email confirmation during sign-up
+						const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+						let countdownInterval = null;
+						let authSpinner = null;
+
+						const startCountdown = (totalMs) => {
+							const startTime = Date.now();
+							const endTime = startTime + totalMs;
+
+							const updateCountdown = () => {
+								const remaining = Math.max(0, endTime - Date.now());
+								const mins = Math.floor(remaining / 60000);
+								const secs = Math.floor((remaining % 60000) / 1000);
+								const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+								if (authSpinner) {
+									authSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
+								}
+
+								if (remaining <= 0 && countdownInterval) {
+									clearInterval(countdownInterval);
+								}
+							};
+
+							authSpinner = ora({
+								text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
+								spinner: 'dots'
+							}).start();
+
+							countdownInterval = setInterval(updateCountdown, 1000);
+						};
+
+						const stopCountdown = (success) => {
+							if (countdownInterval) {
+								clearInterval(countdownInterval);
+								countdownInterval = null;
+							}
+							if (authSpinner) {
+								if (success) {
+									authSpinner.succeed('Authentication successful!');
+								} else {
+									authSpinner.fail('Authentication failed');
+								}
+								authSpinner = null;
+							}
+						};
+
 						authCredentials = await authManager.authenticateWithOAuth({
 							openBrowser: async (authUrl) => {
 								await open(authUrl);
 							},
-							timeout: 5 * 60 * 1000, // 5 minutes
+							timeout: AUTH_TIMEOUT_MS,
 							onAuthUrl: (authUrl) => {
-								console.log(chalk.blue.bold('\n🔐 Browser Authentication\n'));
+								console.log(chalk.blue.bold('\n[auth] Browser Authentication\n'));
 								console.log(
 									chalk.white('  Opening your browser to authenticate...')
 								);
@@ -449,12 +496,21 @@ async function initializeProject(options = {}) {
 								console.log(chalk.cyan.underline(`  ${authUrl}\n`));
 							},
 							onWaitingForAuth: () => {
-								// Spinner will be handled by auth command internally
+								console.log(
+									chalk.dim(
+										'  If you signed up, check your email to confirm your account.'
+									)
+								);
+								console.log(
+									chalk.dim('  The CLI will automatically detect when you log in.\n')
+								);
+								startCountdown(AUTH_TIMEOUT_MS);
 							},
 							onSuccess: () => {
-								log('success', 'Authentication successful!');
+								stopCountdown(true);
 							},
 							onError: (error) => {
+								stopCountdown(false);
 								log('error', `Authentication failed: ${error.message}`);
 							}
 						});
