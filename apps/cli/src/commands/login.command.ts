@@ -209,7 +209,9 @@ Examples:
 							)
 						);
 						console.log(
-							chalk.dim('  The CLI will automatically detect when you log in.\n')
+							chalk.dim(
+								'  The CLI will automatically detect when you log in.\n'
+							)
 						);
 						startCountdown(AUTH_TIMEOUT_MS);
 					},
