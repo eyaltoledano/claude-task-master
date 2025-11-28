@@ -79,8 +79,6 @@ export interface GenerateBriefOptions {
 	excludeSubtasks?: boolean;
 	/** Optional organization ID (uses default if not provided) */
 	orgId?: string;
-	/** Email addresses to invite to the brief (max 10) */
-	inviteEmails?: string[];
 	/** Generation options */
 	options?: {
 		/** Use AI to generate a brief title from task content */
@@ -103,7 +101,7 @@ export interface GenerateBriefOptions {
  */
 export interface InvitationResult {
 	email: string;
-	status: 'sent' | 'already_member' | 'error';
+	status: 'sent' | 'already_member' | 'error' | 'failed';
 	error?: string;
 }
 
@@ -117,8 +115,6 @@ export interface GenerateBriefFromPrdOptions {
 	prdContent: string;
 	/** Optional organization ID (uses default if not provided) */
 	orgId?: string;
-	/** Email addresses to invite to the brief (max 10) */
-	inviteEmails?: string[];
 	/** Generation options */
 	options?: {
 		/** Use AI to generate a brief title from PRD content */
@@ -168,6 +164,8 @@ export interface GenerateBriefFromPrdResult {
 		description?: string;
 		status: 'generating' | 'pending_plan' | 'ready';
 	};
+	/** The organization/account ID the brief was created in */
+	orgId?: string;
 	/** Job ID for tracking plan generation progress */
 	jobId?: string;
 	/** Invitation results (only present if inviteEmails was provided) */
@@ -226,6 +224,32 @@ export interface BriefStatusResponse {
 export interface BriefStatusResult {
 	success: boolean;
 	status?: BriefStatusResponse;
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
+/**
+ * Response from send team invitations endpoint
+ */
+export interface SendTeamInvitationsResponse {
+	success: boolean;
+	invitations: Array<{
+		email: string;
+		status: 'sent' | 'already_member' | 'failed';
+	}>;
+}
+
+/**
+ * Result from send team invitations
+ */
+export interface SendTeamInvitationsResult {
+	success: boolean;
+	invitations?: Array<{
+		email: string;
+		status: 'sent' | 'already_member' | 'failed';
+	}>;
 	error?: {
 		code: string;
 		message: string;
@@ -852,7 +876,6 @@ export class ExportService {
 				projectName: projectName
 			},
 			orgId,
-			inviteEmails: options.inviteEmails,
 			options: options.options
 		});
 	}
@@ -1013,7 +1036,6 @@ export class ExportService {
 			projectName?: string;
 		};
 		orgId?: string;
-		inviteEmails?: string[];
 		options?: GenerateBriefOptions['options'];
 	}): Promise<GenerateBriefResult> {
 		// Use AuthDomain to get the properly formatted API base URL
@@ -1065,11 +1087,6 @@ export class ExportService {
 				description: request.options?.description
 			}
 		};
-
-		// Add invite emails if provided (max 10)
-		if (request.inviteEmails && request.inviteEmails.length > 0) {
-			requestBody.inviteEmails = request.inviteEmails.slice(0, 10);
-		}
 
 		try {
 			const response = await fetch(apiUrl, {
@@ -1194,7 +1211,6 @@ export class ExportService {
 		return this.callGenerateBriefFromPrdEndpoint({
 			prdContent: options.prdContent,
 			orgId,
-			inviteEmails: options.inviteEmails,
 			options: options.options
 		});
 	}
@@ -1205,7 +1221,6 @@ export class ExportService {
 	private async callGenerateBriefFromPrdEndpoint(request: {
 		prdContent: string;
 		orgId?: string;
-		inviteEmails?: string[];
 		options?: GenerateBriefFromPrdOptions['options'];
 	}): Promise<GenerateBriefFromPrdResult> {
 		// Use AuthDomain to get the properly formatted API base URL
@@ -1254,11 +1269,6 @@ export class ExportService {
 				description: request.options?.description
 			}
 		};
-
-		// Add invite emails if provided (max 10)
-		if (request.inviteEmails && request.inviteEmails.length > 0) {
-			requestBody.inviteEmails = request.inviteEmails.slice(0, 10);
-		}
 
 		try {
 			const response = await fetch(apiUrl, {
@@ -1312,6 +1322,7 @@ export class ExportService {
 			return {
 				success: true,
 				brief: result.brief,
+				orgId: accountId, // Include orgId for context setting
 				jobId: result.jobId,
 				invitations: result.invitations
 			};
@@ -1444,6 +1455,114 @@ export class ExportService {
 				error: {
 					code: 'NETWORK_ERROR',
 					message: `Failed to get brief status: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Team Invitations ==========
+
+	/**
+	 * Send team invitations to collaborate on Hamster
+	 * This is a separate call from brief creation (Next.js endpoint, not NestJS)
+	 */
+	async sendTeamInvitations(
+		accountSlug: string,
+		emails: string[],
+		role: 'member' | 'admin' = 'member'
+	): Promise<SendTeamInvitationsResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Authentication required'
+				}
+			};
+		}
+
+		// Get API URL - Note: This is a Next.js endpoint, NOT NestJS, so no /ai prefix
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_CONFIGURATION',
+					message: 'API endpoint not configured'
+				}
+			};
+		}
+
+		// Next.js endpoint: /api/teams/:accountSlug/invitations (no /ai prefix)
+		const apiUrl = `${apiBaseUrl}/api/teams/${accountSlug}/invitations`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Not authenticated'
+				}
+			};
+		}
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`
+				},
+				body: JSON.stringify({
+					emails: emails.slice(0, 10), // Max 10 emails
+					role
+				})
+			});
+
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status})`
+					}
+				};
+			}
+
+			const jsonData = (await response.json()) as SendTeamInvitationsResponse;
+
+			if (!response.ok || !jsonData.success) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message:
+							(jsonData as any)?.message ||
+							(jsonData as any)?.error ||
+							`Failed to send invitations: ${response.status}`
+					}
+				};
+			}
+
+			return {
+				success: true,
+				invitations: jsonData.invitations
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to send invitations: ${errorMessage}`
 				}
 			};
 		}

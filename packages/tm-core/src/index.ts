@@ -185,6 +185,7 @@ export {
 	type BriefStatusResult,
 	type BriefStatusResponse,
 	type BriefGenerationProgress,
+	type SendTeamInvitationsResult,
 	type InvitationResult
 } from './modules/integration/services/export.service.js';
 

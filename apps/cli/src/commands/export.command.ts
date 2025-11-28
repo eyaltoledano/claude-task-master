@@ -378,9 +378,9 @@ export class ExportCommand extends Command {
 
 			if (!tasks || tasks.length === 0) {
 				console.log(chalk.yellow('\nNo tasks found to export.\n'));
-					this.lastResult = {
-						success: false,
-						action: 'cancelled',
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
 					message: 'No tasks found'
 				};
 				return;
@@ -395,13 +395,12 @@ export class ExportCommand extends Command {
 				inviteEmails = await this.promptForInviteEmails();
 			}
 
-			// Perform export
+			// Perform export (invitations sent separately now)
 			spinner = ora('Creating brief and exporting tasks...').start();
 
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
-					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+					tag: options?.tag,
 					options: {
 						// Always generate title/description unless manually specified
 						generateTitle: !options?.title,
@@ -417,9 +416,9 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Show invitation results if any
-				if (result.invitations && result.invitations.length > 0) {
-					this.displayInvitationResults(result.invitations);
+				// Send invitations separately if user provided emails
+				if (inviteEmails.length > 0) {
+					await this.sendInvitationsForBrief(result.brief.url, inviteEmails);
 				}
 
 				// Always show the invite URL
@@ -578,15 +577,14 @@ export class ExportCommand extends Command {
 				inviteEmails = await this.promptForInviteEmails();
 			}
 
-			// Perform export
+			// Perform export (invitations sent separately now)
 			spinner = ora('Creating brief and exporting tasks...').start();
 
 			// TODO: Support exporting specific selected tasks
 			// For now, we export all tasks from the tag
 			const result =
 				await this.taskMasterCore!.integration.generateBriefFromTasks({
-				tag: options?.tag,
-					inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+					tag: options?.tag,
 					options: {
 						generateTitle: !options?.title,
 						generateDescription: !options?.description,
@@ -601,9 +599,9 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
-				// Show invitation results if any
-				if (result.invitations && result.invitations.length > 0) {
-					this.displayInvitationResults(result.invitations);
+				// Send invitations separately if user provided emails
+				if (inviteEmails.length > 0) {
+					await this.sendInvitationsForBrief(result.brief.url, inviteEmails);
 				}
 
 				// Always show the invite URL (whether they invited or not)
@@ -686,7 +684,6 @@ export class ExportCommand extends Command {
 			parentTaskCount?: number;
 			subtaskCount?: number;
 			error?: string;
-			invitations?: any[];
 		}
 
 		// Get FileStorage instance once for all tags
@@ -716,7 +713,6 @@ export class ExportCommand extends Command {
 				const result =
 					await this.taskMasterCore!.integration.generateBriefFromTasks({
 						tag,
-						inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 						options: {
 							generateTitle: true,
 							generateDescription: true,
@@ -733,8 +729,7 @@ export class ExportCommand extends Command {
 						success: true,
 						brief: result.brief,
 						parentTaskCount,
-						subtaskCount,
-						invitations: result.invitations
+						subtaskCount
 					};
 				}
 				return {
@@ -790,10 +785,13 @@ export class ExportCommand extends Command {
 			console.log('');
 		}
 
-		// Show invitation results if any invites were sent
-		const allInvitations = successful.flatMap((r) => r.invitations || []);
-		if (allInvitations.length > 0) {
-			this.displayInvitationResults(allInvitations);
+		// Send invitations separately after all exports (if user provided emails)
+		if (inviteEmails.length > 0 && successful.length > 0) {
+			// Send invitations for the first successful brief (they all share the same org)
+			await this.sendInvitationsForBrief(
+				successful[0].brief!.url,
+				inviteEmails
+			);
 		}
 
 		// If only one successful, auto-set context to it
@@ -920,7 +918,7 @@ export class ExportCommand extends Command {
 	private displayInvitationResults(invitations: InvitationResult[]): void {
 		if (!invitations || invitations.length === 0) return;
 
-		console.log(chalk.cyan('\n  Collaborator Invitations:'));
+		console.log(chalk.cyan('\n  Team Invitations:'));
 		for (const inv of invitations) {
 			switch (inv.status) {
 				case 'sent':
@@ -930,6 +928,7 @@ export class ExportCommand extends Command {
 					console.log(chalk.gray(`    ${inv.email}: Already a team member`));
 					break;
 				case 'error':
+				case 'failed':
 					console.log(
 						chalk.red(`    ${inv.email}: ${inv.error || 'Failed to invite'}`)
 					);
@@ -1031,6 +1030,56 @@ export class ExportCommand extends Command {
 			return state.metadata?.exportedTags || {};
 		} catch {
 			return {};
+		}
+	}
+
+	/**
+	 * Send invitations for a brief using the separate team invitations API
+	 */
+	private async sendInvitationsForBrief(
+		briefUrl: string,
+		inviteEmails: string[]
+	): Promise<void> {
+		if (!inviteEmails.length || !this.taskMasterCore) return;
+
+		const spinner = ora('Sending invitations...').start();
+
+		try {
+			// Get org slug from context
+			const context = await this.taskMasterCore.auth.getContext();
+			const orgSlug = context?.orgSlug;
+
+			if (!orgSlug) {
+				spinner.fail(
+					'Failed to send invitations: Organization context missing.'
+				);
+				console.error(
+					chalk.red(
+						'\n  Please ensure you have an organization selected (tm auth status).\n'
+					)
+				);
+				return;
+			}
+
+			const inviteResult =
+				await this.taskMasterCore.integration.sendTeamInvitations(
+					orgSlug,
+					inviteEmails,
+					'member'
+				);
+
+			if (inviteResult.success && inviteResult.invitations) {
+				spinner.succeed('Invitations sent!');
+				this.displayInvitationResults(inviteResult.invitations);
+			} else {
+				spinner.fail('Failed to send invitations');
+				const errorMsg =
+					inviteResult.error?.message || 'Unknown error occurred';
+				console.error(chalk.red(`\n  ${errorMsg}\n`));
+			}
+		} catch (error: any) {
+			spinner.fail('Failed to send invitations');
+			console.error(chalk.red(`\n  ${error.message}\n`));
 		}
 	}
 

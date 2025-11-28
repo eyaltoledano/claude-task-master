@@ -379,12 +379,11 @@ async function handleParsePrdToHamster(prdPath) {
 				.slice(0, 10);
 		}
 
-		// Create brief from PRD
+		// Create brief from PRD (invitations are sent separately now)
 		spinner = ora('Creating brief from your PRD...').start();
 
 		const result = await tmCore.integration.generateBriefFromPrd({
 			prdContent,
-			inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
 			options: {
 				generateTitle: true,
 				generateDescription: true
@@ -411,6 +410,52 @@ async function handleParsePrdToHamster(prdPath) {
 		const clickableUrl = `\x1b]8;;${briefUrl}\x07${chalk.cyan.underline(briefUrl)}\x1b]8;;\x07`;
 		console.log(`  ${clickableUrl}`);
 		console.log('');
+
+		// Send invitations immediately after brief creation (before polling)
+		// Extract org slug from brief URL for invitations
+		const urlMatch = result.brief.url.match(
+			/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
+		);
+		const orgSlug = urlMatch ? urlMatch[2] : null;
+
+		if (inviteEmails.length > 0 && orgSlug) {
+			const inviteSpinner = ora('Sending invitations...').start();
+			try {
+				const inviteResult = await tmCore.integration.sendTeamInvitations(
+					orgSlug,
+					inviteEmails,
+					'member'
+				);
+
+				if (inviteResult.success && inviteResult.invitations) {
+					inviteSpinner.succeed('Invitations sent!');
+					console.log('');
+					console.log(chalk.cyan('  Team Invitations:'));
+					for (const inv of inviteResult.invitations) {
+						if (inv.status === 'sent') {
+							console.log(chalk.green(`    ${inv.email}: Invitation sent`));
+						} else if (inv.status === 'already_member') {
+							console.log(
+								chalk.gray(`    ${inv.email}: Already a team member`)
+							);
+						} else if (inv.status === 'failed') {
+							console.log(chalk.red(`    ${inv.email}: Failed to send`));
+						}
+					}
+					console.log('');
+				} else {
+					inviteSpinner.fail('Failed to send invitations');
+					const errorMsg =
+						inviteResult.error?.message || 'Unknown error occurred';
+					console.error(chalk.red(`  ${errorMsg}`));
+					console.log('');
+				}
+			} catch (inviteError) {
+				inviteSpinner.fail('Failed to send invitations');
+				console.error(chalk.red(`  ${inviteError.message}`));
+				console.log('');
+			}
+		}
 
 		// Now poll for task generation
 		spinner = ora('Generating tasks from your PRD...').start();
@@ -537,27 +582,10 @@ async function handleParsePrdToHamster(prdPath) {
 		}
 		console.log('');
 
-		// Show invitation results if any were sent
-		if (result.invitations && result.invitations.length > 0) {
-			console.log(chalk.cyan('  Collaborator Invitations:'));
-			for (const inv of result.invitations) {
-				if (inv.status === 'sent') {
-					console.log(chalk.green(`    ${inv.email}: Invitation sent`));
-				} else if (inv.status === 'already_member') {
-					console.log(chalk.gray(`    ${inv.email}: Already a team member`));
-				} else if (inv.status === 'failed') {
-					console.log(chalk.red(`    ${inv.email}: Failed to send`));
-				}
-			}
-			console.log('');
-		}
-
-		// Show invite URL for adding more teammates later
-		const urlMatch = result.brief.url.match(
-			/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
-		);
-		if (urlMatch) {
-			const [, baseUrl, orgSlug] = urlMatch;
+		// Show invite URL for adding more teammates later (orgSlug already extracted above)
+		if (orgSlug) {
+			const urlParts = result.brief.url.match(/^(https?:\/\/[^/]+)/);
+			const baseUrl = urlParts ? urlParts[1] : '';
 			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
 			const clickableMembersUrl = `\x1b]8;;${membersUrl}\x07${chalk.cyan.underline(membersUrl)}\x1b]8;;\x07`;
 			console.log(
@@ -566,22 +594,29 @@ async function handleParsePrdToHamster(prdPath) {
 			console.log('');
 		}
 
-		// Set context to the new brief
+		// Set context to the new brief using resolveBrief (same as tm context <url>)
 		try {
-			// Extract org info from URL for complete context
-			const briefId = result.brief.id;
-			const briefUrl = result.brief.url;
+			const brief = await tmCore.tasks.resolveBrief(result.brief.url);
+			const briefName =
+				brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
 
-			// Try to get org info from the brief
-			const briefInfo = await tmCore.auth.getBrief(briefId);
-			const orgId = briefInfo?.organization_id || briefInfo?.orgId;
-			const orgSlug = urlMatch ? urlMatch[2] : undefined;
+			// Get org info for complete context
+			let orgName;
+			try {
+				const org = await authManager.getOrganization(brief.accountId);
+				orgName = org?.name;
+			} catch {
+				// Non-fatal if org lookup fails
+			}
 
-			await authManager.setContext({
-				briefId,
-				briefUrl,
-				orgId,
-				orgSlug
+			await authManager.updateContext({
+				orgId: brief.accountId,
+				orgName,
+				orgSlug,
+				briefId: brief.id,
+				briefName,
+				briefStatus: brief.status,
+				briefUpdatedAt: brief.updatedAt
 			});
 
 			console.log(
@@ -591,6 +626,8 @@ async function handleParsePrdToHamster(prdPath) {
 					chalk.white(' to see your tasks.')
 			);
 		} catch (contextError) {
+			// Log the actual error for debugging
+			log('debug', `Context auto-set failed: ${contextError.message}`);
 			console.log(
 				chalk.yellow('  Could not auto-set context. Run ') +
 					chalk.cyan(`tm context ${result.brief.url}`) +

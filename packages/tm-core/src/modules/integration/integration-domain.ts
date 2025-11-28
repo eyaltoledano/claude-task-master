@@ -13,7 +13,8 @@ import type {
 	GenerateBriefResult,
 	GenerateBriefFromPrdOptions,
 	GenerateBriefFromPrdResult,
-	BriefStatusResult
+	BriefStatusResult,
+	SendTeamInvitationsResult
 } from './services/export.service.js';
 
 /**
@@ -73,5 +74,22 @@ export class IntegrationDomain {
 	 */
 	async getBriefStatus(briefId: string): Promise<BriefStatusResult> {
 		return this.exportService.getBriefStatus(briefId);
+	}
+
+	/**
+	 * Send team invitations to collaborate on Hamster
+	 * This is called separately from brief creation
+	 *
+	 * @param accountSlug - The organization slug (from brief URL)
+	 * @param emails - Array of email addresses to invite
+	 * @param role - Role for invited users (default: 'member')
+	 * @returns Result with invitation statuses
+	 */
+	async sendTeamInvitations(
+		accountSlug: string,
+		emails: string[],
+		role: 'member' | 'admin' = 'member'
+	): Promise<SendTeamInvitationsResult> {
+		return this.exportService.sendTeamInvitations(accountSlug, emails, role);
 	}
 }

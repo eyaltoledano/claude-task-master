@@ -64,4 +64,3 @@ export function createTaskLink(taskId: string, taskUrl: string): string {
 export function supportsLinks(): boolean {
 	return terminalLink.isSupported;
 }
-
