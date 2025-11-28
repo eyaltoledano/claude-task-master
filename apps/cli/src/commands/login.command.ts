@@ -137,7 +137,12 @@ Examples:
 			// Start browser auth flow
 			spinner = ora('Starting browser authentication...').start();
 
+			// 10 minute timeout to allow for email confirmation during sign-up
+			const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+			const AUTH_TIMEOUT_MINUTES = AUTH_TIMEOUT_MS / 60000;
+
 			await this.authManager.authenticateWithOAuth({
+				timeout: AUTH_TIMEOUT_MS,
 				onAuthUrl: async (url: string) => {
 					spinner?.succeed('Opening browser for authentication');
 					console.log(chalk.gray(`  ${url}`));
@@ -152,6 +157,18 @@ Examples:
 							chalk.yellow('  Please open the URL above manually.\n')
 						);
 					}
+				},
+				onWaitingForAuth: () => {
+					console.log(
+						chalk.dim(
+							`\n  Waiting for authentication (${AUTH_TIMEOUT_MINUTES} min timeout)...`
+						)
+					);
+					console.log(
+						chalk.dim(
+							'  If signing up, check your email to confirm your account.\n'
+						)
+					);
 				}
 			});
 

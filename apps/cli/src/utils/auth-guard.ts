@@ -131,17 +131,20 @@ async function authenticateWithBrowser(
 ): Promise<AuthCredentials> {
 	let authSpinner: Ora | null = null;
 
+	// 10 minute timeout to allow for email confirmation during sign-up
+	const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
+
 	try {
 		const credentials = await authDomain.authenticateWithOAuth({
 			// Callback to handle browser opening
 			openBrowser: async (authUrl: string) => {
 				await open(authUrl);
 			},
-			timeout: 5 * 60 * 1000, // 5 minutes
+			timeout: AUTH_TIMEOUT_MS,
 
 			// Callback when auth URL is ready
 			onAuthUrl: (authUrl: string) => {
-				console.log(chalk.blue.bold('\n🔐 Browser Authentication\n'));
+				console.log(chalk.blue.bold('\n[auth] Browser Authentication\n'));
 				console.log(chalk.white('  Opening your browser to authenticate...'));
 				console.log(chalk.gray("  If the browser doesn't open, visit:"));
 				console.log(chalk.cyan.underline(`  ${authUrl}\n`));
@@ -149,8 +152,11 @@ async function authenticateWithBrowser(
 
 			// Callback when waiting for authentication
 			onWaitingForAuth: () => {
+				console.log(
+					chalk.dim('  If signing up, check your email to confirm your account.')
+				);
 				authSpinner = ora({
-					text: 'Waiting for authentication...',
+					text: 'Waiting for authentication (10 min timeout)...',
 					spinner: 'dots'
 				}).start();
 			},
