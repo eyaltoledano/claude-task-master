@@ -430,8 +430,9 @@ async function initializeProject(options = {}) {
 							chalk.gray('  This enables sync across devices with Hamster.\n')
 						);
 
-						// Import open for browser opening
+						// Import open and ora for browser opening and spinner
 						const { default: open } = await import('open');
+						const { default: ora } = await import('ora');
 
 						// 10 minute timeout to allow for email confirmation during sign-up
 						const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
@@ -486,7 +487,9 @@ async function initializeProject(options = {}) {
 							},
 							timeout: AUTH_TIMEOUT_MS,
 							onAuthUrl: (authUrl) => {
-								console.log(chalk.blue.bold('\n[auth] Browser Authentication\n'));
+								console.log(
+									chalk.blue.bold('\n[auth] Browser Authentication\n')
+								);
 								console.log(
 									chalk.white('  Opening your browser to authenticate...')
 								);
@@ -502,7 +505,9 @@ async function initializeProject(options = {}) {
 									)
 								);
 								console.log(
-									chalk.dim('  The CLI will automatically detect when you log in.\n')
+									chalk.dim(
+										'  The CLI will automatically detect when you log in.\n'
+									)
 								);
 								startCountdown(AUTH_TIMEOUT_MS);
 							},

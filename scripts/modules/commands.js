@@ -233,10 +233,13 @@ async function promptHamsterCollaboration() {
 							'   • Hamster will generate tasks automatically, ready to execute in Taskmaster'
 						),
 						chalk.white(
-							'   • Invite teammates to collaborate on a single source of truth'
+							'   • Hamster will automatically analyze complexity and expand tasks as needed'
 						),
 						chalk.white(
-							'   • All AI calls handled by Hamster, no API keys needed - just a Hamster account!'
+							'   • Invite your teammates to collaborate on a single source of truth'
+						),
+						chalk.white(
+							'   • AI inference handled by Hamster, no API keys needed - just a Hamster account!'
 						),
 						''
 					].join('\n'),
@@ -355,7 +358,9 @@ async function handleParsePrdToHamster(prdPath) {
 							)
 						);
 						console.log(
-							chalk.dim('  The CLI will automatically detect when you log in.\n')
+							chalk.dim(
+								'  The CLI will automatically detect when you log in.\n'
+							)
 						);
 						startCountdown(AUTH_TIMEOUT_MS);
 					},
