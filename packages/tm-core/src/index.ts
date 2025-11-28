@@ -180,6 +180,11 @@ export {
 	ExportService,
 	type GenerateBriefOptions,
 	type GenerateBriefResult,
+	type GenerateBriefFromPrdOptions,
+	type GenerateBriefFromPrdResult,
+	type BriefStatusResult,
+	type BriefStatusResponse,
+	type BriefGenerationProgress,
 	type InvitationResult
 } from './modules/integration/services/export.service.js';
 

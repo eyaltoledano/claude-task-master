@@ -10,7 +10,10 @@ import type {
 	ExportResult,
 	ExportTasksOptions,
 	GenerateBriefOptions,
-	GenerateBriefResult
+	GenerateBriefResult,
+	GenerateBriefFromPrdOptions,
+	GenerateBriefFromPrdResult,
+	BriefStatusResult
 } from './services/export.service.js';
 
 /**
@@ -46,5 +49,29 @@ export class IntegrationDomain {
 	 */
 	async exportTasks(options: ExportTasksOptions): Promise<ExportResult> {
 		return this.exportService.exportTasks(options);
+	}
+
+	/**
+	 * Generate a new brief from PRD content
+	 * Sends PRD to Hamster which creates a brief and generates tasks asynchronously
+	 *
+	 * @param options - Options including the PRD content
+	 * @returns Result with created brief details (tasks are generated async)
+	 */
+	async generateBriefFromPrd(
+		options: GenerateBriefFromPrdOptions
+	): Promise<GenerateBriefFromPrdResult> {
+		return this.exportService.generateBriefFromPrd(options);
+	}
+
+	/**
+	 * Get the current status of a brief's task generation
+	 * Used to poll progress after generateBriefFromPrd
+	 *
+	 * @param briefId - The brief ID to check
+	 * @returns Status result with progress details
+	 */
+	async getBriefStatus(briefId: string): Promise<BriefStatusResult> {
+		return this.exportService.getBriefStatus(briefId);
 	}
 }

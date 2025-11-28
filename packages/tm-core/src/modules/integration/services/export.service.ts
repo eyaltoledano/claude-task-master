@@ -107,6 +107,131 @@ export interface InvitationResult {
 	error?: string;
 }
 
+// ========== Generate Brief From PRD Types ==========
+
+/**
+ * Options for generating a brief from PRD content
+ */
+export interface GenerateBriefFromPrdOptions {
+	/** The raw PRD content (required) */
+	prdContent: string;
+	/** Optional organization ID (uses default if not provided) */
+	orgId?: string;
+	/** Email addresses to invite to the brief (max 10) */
+	inviteEmails?: string[];
+	/** Generation options */
+	options?: {
+		/** Use AI to generate a brief title from PRD content */
+		generateTitle?: boolean;
+		/** Use AI to generate a brief description */
+		generateDescription?: boolean;
+		/** Optional explicit title (overrides generation) */
+		title?: string;
+		/** Optional explicit description (overrides generation) */
+		description?: string;
+	};
+}
+
+/**
+ * Response from generate brief from PRD endpoint
+ */
+export interface GenerateBriefFromPrdResponse {
+	success: boolean;
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description?: string;
+		status: 'generating' | 'pending_plan' | 'ready';
+		createdAt: string;
+	};
+	jobId?: string;
+	invitations?: InvitationResult[];
+	error?: {
+		code: string;
+		message: string;
+		details?: unknown;
+	};
+}
+
+/**
+ * Result of the generate brief from PRD operation
+ */
+export interface GenerateBriefFromPrdResult {
+	/** Whether the operation was successful */
+	success: boolean;
+	/** Created brief details */
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description?: string;
+		status: 'generating' | 'pending_plan' | 'ready';
+	};
+	/** Job ID for tracking plan generation progress */
+	jobId?: string;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
+	/** Error details if failed */
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
+// ========== Brief Status Polling Types ==========
+
+/**
+ * Progress details for task generation
+ */
+export interface BriefGenerationProgress {
+	/** Current phase of generation */
+	currentPhase: string;
+	/** Human-readable progress message */
+	message: string;
+	/** Detailed progress counts */
+	progress?: {
+		parentTasksGenerated?: number;
+		parentTasksProcessed?: number;
+		totalParentTasks?: number;
+		subtasksGenerated?: number;
+	};
+	/** Last update timestamp */
+	lastUpdatedAt?: string;
+}
+
+/**
+ * Response from brief status endpoint
+ */
+export interface BriefStatusResponse {
+	/** Brief ID */
+	briefId: string;
+	/** Brief title */
+	title: string;
+	/** Current generation status */
+	status: 'pending' | 'generating' | 'completed' | 'failed';
+	/** Detailed progress info */
+	progress?: BriefGenerationProgress;
+	/** When generation started */
+	startedAt?: string;
+	/** When generation completed */
+	completedAt?: string;
+	/** Error message if failed */
+	error?: string;
+}
+
+/**
+ * Result from polling brief status
+ */
+export interface BriefStatusResult {
+	success: boolean;
+	status?: BriefStatusResponse;
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
 /**
  * Response from generate brief from tasks endpoint
  */
@@ -1013,6 +1138,312 @@ export class ExportService {
 				error: {
 					code: 'NETWORK_ERROR',
 					message: `Failed to connect to API: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Generate Brief From PRD ==========
+
+	/**
+	 * Generate a new brief from PRD content
+	 * Sends PRD to Hamster which creates a brief and generates tasks asynchronously
+	 */
+	async generateBriefFromPrd(
+		options: GenerateBriefFromPrdOptions
+	): Promise<GenerateBriefFromPrdResult> {
+		if (!options.prdContent || options.prdContent.trim().length === 0) {
+			return {
+				success: false,
+				error: {
+					code: 'INVALID_INPUT',
+					message: 'PRD content is required'
+				}
+			};
+		}
+
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			throw new TaskMasterError(
+				'Authentication required for PRD import',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Get current context for org ID
+		const context = await this.authManager.getContext();
+		let orgId = options.orgId || context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!orgId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length === 0) {
+				return {
+					success: false,
+					error: {
+						code: 'NO_ORGANIZATIONS',
+						message:
+							'No organizations available. Please create an organization in Hamster first.'
+					}
+				};
+			}
+			// Use the first organization (most common case: user has one org)
+			orgId = organizations[0].id;
+		}
+
+		return this.callGenerateBriefFromPrdEndpoint({
+			prdContent: options.prdContent,
+			orgId,
+			inviteEmails: options.inviteEmails,
+			options: options.options
+		});
+	}
+
+	/**
+	 * Call the generate brief from PRD endpoint
+	 */
+	private async callGenerateBriefFromPrdEndpoint(request: {
+		prdContent: string;
+		orgId?: string;
+		inviteEmails?: string[];
+		options?: GenerateBriefFromPrdOptions['options'];
+	}): Promise<GenerateBriefFromPrdResult> {
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			throw new TaskMasterError(
+				'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+				ERROR_CODES.MISSING_CONFIGURATION,
+				{ operation: 'generateBriefFromPrd' }
+			);
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/generate-from-prd`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			throw new TaskMasterError(
+				'Not authenticated',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Build request body
+		const accountId = request.orgId;
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message:
+						'No organization selected. Please run "tm auth" and select an organization first.'
+				}
+			};
+		}
+
+		const requestBody: Record<string, unknown> = {
+			prdContent: request.prdContent,
+			accountId,
+			options: {
+				generateTitle: request.options?.generateTitle ?? true,
+				generateDescription: request.options?.generateDescription ?? true,
+				title: request.options?.title,
+				description: request.options?.description
+			}
+		};
+
+		// Add invite emails if provided (max 10)
+		if (request.inviteEmails && request.inviteEmails.length > 0) {
+			requestBody.inviteEmails = request.inviteEmails.slice(0, 10);
+		}
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			// Check content type to avoid JSON parse errors on HTML responses
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				const text = await response.text();
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`
+					}
+				};
+			}
+
+			const jsonData = await response.json();
+			const result = jsonData as GenerateBriefFromPrdResponse;
+
+			if (!response.ok || !result.success) {
+				const errorMessage =
+					result.error?.message ||
+					(jsonData as any)?.message ||
+					(jsonData as any)?.error ||
+					`API request failed: ${response.status} - ${response.statusText}`;
+
+				const errorCode =
+					result.error?.code ||
+					(jsonData as any)?.code ||
+					(jsonData as any)?.statusCode ||
+					'API_ERROR';
+
+				return {
+					success: false,
+					error: {
+						code: String(errorCode),
+						message: String(errorMessage)
+					}
+				};
+			}
+
+			return {
+				success: true,
+				brief: result.brief,
+				jobId: result.jobId,
+				invitations: result.invitations
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to connect to API: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Brief Status Polling ==========
+
+	/**
+	 * Get the current status of a brief's task generation
+	 * Used to poll progress after generateBriefFromPrd
+	 */
+	async getBriefStatus(briefId: string): Promise<BriefStatusResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Authentication required'
+				}
+			};
+		}
+
+		// Get API URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_CONFIGURATION',
+					message: 'API endpoint not configured'
+				}
+			};
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/${briefId}/status`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Not authenticated'
+				}
+			};
+		}
+
+		// Get accountId from context (like generateBriefFromTasks)
+		const context = await this.authManager.getContext();
+		let accountId = context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!accountId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length > 0) {
+				accountId = organizations[0].id;
+			}
+		}
+
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message: 'No organization available'
+				}
+			};
+		}
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId
+				}
+			});
+
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status})`
+					}
+				};
+			}
+
+			const jsonData = (await response.json()) as BriefStatusResponse;
+
+			if (!response.ok) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message:
+							(jsonData as any)?.message ||
+							`Failed to get status: ${response.status}`
+					}
+				};
+			}
+
+			return {
+				success: true,
+				status: jsonData
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to get brief status: ${errorMessage}`
 				}
 			};
 		}

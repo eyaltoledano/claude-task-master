@@ -20,7 +20,7 @@ import {
 	restartWithNewVersion,
 	runInteractiveSetup
 } from '@tm/cli';
-import { log, readJSON } from './utils.js';
+import { findProjectRoot, log, readJSON } from './utils.js';
 
 import {
 	addSubtask,
@@ -82,7 +82,12 @@ import {
 	displayWarning
 } from './error-formatter.js';
 
-import { AuthManager, CUSTOM_PROVIDERS } from '@tm/core';
+import {
+	AuthDomain,
+	AuthManager,
+	CUSTOM_PROVIDERS,
+	createTmCore
+} from '@tm/core';
 
 import {
 	COMPLEXITY_REPORT_FILE,
@@ -168,6 +173,434 @@ function isConnectedToHamster() {
 		return false;
 	} catch {
 		return false;
+	}
+}
+
+/**
+ * Prompt user about using Hamster for collaborative PRD management
+ * Only shown to users who are not already connected to Hamster
+ * @returns {Promise<'local'|'hamster'>} User's choice
+ */
+async function promptHamsterCollaboration() {
+	// Skip prompt in non-interactive mode only
+	if (!process.stdin.isTTY) {
+		return 'local';
+	}
+
+	console.log(
+		'\n' +
+			chalk.bold.white(
+				'Your tasks are only as good as the context behind them.'
+			) +
+			'\n\n' +
+			chalk.dim(
+				'Parse locally and tasks will be stored in a JSON file. Bring it to Hamster and your brief\nbecomes part of a living system connected to your team, your codebase and your agents.\nNow your entire team can go as fast as you can with Taskmaster.'
+			) +
+			'\n'
+	);
+
+	const { choice } = await inquirer.prompt([
+		{
+			type: 'list',
+			name: 'choice',
+			message: chalk.cyan('How would you like to parse your PRD?'),
+			choices: [
+				'\n',
+				{
+					name: [
+						chalk.bold('Parse locally'),
+						'',
+						chalk.white(
+							'   • Your PRD becomes a task list in a local JSON file'
+						),
+						chalk.white(
+							'   • Great for quick prototyping and for vibing on your own'
+						),
+						chalk.white('   • You can always export to Hamster later'),
+						''
+					].join('\n'),
+					value: 'local',
+					short: 'Parse locally'
+				},
+				{
+					name: [
+						chalk.bold('Bring it to Hamster'),
+						'',
+						chalk.white(
+							'   • Your PRD will become a living brief you can refine with your team'
+						),
+						chalk.white(
+							'   • Hamster will generate tasks automatically, ready to execute in Taskmaster'
+						),
+						chalk.white(
+							'   • Invite teammates to collaborate on a single source of truth'
+						),
+						chalk.white(
+							'   • All AI calls handled by Hamster, no API keys needed - just a Hamster account!'
+						),
+						''
+					].join('\n'),
+					value: 'hamster',
+					short: 'Bring it to Hamster'
+				}
+			],
+			default: 'local',
+			pageSize: 20
+		}
+	]);
+
+	return choice;
+}
+
+/**
+ * Handle parsing PRD to Hamster
+ * Creates a brief from the PRD content and sets context
+ * @param {string} prdPath - Path to the PRD file
+ */
+async function handleParsePrdToHamster(prdPath) {
+	const ora = (await import('ora')).default;
+	const open = (await import('open')).default;
+	let spinner;
+	let authSpinner;
+
+	try {
+		// Check if user is authenticated
+		const authDomain = new AuthDomain();
+		const isAuthenticated = await authDomain.hasValidSession();
+
+		if (!isAuthenticated) {
+			console.log('');
+			console.log(chalk.yellow('🔒 Authentication Required'));
+			console.log('');
+
+			const { shouldLogin } = await inquirer.prompt([
+				{
+					type: 'confirm',
+					name: 'shouldLogin',
+					message: "You're not logged in. Log in to create a brief on Hamster?",
+					default: true
+				}
+			]);
+
+			if (!shouldLogin) {
+				console.log(chalk.gray('\n  Cancelled.\n'));
+				return;
+			}
+
+			// Trigger OAuth flow
+			try {
+				await authDomain.authenticateWithOAuth({
+					openBrowser: async (authUrl) => {
+						await open(authUrl);
+					},
+					timeout: 5 * 60 * 1000, // 5 minutes
+					onAuthUrl: (authUrl) => {
+						console.log(chalk.blue.bold('\n🔐 Browser Authentication\n'));
+						console.log(
+							chalk.white('  Opening your browser to authenticate...')
+						);
+						console.log(chalk.gray("  If the browser doesn't open, visit:"));
+						console.log(chalk.cyan.underline(`  ${authUrl}\n`));
+					},
+					onWaitingForAuth: () => {
+						authSpinner = ora({
+							text: 'Waiting for authentication...',
+							spinner: 'dots'
+						}).start();
+					},
+					onSuccess: () => {
+						if (authSpinner) {
+							authSpinner.succeed('Authentication successful!');
+						}
+					},
+					onError: () => {
+						if (authSpinner) {
+							authSpinner.fail('Authentication failed');
+						}
+					}
+				});
+			} catch (authError) {
+				console.error(
+					chalk.red(
+						`\n  Authentication failed: ${authError.message || 'Unknown error'}\n`
+					)
+				);
+				return;
+			}
+		}
+
+		const authManager = AuthManager.getInstance();
+
+		// Read PRD file content
+		const prdContent = fs.readFileSync(prdPath, 'utf-8');
+		if (!prdContent.trim()) {
+			console.error(chalk.red('\n  PRD file is empty.\n'));
+			return;
+		}
+
+		// Initialize TmCore
+		const projectRoot = findProjectRoot() || process.cwd();
+		const tmCore = await createTmCore({ projectPath: projectRoot });
+
+		// Ask about inviting collaborators BEFORE creating brief
+		let inviteEmails = [];
+		const { wantsToInvite } = await inquirer.prompt([
+			{
+				type: 'confirm',
+				name: 'wantsToInvite',
+				message: 'Want to invite teammates to collaborate on this brief?',
+				default: false
+			}
+		]);
+
+		if (wantsToInvite) {
+			const { emails } = await inquirer.prompt([
+				{
+					type: 'input',
+					name: 'emails',
+					message: 'Enter email addresses to invite (comma-separated, max 10):',
+					validate: (input) => {
+						if (!input.trim()) return true;
+						const emailList = input
+							.split(',')
+							.map((e) => e.trim())
+							.filter(Boolean);
+						if (emailList.length > 10) {
+							return 'Maximum 10 email addresses allowed';
+						}
+						return true;
+					}
+				}
+			]);
+			inviteEmails = emails
+				.split(',')
+				.map((e) => e.trim())
+				.filter(Boolean)
+				.slice(0, 10);
+		}
+
+		// Create brief from PRD
+		spinner = ora('Creating brief from your PRD...').start();
+
+		const result = await tmCore.integration.generateBriefFromPrd({
+			prdContent,
+			inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+			options: {
+				generateTitle: true,
+				generateDescription: true
+			}
+		});
+
+		if (!result.success || !result.brief) {
+			spinner.fail('Failed to create brief');
+			const errorMsg = result.error?.message || 'Unknown error occurred';
+			console.error(chalk.red(`\n  ${errorMsg}\n`));
+			return;
+		}
+
+		// Brief created! Show it immediately
+		spinner.succeed('Brief created!');
+		console.log('');
+		console.log(
+			chalk.green('  ✓ ') + chalk.white.bold(result.brief.title || 'New Brief')
+		);
+		console.log('');
+		// Create clickable URL
+		const briefUrl = result.brief.url;
+		// ANSI hyperlink: \x1b]8;;URL\x07TEXT\x1b]8;;\x07
+		const clickableUrl = `\x1b]8;;${briefUrl}\x07${chalk.cyan.underline(briefUrl)}\x1b]8;;\x07`;
+		console.log(`  ${clickableUrl}`);
+		console.log('');
+
+		// Now poll for task generation
+		spinner = ora('Generating tasks from your PRD...').start();
+		const briefId = result.brief.id;
+		const maxWait = 180000; // 3 minutes
+		const pollInterval = 3000; // 3 seconds between polls
+		const startTime = Date.now();
+		let taskCount = 0;
+		let briefStatus = result.brief.status;
+
+		// Progress calculation helper
+		const calculateProgress = (prog) => {
+			if (!prog) return 0;
+			const phase = prog.phase || prog.currentPhase || '';
+			const parentGen =
+				prog.parentTasksGenerated || prog.progress?.parentTasksGenerated || 0;
+			const parentProc =
+				prog.parentTasksProcessed || prog.progress?.parentTasksProcessed || 0;
+			const totalParent =
+				prog.totalParentTasks || prog.progress?.totalParentTasks || 0;
+
+			if (phase === 'queued') return 0;
+			if (phase === 'analyzing') return 5;
+			if (phase === 'generating_tasks' && totalParent > 0) {
+				return 10 + Math.floor((parentGen / totalParent) * 40);
+			}
+			if (phase === 'processing_tasks' && totalParent > 0) {
+				return 50 + Math.floor((parentProc / totalParent) * 40);
+			}
+			if (phase === 'generating_subtasks') return 90;
+			if (phase === 'complete') return 100;
+			return 0;
+		};
+
+		// Progress bar renderer
+		const renderProgressBar = (percent, width = 30) => {
+			const filled = Math.floor((percent / 100) * width);
+			const empty = width - filled;
+			return chalk.cyan('█'.repeat(filled)) + chalk.gray('░'.repeat(empty));
+		};
+
+		// Poll until status is 'ready' or 'failed' or we timeout
+		const isStillGenerating = (s) =>
+			s === 'generating' || s === 'pending' || s === 'pending_plan';
+
+		while (isStillGenerating(briefStatus) && Date.now() - startTime < maxWait) {
+			await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+			try {
+				const statusResult = await tmCore.integration.getBriefStatus(briefId);
+				if (statusResult.success && statusResult.status) {
+					const status = statusResult.status;
+					briefStatus = status.status;
+
+					// Update spinner with progress bar
+					if (status.progress) {
+						const prog = status.progress;
+						const parentGen =
+							prog.parentTasksGenerated ||
+							prog.progress?.parentTasksGenerated ||
+							0;
+						const parentProc =
+							prog.parentTasksProcessed ||
+							prog.progress?.parentTasksProcessed ||
+							0;
+						const totalParent =
+							prog.totalParentTasks || prog.progress?.totalParentTasks || 0;
+						const subtaskGen =
+							prog.subtasksGenerated || prog.progress?.subtasksGenerated || 0;
+						taskCount = parentGen + subtaskGen;
+
+						const percent = calculateProgress(prog);
+						const progressBar = renderProgressBar(percent);
+						const phase = prog.phase || prog.currentPhase || 'generating';
+
+						let statusText = `${progressBar} ${percent}%`;
+						if (phase === 'generating_tasks' && totalParent > 0) {
+							statusText += ` • Generating tasks (${parentGen}/${totalParent})`;
+						} else if (phase === 'processing_tasks' && totalParent > 0) {
+							statusText += ` • Processing (${parentProc}/${totalParent})`;
+							if (subtaskGen > 0) {
+								statusText += ` • ${subtaskGen} subtasks`;
+							}
+						} else if (phase === 'generating_subtasks') {
+							statusText += ` • ${subtaskGen} subtasks generated`;
+						} else if (prog.message) {
+							statusText += ` • ${prog.message}`;
+						}
+
+						spinner.text = statusText;
+					}
+
+					// Check for completion states
+					if (status.status === 'ready' || status.status === 'completed') {
+						break;
+					}
+					if (status.status === 'failed') {
+						spinner.fail('Task generation failed');
+						const errorMsg =
+							status.error || 'Task generation failed on Hamster.';
+						console.error(chalk.red(`\n  ${errorMsg}\n`));
+						return;
+					}
+				}
+			} catch {
+				// Continue polling on error
+			}
+		}
+
+		// Check if we timed out while still generating
+		if (isStillGenerating(briefStatus)) {
+			spinner.warn('Task generation is still in progress');
+			console.log('');
+			console.log(
+				chalk.yellow('  Tasks are still being generated in the background.')
+			);
+			console.log(chalk.white('  Check the brief URL above for progress.'));
+		} else {
+			spinner.succeed(
+				taskCount > 0
+					? `Done! ${taskCount} tasks generated`
+					: 'Task generation complete'
+			);
+		}
+		console.log('');
+
+		// Show invitation results if any were sent
+		if (result.invitations && result.invitations.length > 0) {
+			console.log(chalk.cyan('  Collaborator Invitations:'));
+			for (const inv of result.invitations) {
+				if (inv.status === 'sent') {
+					console.log(chalk.green(`    ${inv.email}: Invitation sent`));
+				} else if (inv.status === 'already_member') {
+					console.log(chalk.gray(`    ${inv.email}: Already a team member`));
+				} else if (inv.status === 'failed') {
+					console.log(chalk.red(`    ${inv.email}: Failed to send`));
+				}
+			}
+			console.log('');
+		}
+
+		// Show invite URL for adding more teammates later
+		const urlMatch = result.brief.url.match(
+			/^(https?:\/\/[^/]+)\/home\/([^/]+)\/briefs\//
+		);
+		if (urlMatch) {
+			const [, baseUrl, orgSlug] = urlMatch;
+			const membersUrl = `${baseUrl}/home/${orgSlug}/members`;
+			const clickableMembersUrl = `\x1b]8;;${membersUrl}\x07${chalk.cyan.underline(membersUrl)}\x1b]8;;\x07`;
+			console.log(
+				chalk.gray('  Invite more teammates: ') + clickableMembersUrl
+			);
+			console.log('');
+		}
+
+		// Set context to the new brief
+		try {
+			// Extract org info from URL for complete context
+			const briefId = result.brief.id;
+			const briefUrl = result.brief.url;
+
+			// Try to get org info from the brief
+			const briefInfo = await tmCore.auth.getBrief(briefId);
+			const orgId = briefInfo?.organization_id || briefInfo?.orgId;
+			const orgSlug = urlMatch ? urlMatch[2] : undefined;
+
+			await authManager.setContext({
+				briefId,
+				briefUrl,
+				orgId,
+				orgSlug
+			});
+
+			console.log(
+				chalk.green('  ✓ ') +
+					chalk.white('Context set! Run ') +
+					chalk.cyan('tm list') +
+					chalk.white(' to see your tasks.')
+			);
+		} catch (contextError) {
+			console.log(
+				chalk.yellow('  Could not auto-set context. Run ') +
+					chalk.cyan(`tm context ${result.brief.url}`) +
+					chalk.yellow(' to connect.')
+			);
+		}
+		console.log('');
+	} catch (error) {
+		if (spinner?.isSpinning) spinner.fail('Failed');
+		console.error(chalk.red(`\n  Error: ${error.message}\n`));
 	}
 }
 
@@ -450,6 +883,14 @@ function registerCommands(programInstance) {
 
 			// Show current tag context
 			await displayCurrentTagIndicator(tag);
+
+			// Prompt about Hamster collaboration (only for local users)
+			const collaborationChoice = await promptHamsterCollaboration();
+			if (collaborationChoice === 'hamster') {
+				// User chose Hamster - send PRD to Hamster for brief creation
+				await handleParsePrdToHamster(file);
+				return;
+			}
 
 			// Helper function to check if there are existing tasks in the target tag and confirm overwrite
 			async function confirmOverwriteIfNeeded() {
