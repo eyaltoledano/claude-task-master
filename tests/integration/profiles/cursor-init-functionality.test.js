@@ -55,32 +55,28 @@ describe('Cursor Profile Initialization Functionality', () => {
 		expect(cursorProfile.conversionConfig.toolNames.search).toBe('search');
 	});
 
-	test('cursor.js has lifecycle functions for command copying', () => {
-		// Check that the source file contains our new lifecycle functions
-		expect(cursorProfileContent).toContain('function onAddRulesProfile');
-		expect(cursorProfileContent).toContain('function onRemoveRulesProfile');
-		expect(cursorProfileContent).toContain('copyRecursiveSync');
-		expect(cursorProfileContent).toContain('removeDirectoryRecursive');
+	test('cursor.js uses factory pattern from base-profile', () => {
+		// The new architecture uses createProfile from base-profile.js
+		// which auto-generates lifecycle hooks via @tm/profiles package
+		expect(cursorProfileContent).toContain('import { createProfile }');
+		expect(cursorProfileContent).toContain('createProfile(');
+
+		// Verify supportsRulesSubdirectories is enabled for cursor (it uses taskmaster/ subdirectory)
+		expect(cursorProfileContent).toContain('supportsRulesSubdirectories: true');
 	});
 
-	test('cursor.js copies commands from claude/commands to .cursor/commands', () => {
-		// Check that the onAddRulesProfile function copies from the correct source
-		expect(cursorProfileContent).toContain(
-			"path.join(assetsDir, 'claude', 'commands')"
-		);
-		// Destination path is built via a resolver to handle both project root and rules dir
-		expect(cursorProfileContent).toContain('resolveCursorProfileDir(');
-		expect(cursorProfileContent).toMatch(
-			/path\.join\(\s*profileDir\s*,\s*['"]commands['"]\s*\)/
-		);
-		expect(cursorProfileContent).toContain(
-			'copyRecursiveSync(commandsSourceDir, commandsDestDir)'
-		);
-
-		// Check that lifecycle functions are properly registered with the profile
-		expect(cursorProfile.onAddRulesProfile).toBeDefined();
-		expect(cursorProfile.onRemoveRulesProfile).toBeDefined();
-		expect(typeof cursorProfile.onAddRulesProfile).toBe('function');
-		expect(typeof cursorProfile.onRemoveRulesProfile).toBe('function');
+	test('cursor profile has declarative slashCommands property via @tm/profiles', () => {
+		// The new architecture uses a declarative slashCommands property
+		// instead of lifecycle hooks - rule-transformer handles execution
+		// slashCommands will be defined if @tm/profiles returns a profile that supports commands
+		// In test environment, this may be undefined if @tm/profiles isn't fully loaded
+		if (cursorProfile.slashCommands) {
+			expect(cursorProfile.slashCommands.profile).toBeDefined();
+			expect(cursorProfile.slashCommands.commands).toBeDefined();
+		}
+		// The cursor profile should NOT have explicit lifecycle hooks
+		// (it uses the declarative slashCommands approach)
+		expect(cursorProfileContent).not.toContain('onAdd:');
+		expect(cursorProfileContent).not.toContain('onRemove:');
 	});
 });

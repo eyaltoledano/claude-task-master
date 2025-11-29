@@ -27,10 +27,26 @@ await jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	isSilentMode: () => false
 }));
 
+// Mock @tm/profiles to control slash command behavior in tests
+const mockAddSlashCommands = jest.fn();
+const mockRemoveSlashCommands = jest.fn();
+const mockProfile = {
+	name: 'cursor',
+	displayName: 'Cursor',
+	commandsDir: '.cursor/commands',
+	supportsCommands: true,
+	addSlashCommands: mockAddSlashCommands,
+	removeSlashCommands: mockRemoveSlashCommands
+};
+
+await jest.unstable_mockModule('@tm/profiles', () => ({
+	getProfile: jest.fn(() => mockProfile),
+	allCommands: [{ metadata: { name: 'help' }, content: 'Help content' }],
+	resolveProjectRoot: jest.fn((targetDir) => targetDir)
+}));
+
 // Import the cursor profile after mocking
-const { cursorProfile, onAddRulesProfile, onRemoveRulesProfile } = await import(
-	'../../../src/profiles/cursor.js'
-);
+const { cursorProfile } = await import('../../../src/profiles/cursor.js');
 
 describe('Cursor Integration', () => {
 	let tempDir;
@@ -95,126 +111,137 @@ describe('Cursor Integration', () => {
 		);
 	});
 
-	test('cursor profile has lifecycle functions for command copying', () => {
-		// Assert that the profile exports the lifecycle functions
-		expect(typeof onAddRulesProfile).toBe('function');
-		expect(typeof onRemoveRulesProfile).toBe('function');
-		expect(cursorProfile.onAddRulesProfile).toBe(onAddRulesProfile);
-		expect(cursorProfile.onRemoveRulesProfile).toBe(onRemoveRulesProfile);
+	test('cursor profile has declarative slash commands configuration', () => {
+		// The new architecture uses declarative slashCommands property
+		// instead of lifecycle hooks - rule-transformer handles execution
+		expect(cursorProfile.slashCommands).toBeDefined();
+		expect(cursorProfile.slashCommands.profile).toBeDefined();
+		expect(cursorProfile.slashCommands.commands).toBeDefined();
+		expect(cursorProfile.slashCommands.profile.supportsCommands).toBe(true);
 	});
 
-	describe('command copying lifecycle', () => {
-		let mockAssetsDir;
+	test('cursor profile has correct basic configuration', () => {
+		expect(cursorProfile.profileName).toBe('cursor');
+		expect(cursorProfile.displayName).toBe('Cursor');
+		expect(cursorProfile.profileDir).toBe('.cursor');
+		expect(cursorProfile.rulesDir).toBe('.cursor/rules');
+		expect(cursorProfile.supportsRulesSubdirectories).toBe(true);
+	});
+
+	describe('slash commands via slashCommands property', () => {
 		let mockTargetDir;
 
 		beforeEach(() => {
-			mockAssetsDir = path.join(tempDir, 'assets');
 			mockTargetDir = path.join(tempDir, 'target');
 
 			// Reset all mocks
 			jest.clearAllMocks();
+			mockAddSlashCommands.mockReset();
+			mockRemoveSlashCommands.mockReset();
 
-			// Mock fs methods for the lifecycle functions
-			jest.spyOn(fs, 'existsSync').mockImplementation((filePath) => {
-				const pathStr = filePath.toString();
-				if (pathStr.includes('claude/commands')) {
-					return true; // Mock that source commands exist
-				}
-				return false;
+			// Default mock return values
+			mockAddSlashCommands.mockReturnValue({
+				success: true,
+				count: 10,
+				directory: path.join(mockTargetDir, '.cursor', 'commands', 'tm'),
+				files: ['help.md', 'next-task.md']
 			});
-
-			jest.spyOn(fs, 'mkdirSync').mockImplementation(() => {});
-			jest.spyOn(fs, 'readdirSync').mockImplementation(() => ['tm']);
-			jest
-				.spyOn(fs, 'statSync')
-				.mockImplementation(() => ({ isDirectory: () => true }));
-			jest.spyOn(fs, 'copyFileSync').mockImplementation(() => {});
-			jest.spyOn(fs, 'rmSync').mockImplementation(() => {});
+			mockRemoveSlashCommands.mockReturnValue({
+				success: true,
+				count: 10,
+				directory: path.join(mockTargetDir, '.cursor', 'commands', 'tm'),
+				files: ['help.md', 'next-task.md']
+			});
 		});
 
 		afterEach(() => {
 			jest.restoreAllMocks();
 		});
 
-		test('onAddRulesProfile copies commands from assets to .cursor/commands', () => {
-			// Detect if cpSync exists and set up appropriate spy
-			if (fs.cpSync) {
-				const cpSpy = jest.spyOn(fs, 'cpSync').mockImplementation(() => {});
-
-				// Act
-				onAddRulesProfile(mockTargetDir, mockAssetsDir);
-
-				// Assert
-				expect(fs.existsSync).toHaveBeenCalledWith(
-					path.join(mockAssetsDir, 'claude', 'commands')
-				);
-				expect(cpSpy).toHaveBeenCalledWith(
-					path.join(mockAssetsDir, 'claude', 'commands'),
-					path.join(mockTargetDir, '.cursor', 'commands'),
-					expect.objectContaining({ recursive: true, force: true })
-				);
-			} else {
-				// Act
-				onAddRulesProfile(mockTargetDir, mockAssetsDir);
-
-				// Assert
-				expect(fs.existsSync).toHaveBeenCalledWith(
-					path.join(mockAssetsDir, 'claude', 'commands')
-				);
-				expect(fs.mkdirSync).toHaveBeenCalledWith(
-					path.join(mockTargetDir, '.cursor', 'commands'),
-					{ recursive: true }
-				);
-				expect(fs.copyFileSync).toHaveBeenCalled();
-			}
-		});
-
-		test('onAddRulesProfile handles missing source directory gracefully', () => {
-			// Arrange - mock source directory not existing
-			jest.spyOn(fs, 'existsSync').mockImplementation(() => false);
+		test('slashCommands.profile can add slash commands', () => {
+			// The rule-transformer uses slashCommands.profile.addSlashCommands
+			const { profile, commands } = cursorProfile.slashCommands;
 
 			// Act
-			onAddRulesProfile(mockTargetDir, mockAssetsDir);
+			profile.addSlashCommands(mockTargetDir, commands);
 
-			// Assert - should not attempt to copy anything
-			expect(fs.mkdirSync).not.toHaveBeenCalled();
-			expect(fs.copyFileSync).not.toHaveBeenCalled();
-		});
-
-		test('onRemoveRulesProfile removes .cursor/commands directory', () => {
-			// Arrange - mock directory exists
-			jest.spyOn(fs, 'existsSync').mockImplementation(() => true);
-
-			// Act
-			onRemoveRulesProfile(mockTargetDir);
-
-			// Assert
-			expect(fs.rmSync).toHaveBeenCalledWith(
-				path.join(mockTargetDir, '.cursor', 'commands'),
-				{ recursive: true, force: true }
+			// Assert - mock was called
+			expect(mockAddSlashCommands).toHaveBeenCalledWith(
+				mockTargetDir,
+				commands
 			);
 		});
 
-		test('onRemoveRulesProfile handles missing directory gracefully', () => {
-			// Arrange - mock directory doesn't exist
-			jest.spyOn(fs, 'existsSync').mockImplementation(() => false);
-
-			// Act
-			onRemoveRulesProfile(mockTargetDir);
-
-			// Assert - should still return true but not attempt removal
-			expect(fs.rmSync).not.toHaveBeenCalled();
-		});
-
-		test('onRemoveRulesProfile handles removal errors gracefully', () => {
-			// Arrange - mock directory exists but removal fails
-			jest.spyOn(fs, 'existsSync').mockImplementation(() => true);
-			jest.spyOn(fs, 'rmSync').mockImplementation(() => {
-				throw new Error('Permission denied');
+		test('slashCommands.profile handles add errors gracefully', () => {
+			// Arrange - mock addSlashCommands failure
+			mockAddSlashCommands.mockReturnValue({
+				success: false,
+				count: 0,
+				directory: '',
+				files: [],
+				error: 'Permission denied'
 			});
 
-			// Act & Assert - should not throw
-			expect(() => onRemoveRulesProfile(mockTargetDir)).not.toThrow();
+			const { profile, commands } = cursorProfile.slashCommands;
+
+			// Act - should not throw
+			const result = profile.addSlashCommands(mockTargetDir, commands);
+
+			// Assert
+			expect(result.success).toBe(false);
+			expect(result.error).toBe('Permission denied');
+		});
+
+		test('slashCommands.profile can remove slash commands', () => {
+			const { profile, commands } = cursorProfile.slashCommands;
+
+			// Act
+			profile.removeSlashCommands(mockTargetDir, commands);
+
+			// Assert - mock was called
+			expect(mockRemoveSlashCommands).toHaveBeenCalledWith(
+				mockTargetDir,
+				commands
+			);
+		});
+
+		test('slashCommands.profile handles remove with missing directory gracefully', () => {
+			// Arrange - mock removeSlashCommands returns success with 0 count
+			mockRemoveSlashCommands.mockReturnValue({
+				success: true,
+				count: 0,
+				directory: path.join(mockTargetDir, '.cursor', 'commands', 'tm'),
+				files: []
+			});
+
+			const { profile, commands } = cursorProfile.slashCommands;
+
+			// Act
+			const result = profile.removeSlashCommands(mockTargetDir, commands);
+
+			// Assert
+			expect(result.success).toBe(true);
+			expect(result.count).toBe(0);
+		});
+
+		test('slashCommands.profile handles remove errors gracefully', () => {
+			// Arrange - mock removeSlashCommands failure
+			mockRemoveSlashCommands.mockReturnValue({
+				success: false,
+				count: 0,
+				directory: '',
+				files: [],
+				error: 'Permission denied'
+			});
+
+			const { profile, commands } = cursorProfile.slashCommands;
+
+			// Act
+			const result = profile.removeSlashCommands(mockTargetDir, commands);
+
+			// Assert
+			expect(result.success).toBe(false);
+			expect(result.error).toBe('Permission denied');
 		});
 	});
 });

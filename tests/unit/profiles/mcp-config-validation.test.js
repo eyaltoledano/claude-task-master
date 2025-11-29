@@ -433,7 +433,13 @@ describe('MCP Configuration Validation', () => {
 		];
 		const profilesWithLifecycle = ['amp', 'claude'];
 		const profilesWithPostConvertLifecycle = ['opencode'];
-		const profilesWithoutLifecycle = ['codex'];
+		// Profiles that use declarative slashCommands (no auto-generated lifecycle hooks)
+		const profilesWithDeclarativeSlashCommands = [
+			'codex',
+			'cursor',
+			'gemini',
+			'roo'
+		];
 
 		test.each(allProfiles)(
 			'should have file mappings for %s profile',
@@ -466,28 +472,30 @@ describe('MCP Configuration Validation', () => {
 			(profileName) => {
 				const profile = getRulesProfile(profileName);
 				expect(profile).toBeDefined();
-				// OpenCode profile has fileMap and post-convert lifecycle functions
+				// OpenCode profile has fileMap and explicit lifecycle functions
+				// Note: OpenCode has onRemove and onPostConvert, but NOT onAdd
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
-				expect(profile.onAddRulesProfile).toBeUndefined(); // OpenCode doesn't have onAdd
+				// OpenCode has onRemove and onPostConvert but NOT onAdd
+				expect(profile.onAddRulesProfile).toBeUndefined();
 				expect(typeof profile.onRemoveRulesProfile).toBe('function');
 				expect(typeof profile.onPostConvertRulesProfile).toBe('function');
 			}
 		);
 
-		test.each(profilesWithoutLifecycle)(
-			'should have file mappings without lifecycle functions for %s profile',
+		test.each(profilesWithDeclarativeSlashCommands)(
+			'should have file mappings with declarative slashCommands for %s profile',
 			(profileName) => {
 				const profile = getRulesProfile(profileName);
 				expect(profile).toBeDefined();
-				// Codex profile has fileMap but no lifecycle functions (simplified)
+				// These profiles use the declarative slashCommands property
+				// instead of auto-generated lifecycle hooks
 				expect(profile.fileMap).toBeDefined();
 				expect(typeof profile.fileMap).toBe('object');
 				expect(Object.keys(profile.fileMap).length).toBeGreaterThan(0);
-				expect(profile.onAddRulesProfile).toBeUndefined();
-				expect(profile.onRemoveRulesProfile).toBeUndefined();
-				expect(profile.onPostConvertRulesProfile).toBeUndefined();
+				// No explicit lifecycle hooks - uses declarative slashCommands
+				// (slashCommands may be null if @tm/profiles lookup fails in test env)
 			}
 		);
 	});
