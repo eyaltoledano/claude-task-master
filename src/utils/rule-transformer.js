@@ -318,6 +318,32 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 		}
 	}
 
+	// 5. Add slash commands (if profile supports them)
+	if (profile.slashCommands) {
+		try {
+			const result = profile.slashCommands.profile.addSlashCommands(
+				projectRoot,
+				profile.slashCommands.commands
+			);
+			if (result.success) {
+				log(
+					'debug',
+					`[Rule Transformer] Created ${result.count} slash commands in ${result.directory}`
+				);
+			} else {
+				log(
+					'error',
+					`[Rule Transformer] Failed to add slash commands for ${profile.profileName}: ${result.error}`
+				);
+			}
+		} catch (error) {
+			log(
+				'error',
+				`[Rule Transformer] Slash commands failed for ${profile.profileName}: ${error.message}`
+			);
+		}
+	}
+
 	// Ensure we return at least 1 success for profiles that only use lifecycle functions
 	return { success: Math.max(success, 1), failed };
 }
@@ -493,7 +519,33 @@ export function removeProfileRules(projectRoot, profile) {
 			}
 		}
 
-		// 4. Check if we should remove the entire profile directory
+		// 4. Remove slash commands (if profile supports them)
+		if (profile.slashCommands) {
+			try {
+				const slashResult = profile.slashCommands.profile.removeSlashCommands(
+					projectRoot,
+					profile.slashCommands.commands
+				);
+				if (slashResult.success && slashResult.count > 0) {
+					log(
+						'debug',
+						`[Rule Transformer] Removed ${slashResult.count} slash commands for ${profile.profileName}`
+					);
+				} else if (!slashResult.success) {
+					log(
+						'error',
+						`[Rule Transformer] Failed to remove slash commands for ${profile.profileName}: ${slashResult.error}`
+					);
+				}
+			} catch (error) {
+				log(
+					'error',
+					`[Rule Transformer] Slash command cleanup failed for ${profile.profileName}: ${error.message}`
+				);
+			}
+		}
+
+		// 5. Check if we should remove the entire profile directory
 		if (fs.existsSync(profileDir)) {
 			const remainingContents = fs.readdirSync(profileDir);
 			if (remainingContents.length === 0 && profile.profileDir !== '.') {

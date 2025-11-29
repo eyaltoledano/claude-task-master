@@ -1,0 +1,7 @@
+/**
+ * @fileoverview TaskMaster Profiles Package
+ * Provides slash commands and formatters for different editor profiles.
+ */
+
+// Re-export everything from slash-commands module
+export * from './slash-commands/index.js';
