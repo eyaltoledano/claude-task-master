@@ -7,6 +7,7 @@
  */
 
 import {
+	AUTH_TIMEOUT_MS,
 	type AuthCredentials,
 	AuthDomain,
 	AuthenticationError
@@ -14,8 +15,12 @@ import {
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import open from 'open';
-import ora, { type Ora } from 'ora';
-import * as ui from './ui.js';
+import {
+	AuthCountdownTimer,
+	displayAuthInstructions,
+	displayWaitingForAuth,
+	handleMFAFlow
+} from './auth-ui.js';
 
 /**
  * Options for the auth guard
@@ -129,54 +134,7 @@ export async function ensureAuthenticated(
 async function authenticateWithBrowser(
 	authDomain: AuthDomain
 ): Promise<AuthCredentials> {
-	// 10 minute timeout to allow for email confirmation during sign-up
-	const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
-	let countdownInterval: NodeJS.Timeout | null = null;
-	let countdownSpinner: Ora | null = null;
-
-	const startCountdown = (totalMs: number) => {
-		const startTime = Date.now();
-		const endTime = startTime + totalMs;
-
-		const updateCountdown = () => {
-			const remaining = Math.max(0, endTime - Date.now());
-			const mins = Math.floor(remaining / 60000);
-			const secs = Math.floor((remaining % 60000) / 1000);
-			const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-			if (countdownSpinner) {
-				countdownSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
-			}
-
-			if (remaining <= 0 && countdownInterval) {
-				clearInterval(countdownInterval);
-			}
-		};
-
-		countdownSpinner = ora({
-			text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
-			spinner: 'dots'
-		}).start();
-
-		countdownInterval = setInterval(updateCountdown, 1000);
-	};
-
-	const stopCountdown = (success: boolean | 'mfa') => {
-		if (countdownInterval) {
-			clearInterval(countdownInterval);
-			countdownInterval = null;
-		}
-		if (countdownSpinner) {
-			if (success === 'mfa') {
-				countdownSpinner.stop(); // MFA required, not success/failure
-			} else if (success) {
-				countdownSpinner.succeed('Authentication successful!');
-			} else {
-				countdownSpinner.fail('Authentication failed');
-			}
-			countdownSpinner = null;
-		}
-	};
+	const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
 
 	try {
 		const credentials = await authDomain.authenticateWithOAuth({
@@ -188,33 +146,23 @@ async function authenticateWithBrowser(
 
 			// Callback when auth URL is ready
 			onAuthUrl: (authUrl: string) => {
-				console.log(chalk.blue.bold('\n[auth] Browser Authentication\n'));
-				console.log(chalk.white('  Opening your browser to authenticate...'));
-				console.log(chalk.gray("  If the browser doesn't open, visit:"));
-				console.log(chalk.cyan.underline(`  ${authUrl}\n`));
+				displayAuthInstructions(authUrl);
 			},
 
 			// Callback when waiting for authentication
 			onWaitingForAuth: () => {
-				console.log(
-					chalk.dim(
-						'  If you signed up, check your email to confirm your account.'
-					)
-				);
-				console.log(
-					chalk.dim('  The CLI will automatically detect when you log in.\n')
-				);
-				startCountdown(AUTH_TIMEOUT_MS);
+				displayWaitingForAuth();
+				countdownTimer.start();
 			},
 
 			// Callback on success
 			onSuccess: () => {
-				stopCountdown(true);
+				countdownTimer.stop('success');
 			},
 
 			// Callback on error
 			onError: () => {
-				stopCountdown(false);
+				countdownTimer.stop('failure');
 			}
 		});
 
@@ -223,111 +171,28 @@ async function authenticateWithBrowser(
 		// Check if MFA is required BEFORE showing failure message
 		if (error instanceof AuthenticationError && error.code === 'MFA_REQUIRED') {
 			// Stop spinner without showing failure - MFA is required, not a failure
-			stopCountdown('mfa');
+			countdownTimer.stop('mfa');
 
-			// MFA is required - prompt the user for their MFA code
-			return handleMFAVerification(authDomain, error);
+			if (!error.mfaChallenge?.factorId) {
+				throw new AuthenticationError(
+					'MFA challenge information missing',
+					'MFA_VERIFICATION_FAILED'
+				);
+			}
+
+			// Use shared MFA flow handler
+			return handleMFAFlow(
+				authDomain.verifyMFAWithRetry.bind(authDomain),
+				error.mfaChallenge.factorId
+			);
 		}
 
-		stopCountdown(false);
+		countdownTimer.stop('failure');
 		throw error;
 	} finally {
 		// Ensure cleanup
-		if (countdownInterval) {
-			clearInterval(countdownInterval);
-		}
+		countdownTimer.cleanup();
 	}
-}
-
-/**
- * Handle MFA verification flow
- * Prompts user for 6-digit code and verifies with retry support
- */
-async function handleMFAVerification(
-	authDomain: AuthDomain,
-	mfaError: AuthenticationError
-): Promise<AuthCredentials> {
-	if (!mfaError.mfaChallenge?.factorId) {
-		throw new AuthenticationError(
-			'MFA challenge information missing',
-			'MFA_VERIFICATION_FAILED'
-		);
-	}
-
-	const { factorId } = mfaError.mfaChallenge;
-
-	console.log(
-		chalk.yellow('\n⚠️  Multi-factor authentication is enabled on your account')
-	);
-	console.log(
-		chalk.white('  Please enter the 6-digit code from your authenticator app\n')
-	);
-
-	// Use AuthDomain's retry logic - presentation layer just handles UI
-	const result = await authDomain.verifyMFAWithRetry(
-		factorId,
-		async () => {
-			// Prompt for MFA code
-			try {
-				const response = await inquirer.prompt([
-					{
-						type: 'input',
-						name: 'mfaCode',
-						message: 'Enter your 6-digit MFA code:',
-						validate: (input: string) => {
-							const trimmed = (input || '').trim();
-
-							if (trimmed.length === 0) {
-								return 'MFA code cannot be empty';
-							}
-
-							if (!/^\d{6}$/.test(trimmed)) {
-								return 'MFA code must be exactly 6 digits (0-9)';
-							}
-
-							return true;
-						}
-					}
-				]);
-
-				return response.mfaCode.trim();
-			} catch (error: any) {
-				// Handle user cancellation (Ctrl+C)
-				if (
-					error.name === 'ExitPromptError' ||
-					error.message?.includes('force closed')
-				) {
-					ui.displayWarning(' MFA verification cancelled by user');
-					throw new AuthenticationError(
-						'MFA verification cancelled',
-						'MFA_VERIFICATION_FAILED'
-					);
-				}
-				throw error;
-			}
-		},
-		{
-			maxAttempts: 3,
-			onInvalidCode: (_attempt: number, remaining: number) => {
-				// Callback invoked when invalid code is entered
-				if (remaining > 0) {
-					ui.displayError(`Invalid MFA code. Please try again.`);
-				}
-			}
-		}
-	);
-
-	// Handle result from core
-	if (result.success && result.credentials) {
-		console.log(chalk.green('\n✓ MFA verification successful!'));
-		return result.credentials;
-	}
-
-	// Show error with attempt count
-	throw new AuthenticationError(
-		`MFA verification failed after ${result.attemptsUsed} attempts`,
-		'MFA_VERIFICATION_FAILED'
-	);
 }
 
 /**

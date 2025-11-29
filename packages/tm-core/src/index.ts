@@ -90,6 +90,8 @@ export { AuthenticationError } from './modules/auth/types.js';
 
 // Auth constants
 export {
+	AUTH_TIMEOUT_MS,
+	MFA_MAX_ATTEMPTS,
 	LOCAL_ONLY_COMMANDS,
 	type LocalOnlyCommand
 } from './modules/auth/index.js';

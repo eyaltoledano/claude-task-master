@@ -7,6 +7,7 @@ import fs from 'fs';
 import readline from 'readline';
 // Import brand banner from @tm/cli
 import { ui } from '@tm/cli';
+import { AuthManager } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
@@ -81,10 +82,8 @@ async function displayCurrentTagIndicator(tag, options = {}) {
 	if (skipIfMaster && tag === 'master') return;
 
 	// Auto-detect storage type and brief info if not provided
-	// Dynamic import is used to avoid circular dependencies with @tm/core
 	if (!storageType || !briefInfo) {
 		try {
-			const { AuthManager } = await import('@tm/core');
 			const authManager = AuthManager.getInstance();
 			const context = authManager.getContext();
 

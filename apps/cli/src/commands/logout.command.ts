@@ -1,24 +1,24 @@
 /**
  * @fileoverview Logout command - alias for 'auth logout'
- * Provides a convenient shorthand for logging out
+ * Provides a convenient shorthand for logging out.
+ *
+ * This is a thin wrapper that delegates to AuthCommand.
  */
 
-import { AuthManager } from '@tm/core';
 import { Command } from 'commander';
-import ora from 'ora';
-import { displayError } from '../utils/error-handler.js';
-import * as ui from '../utils/ui.js';
+import { AuthCommand } from './auth.command.js';
 
 /**
  * LogoutCommand - Shorthand alias for 'tm auth logout'
+ * Reuses AuthCommand's logout functionality to avoid code duplication.
  */
 export class LogoutCommand extends Command {
-	private authManager: AuthManager;
+	private authCommand: AuthCommand;
 
 	constructor(name?: string) {
 		super(name || 'logout');
 
-		this.authManager = AuthManager.getInstance();
+		this.authCommand = new AuthCommand();
 
 		this.description('Logout from Hamster (alias for "auth logout")');
 
@@ -31,38 +31,9 @@ Examples:
 		);
 
 		this.action(async () => {
-			await this.executeLogout();
+			// Delegate to AuthCommand's executeLogout
+			await this.authCommand.executeLogout();
 		});
-	}
-
-	/**
-	 * Execute logout
-	 */
-	private async executeLogout(): Promise<void> {
-		const spinner = ora('Logging out...').start();
-
-		try {
-			await this.authManager.logout();
-			spinner.succeed('Logged out successfully');
-			ui.displaySuccess('You have been logged out');
-		} catch (error) {
-			spinner.fail('Logout failed');
-			this.handleAuthError(error);
-			process.exit(1);
-		}
-	}
-
-	/**
-	 * Handle authentication errors
-	 */
-	private handleAuthError(error: unknown): void {
-		if (error instanceof Error) {
-			displayError(error);
-		} else {
-			displayError(
-				new Error(String(error ?? 'An unknown error occurred during logout'))
-			);
-		}
 	}
 
 	/**

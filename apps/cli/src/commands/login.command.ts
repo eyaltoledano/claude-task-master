@@ -1,27 +1,24 @@
 /**
  * @fileoverview Login command - alias for 'auth login'
- * Provides a convenient shorthand for authentication
+ * Provides a convenient shorthand for authentication.
+ *
+ * This is a thin wrapper that delegates to AuthCommand.
  */
 
-import { AuthManager, AuthenticationError } from '@tm/core';
-import chalk from 'chalk';
 import { Command } from 'commander';
-import inquirer from 'inquirer';
-import open from 'open';
-import ora, { type Ora } from 'ora';
-import { displayError } from '../utils/error-handler.js';
-import * as ui from '../utils/ui.js';
+import { AuthCommand } from './auth.command.js';
 
 /**
  * LoginCommand - Shorthand alias for 'tm auth login'
+ * Reuses AuthCommand's login functionality to avoid code duplication.
  */
 export class LoginCommand extends Command {
-	private authManager: AuthManager;
+	private authCommand: AuthCommand;
 
 	constructor(name?: string) {
 		super(name || 'login');
 
-		this.authManager = AuthManager.getInstance();
+		this.authCommand = new AuthCommand();
 
 		this.description('Login to Hamster (alias for "auth login")');
 		this.argument(
@@ -41,293 +38,9 @@ Examples:
 		);
 
 		this.action(async (token?: string, options?: { yes?: boolean }) => {
-			await this.executeLogin(token, options?.yes);
+			// Delegate to AuthCommand's executeLogin
+			await this.authCommand.executeLogin(token, options?.yes, true);
 		});
-	}
-
-	/**
-	 * Execute login
-	 */
-	private async executeLogin(token?: string, yes?: boolean): Promise<void> {
-		try {
-			const result = token
-				? await this.performTokenAuth(token, yes)
-				: await this.performInteractiveAuth(yes);
-
-			if (!result.success) {
-				process.exit(1);
-			}
-
-			// Exit cleanly after successful authentication
-			setTimeout(() => {
-				process.exit(0);
-			}, 100);
-		} catch (error) {
-			this.handleAuthError(error);
-			process.exit(1);
-		}
-	}
-
-	/**
-	 * Perform token-based authentication
-	 */
-	private async performTokenAuth(
-		token: string,
-		skipPrompts?: boolean
-	): Promise<{ success: boolean; message?: string }> {
-		const spinner = ora('Authenticating with token...').start();
-
-		try {
-			await this.authManager.authenticateWithCode(token);
-			spinner.succeed('Authenticated successfully');
-			ui.displaySuccess('You are now logged in');
-			return { success: true };
-		} catch (error) {
-			spinner.fail('Authentication failed');
-
-			// Check for MFA required error
-			if (
-				error instanceof AuthenticationError &&
-				error.code === 'MFA_REQUIRED'
-			) {
-				spinner.stop();
-				const factorId = error.mfaChallenge?.factorId;
-				if (!factorId) {
-					throw new Error('MFA required but no factor ID provided');
-				}
-				return this.handleMFAVerification(factorId, skipPrompts);
-			}
-
-			throw error;
-		}
-	}
-
-	/**
-	 * Perform interactive browser-based authentication
-	 */
-	private async performInteractiveAuth(
-		skipPrompts?: boolean
-	): Promise<{ success: boolean; message?: string }> {
-		let spinner: Ora | null = null;
-
-		try {
-			// Check if already authenticated
-			if (await this.authManager.hasValidSession()) {
-				const credentials = await this.authManager.getAuthCredentials();
-				ui.displayInfo(
-					`Already authenticated as ${credentials?.email || 'unknown user'}`
-				);
-
-				if (!skipPrompts) {
-					const response = await inquirer.prompt<{ reauth: boolean }>([
-						{
-							type: 'confirm',
-							name: 'reauth',
-							message: 'Re-authenticate?',
-							default: false
-						}
-					]);
-
-					if (!response.reauth) {
-						return { success: true, message: 'Already authenticated' };
-					}
-				}
-			}
-
-			// Start browser auth flow
-			spinner = ora('Starting browser authentication...').start();
-
-			// 10 minute timeout to allow for email confirmation during sign-up
-			const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
-			let countdownInterval: NodeJS.Timeout | null = null;
-			let countdownSpinner: ReturnType<typeof ora> | null = null;
-
-			const startCountdown = (totalMs: number) => {
-				const startTime = Date.now();
-				const endTime = startTime + totalMs;
-
-				const updateCountdown = () => {
-					const remaining = Math.max(0, endTime - Date.now());
-					const mins = Math.floor(remaining / 60000);
-					const secs = Math.floor((remaining % 60000) / 1000);
-					const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-					if (countdownSpinner) {
-						countdownSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
-					}
-
-					if (remaining <= 0 && countdownInterval) {
-						clearInterval(countdownInterval);
-					}
-				};
-
-				countdownSpinner = ora({
-					text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
-					spinner: 'dots'
-				}).start();
-
-				countdownInterval = setInterval(updateCountdown, 1000);
-			};
-
-			const stopCountdown = (success: boolean) => {
-				if (countdownInterval) {
-					clearInterval(countdownInterval);
-					countdownInterval = null;
-				}
-				if (countdownSpinner) {
-					if (success) {
-						countdownSpinner.succeed('Authentication successful!');
-					} else {
-						countdownSpinner.fail('Authentication failed');
-					}
-					countdownSpinner = null;
-				}
-			};
-
-			try {
-				await this.authManager.authenticateWithOAuth({
-					timeout: AUTH_TIMEOUT_MS,
-					onAuthUrl: async (url: string) => {
-						spinner?.succeed('Opening browser for authentication');
-						console.log(chalk.gray(`  ${url}`));
-
-						try {
-							await open(url);
-						} catch {
-							console.log(
-								chalk.yellow('\n  Could not open browser automatically.')
-							);
-							console.log(
-								chalk.yellow('  Please open the URL above manually.\n')
-							);
-						}
-					},
-					onWaitingForAuth: () => {
-						console.log(
-							chalk.dim(
-								'\n  If you signed up, check your email to confirm your account.'
-							)
-						);
-						console.log(
-							chalk.dim(
-								'  The CLI will automatically detect when you log in.\n'
-							)
-						);
-						startCountdown(AUTH_TIMEOUT_MS);
-					},
-					onSuccess: () => {
-						stopCountdown(true);
-					},
-					onError: () => {
-						stopCountdown(false);
-					}
-				});
-
-				return { success: true };
-			} catch (error) {
-				stopCountdown(false);
-				throw error;
-			} finally {
-				// Ensure cleanup even if something unexpected happens
-				if (countdownInterval) {
-					clearInterval(countdownInterval);
-				}
-			}
-		} catch (error) {
-			if (spinner?.isSpinning) {
-				spinner.fail('Authentication failed');
-			}
-
-			// Check for MFA required error
-			if (
-				error instanceof AuthenticationError &&
-				error.code === 'MFA_REQUIRED'
-			) {
-				const factorId = error.mfaChallenge?.factorId;
-				if (!factorId) {
-					throw new Error('MFA required but no factor ID provided');
-				}
-				return this.handleMFAVerification(factorId, skipPrompts);
-			}
-
-			throw error;
-		}
-	}
-
-	/**
-	 * Handle MFA verification flow
-	 */
-	private async handleMFAVerification(
-		factorId: string,
-		skipPrompts?: boolean
-	): Promise<{ success: boolean; message?: string }> {
-		console.log(chalk.yellow('\nMulti-factor authentication required'));
-
-		if (skipPrompts) {
-			ui.displayError(
-				'MFA verification required but running in non-interactive mode'
-			);
-			return { success: false, message: 'MFA required but skipped' };
-		}
-
-		try {
-			const result = await this.authManager.verifyMFAWithRetry(
-				factorId,
-				async () => {
-					const response = await inquirer.prompt<{ code: string }>([
-						{
-							type: 'input',
-							name: 'code',
-							message: 'Enter verification code:',
-							validate: (input: string) => {
-								if (!input || input.trim().length === 0) {
-									return 'Verification code is required';
-								}
-								if (!/^\d{6}$/.test(input.trim())) {
-									return 'Please enter a 6-digit code';
-								}
-								return true;
-							}
-						}
-					]);
-					return response.code.trim();
-				},
-				{
-					maxAttempts: 3,
-					onInvalidCode: (_attempt, remaining) => {
-						console.log(
-							chalk.yellow(`Invalid code. ${remaining} attempts remaining.`)
-						);
-					}
-				}
-			);
-
-			if (result.success) {
-				ui.displaySuccess('MFA verification successful');
-				return { success: true };
-			} else {
-				ui.displayError('MFA verification failed after maximum attempts');
-				return { success: false, message: 'MFA verification failed' };
-			}
-		} catch (error) {
-			if (error instanceof AuthenticationError) {
-				ui.displayError(`MFA verification failed: ${error.message}`);
-			}
-			return { success: false, message: 'MFA verification failed' };
-		}
-	}
-
-	/**
-	 * Handle authentication errors
-	 */
-	private handleAuthError(error: unknown): void {
-		if (error instanceof Error) {
-			displayError(error);
-		} else {
-			displayError(
-				new Error(String(error ?? 'An unknown authentication error occurred'))
-			);
-		}
 	}
 
 	/**

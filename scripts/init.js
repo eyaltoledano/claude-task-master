@@ -18,11 +18,14 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { ui } from '@tm/cli';
+import { AuthManager, AUTH_TIMEOUT_MS } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
 import inquirer from 'inquirer';
+import open from 'open';
+import ora from 'ora';
 import { RULE_PROFILES } from '../src/constants/profiles.js';
 import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import {
@@ -408,8 +411,6 @@ async function initializeProject(options = {}) {
 			let authCredentials = null;
 			if (selectedStorage === 'cloud') {
 				try {
-					// Import AuthManager from @tm/core
-					const { AuthManager } = await import('@tm/core');
 					const authManager = AuthManager.getInstance();
 
 					// Check if already authenticated
@@ -429,13 +430,6 @@ async function initializeProject(options = {}) {
 						console.log(
 							chalk.gray('  This enables sync across devices with Hamster.\n')
 						);
-
-						// Import open and ora for browser opening and spinner
-						const { default: open } = await import('open');
-						const { default: ora } = await import('ora');
-
-						// 10 minute timeout to allow for email confirmation during sign-up
-						const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
 						let countdownInterval = null;
 						let authSpinner = null;
 

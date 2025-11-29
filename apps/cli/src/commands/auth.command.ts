@@ -4,6 +4,7 @@
  */
 
 import {
+	AUTH_TIMEOUT_MS,
 	type AuthCredentials,
 	AuthManager,
 	AuthenticationError
@@ -12,7 +13,13 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import open from 'open';
-import ora, { type Ora } from 'ora';
+import ora from 'ora';
+import {
+	AuthCountdownTimer,
+	displayAuthInstructions,
+	displayWaitingForAuth,
+	handleMFAFlow
+} from '../utils/auth-ui.js';
 import { displayError } from '../utils/error-handler.js';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
@@ -99,7 +106,7 @@ Examples:
 		this.command('logout')
 			.description('Logout and clear credentials')
 			.option('--no-header', 'Suppress the Task Master header banner')
-			.action(async () => {
+			.action(async (_options?: { header?: boolean }) => {
 				await this.executeLogout();
 			});
 	}
@@ -111,7 +118,7 @@ Examples:
 		this.command('status')
 			.description('Display authentication status')
 			.option('--no-header', 'Suppress the Task Master header banner')
-			.action(async () => {
+			.action(async (_options?: { header?: boolean }) => {
 				await this.executeStatus();
 			});
 	}
@@ -123,7 +130,7 @@ Examples:
 		this.command('refresh')
 			.description('Refresh authentication token')
 			.option('--no-header', 'Suppress the Task Master header banner')
-			.action(async () => {
+			.action(async (_options?: { header?: boolean }) => {
 				await this.executeRefresh();
 			});
 	}
@@ -143,8 +150,9 @@ Examples:
 
 	/**
 	 * Execute login command
+	 * Exported for reuse by login.command.ts
 	 */
-	private async executeLogin(
+	async executeLogin(
 		token?: string,
 		yes?: boolean,
 		showHeader: boolean = true
@@ -171,8 +179,9 @@ Examples:
 
 	/**
 	 * Execute logout command
+	 * Exported for reuse by logout.command.ts
 	 */
-	private async executeLogout(): Promise<void> {
+	async executeLogout(): Promise<void> {
 		try {
 			const result = await this.performLogout();
 			this.setLastResult(result);
@@ -313,8 +322,9 @@ Examples:
 
 	/**
 	 * Perform logout
+	 * Exported for reuse by logout.command.ts
 	 */
-	private async performLogout(): Promise<AuthResult> {
+	async performLogout(): Promise<AuthResult> {
 		try {
 			await this.authManager.logout();
 			ui.displaySuccess('Successfully logged out');
@@ -379,8 +389,9 @@ Examples:
 
 	/**
 	 * Perform interactive authentication
+	 * Exported for reuse by login.command.ts
 	 */
-	private async performInteractiveAuth(
+	async performInteractiveAuth(
 		yes?: boolean,
 		showHeader: boolean = true
 	): Promise<AuthResult> {
@@ -486,54 +497,10 @@ Examples:
 
 	/**
 	 * Authenticate with browser using OAuth 2.0 with PKCE
+	 * Uses shared countdown timer from auth-ui.ts
 	 */
 	private async authenticateWithBrowser(): Promise<AuthCredentials> {
-		// 10 minute timeout to allow for email confirmation during sign-up
-		const AUTH_TIMEOUT_MS = 10 * 60 * 1000;
-		let countdownInterval: NodeJS.Timeout | null = null;
-		let countdownSpinner: Ora | null = null;
-
-		const startCountdown = (totalMs: number) => {
-			const startTime = Date.now();
-			const endTime = startTime + totalMs;
-
-			const updateCountdown = () => {
-				const remaining = Math.max(0, endTime - Date.now());
-				const mins = Math.floor(remaining / 60000);
-				const secs = Math.floor((remaining % 60000) / 1000);
-				const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-				if (countdownSpinner) {
-					countdownSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
-				}
-
-				if (remaining <= 0 && countdownInterval) {
-					clearInterval(countdownInterval);
-				}
-			};
-
-			countdownSpinner = ora({
-				text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
-				spinner: 'dots'
-			}).start();
-
-			countdownInterval = setInterval(updateCountdown, 1000);
-		};
-
-		const stopCountdown = (success: boolean) => {
-			if (countdownInterval) {
-				clearInterval(countdownInterval);
-				countdownInterval = null;
-			}
-			if (countdownSpinner) {
-				if (success) {
-					countdownSpinner.succeed('Authentication successful!');
-				} else {
-					countdownSpinner.fail('Authentication failed');
-				}
-				countdownSpinner = null;
-			}
-		};
+		const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
 
 		try {
 			// Use AuthManager's new unified OAuth flow method with callbacks
@@ -546,46 +513,33 @@ Examples:
 
 				// Callback when auth URL is ready
 				onAuthUrl: (authUrl) => {
-					// Display authentication instructions
-					console.log(chalk.blue.bold('\n[auth] Browser Authentication\n'));
-					console.log(chalk.white('  Opening your browser to authenticate...'));
-					console.log(chalk.gray("  If the browser doesn't open, visit:"));
-					console.log(chalk.cyan.underline(`  ${authUrl}\n`));
+					displayAuthInstructions(authUrl);
 				},
 
 				// Callback when waiting for authentication
 				onWaitingForAuth: () => {
-					console.log(
-						chalk.dim(
-							'  If you signed up, check your email to confirm your account.'
-						)
-					);
-					console.log(
-						chalk.dim('  The CLI will automatically detect when you log in.\n')
-					);
-					startCountdown(AUTH_TIMEOUT_MS);
+					displayWaitingForAuth();
+					countdownTimer.start();
 				},
 
 				// Callback on success
 				onSuccess: () => {
-					stopCountdown(true);
+					countdownTimer.stop('success');
 				},
 
 				// Callback on error
 				onError: () => {
-					stopCountdown(false);
+					countdownTimer.stop('failure');
 				}
 			});
 
 			return credentials;
 		} catch (error) {
-			stopCountdown(false);
+			countdownTimer.stop('failure');
 			throw error;
 		} finally {
 			// Ensure cleanup
-			if (countdownInterval) {
-				clearInterval(countdownInterval);
-			}
+			countdownTimer.cleanup();
 		}
 	}
 
@@ -608,7 +562,14 @@ Examples:
 				// Stop spinner without showing failure - MFA is required, not a failure
 				spinner.stop();
 
-				// MFA is required - prompt the user for their MFA code
+				if (!error.mfaChallenge?.factorId) {
+					throw new AuthenticationError(
+						'MFA challenge information missing',
+						'MFA_VERIFICATION_FAILED'
+					);
+				}
+
+				// Use shared MFA flow handler
 				return this.handleMFAVerification(error);
 			}
 
@@ -620,7 +581,7 @@ Examples:
 
 	/**
 	 * Handle MFA verification flow
-	 * Thin wrapper around @tm/core's verifyMFAWithRetry
+	 * Uses shared MFA utilities from auth-ui.ts
 	 */
 	private async handleMFAVerification(
 		mfaError: AuthenticationError
@@ -632,83 +593,9 @@ Examples:
 			);
 		}
 
-		const { factorId } = mfaError.mfaChallenge;
-
-		console.log(
-			chalk.yellow(
-				'\n⚠️  Multi-factor authentication is enabled on your account'
-			)
-		);
-		console.log(
-			chalk.white(
-				'  Please enter the 6-digit code from your authenticator app\n'
-			)
-		);
-
-		// Use @tm/core's retry logic - presentation layer just handles UI
-		const result = await this.authManager.verifyMFAWithRetry(
-			factorId,
-			async () => {
-				// Prompt for MFA code
-				try {
-					const response = await inquirer.prompt([
-						{
-							type: 'input',
-							name: 'mfaCode',
-							message: 'Enter your 6-digit MFA code:',
-							validate: (input: string) => {
-								const trimmed = (input || '').trim();
-
-								if (trimmed.length === 0) {
-									return 'MFA code cannot be empty';
-								}
-
-								if (!/^\d{6}$/.test(trimmed)) {
-									return 'MFA code must be exactly 6 digits (0-9)';
-								}
-
-								return true;
-							}
-						}
-					]);
-
-					return response.mfaCode.trim();
-				} catch (error: any) {
-					// Handle user cancellation (Ctrl+C)
-					if (
-						error.name === 'ExitPromptError' ||
-						error.message?.includes('force closed')
-					) {
-						ui.displayWarning(' MFA verification cancelled by user');
-						throw new AuthenticationError(
-							'MFA verification cancelled',
-							'MFA_VERIFICATION_FAILED'
-						);
-					}
-					throw error;
-				}
-			},
-			{
-				maxAttempts: 3,
-				onInvalidCode: (_attempt: number, remaining: number) => {
-					// Callback invoked when invalid code is entered
-					if (remaining > 0) {
-						ui.displayError(`Invalid MFA code. Please try again.`);
-					}
-				}
-			}
-		);
-
-		// Handle result from core
-		if (result.success && result.credentials) {
-			console.log(chalk.green('\n✓ MFA verification successful!'));
-			return result.credentials;
-		}
-
-		// Show error with attempt count
-		throw new AuthenticationError(
-			`MFA verification failed after ${result.attemptsUsed} attempts`,
-			'MFA_VERIFICATION_FAILED'
+		return handleMFAFlow(
+			this.authManager.verifyMFAWithRetry.bind(this.authManager),
+			mfaError.mfaChallenge.factorId
 		);
 	}
 
