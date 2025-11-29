@@ -1,5 +1,7 @@
 // Base profile factory for rule-transformer
 import path from 'path';
+import { getProfile, allCommands } from '@tm/profiles';
+import { log } from '../../scripts/modules/utils.js';
 
 /**
  * Creates a standardized profile configuration for different editors
@@ -221,6 +223,23 @@ export function createProfile(editorConfig) {
 			: sourceFilename;
 	}
 
+	// Auto-detect slash command support from @tm/profiles
+	let slashCommands = null;
+	try {
+		const slashCommandProfile = getProfile(name);
+		if (slashCommandProfile?.supportsCommands) {
+			slashCommands = {
+				profile: slashCommandProfile,
+				commands: allCommands
+			};
+		}
+	} catch (err) {
+		log(
+			'debug',
+			`[${displayName}] Slash command profile lookup failed: ${err.message}`
+		);
+	}
+
 	return {
 		profileName: name, // Use name for programmatic access (tests expect this)
 		displayName: displayName, // Keep displayName for UI purposes
@@ -236,6 +255,8 @@ export function createProfile(editorConfig) {
 		conversionConfig,
 		getTargetRuleFilename,
 		targetExtension,
+		// Declarative slash command config - rule-transformer handles execution
+		slashCommands,
 		// Optional lifecycle hooks
 		...(onAdd && { onAddRulesProfile: onAdd }),
 		...(onRemove && { onRemoveRulesProfile: onRemove }),
