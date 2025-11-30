@@ -11,6 +11,7 @@
 import { join } from 'node:path';
 import { findProjectRoot } from '@tm/core';
 import dotenv from 'dotenv';
+import { initializeSentry } from '../src/telemetry/sentry.js';
 
 // Store the original working directory
 // This is needed for commands that take relative paths as arguments
@@ -22,6 +23,9 @@ const projectRoot = findProjectRoot();
 
 // Load .env from project root without changing cwd
 dotenv.config({ path: join(projectRoot, '.env') });
+
+// Initialize Sentry after .env is loaded
+initializeSentry({ projectRoot });
 
 // Make original cwd available to commands that need it
 process.env.TASKMASTER_ORIGINAL_CWD = originalCwd;

@@ -14,11 +14,11 @@
  * - Persistence to ~/.taskmaster/session.json with atomic writes via steno
  */
 
-import fs from 'fs/promises';
 import fsSync from 'fs';
 import path from 'path';
-import { Writer } from 'steno';
 import type { SupportedStorage } from '@supabase/supabase-js';
+import fs from 'fs/promises';
+import { Writer } from 'steno';
 import { getLogger } from '../../../common/logger/index.js';
 
 const DEFAULT_SESSION_FILE = path.join(

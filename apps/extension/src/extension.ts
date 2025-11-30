@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { ConfigService } from './services/config-service';
 import { PollingService } from './services/polling-service';
 import { createPollingStrategy } from './services/polling-strategies';
+import { SidebarWebviewManager } from './services/sidebar-webview-manager';
 import { TaskRepository } from './services/task-repository';
 import { TerminalManager } from './services/terminal-manager';
 import { WebviewManager } from './services/webview-manager';
@@ -17,7 +18,6 @@ import {
 	createMCPConfigFromSettings
 } from './utils/mcpClient';
 import { TaskMasterApi } from './utils/task-master-api';
-import { SidebarWebviewManager } from './services/sidebar-webview-manager';
 
 let logger: ExtensionLogger;
 let mcpClient: MCPClientManager;

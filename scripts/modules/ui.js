@@ -3,35 +3,36 @@
  * User interface functions for the Task Master CLI
  */
 
-import chalk from 'chalk';
+import fs from 'fs';
+import readline from 'readline';
+// Import brand banner from @tm/cli
+import { ui } from '@tm/cli';
+import { AuthManager } from '@tm/core';
 import boxen from 'boxen';
-import ora from 'ora';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 import gradient from 'gradient-string';
-import readline from 'readline';
-import {
-	log,
-	findTaskById,
-	readJSON,
-	truncate,
-	isSilentMode,
-	formatTaskId
-} from './utils.js';
-import fs from 'fs';
-import {
-	findNextTask,
-	analyzeTaskComplexity,
-	readComplexityReport
-} from './task-manager.js';
-import { getProjectName, getDefaultSubtasks } from './config-manager.js';
-import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import ora from 'ora';
 import {
 	TASKMASTER_CONFIG_FILE,
 	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
+import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
-// Import brand banner from @tm/cli
-import { ui } from '@tm/cli';
+import { getDefaultSubtasks, getProjectName } from './config-manager.js';
+import {
+	analyzeTaskComplexity,
+	findNextTask,
+	readComplexityReport
+} from './task-manager.js';
+import {
+	findTaskById,
+	formatTaskId,
+	isSilentMode,
+	log,
+	readJSON,
+	truncate
+} from './utils.js';
 
 // Create a color gradient for the banner (still used by warmGradient in other places)
 const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
@@ -62,26 +63,66 @@ function displayTaggedTasksFYI(data) {
 
 /**
  * Display a small, non-intrusive indicator showing the current tag context
- * @param {string} tagName - The tag name to display
+ * Note: This is an async function - callers should await it.
+ * @param {string} tag - The tag name to display
  * @param {Object} options - Display options
  * @param {boolean} [options.skipIfMaster=false] - Don't show indicator if tag is 'master'
  * @param {boolean} [options.dim=false] - Use dimmed styling
+ * @param {'api'|'file'} [options.storageType] - Storage type (auto-detected if not provided)
+ * @param {Object} [options.briefInfo] - Brief info for API storage (auto-detected if not provided)
+ * @param {string} [options.briefInfo.briefId] - Brief ID
+ * @param {string} [options.briefInfo.briefName] - Brief name
  */
-function displayCurrentTagIndicator(tag, options = {}) {
+async function displayCurrentTagIndicator(tag, options = {}) {
 	if (isSilentMode()) return;
 
-	const { skipIfMaster = false, dim = false } = options;
+	let { skipIfMaster = false, dim = false, storageType, briefInfo } = options;
 
 	// Skip display for master tag only if explicitly requested
 	if (skipIfMaster && tag === 'master') return;
 
-	// Create a small, tasteful tag indicator
-	const tagIcon = '🏷️';
-	const tagText = dim
-		? chalk.gray(`${tagIcon} tag: ${tag}`)
-		: chalk.dim(`${tagIcon} tag: `) + chalk.cyan(tag);
+	// Auto-detect storage type and brief info if not provided
+	if (!storageType || !briefInfo) {
+		try {
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
 
-	console.log(tagText);
+			if (context && context.briefId) {
+				storageType = 'api';
+				briefInfo = {
+					briefId: context.briefId,
+					briefName: context.briefName || tag
+				};
+			} else {
+				storageType = 'file';
+			}
+		} catch (error) {
+			// Fallback to file storage if AuthManager is not available
+			log('debug', `Failed to detect storage type: ${error.message}`);
+			storageType = 'file';
+		}
+	}
+
+	// Validate storageType - default to 'file' for unknown values
+	if (storageType !== 'api' && storageType !== 'file') {
+		storageType = 'file';
+	}
+
+	// Display different indicator based on storage type
+	// Using ASCII characters for consistent cross-platform display
+	let displayText;
+
+	if (storageType === 'api' && briefInfo) {
+		// API storage: Show brief information (matching new CLI pattern)
+		displayText = `[brief] ${chalk.cyan(briefInfo.briefName)} ${chalk.gray(`(${briefInfo.briefId})`)}`;
+	} else {
+		// File storage: Show tag information
+		displayText = dim
+			? chalk.gray(`[tag] ${tag}`)
+			: chalk.dim('[tag] ') + chalk.cyan(tag);
+	}
+
+	console.log(displayText);
 }
 
 /**
@@ -576,12 +617,12 @@ function displayHelp() {
 			commands: [
 				{
 					name: 'list',
-					args: '[--status=<status>] [--with-subtasks]',
-					desc: 'List all tasks with their status'
+					args: '[<status>|all] [--with-subtasks]',
+					desc: 'List all tasks - use "all" to show with subtasks'
 				},
 				{
 					name: 'set-status',
-					args: '--id=<id> --status=<status>',
+					args: '<id> <status>',
 					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
 				},
 				{
@@ -596,8 +637,8 @@ function displayHelp() {
 				},
 				{
 					name: 'update-task',
-					args: '--id=<id> --prompt="<context>"',
-					desc: 'Update a single specific task with new information'
+					args: '<id> <prompt...>',
+					desc: 'Update a single task (no quotes needed for multi-word prompts)'
 				},
 				{
 					name: 'update-subtask',
@@ -1176,16 +1217,16 @@ async function displayNextTask(
 	if (isSubtask) {
 		// Suggested actions for a subtask
 		suggestedActionsContent +=
-			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
-			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
-			`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show --id=${nextTask.parentId}`)}`;
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status ${nextTask.id} in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status ${nextTask.id} done`)}\n` +
+			`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show ${nextTask.parentId}`)}`;
 	} else {
 		// Suggested actions for a parent task
 		suggestedActionsContent +=
-			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=in-progress`)}\n` +
-			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${nextTask.id} --status=done`)}\n` +
+			`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status ${nextTask.id} in-progress`)}\n` +
+			`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status ${nextTask.id} done`)}\n` +
 			(nextTask.subtasks && nextTask.subtasks.length > 0
-				? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status --id=${nextTask.id}.1 --status=done`)}` // Example: first subtask
+				? `${chalk.cyan('3.')} Update subtask status: ${chalk.yellow(`task-master set-status ${nextTask.id}.1 done`)}` // Example: first subtask
 				: `${chalk.cyan('3.')} Break down into subtasks: ${chalk.yellow(`task-master expand --id=${nextTask.id}`)}`);
 	}
 
@@ -1322,9 +1363,9 @@ async function displayTaskById(
 			boxen(
 				chalk.white.bold('Suggested Actions:') +
 					'\n' +
-					`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.parentTask.id}.${task.id} --status=in-progress`)}\n` +
-					`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${task.parentTask.id}.${task.id} --status=done`)}\n` +
-					`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show --id=${task.parentTask.id}`)}`,
+					`${chalk.cyan('1.')} Mark as in-progress: ${chalk.yellow(`task-master set-status ${task.parentTask.id}.${task.id} in-progress`)}\n` +
+					`${chalk.cyan('2.')} Mark as done when completed: ${chalk.yellow(`task-master set-status ${task.parentTask.id}.${task.id} done`)}\n` +
+					`${chalk.cyan('3.')} View parent task: ${chalk.yellow(`task-master show ${task.parentTask.id}`)}`,
 				{
 					padding: { top: 0, bottom: 0, left: 1, right: 1 },
 					borderColor: 'green',
@@ -1655,18 +1696,18 @@ async function displayTaskById(
 
 	// Basic actions
 	actions.push(
-		`${chalk.cyan(`${actionNumber}.`)} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}`
+		`${chalk.cyan(`${actionNumber}.`)} Mark as in-progress: ${chalk.yellow(`task-master set-status ${task.id} in-progress`)}`
 	);
 	actionNumber++;
 	actions.push(
-		`${chalk.cyan(`${actionNumber}.`)} Mark as done when completed: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`
+		`${chalk.cyan(`${actionNumber}.`)} Mark as done when completed: ${chalk.yellow(`task-master set-status ${task.id} done`)}`
 	);
 	actionNumber++;
 
 	// Subtask-related action
 	if (subtasksForProgress && subtasksForProgress.length > 0) {
 		actions.push(
-			`${chalk.cyan(`${actionNumber}.`)} Update subtask status: ${chalk.yellow(`task-master set-status --id=${task.id}.1 --status=done`)}`
+			`${chalk.cyan(`${actionNumber}.`)} Update subtask status: ${chalk.yellow(`task-master set-status ${task.id}.1 done`)}`
 		);
 	} else {
 		actions.push(
@@ -2592,7 +2633,7 @@ async function displayMultipleTasksSummary(
 				case '1':
 					console.log(
 						chalk.blue(
-							`\n→ Command: task-master set-status --id=${taskIdList} --status=in-progress`
+							`\n→ Command: task-master set-status ${taskIdList} in-progress`
 						)
 					);
 					console.log(
@@ -2603,9 +2644,7 @@ async function displayMultipleTasksSummary(
 					break;
 				case '2':
 					console.log(
-						chalk.blue(
-							`\n→ Command: task-master set-status --id=${taskIdList} --status=done`
-						)
+						chalk.blue(`\n→ Command: task-master set-status ${taskIdList} done`)
 					);
 					console.log(
 						chalk.green('✓ Copy and run this command to mark all tasks as done')
@@ -2680,8 +2719,8 @@ async function displayMultipleTasksSummary(
 				chalk.white.bold('Suggested Actions:') +
 					'\n' +
 					`${chalk.cyan('1.')} View full details: ${chalk.yellow(`task-master show ${task.id}`)}\n` +
-					`${chalk.cyan('2.')} Mark as in-progress: ${chalk.yellow(`task-master set-status --id=${task.id} --status=in-progress`)}\n` +
-					`${chalk.cyan('3.')} Mark as done: ${chalk.yellow(`task-master set-status --id=${task.id} --status=done`)}`,
+					`${chalk.cyan('2.')} Mark as in-progress: ${chalk.yellow(`task-master set-status ${task.id} in-progress`)}\n` +
+					`${chalk.cyan('3.')} Mark as done: ${chalk.yellow(`task-master set-status ${task.id} done`)}`,
 				{
 					padding: { top: 0, bottom: 0, left: 1, right: 1 },
 					borderColor: 'green',

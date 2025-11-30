@@ -9,7 +9,7 @@
  * @param text - Raw text which may contain JSON
  * @returns A valid JSON string if extraction succeeds, otherwise the original text
  */
-import { parse, type ParseError } from 'jsonc-parser';
+import { type ParseError, parse } from 'jsonc-parser';
 
 export function extractJson(text: string): string {
 	let content = text.trim();

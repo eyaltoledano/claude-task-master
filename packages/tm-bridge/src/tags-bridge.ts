@@ -1,8 +1,8 @@
 import { ui } from '@tm/cli';
+import type { TagInfo } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import type { TagInfo } from '@tm/core';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
 
@@ -15,6 +15,8 @@ export type { TagInfo };
 export interface TagsBridgeParams extends BaseBridgeParams {
 	/** Whether to show metadata (default: false) */
 	showMetadata?: boolean;
+	/** Skip table display (when interactive selection will follow) */
+	skipTableDisplay?: boolean;
 }
 
 /**
@@ -41,7 +43,13 @@ export interface RemoteTagsResult {
 export async function tryListTagsViaRemote(
 	params: TagsBridgeParams
 ): Promise<RemoteTagsResult | null> {
-	const { projectRoot, isMCP = false, outputFormat = 'text', report } = params;
+	const {
+		projectRoot,
+		isMCP = false,
+		outputFormat = 'text',
+		report,
+		skipTableDisplay = false
+	} = params;
 
 	// Check storage type using shared utility
 	const { isApiStorage, tmCore } = await checkStorageType(
@@ -69,7 +77,7 @@ export async function tryListTagsViaRemote(
 			return 0;
 		});
 
-		if (outputFormat === 'text' && !isMCP) {
+		if (outputFormat === 'text' && !isMCP && !skipTableDisplay) {
 			// Display results in a table format
 			if (tagsResult.tags.length === 0) {
 				console.log(

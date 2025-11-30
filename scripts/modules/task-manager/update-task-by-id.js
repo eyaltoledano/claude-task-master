@@ -1,38 +1,38 @@
 import fs from 'fs';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 
 import {
-	readJSON,
-	writeJSON,
-	truncate,
+	findProjectRoot,
 	flattenTasksWithSubtasks,
-	findProjectRoot
+	readJSON,
+	truncate,
+	writeJSON
 } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	getStatusWithColor,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
-import {
-	generateTextService,
-	generateObjectService
-} from '../ai-services-unified.js';
+import { tryUpdateViaRemote } from '@tm/bridge';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import {
-	isApiKeySet,
+	generateObjectService,
+	generateTextService
+} from '../ai-services-unified.js';
+import { createBridgeLogger } from '../bridge-utils.js';
+import {
+	getDebugFlag,
 	hasCodebaseAnalysis,
-	getDebugFlag
+	isApiKeySet
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { tryUpdateViaRemote } from '@tm/bridge';
-import { createBridgeLogger } from '../bridge-utils.js';
 
 /**
  * Update a task by ID with new information using the unified AI service.

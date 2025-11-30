@@ -2,12 +2,12 @@
  * Direct function wrapper for validateDependenciesCommand
  */
 
+import fs from 'fs';
 import { validateDependenciesCommand } from '../../../../scripts/modules/dependency-manager.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
 
 /**
  * Validate dependencies in tasks.json

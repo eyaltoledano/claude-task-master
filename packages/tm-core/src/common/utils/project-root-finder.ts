@@ -3,11 +3,11 @@
  * Provides functionality to locate project roots by searching for marker files/directories
  */
 
-import path from 'node:path';
 import fs from 'node:fs';
+import path from 'node:path';
 import {
-	TASKMASTER_PROJECT_MARKERS,
-	OTHER_PROJECT_MARKERS
+	OTHER_PROJECT_MARKERS,
+	TASKMASTER_PROJECT_MARKERS
 } from '../constants/paths.js';
 
 /**

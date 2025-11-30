@@ -2,8 +2,8 @@
  * Tests for SupabaseAuthClient
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from '@supabase/supabase-js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock logger
 const mockLogger = {
@@ -29,9 +29,9 @@ vi.mock('../../auth/services/supabase-session-storage.js', () => ({
 	}
 }));
 
+import { AuthenticationError } from '../../auth/types.js';
 // Import after mocking (synchronous imports)
 import { SupabaseAuthClient } from './supabase-client.js';
-import { AuthenticationError } from '../../auth/types.js';
 
 describe('SupabaseAuthClient', () => {
 	let authClient: SupabaseAuthClient;

@@ -1,10 +1,10 @@
-import type React from 'react';
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Play } from 'lucide-react';
-import { PriorityBadge } from './PriorityBadge';
-import type { TaskMasterTask } from '../../webview/types';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { useVSCodeContext } from '../../webview/contexts/VSCodeContext';
+import type { TaskMasterTask } from '../../webview/types';
+import { PriorityBadge } from './PriorityBadge';
 
 interface TaskMetadataSidebarProps {
 	currentTask: TaskMasterTask;

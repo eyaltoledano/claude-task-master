@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 import { geminiProfile } from '../../../src/profiles/gemini.js';
+import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 
 describe('Rule Transformer - Gemini Profile', () => {
 	test('should have correct profile configuration', () => {

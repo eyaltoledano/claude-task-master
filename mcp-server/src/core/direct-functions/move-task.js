@@ -3,11 +3,11 @@
  */
 
 import { moveTask } from '../../../../scripts/modules/task-manager.js';
-import { findTasksPath } from '../utils/path-utils.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
+import { findTasksPath } from '../utils/path-utils.js';
 
 /**
  * Move a task or subtask to a new position

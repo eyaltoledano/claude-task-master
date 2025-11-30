@@ -5,13 +5,13 @@
 
 import { createTagFromBranch } from '../../../../scripts/modules/task-manager/tag-management.js';
 import {
+	disableSilentMode,
+	enableSilentMode
+} from '../../../../scripts/modules/utils.js';
+import {
 	getCurrentBranch,
 	isGitRepository
 } from '../../../../scripts/modules/utils/git-utils.js';
-import {
-	enableSilentMode,
-	disableSilentMode
-} from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 
 /**

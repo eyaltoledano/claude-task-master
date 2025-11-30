@@ -32,7 +32,8 @@
 		"figlet": "^1.9.4",
 		"gradient-string": "^3.0.0",
 		"inquirer": "^12.5.0",
-		"ora": "^8.2.0"
+		"ora": "^8.2.0",
+		"terminal-link": "^5.0.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

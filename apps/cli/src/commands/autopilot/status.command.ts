@@ -4,13 +4,13 @@
 
 import { WorkflowOrchestrator } from '@tm/core';
 import { Command } from 'commander';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
 	OutputFormatter,
 	hasWorkflowState,
 	loadWorkflowState
 } from './shared.js';
-import { getProjectRoot } from '../../utils/project-root.js';
 
 type StatusOptions = AutopilotBaseOptions;
 

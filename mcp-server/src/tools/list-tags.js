@@ -3,12 +3,12 @@
  * Tool to list all available tags
  */
 
-import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
+import { z } from 'zod';
 import { listTagsDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
 

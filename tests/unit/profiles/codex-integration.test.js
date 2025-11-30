@@ -1,7 +1,7 @@
-import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
+import { jest } from '@jest/globals';
 
 // Mock external modules
 jest.mock('child_process', () => ({

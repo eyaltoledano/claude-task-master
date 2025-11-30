@@ -1,5 +1,3 @@
-import boxen from 'boxen';
-import chalk from 'chalk';
 import ora from 'ora';
 import type { BaseBridgeParams } from './bridge-types.js';
 import { checkStorageType } from './bridge-utils.js';
@@ -69,35 +67,10 @@ export async function tryUpdateViaRemote(
 
 	const mode = appendMode ? 'append' : 'update';
 
-	// Show CLI output if not MCP
-	if (!isMCP && outputFormat === 'text') {
-		const showDebug = process.env.TM_DEBUG === '1';
-		const promptPreview = showDebug
-			? `${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}`
-			: '[hidden]';
-
-		console.log(
-			boxen(
-				chalk.blue.bold(`Updating Task via Hamster`) +
-					'\n\n' +
-					chalk.white(`Task ID: ${taskId}`) +
-					'\n' +
-					chalk.white(`Mode: ${mode}`) +
-					'\n' +
-					chalk.white(`Prompt: ${promptPreview}`),
-				{
-					padding: 1,
-					borderColor: 'blue',
-					borderStyle: 'round',
-					margin: { top: 1, bottom: 1 }
-				}
-			)
-		);
-	}
-
+	// Show spinner for CLI users
 	const spinner =
 		!isMCP && outputFormat === 'text'
-			? ora({ text: 'Updating task on Hamster...', color: 'cyan' }).start()
+			? ora({ text: `Updating ${taskId} on Hamster...`, color: 'cyan' }).start()
 			: null;
 
 	try {
@@ -107,26 +80,7 @@ export async function tryUpdateViaRemote(
 		});
 
 		if (spinner) {
-			spinner.succeed('Task updated successfully');
-		}
-
-		if (outputFormat === 'text') {
-			console.log(
-				boxen(
-					chalk.green(`Successfully updated task ${taskId} via remote AI`) +
-						'\n\n' +
-						chalk.white('The task has been updated on the remote server.') +
-						'\n' +
-						chalk.white(
-							`Run ${chalk.yellow(`task-master show ${taskId}`)} to view the updated task.`
-						),
-					{
-						padding: 1,
-						borderColor: 'green',
-						borderStyle: 'round'
-					}
-				)
-			);
+			spinner.succeed('Task updated on Hamster');
 		}
 
 		// Return success result - signals that we handled it

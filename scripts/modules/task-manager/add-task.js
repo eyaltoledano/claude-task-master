@@ -1,39 +1,39 @@
 import path from 'path';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 import Fuse from 'fuse.js'; // Import Fuse.js for advanced fuzzy search
 
 import {
-	displayBanner,
-	getStatusWithColor,
-	startLoadingIndicator,
-	stopLoadingIndicator,
-	succeedLoadingIndicator,
-	failLoadingIndicator,
-	displayAiUsageSummary,
-	displayContextAnalysis
-} from '../ui.js';
-import {
-	readJSON,
-	writeJSON,
-	log as consoleLog,
-	truncate,
-	ensureTagMetadata,
-	performCompleteTagMigration,
-	markMigrationForNotice
-} from '../utils.js';
-import { generateObjectService } from '../ai-services-unified.js';
-import { getDefaultPriority, hasCodebaseAnalysis } from '../config-manager.js';
-import { getPromptManager } from '../prompt-manager.js';
-import ContextGatherer from '../utils/contextGatherer.js';
-import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
-import {
-	TASK_PRIORITY_OPTIONS,
 	DEFAULT_TASK_PRIORITY,
+	TASK_PRIORITY_OPTIONS,
 	isValidTaskPriority,
 	normalizeTaskPriority
 } from '../../../src/constants/task-priority.js';
+import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
+import { generateObjectService } from '../ai-services-unified.js';
+import { getDefaultPriority, hasCodebaseAnalysis } from '../config-manager.js';
+import { getPromptManager } from '../prompt-manager.js';
+import {
+	displayAiUsageSummary,
+	displayBanner,
+	displayContextAnalysis,
+	failLoadingIndicator,
+	getStatusWithColor,
+	startLoadingIndicator,
+	stopLoadingIndicator,
+	succeedLoadingIndicator
+} from '../ui.js';
+import {
+	log as consoleLog,
+	ensureTagMetadata,
+	markMigrationForNotice,
+	performCompleteTagMigration,
+	readJSON,
+	truncate,
+	writeJSON
+} from '../utils.js';
+import ContextGatherer from '../utils/contextGatherer.js';
 
 /**
  * Get all tasks from all tags

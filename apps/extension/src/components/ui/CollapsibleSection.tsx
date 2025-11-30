@@ -1,8 +1,8 @@
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { Button } from './button';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 interface CollapsibleSectionProps {
 	title: string;

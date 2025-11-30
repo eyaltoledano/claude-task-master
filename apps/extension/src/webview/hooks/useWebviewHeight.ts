@@ -2,7 +2,7 @@
  * Hook for managing webview height
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export const useWebviewHeight = () => {
 	const [availableHeight, setAvailableHeight] = useState<number>(

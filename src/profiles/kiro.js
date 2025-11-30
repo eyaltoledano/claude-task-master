@@ -1,8 +1,8 @@
-// Kiro profile for rule-transformer
-import { createProfile } from './base-profile.js';
 import fs from 'fs';
 import path from 'path';
 import { log } from '../../scripts/modules/utils.js';
+// Kiro profile for rule-transformer
+import { createProfile } from './base-profile.js';
 
 // Create and export kiro profile using the base factory
 export const kiroProfile = createProfile({

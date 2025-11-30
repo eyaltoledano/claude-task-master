@@ -22,8 +22,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	MockSupabaseSessionStorage,
-	createMockLogger,
-	createApiStorageConfig
+	createApiStorageConfig,
+	createMockLogger
 } from '../../../src/testing/index.js';
 
 // Mock logger using shared mock factory
@@ -40,9 +40,9 @@ vi.mock(
 	})
 );
 
+import { AuthManager } from '../../../src/modules/auth/managers/auth-manager.js';
 // Import after mocking
 import { SupabaseAuthClient } from '../../../src/modules/integration/clients/supabase-client.js';
-import { AuthManager } from '../../../src/modules/auth/managers/auth-manager.js';
 import { StorageFactory } from '../../../src/modules/storage/services/storage-factory.js';
 
 describe('Token Refresh - Singleton Integration', () => {

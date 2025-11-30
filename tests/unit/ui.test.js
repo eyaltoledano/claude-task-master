@@ -4,10 +4,10 @@
 
 import { jest } from '@jest/globals';
 import {
-	getStatusWithColor,
-	formatDependenciesWithStatus,
 	createProgressBar,
-	getComplexityWithColor
+	formatDependenciesWithStatus,
+	getComplexityWithColor,
+	getStatusWithColor
 } from '../../scripts/modules/ui.js';
 import { sampleTasks } from '../fixtures/sample-tasks.js';
 
