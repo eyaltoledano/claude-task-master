@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.36.0-rc.2
+
+### Patch Changes
+
+- [#1463](https://github.com/eyaltoledano/claude-task-master/pull/1463) [`55595f6`](https://github.com/eyaltoledano/claude-task-master/commit/55595f680c8b52b5421d3e0c7640bf2050efe44f) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix package issue in earlier rc
+
 ## 0.36.0-rc.1
 
 ### Minor Changes
