@@ -1,8 +1,8 @@
 {
-  "mode": "exit",
+  "mode": "pre",
   "tag": "rc",
   "initialVersions": {
-    "task-master-ai": "0.35.0",
+    "task-master-ai": "0.36.0-rc.0",
     "@tm/cli": "",
     "docs": "0.0.10",
     "extension": "0.26.0",
@@ -14,7 +14,12 @@
     "@tm/core": ""
   },
   "changesets": [
+    "crisp-zebras-spend",
+    "hot-icons-thank",
     "pretty-suits-marry",
+    "red-buses-listen",
+    "sentry-telemetry-integration",
+    "slow-grapes-do",
     "spotty-peaches-hug"
   ]
 }
