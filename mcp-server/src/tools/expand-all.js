@@ -3,18 +3,18 @@
  * Tool for expanding all pending tasks with subtasks
  */
 
-import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
+import { z } from 'zod';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { expandAllTasksDirect } from '../core/task-master-core.js';
 import {
 	findTasksPath,
 	resolveComplexityReportOutputPath
 } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expandAll tool with the MCP server

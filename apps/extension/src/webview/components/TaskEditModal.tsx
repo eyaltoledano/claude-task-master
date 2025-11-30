@@ -2,16 +2,16 @@
  * Task Edit Modal Component
  */
 
-import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect, useRef } from 'react';
 import type { TaskMasterTask, TaskUpdates } from '../types';
 
 interface TaskEditModalProps {

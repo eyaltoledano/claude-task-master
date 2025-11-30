@@ -2,8 +2,8 @@
  * Priority Badge Component
  */
 
-import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import React from 'react';
 import type { TaskMasterTask } from '../types';
 
 interface PriorityBadgeProps {

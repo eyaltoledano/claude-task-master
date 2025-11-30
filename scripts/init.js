@@ -13,40 +13,49 @@
  * For the full license text, see the LICENSE file in the root directory.
  */
 
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import chalk from 'chalk';
-import boxen from 'boxen';
-import figlet from 'figlet';
-import { isSilentMode } from './modules/utils.js';
-import { warmGradient } from './modules/ui.js';
 import { ui } from '@tm/cli';
-import { insideGitWorkTree } from './modules/utils/git-utils.js';
-import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
+import { AuthManager, AUTH_TIMEOUT_MS } from '@tm/core';
+import boxen from 'boxen';
+import chalk from 'chalk';
+import figlet from 'figlet';
+import gradient from 'gradient-string';
+import inquirer from 'inquirer';
+import open from 'open';
+import ora from 'ora';
 import { RULE_PROFILES } from '../src/constants/profiles.js';
+import { manageGitignoreFile } from '../src/utils/manage-gitignore.js';
 import {
 	convertAllRulesToProfileRules,
 	getRulesProfile
 } from '../src/utils/rule-transformer.js';
+import { warmGradient } from './modules/ui.js';
 import { updateConfigMaxTokens } from './modules/update-config-tokens.js';
+import { isSilentMode } from './modules/utils.js';
+import { insideGitWorkTree } from './modules/utils/git-utils.js';
 
 // Import asset resolver
 import { assetExists, readAsset } from '../src/utils/asset-resolver.js';
 
 import { execSync } from 'child_process';
 import {
+	ENV_EXAMPLE_FILE,
 	EXAMPLE_PRD_FILE,
+	GITIGNORE_FILE,
 	TASKMASTER_CONFIG_FILE,
-	TASKMASTER_TEMPLATES_DIR,
 	TASKMASTER_DIR,
-	TASKMASTER_TASKS_DIR,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_REPORTS_DIR,
 	TASKMASTER_STATE_FILE,
-	ENV_EXAMPLE_FILE,
-	GITIGNORE_FILE
+	TASKMASTER_TASKS_DIR,
+	TASKMASTER_TEMPLATES_DIR
 } from '../src/constants/paths.js';
+
+// Define box width for boxen displays
+const BOX_WIDTH = 60;
 
 // Define log levels
 const LOG_LEVELS = {
@@ -74,11 +83,11 @@ function displayBanner() {
 // Logging function with icons and colors
 function log(level, ...args) {
 	const icons = {
-		debug: chalk.gray('🔍'),
-		info: chalk.blue('ℹ️'),
-		warn: chalk.yellow('⚠️'),
-		error: chalk.red('❌'),
-		success: chalk.green('✅')
+		debug: chalk.gray('•'),
+		info: chalk.blue('→'),
+		warn: chalk.yellow('!'),
+		error: chalk.red('✗'),
+		success: chalk.green('✓')
 	};
 
 	if (LOG_LEVELS[level] >= LOG_LEVEL) {
@@ -116,6 +125,7 @@ function ensureDirectoryExists(dirPath) {
 }
 
 // Function to add shell aliases to the user's shell configuration
+// Silently checks each alias individually and adds only missing ones
 function addShellAliases() {
 	const homeDir = process.env.HOME || process.env.USERPROFILE;
 	let shellConfigFile;
@@ -126,44 +136,53 @@ function addShellAliases() {
 	} else if (process.env.SHELL?.includes('bash')) {
 		shellConfigFile = path.join(homeDir, '.bashrc');
 	} else {
-		log('warn', 'Could not determine shell type. Aliases not added.');
+		log('debug', 'Could not determine shell type. Aliases not added.');
 		return false;
 	}
 
 	try {
 		// Check if file exists
 		if (!fs.existsSync(shellConfigFile)) {
-			log(
-				'warn',
-				`Shell config file ${shellConfigFile} not found. Aliases not added.`
-			);
+			log('debug', `Shell config file ${shellConfigFile} not found.`);
 			return false;
 		}
 
-		// Check if aliases already exist
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
-		if (configContent.includes("alias tm='task-master'")) {
-			log('info', 'Task Master aliases already exist in shell config.');
+
+		// Define all aliases we want
+		const aliases = [
+			{ name: 'tm', line: "alias tm='task-master'" },
+			{ name: 'taskmaster', line: "alias taskmaster='task-master'" },
+			{ name: 'hamster', line: "alias hamster='task-master'" },
+			{ name: 'ham', line: "alias ham='task-master'" }
+		];
+
+		// Check which aliases are missing
+		const missingAliases = aliases.filter(
+			(alias) => !configContent.includes(alias.line)
+		);
+
+		if (missingAliases.length === 0) {
+			log('debug', 'All Task Master aliases already exist.');
 			return true;
 		}
 
-		// Add aliases to the shell config file
+		// Build alias block with only missing aliases
+		const aliasLines = missingAliases.map((a) => a.line).join('\n');
 		const aliasBlock = `
 # Task Master aliases added on ${new Date().toLocaleDateString()}
-alias tm='task-master'
-alias taskmaster='task-master'
+${aliasLines}
 `;
 
 		fs.appendFileSync(shellConfigFile, aliasBlock);
-		log('success', `Added Task Master aliases to ${shellConfigFile}`);
 		log(
-			'info',
-			`To use the aliases in your current terminal, run: source ${shellConfigFile}`
+			'debug',
+			`Added ${missingAliases.length} alias(es): ${missingAliases.map((a) => a.name).join(', ')}`
 		);
 
 		return true;
 	} catch (error) {
-		log('error', `Failed to add aliases: ${error.message}`);
+		log('debug', `Failed to add aliases: ${error.message}`);
 		return false;
 	}
 }
@@ -174,7 +193,7 @@ function createInitialStateFile(targetDir) {
 
 	// Check if state.json already exists
 	if (fs.existsSync(stateFilePath)) {
-		log('info', 'State file already exists, preserving current configuration');
+		log('debug', 'State file already exists, preserving current configuration');
 		return;
 	}
 
@@ -230,7 +249,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 
 			if (newLines.length > 0) {
 				// Add a comment to separate the original content from our additions
-				const updatedContent = `${existingContent.trim()}\n\n# Added by Task Master AI\n${newLines.join('\n')}`;
+				const updatedContent = `${existingContent.trim()}\n\n# Added by Taskmaster\n${newLines.join('\n')}`;
 				fs.writeFileSync(targetPath, updatedContent);
 				log('success', `Updated ${targetPath} with additional entries`);
 			} else {
@@ -256,7 +275,7 @@ function copyTemplateFile(templateName, targetPath, replacements = {}) {
 		}
 
 		// For other files, warn and prompt before overwriting
-		log('warn', `${targetPath} already exists, skipping.`);
+		log('debug', `${targetPath} already exists, skipping.`);
 		return;
 	}
 
@@ -280,14 +299,6 @@ async function initializeProject(options = {}) {
 	// 	console.log('options.yes:', options.yes);
 	// 	console.log('==================================================');
 	// }
-
-	// Handle boolean aliases flags
-	if (options.aliases === true) {
-		options.addAliases = true; // --aliases flag provided
-	} else if (options.aliases === false) {
-		options.addAliases = false; // --no-aliases flag provided
-	}
-	// If options.aliases and options.noAliases are undefined, we'll prompt for it
 
 	// Handle boolean git flags
 	if (options.git === true) {
@@ -314,25 +325,13 @@ async function initializeProject(options = {}) {
 	let selectedRuleProfiles;
 	if (options.rulesExplicitlyProvided) {
 		// If --rules flag was used, always respect it.
-		log(
-			'info',
-			`Using rule profiles provided via command line: ${options.rules.join(', ')}`
-		);
 		selectedRuleProfiles = options.rules;
 	} else if (skipPrompts) {
-		// If non-interactive (e.g., --yes) and no rules specified, default to ALL.
-		log(
-			'info',
-			`No rules specified in non-interactive mode, defaulting to all profiles.`
-		);
-		selectedRuleProfiles = RULE_PROFILES;
+		// If non-interactive (e.g., --yes) and no rules specified, skip rules setup entirely
+		selectedRuleProfiles = [];
 	} else {
 		// If interactive and no rules specified, default to NONE.
-		// The 'rules --setup' wizard will handle selection.
-		log(
-			'info',
-			'No rules specified; interactive setup will be launched to select profiles.'
-		);
+		// The 'rules --setup' wizard will handle selection if user wants it.
 		selectedRuleProfiles = [];
 	}
 
@@ -344,12 +343,10 @@ async function initializeProject(options = {}) {
 		// Use provided options or defaults
 		const projectName = options.name || 'task-master-project';
 		const projectDescription =
-			options.description || 'A project managed with Task Master AI';
+			options.description || 'A project managed with Taskmaster';
 		const projectVersion = options.version || '0.1.0';
 		const authorName = options.author || 'Vibe coder';
 		const dryRun = options.dryRun || false;
-		const addAliases =
-			options.addAliases !== undefined ? options.addAliases : true; // Default to true if not specified
 		const initGit = options.initGit !== undefined ? options.initGit : true; // Default to true if not specified
 		const storeTasksInGit =
 			options.storeTasksInGit !== undefined ? options.storeTasksInGit : true; // Default to true if not specified
@@ -360,10 +357,6 @@ async function initializeProject(options = {}) {
 			log('info', 'Would create/update necessary project files');
 
 			// Show flag-specific behavior
-			log(
-				'info',
-				`${addAliases ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
-			);
 			log(
 				'info',
 				`${initGit ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
@@ -378,79 +371,307 @@ async function initializeProject(options = {}) {
 			};
 		}
 
-		createProjectStructure(
-			addAliases,
+		// Default to local storage in non-interactive mode unless explicitly specified
+		const selectedStorage = options.storage || 'local';
+		const authCredentials = null; // No auth in non-interactive mode
+
+		await createProjectStructure(
+			true, // Always add aliases
 			initGit,
 			storeTasksInGit,
 			dryRun,
-			options,
-			selectedRuleProfiles
+			{ ...options, preferredLanguage: 'English' }, // Default to English in non-interactive mode
+			selectedRuleProfiles,
+			selectedStorage,
+			authCredentials
 		);
 	} else {
 		// Interactive logic
-		log('info', 'Required options not provided, proceeding with prompts.');
+		log('debug', 'Required options not provided, proceeding with prompts.');
+
+		let rl;
 
 		try {
-			const rl = readline.createInterface({
+			// Track init_started event
+			// TODO: Send to Segment telemetry when implemented
+			const taskmasterId = generateTaskmasterId();
+			log('debug', `Init started - taskmaster_id: ${taskmasterId}`);
+
+			// Prompt for storage selection first
+			let selectedStorage = await promptStorageSelection();
+
+			// Track storage_selected event
+			// TODO: Send to Segment telemetry when implemented
+			log(
+				'debug',
+				`Storage selected: ${selectedStorage} - taskmaster_id: ${taskmasterId}`
+			);
+
+			// If cloud storage selected, trigger OAuth flow
+			let authCredentials = null;
+			if (selectedStorage === 'cloud') {
+				try {
+					const authManager = AuthManager.getInstance();
+
+					// Check if already authenticated
+					const existingCredentials = await authManager.getAuthCredentials();
+					if (existingCredentials) {
+						log('success', 'Already authenticated with Hamster');
+						authCredentials = existingCredentials;
+					} else {
+						// Trigger OAuth flow
+						log('info', 'Starting authentication flow...');
+						console.log(chalk.blue('\n🔐 Authentication Required\n'));
+						console.log(
+							chalk.white(
+								'  Selecting cloud storage will open your browser for authentication.'
+							)
+						);
+						console.log(
+							chalk.gray('  This enables sync across devices with Hamster.\n')
+						);
+						let countdownInterval = null;
+						let authSpinner = null;
+
+						const startCountdown = (totalMs) => {
+							const startTime = Date.now();
+							const endTime = startTime + totalMs;
+
+							const updateCountdown = () => {
+								const remaining = Math.max(0, endTime - Date.now());
+								const mins = Math.floor(remaining / 60000);
+								const secs = Math.floor((remaining % 60000) / 1000);
+								const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+								if (authSpinner) {
+									authSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
+								}
+
+								if (remaining <= 0 && countdownInterval) {
+									clearInterval(countdownInterval);
+								}
+							};
+
+							authSpinner = ora({
+								text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
+								spinner: 'dots'
+							}).start();
+
+							countdownInterval = setInterval(updateCountdown, 1000);
+						};
+
+						const stopCountdown = (success) => {
+							if (countdownInterval) {
+								clearInterval(countdownInterval);
+								countdownInterval = null;
+							}
+							if (authSpinner) {
+								if (success) {
+									authSpinner.succeed('Authentication successful!');
+								} else {
+									authSpinner.fail('Authentication failed');
+								}
+								authSpinner = null;
+							}
+						};
+
+						authCredentials = await authManager.authenticateWithOAuth({
+							openBrowser: async (authUrl) => {
+								await open(authUrl);
+							},
+							timeout: AUTH_TIMEOUT_MS,
+							onAuthUrl: (authUrl) => {
+								console.log(
+									chalk.blue.bold('\n[auth] Browser Authentication\n')
+								);
+								console.log(
+									chalk.white('  Opening your browser to authenticate...')
+								);
+								console.log(
+									chalk.gray("  If the browser doesn't open, visit:")
+								);
+								console.log(chalk.cyan.underline(`  ${authUrl}\n`));
+							},
+							onWaitingForAuth: () => {
+								console.log(
+									chalk.dim(
+										'  If you signed up, check your email to confirm your account.'
+									)
+								);
+								console.log(
+									chalk.dim(
+										'  The CLI will automatically detect when you log in.\n'
+									)
+								);
+								startCountdown(AUTH_TIMEOUT_MS);
+							},
+							onSuccess: () => {
+								stopCountdown(true);
+							},
+							onError: (error) => {
+								stopCountdown(false);
+								log('error', `Authentication failed: ${error.message}`);
+							}
+						});
+
+						// Track auth_completed event
+						// TODO: Send to Segment telemetry when implemented
+						log('debug', `Auth completed - taskmaster_id: ${taskmasterId}`);
+					}
+				} catch (authError) {
+					log(
+						'error',
+						`Failed to authenticate: ${authError.message}. Falling back to local storage.`
+					);
+					// Fall back to local storage if auth fails
+					selectedStorage = 'local';
+				}
+			}
+
+			rl = readline.createInterface({
 				input: process.stdin,
 				output: process.stdout
 			});
-			// Prompt for shell aliases (skip if --aliases or --no-aliases flag was provided)
-			let addAliasesPrompted = true; // Default to true
-			if (options.addAliases !== undefined) {
-				addAliasesPrompted = options.addAliases; // Use flag value if provided
-			} else {
-				const addAliasesInput = await promptQuestion(
-					rl,
-					chalk.cyan(
-						'Add shell aliases for task-master? This lets you type "tm" instead of "task-master" (Y/n): '
-					)
-				);
-				addAliasesPrompted = addAliasesInput.trim().toLowerCase() !== 'n';
-			}
 
-			// Prompt for Git initialization (skip if --git or --no-git flag was provided)
+			// Git-related prompts only make sense for local storage
+			// If cloud storage is selected, tasks are stored in Hamster, not Git
 			let initGitPrompted = true; // Default to true
-			if (options.initGit !== undefined) {
-				initGitPrompted = options.initGit; // Use flag value if provided
+			let storeGitPrompted = true; // Default to true
+
+			if (selectedStorage === 'local') {
+				// Prompt for Git initialization (skip if --git or --no-git flag was provided)
+				if (options.initGit !== undefined) {
+					initGitPrompted = options.initGit; // Use flag value if provided
+				} else {
+					const gitInitInput = await promptQuestion(
+						rl,
+						chalk.cyan('Initialize a Git repository in project root? (Y/n): '),
+						(answer) => {
+							const isYes = answer.trim().toLowerCase() !== 'n';
+							const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+							return (
+								chalk.cyan('Initialize a Git repository in project root?') +
+								' ' +
+								icon +
+								' ' +
+								chalk.dim(isYes ? 'Yes' : 'No')
+							);
+						}
+					);
+					initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
+				}
+
+				// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
+				if (options.storeTasksInGit !== undefined) {
+					storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
+				} else {
+					const gitTasksInput = await promptQuestion(
+						rl,
+						chalk.cyan(
+							'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
+						),
+						(answer) => {
+							const isYes = answer.trim().toLowerCase() !== 'n';
+							const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+							return (
+								chalk.cyan(
+									'Store tasks in Git (tasks.json and tasks/ directory)?'
+								) +
+								' ' +
+								icon +
+								' ' +
+								chalk.dim(isYes ? 'Yes' : 'No')
+							);
+						}
+					);
+					storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
+				}
 			} else {
-				const gitInitInput = await promptQuestion(
-					rl,
-					chalk.cyan('Initialize a Git repository in project root? (Y/n): ')
-				);
-				initGitPrompted = gitInitInput.trim().toLowerCase() !== 'n';
+				// Cloud storage: skip Git prompts, but initialize Git repo anyway
+				// (users may still want version control for their code)
+				initGitPrompted = true;
+				// Tasks are in cloud, so don't store them in Git
+				storeGitPrompted = false;
 			}
 
-			// Prompt for Git tasks storage (skip if --git-tasks or --no-git-tasks flag was provided)
-			let storeGitPrompted = true; // Default to true
-			if (options.storeTasksInGit !== undefined) {
-				storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
-			} else {
-				const gitTasksInput = await promptQuestion(
+			// Prompt for AI IDE rules setup (only if not explicitly provided via --rules)
+			let shouldSetupRules = false;
+			if (!options.rulesExplicitlyProvided) {
+				const setupRulesInput = await promptQuestion(
 					rl,
 					chalk.cyan(
-						'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
-					)
+						'Set up AI IDE rules for better integration? (Cursor, Windsurf, etc.) (y/N): '
+					),
+					(answer) => {
+						const isYes = answer.trim().toLowerCase() === 'y';
+						const icon = isYes ? chalk.green('✓') : chalk.red('✗');
+						return (
+							chalk.cyan('Set up AI IDE rules for better integration?') +
+							' ' +
+							icon +
+							' ' +
+							chalk.dim(isYes ? 'Yes' : 'No')
+						);
+					}
 				);
-				storeGitPrompted = gitTasksInput.trim().toLowerCase() !== 'n';
+				shouldSetupRules = setupRulesInput.trim().toLowerCase() === 'y';
+			} else {
+				log(
+					'info',
+					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
+				);
 			}
 
-			// Confirm settings...
-			console.log('\nTask Master Project settings:');
-			console.log(
-				chalk.blue(
-					'Add shell aliases (so you can use "tm" instead of "task-master"):'
-				),
-				chalk.white(addAliasesPrompted ? 'Yes' : 'No')
+			// Prompt for response language preference
+			const languageInput = await promptQuestion(
+				rl,
+				chalk.cyan('Preferred response language (English): ')
 			);
+			const preferredLanguage = languageInput.trim() || 'English';
+
+			// Confirm settings with cleaner formatting
+			console.log('\n' + chalk.bold('Taskmaster Project Settings:'));
+			console.log(chalk.dim('─'.repeat(50)));
+
+			// Storage
 			console.log(
-				chalk.blue('Initialize Git repository in project root:'),
-				chalk.white(initGitPrompted ? 'Yes' : 'No')
+				'  ' + chalk.dim('Storage:'.padEnd(32)),
+				chalk.white(
+					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
+				)
 			);
+
+			// AI IDE rules
+			const rulesIcon = shouldSetupRules ? chalk.green('✓') : chalk.dim('✗');
 			console.log(
-				chalk.blue('Store tasks in Git (tasks.json and tasks/ directory):'),
-				chalk.white(storeGitPrompted ? 'Yes' : 'No')
+				'  ' + chalk.dim('AI IDE rules:'.padEnd(32)),
+				rulesIcon + ' ' + chalk.dim(shouldSetupRules ? 'Yes' : 'No')
 			);
+
+			// Response language
+			console.log(
+				'  ' + chalk.dim('Response language:'.padEnd(32)),
+				chalk.white(preferredLanguage)
+			);
+
+			// Only show Git-related settings for local storage
+			if (selectedStorage === 'local') {
+				const gitIcon = initGitPrompted ? chalk.green('✓') : chalk.dim('✗');
+				console.log(
+					'  ' + chalk.dim('Initialize Git repository:'.padEnd(32)),
+					gitIcon + ' ' + chalk.dim(initGitPrompted ? 'Yes' : 'No')
+				);
+
+				const gitTasksIcon = storeGitPrompted
+					? chalk.green('✓')
+					: chalk.dim('✗');
+				console.log(
+					'  ' + chalk.dim('Store tasks in Git:'.padEnd(32)),
+					gitTasksIcon + ' ' + chalk.dim(storeGitPrompted ? 'Yes' : 'No')
+				);
+			}
+
+			console.log(chalk.dim('─'.repeat(50)));
 
 			const confirmInput = await promptQuestion(
 				rl,
@@ -465,14 +686,6 @@ async function initializeProject(options = {}) {
 				return;
 			}
 
-			// Only run interactive rules if rules flag not provided via command line
-			if (options.rulesExplicitlyProvided) {
-				log(
-					'info',
-					`Using rule profiles provided via command line: ${selectedRuleProfiles.join(', ')}`
-				);
-			}
-
 			const dryRun = options.dryRun || false;
 
 			if (dryRun) {
@@ -481,10 +694,6 @@ async function initializeProject(options = {}) {
 				log('info', 'Would create/update necessary project files');
 
 				// Show flag-specific behavior
-				log(
-					'info',
-					`${addAliasesPrompted ? 'Would add shell aliases (tm, taskmaster)' : 'Would skip shell aliases'}`
-				);
 				log(
 					'info',
 					`${initGitPrompted ? 'Would initialize Git repository' : 'Would skip Git initialization'}`
@@ -500,13 +709,16 @@ async function initializeProject(options = {}) {
 			}
 
 			// Create structure using only necessary values
-			createProjectStructure(
-				addAliasesPrompted,
+			// Always add aliases - addShellAliases() handles checking for existing ones
+			await createProjectStructure(
+				true, // Always add aliases
 				initGitPrompted,
 				storeGitPrompted,
 				dryRun,
-				options,
-				selectedRuleProfiles
+				{ ...options, shouldSetupRules, preferredLanguage }, // Pass shouldSetupRules and preferredLanguage through options
+				selectedRuleProfiles,
+				selectedStorage,
+				authCredentials
 			);
 			rl.close();
 		} catch (error) {
@@ -519,26 +731,177 @@ async function initializeProject(options = {}) {
 	}
 }
 
-// Helper function to promisify readline question
-function promptQuestion(rl, question) {
+// Helper function to promisify readline question and overwrite prompt with result
+function promptQuestion(rl, question, formatResult) {
 	return new Promise((resolve) => {
 		rl.question(question, (answer) => {
+			// After user presses Enter, cursor is on a new line
+			// Move cursor up one line, then clear and write result
+			readline.moveCursor(process.stdout, 0, -1);
+			readline.cursorTo(process.stdout, 0);
+			readline.clearLine(process.stdout, 0);
+			// Show formatted result if provided
+			if (formatResult) {
+				process.stdout.write(formatResult(answer) + '\n');
+			}
 			resolve(answer);
 		});
 	});
 }
 
+/**
+ * Generate a unique taskmaster_id for anonymous tracking
+ * @returns {string} UUID string
+ */
+function generateTaskmasterId() {
+	return randomUUID();
+}
+
+/**
+ * Update config.json with storage configuration
+ * @param {string} configPath - Path to config.json file
+ * @param {string} selectedStorage - Storage type ('cloud' or 'local')
+ * @param {object|null} authCredentials - Auth credentials if cloud storage selected
+ */
+function updateStorageConfig(configPath, selectedStorage, authCredentials) {
+	try {
+		if (!fs.existsSync(configPath)) {
+			log('warn', 'Config file does not exist, skipping storage configuration');
+			return;
+		}
+
+		const configContent = fs.readFileSync(configPath, 'utf8');
+		const config = JSON.parse(configContent);
+
+		// Initialize storage config if it doesn't exist
+		if (!config.storage) {
+			config.storage = {};
+		}
+
+		if (selectedStorage === 'cloud') {
+			// Configure for API/cloud storage
+			config.storage.type = 'api';
+			config.storage.apiEndpoint =
+				process.env.TM_BASE_DOMAIN ||
+				process.env.TM_PUBLIC_BASE_DOMAIN ||
+				'https://tryhamster.com/api';
+
+			// Note: Access token is stored in ~/.taskmaster/auth.json by AuthManager
+			// We don't store it in config.json for security reasons
+			log('debug', 'Connected to Hamster Studio');
+		} else {
+			// Configure for local file storage
+			config.storage.type = 'file';
+			log('debug', 'Configured storage for local file storage');
+		}
+
+		// Write updated config back to file
+		fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+		log('debug', 'Storage configuration updated in config.json');
+	} catch (error) {
+		log('error', `Failed to update storage configuration: ${error.message}`);
+	}
+}
+
+/**
+ * Prompt user to select storage backend (Hamster cloud or local)
+ * @returns {Promise<'cloud'|'local'>} Selected storage type
+ */
+async function promptStorageSelection() {
+	if (isSilentMode()) {
+		// Default to local in silent mode
+		return 'local';
+	}
+
+	try {
+		// Display header
+		console.log(
+			'\n' +
+				chalk.bold.cyan('You need a plan before you execute.') +
+				' ' +
+				chalk.white('How do you want to build it?\n')
+		);
+
+		const { storageType } = await inquirer.prompt([
+			{
+				type: 'list',
+				name: 'storageType',
+				message: chalk.cyan('Choose one:'),
+				choices: [
+					'\n',
+					{
+						name: [
+							chalk.bold('Solo (Taskmaster)'),
+							'',
+							chalk.white(
+								'   • Parse your own PRDs into structured task lists and build with any IDE or background agents'
+							),
+							chalk.white(
+								'   • Agents execute tasks with precision, no scope creep, no going off-track'
+							),
+							chalk.white(
+								'   • Tasks live in a local JSON file, everything stays in your repo'
+							),
+							chalk.white(
+								'   • Upgrade to Hamster to bring the Taskmaster experience to your team'
+							),
+							''
+						].join('\n'),
+						value: 'local',
+						short: 'Solo (Taskmaster)'
+					},
+
+					{
+						name: [
+							chalk.bold('Together (Hamster)'),
+							'',
+							chalk.white(
+								'   • Write a brief with your team. Hamster refines it into a plan.'
+							),
+							chalk.white(
+								'   • Your team drafts, refines, and aligns on the same page before executing'
+							),
+							chalk.white(
+								'   • One brief, one plan, one source of truth for execution'
+							),
+							chalk.white(
+								'   • Access tasks on Taskmaster and execute with any AI agent'
+							),
+							''
+						].join('\n'),
+						value: 'cloud',
+						short: 'Together (Hamster)'
+					}
+				],
+				default: 'local',
+				pageSize: 20 // Increase page size to show both options without scrolling
+			}
+		]);
+
+		return storageType;
+	} catch (error) {
+		// Handle Ctrl+C or other interruptions
+		if (error.isTtyError || error.name === 'ExitPromptError') {
+			log('warn', 'Storage selection cancelled, defaulting to local storage');
+			return 'local';
+		}
+		throw error;
+	}
+}
+
 // Function to create the project structure
-function createProjectStructure(
+async function createProjectStructure(
 	addAliases,
 	initGit,
 	storeTasksInGit,
 	dryRun,
 	options,
-	selectedRuleProfiles = RULE_PROFILES
+	selectedRuleProfiles = RULE_PROFILES,
+	selectedStorage = 'local',
+	authCredentials = null
 ) {
 	const targetDir = process.cwd();
-	log('info', `Initializing project in ${targetDir}`);
+	log('debug', `Initializing project in ${targetDir}`);
 
 	// Create NEW .taskmaster directory structure (using constants)
 	ensureDirectoryExists(path.join(targetDir, TASKMASTER_DIR));
@@ -585,10 +948,13 @@ function createProjectStructure(
 	// Update config.json with correct maxTokens values from supported-models.json
 	const configPath = path.join(targetDir, TASKMASTER_CONFIG_FILE);
 	if (updateConfigMaxTokens(configPath)) {
-		log('info', 'Updated config with correct maxTokens values');
+		log('debug', 'Updated config with correct maxTokens values');
 	} else {
-		log('warn', 'Could not update maxTokens in config');
+		log('debug', 'Could not update maxTokens in config');
 	}
+
+	// Update config.json with storage configuration
+	updateStorageConfig(configPath, selectedStorage, authCredentials);
 
 	// Copy .gitignore with GitTasks preference
 	try {
@@ -619,7 +985,7 @@ function createProjectStructure(
 		} else if (initGit === true) {
 			if (insideGitWorkTree()) {
 				log(
-					'info',
+					'debug',
 					'Existing Git repository detected – skipping git init despite --git flag.'
 				);
 			} else {
@@ -630,7 +996,7 @@ function createProjectStructure(
 		} else {
 			// Default behavior when no flag is provided (from interactive prompt)
 			if (insideGitWorkTree()) {
-				log('info', 'Existing Git repository detected – skipping git init.');
+				log('debug', 'Existing Git repository detected – skipping git init.');
 			} else {
 				log(
 					'info',
@@ -669,20 +1035,12 @@ function createProjectStructure(
 		// If silent (MCP mode), suppress npm install output
 		npmInstallOptions.stdio = 'ignore';
 		log('info', 'Running npm install silently...'); // Log our own message
-	} else {
-		// Interactive mode, show the boxen message
-		console.log(
-			boxen(chalk.cyan('Installing dependencies...'), {
-				padding: 0.5,
-				margin: 0.5,
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
 	}
 
 	// === Add Rule Profiles Setup Step ===
+	// Only run if user explicitly said yes (via shouldSetupRules)
 	if (
+		options.shouldSetupRules &&
 		!isSilentMode() &&
 		!dryRun &&
 		!options?.yes &&
@@ -693,7 +1051,8 @@ function createProjectStructure(
 				padding: 0.5,
 				margin: { top: 1, bottom: 0.5 },
 				borderStyle: 'round',
-				borderColor: 'blue'
+				borderColor: 'cyan',
+				width: BOX_WIDTH
 			})
 		);
 		log(
@@ -715,61 +1074,56 @@ function createProjectStructure(
 		// This branch can log why setup was skipped, similar to the model setup logic.
 		if (options.rulesExplicitlyProvided) {
 			log(
-				'info',
+				'debug',
 				'Skipping interactive rules setup because --rules flag was used.'
 			);
 		} else {
-			log('info', 'Skipping interactive rules setup in non-interactive mode.');
+			log('debug', 'Skipping interactive rules setup in non-interactive mode.');
 		}
+	} else if (!options.shouldSetupRules) {
+		log('debug', 'Skipping rules setup - user declined.');
 	}
 	// =====================================
 
 	// === Add Response Language Step ===
-	if (!isSilentMode() && !dryRun && !options?.yes) {
-		console.log(
-			boxen(chalk.cyan('Configuring Response Language...'), {
-				padding: 0.5,
-				margin: { top: 1, bottom: 0.5 },
-				borderStyle: 'round',
-				borderColor: 'blue'
-			})
-		);
-		log(
-			'info',
-			'Running interactive response language setup. Please input your preferred language.'
-		);
+	// Set language directly if provided via interactive prompt
+	if (options.preferredLanguage && !dryRun) {
 		try {
-			execSync('npx task-master lang --setup', {
-				stdio: 'inherit',
-				cwd: targetDir
+			const responseLanguageModule = await import(
+				'./modules/task-manager/response-language.js'
+			);
+			const setResponseLanguage = responseLanguageModule.default;
+			setResponseLanguage(options.preferredLanguage, {
+				projectRoot: targetDir,
+				silent: true
 			});
-			log('success', 'Response Language configured.');
+			log('debug', `Response language set to: ${options.preferredLanguage}`);
 		} catch (error) {
-			log('error', 'Failed to configure response language:', error.message);
-			log('warn', 'You may need to run "task-master lang --setup" manually.');
+			log('warn', `Failed to set response language: ${error.message}`);
 		}
 	} else if (isSilentMode() && !dryRun) {
-		log(
-			'info',
-			'Skipping interactive response language setup in silent (MCP) mode.'
-		);
-		log(
-			'warn',
-			'Please configure response language using "task-master models --set-response-language" or the "models" MCP tool.'
-		);
+		log('debug', 'Skipping response language setup in silent (MCP) mode.');
 	} else if (dryRun) {
-		log('info', 'DRY RUN: Skipping interactive response language setup.');
+		log('debug', 'DRY RUN: Skipping response language setup.');
 	}
 	// =====================================
 
 	// === Add Model Configuration Step ===
-	if (!isSilentMode() && !dryRun && !options?.yes) {
+	// Only configure models for local storage (need API keys for direct AI usage)
+	// Cloud storage (Hamster) manages AI models on the backend - no API keys or extra costs needed
+	if (
+		!isSilentMode() &&
+		!dryRun &&
+		!options?.yes &&
+		selectedStorage === 'local'
+	) {
 		console.log(
 			boxen(chalk.cyan('Configuring AI Models...'), {
 				padding: 0.5,
 				margin: { top: 1, bottom: 0.5 },
 				borderStyle: 'round',
-				borderColor: 'blue'
+				borderColor: 'cyan',
+				width: BOX_WIDTH
 			})
 		);
 		log(
@@ -786,6 +1140,23 @@ function createProjectStructure(
 			log('error', 'Failed to configure AI models:', error.message);
 			log('warn', 'You may need to run "task-master models --setup" manually.');
 		}
+	} else if (selectedStorage === 'cloud' && !dryRun) {
+		console.log(
+			boxen(
+				chalk.green.bold('✓ AI Models Managed by Hamster - go ham!\n\n') +
+					chalk.white('Hamster handles all AI model configuration for you.\n') +
+					chalk.dim('• Optimized model selection for your tasks\n') +
+					chalk.dim('• No API keys required\n') +
+					chalk.dim('• No extra costs'),
+				{
+					padding: 1,
+					margin: { top: 1, bottom: 0.5 },
+					borderStyle: 'round',
+					borderColor: 'cyan',
+					width: BOX_WIDTH
+				}
+			)
+		);
 	} else if (isSilentMode() && !dryRun) {
 		log('info', 'Skipping interactive model setup in silent (MCP) mode.');
 		log(
@@ -805,68 +1176,128 @@ function createProjectStructure(
 
 	// Add shell aliases if requested
 	if (addAliases && !dryRun) {
-		log('info', 'Adding shell aliases...');
+		log('debug', 'Adding shell aliases...');
 		const aliasResult = addShellAliases();
 		if (aliasResult) {
-			log('success', 'Shell aliases added successfully');
+			log('debug', 'Shell aliases added successfully');
 		}
 	} else if (addAliases && dryRun) {
-		log('info', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
+		log('debug', 'DRY RUN: Would add shell aliases (tm, taskmaster)');
 	}
 
 	// Display success message
 	if (!isSilentMode()) {
-		console.log(
-			boxen(
-				`${warmGradient.multiline(
-					figlet.textSync('Success!', { font: 'Standard' })
-				)}\n${chalk.green('Project initialized successfully!')}`,
-				{
+		// Show elegant welcome message for Hamster, regular success for local
+		if (selectedStorage === 'cloud') {
+			// High-fidelity hamster pixel art (displayed without box)
+			const hamsterArt = readAsset('hamster-art.txt', 'utf8');
+			console.log('\n' + chalk.cyan(hamsterArt));
+			console.log('');
+
+			// Box with connection message and next steps
+			const welcomeMessage = [
+				chalk.green.bold('✓ Connected to Hamster Studio'),
+				'',
+				chalk.white("Your team's workspace is ready to go ham!\n"),
+				chalk.dim('Draft together. Align once. Build with agents.'),
+				'',
+				chalk.cyan('How to orchestrate with Taskmaster:'),
+				chalk.white('  • Create your first brief at: ') +
+					chalk.underline.cyan('https://tryhamster.com'),
+				chalk.white('  • Connect your brief using ') +
+					chalk.bold('tm context <brief-url>') +
+					chalk.white(' to access tasks in Taskmaster'),
+				chalk.white('  • Orchestrate and implement tasks using ') +
+					chalk.bold('tm next') +
+					chalk.white(' to kickoff any AI agent'),
+				chalk.white('  • Run ') +
+					chalk.bold('tm help') +
+					chalk.white(' to explore other available commands'),
+				chalk.white('  • Run ') +
+					chalk.bold('tm rules --setup') +
+					chalk.white(' to configure AI IDE rules for better integration')
+			].join('\n');
+
+			console.log(
+				boxen(welcomeMessage, {
 					padding: 1,
-					margin: 1,
-					borderStyle: 'double',
-					borderColor: 'green'
-				}
-			)
-		);
+					margin: { top: 1, bottom: 0, left: 0, right: 0 },
+					borderStyle: 'round',
+					borderColor: 'cyan',
+					width: BOX_WIDTH
+				})
+			);
+		} else {
+			console.log(
+				boxen(
+					`${warmGradient.multiline(
+						figlet.textSync('Success!', { font: 'Standard' })
+					)}\n${chalk.green('Project initialized successfully!')}`,
+					{
+						padding: 1,
+						margin: 1,
+						borderStyle: 'double',
+						borderColor: 'green',
+						width: BOX_WIDTH
+					}
+				)
+			);
+		}
 	}
 
 	// Display next steps in a nice box
 	if (!isSilentMode()) {
+		// Different Getting Started for Hamster vs Local
+		let gettingStartedMessage;
+
+		if (selectedStorage === 'cloud') {
+			// Hamster-specific workflow
+			gettingStartedMessage = `${chalk.cyan.bold("Here's how to execute your Hamster briefs with Taskmaster")}\n\n${chalk.white('1. ')}${chalk.yellow(
+				'Create your first brief at'
+			)} ${chalk.cyan.underline('https://tryhamster.com')}\n${chalk.white('   └─ ')}${chalk.dim('Hamster will write your brief and generate the full task plan')}\n${chalk.white('2. ')}${chalk.yellow(
+				'Add rules for your AI IDE(s)'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm rules --setup')}${chalk.dim(' - Opens interactive setup')}\n${chalk.white('3. ')}${chalk.yellow(
+				'Connect your brief to Taskmaster'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm context <brief-url> OR tm briefs')}\n${chalk.white('4. ')}${chalk.yellow(
+				'View your tasks from the brief'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm list')}${chalk.dim(' or ')}${chalk.cyan('tm list all')}${chalk.dim(' (with subtasks)')}\n${chalk.white('5. ')}${chalk.yellow(
+				'Work on tasks with any AI coding assistant or background agent'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm next')}${chalk.dim(' - Find the next task to work on')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm show <id>')}${chalk.dim(' - View task details')}\n${chalk.white('   ├─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> in-progress')}${chalk.dim(' - Mark task started')}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm status <id> done')}${chalk.dim(' - Mark task complete')}\n${chalk.white('6. ')}${chalk.yellow(
+				'Add notes or updates to tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('tm update-task <id> <notes>')}\n${chalk.white('7. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('tm help')}${chalk.dim(' to see all available commands')}`;
+		} else {
+			// Local-specific getting started
+			gettingStartedMessage = `${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
+				'Configure AI models and add API keys to `.env`'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('Models: Use ')}${chalk.cyan('task-master models')}${chalk.dim(' commands')}\n${chalk.white('   └─ ')}${chalk.dim(
+				'Keys: Add provider API keys to .env (or .cursor/mcp.json)'
+			)}\n${chalk.white('2. ')}${chalk.yellow(
+				'Discuss your idea with AI and create a PRD'
+			)}\n${chalk.white('   ├─ ')}${chalk.dim('Simple projects: Use ')}${chalk.cyan('example_prd.txt')}${chalk.dim(' template')}\n${chalk.white('   └─ ')}${chalk.dim('Complex systems: Use ')}${chalk.cyan('example_prd_rpg.txt')}${chalk.dim(' template')}\n${chalk.white('3. ')}${chalk.yellow(
+				'Parse your PRD to generate initial tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master parse-prd .taskmaster/docs/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
+				'Analyze task complexity'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master analyze-complexity --research')}\n${chalk.white('5. ')}${chalk.yellow(
+				'Expand tasks into subtasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master expand --all --research')}\n${chalk.white('6. ')}${chalk.yellow(
+				'Start working on tasks'
+			)}\n${chalk.white('   └─ ')}${chalk.dim('CLI: ')}${chalk.cyan('task-master next')}\n${chalk.white('7. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('task-master --help')}${chalk.dim(' to see all available commands')}\n${chalk.dim(
+				'* Run '
+			)}${chalk.cyan('tm rules --setup')}${chalk.dim(' to configure AI IDE rules for better integration')}`;
+		}
+
 		console.log(
-			boxen(
-				`${chalk.cyan.bold('Things you should do next:')}\n\n${chalk.white('1. ')}${chalk.yellow(
-					'Configure AI models (if needed) and add API keys to `.env`'
-				)}\n${chalk.white('   ├─ ')}${chalk.dim('Models: Use `task-master models` commands')}\n${chalk.white('   └─ ')}${chalk.dim(
-					'Keys: Add provider API keys to .env (or inside the MCP config file i.e. .cursor/mcp.json)'
-				)}\n${chalk.white('2. ')}${chalk.yellow(
-					'Discuss your idea with AI and ask for a PRD, and save it to .taskmaster/docs/prd.txt'
-				)}\n${chalk.white('   ├─ ')}${chalk.dim('Simple projects: Use ')}${chalk.cyan('example_prd.txt')}${chalk.dim(' template')}\n${chalk.white('   └─ ')}${chalk.dim('Complex systems: Use ')}${chalk.cyan('example_prd_rpg.txt')}${chalk.dim(' template (for dependency-aware task graphs)')}\n${chalk.white('3. ')}${chalk.yellow(
-					'Ask Cursor Agent (or run CLI) to parse your PRD and generate initial tasks:'
-				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('parse_prd')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master parse-prd .taskmaster/docs/prd.txt')}\n${chalk.white('4. ')}${chalk.yellow(
-					'Ask Cursor to analyze the complexity of the tasks in your PRD using research'
-				)}\n${chalk.white('   └─ ')}${chalk.dim('MCP Tool: ')}${chalk.cyan('analyze_project_complexity')}${chalk.dim(' | CLI: ')}${chalk.cyan('task-master analyze-complexity')}\n${chalk.white('5. ')}${chalk.yellow(
-					'Ask Cursor to expand all of your tasks using the complexity analysis'
-				)}\n${chalk.white('6. ')}${chalk.yellow('Ask Cursor to begin working on the next task')}\n${chalk.white('7. ')}${chalk.yellow(
-					'Add new tasks anytime using the add-task command or MCP tool'
-				)}\n${chalk.white('8. ')}${chalk.yellow(
-					'Ask Cursor to set the status of one or many tasks/subtasks at a time. Use the task id from the task lists.'
-				)}\n${chalk.white('9. ')}${chalk.yellow(
-					'Ask Cursor to update all tasks from a specific task id based on new learnings or pivots in your project.'
-				)}\n${chalk.white('10. ')}${chalk.green.bold('Ship it!')}\n\n${chalk.dim(
-					'* Review the README.md file to learn how to use other commands via Cursor Agent.'
-				)}\n${chalk.dim(
-					'* Use the task-master command without arguments to see all available commands.'
-				)}`,
-				{
-					padding: 1,
-					margin: 1,
-					borderStyle: 'round',
-					borderColor: 'yellow',
-					title: 'Getting Started',
-					titleAlignment: 'center'
-				}
-			)
+			boxen(chalk.yellow.bold('Workflow\n') + '\n' + gettingStartedMessage, {
+				padding: 1,
+				margin: { top: 0, bottom: 1, left: 0, right: 0 },
+				borderStyle: 'round',
+				borderColor: 'yellow',
+				width: BOX_WIDTH
+			})
 		);
 	}
 }

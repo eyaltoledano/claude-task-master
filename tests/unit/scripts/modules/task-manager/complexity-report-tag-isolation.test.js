@@ -3,9 +3,9 @@
  * Verifies that different tags maintain separate complexity reports
  */
 
-import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
+import { jest } from '@jest/globals';
 
 // Mock fs module - consolidated single registration
 const mockExistsSync = jest.fn();

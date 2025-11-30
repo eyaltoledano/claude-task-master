@@ -32,4 +32,9 @@ export {
 export { isLocalOnlyCommand, type AuthBlockResult } from './command.guard.js';
 
 // Auth constants
-export { LOCAL_ONLY_COMMANDS, type LocalOnlyCommand } from './constants.js';
+export {
+	AUTH_TIMEOUT_MS,
+	MFA_MAX_ATTEMPTS,
+	LOCAL_ONLY_COMMANDS,
+	type LocalOnlyCommand
+} from './constants.js';

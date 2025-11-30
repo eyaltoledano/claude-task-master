@@ -4,8 +4,8 @@
  */
 
 import { createGrokCli } from '@tm/ai-sdk-provider-grok-cli';
-import { BaseAIProvider } from './base-provider.js';
 import { getGrokCliSettingsForCommand } from '../../scripts/modules/config-manager.js';
+import { BaseAIProvider } from './base-provider.js';
 
 export class GrokCliProvider extends BaseAIProvider {
 	constructor() {

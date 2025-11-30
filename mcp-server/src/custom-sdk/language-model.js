@@ -5,12 +5,12 @@
  * Uses MCP session.requestSampling() for AI operations.
  */
 
-import {
-	convertToMCPFormat,
-	convertFromMCPFormat
-} from './message-converter.js';
 import { MCPError, mapMCPError } from './errors.js';
 import { extractJson } from './json-extractor.js';
+import {
+	convertFromMCPFormat,
+	convertToMCPFormat
+} from './message-converter.js';
 import {
 	convertSchemaToInstructions,
 	enhancePromptForJSON

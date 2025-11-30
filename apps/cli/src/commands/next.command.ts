@@ -32,6 +32,7 @@ export interface NextTaskResult {
 	found: boolean;
 	tag: string;
 	storageType: Exclude<StorageType, 'auto'>;
+	hasAnyTasks?: boolean;
 }
 
 /**
@@ -135,11 +136,16 @@ export class NextCommand extends Command {
 
 		const activeTag = options.tag || this.tmCore.config.getActiveTag();
 
+		// Check if there are ANY tasks at all
+		const allTasks = await this.tmCore.tasks.list({ tag: options.tag });
+		const hasAnyTasks = allTasks && allTasks.tasks.length > 0;
+
 		return {
 			task,
 			found: task !== null,
 			tag: activeTag,
-			storageType
+			storageType,
+			hasAnyTasks
 		};
 	}
 
@@ -182,24 +188,31 @@ export class NextCommand extends Command {
 		});
 
 		if (!result.found || !result.task) {
-			// No next task available
-			console.log(
-				boxen(
-					chalk.yellow(
-						'No tasks available to work on. All tasks are either completed, blocked by dependencies, or in progress.'
-					),
-					{
+			// Only show warning box if there are literally NO tasks at all
+			if (!result.hasAnyTasks) {
+				console.log(
+					boxen(chalk.yellow('No tasks found in this project.'), {
 						padding: 1,
 						borderStyle: 'round',
 						borderColor: 'yellow',
 						title: '⚠️ NO TASKS AVAILABLE ⚠️',
 						titleAlignment: 'center'
-					}
-				)
-			);
-			console.log(
-				`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list --status pending')} ${chalk.dim('to see all pending tasks')}`
-			);
+					})
+				);
+				console.log(
+					`\n${chalk.dim('Tip: Create tasks with')} ${chalk.cyan('task-master parse-prd')} ${chalk.dim('or')} ${chalk.cyan('task-master add-task')}`
+				);
+			} else {
+				// Tasks exist but none are available to work on - just show a simple message
+				console.log(
+					chalk.yellow(
+						'✓ All tasks are either completed, blocked by dependencies, or in progress.'
+					)
+				);
+				console.log(
+					`\n${chalk.dim('Tip: Try')} ${chalk.cyan('task-master list')} ${chalk.dim('to see all tasks')}`
+				);
+			}
 			return;
 		}
 

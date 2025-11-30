@@ -4,11 +4,11 @@
 
 import { expandAllTasks } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { createLogWrapper } from '../../tools/utils.js';
 import { resolveComplexityReportOutputPath } from '../../../../src/utils/path-utils.js';
+import { createLogWrapper } from '../../tools/utils.js';
 
 /**
  * Expand all pending tasks with subtasks (Direct Function Wrapper)

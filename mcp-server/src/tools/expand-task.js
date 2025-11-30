@@ -3,18 +3,18 @@
  * Tool to expand a task into subtasks
  */
 
-import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
+import { z } from 'zod';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
 import {
-	findTasksPath,
-	findComplexityReportPath
+	findComplexityReportPath,
+	findTasksPath
 } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the expand-task tool with the MCP server

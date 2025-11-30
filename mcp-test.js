@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { Config } from 'fastmcp';
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import { Config } from 'fastmcp';
 
 // Log the current directory
 console.error(`Current working directory: ${process.cwd()}`);

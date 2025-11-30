@@ -1,4 +1,4 @@
-import { StreamingError, STREAMING_ERROR_CODES } from './stream-parser.js';
+import { STREAMING_ERROR_CODES, StreamingError } from './stream-parser.js';
 
 /**
  * Utility class for managing timeouts in async operations

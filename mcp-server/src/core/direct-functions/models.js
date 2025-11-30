@@ -3,17 +3,17 @@
  * Direct function for managing AI model configurations via MCP
  */
 
+import { CUSTOM_PROVIDERS_ARRAY } from '@tm/core';
 import {
-	getModelConfiguration,
 	getAvailableModelsList,
+	getModelConfiguration,
 	setModel
 } from '../../../../scripts/modules/task-manager/models.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
-import { CUSTOM_PROVIDERS_ARRAY } from '@tm/core';
 
 // Define supported roles for model setting
 const MODEL_ROLES = ['main', 'research', 'fallback'];

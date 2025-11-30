@@ -10,8 +10,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
 import { fileURLToPath } from 'url';
+import chalk from 'chalk';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);

@@ -3,16 +3,16 @@
  * Tool for displaying the complexity analysis report
  */
 
-import { z } from 'zod';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { complexityReportDirect } from '../core/task-master-core.js';
-import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
-import { findComplexityReportPath } from '../core/utils/path-utils.js';
+import { z } from 'zod';
 import { getCurrentTag } from '../../../scripts/modules/utils.js';
+import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { complexityReportDirect } from '../core/task-master-core.js';
+import { findComplexityReportPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the complexityReport tool with the MCP server

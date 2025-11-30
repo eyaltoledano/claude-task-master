@@ -1,18 +1,23 @@
-import { FastMCP } from 'fastmcp';
-import path from 'path';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
-import logger from './logger.js';
-import {
-	registerTaskMasterTools,
-	getToolsConfiguration
-} from './tools/index.js';
-import ProviderRegistry from '../../src/provider-registry/index.js';
-import { MCPProvider } from './providers/mcp-provider.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import * as Sentry from '@sentry/node';
+import dotenv from 'dotenv';
+import { FastMCP } from 'fastmcp';
 import packageJson from '../../package.json' with { type: 'json' };
+import ProviderRegistry from '../../src/provider-registry/index.js';
+import { initializeSentry } from '../../src/telemetry/sentry.js';
+import logger from './logger.js';
+import { MCPProvider } from './providers/mcp-provider.js';
+import {
+	getToolsConfiguration,
+	registerTaskMasterTools
+} from './tools/index.js';
 
 dotenv.config();
+
+// Initialize Sentry after .env is loaded
+initializeSentry();
 
 // Constants
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +33,22 @@ class TaskMasterMCPServer {
 			version: packageJson.version
 		};
 
-		this.server = new FastMCP(this.options);
+		// Create FastMCP instance
+		const fastmcpServer = new FastMCP(this.options);
+
+		// Wrap the underlying MCP server with Sentry instrumentation
+		// FastMCP exposes the internal MCP server via _mcpServer property
+		if (fastmcpServer._mcpServer && Sentry.wrapMcpServerWithSentry) {
+			try {
+				fastmcpServer._mcpServer = Sentry.wrapMcpServerWithSentry(
+					fastmcpServer._mcpServer
+				);
+			} catch (error) {
+				logger.warn(`Failed to wrap MCP server with Sentry: ${error.message}`);
+			}
+		}
+
+		this.server = fastmcpServer;
 		this.initialized = false;
 
 		this.init = this.init.bind(this);

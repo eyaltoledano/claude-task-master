@@ -2,10 +2,10 @@
  * Task Card Component for Kanban Board
  */
 
-import React from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { PriorityBadge } from './PriorityBadge';
+import React from 'react';
 import type { TaskMasterTask } from '../types';
+import { PriorityBadge } from './PriorityBadge';
 
 interface TaskCardProps {
 	task: TaskMasterTask;

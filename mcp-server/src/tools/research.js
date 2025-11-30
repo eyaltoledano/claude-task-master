@@ -3,14 +3,14 @@
  * Tool to perform AI-powered research queries with project context
  */
 
-import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { researchDirect } from '../core/task-master-core.js';
+import { z } from 'zod';
 import { resolveTag } from '../../../scripts/modules/utils.js';
+import { researchDirect } from '../core/task-master-core.js';
 
 /**
  * Register the research tool with the MCP server

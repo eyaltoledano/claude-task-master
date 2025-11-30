@@ -85,9 +85,9 @@ vi.mock('../../integration/clients/supabase-client.js', () => {
 	};
 });
 
+import { AuthenticationError } from '../types.js';
 // Import SUT after mocks
 import { AuthManager } from './auth-manager.js';
-import { AuthenticationError } from '../types.js';
 
 describe('AuthManager Singleton', () => {
 	beforeEach(() => {

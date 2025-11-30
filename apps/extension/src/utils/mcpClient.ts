@@ -1,7 +1,7 @@
+import * as path from 'path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { logger } from './logger';
 
 export interface MCPConfig {

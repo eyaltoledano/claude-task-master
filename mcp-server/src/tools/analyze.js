@@ -3,19 +3,19 @@
  * Tool for analyzing task complexity and generating recommendations
  */
 
-import { z } from 'zod';
-import path from 'path';
 import fs from 'fs'; // Import fs for directory check/creation
+import path from 'path';
 import {
-	handleApiResult,
 	createErrorResponse,
+	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
-import { findTasksPath } from '../core/utils/path-utils.js';
+import { z } from 'zod';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
 import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
+import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // Assuming core functions are exported via task-master-core.js
+import { findTasksPath } from '../core/utils/path-utils.js';
 
 /**
  * Register the analyze_project_complexity tool
