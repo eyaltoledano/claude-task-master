@@ -6,8 +6,8 @@ import { moveTasksBetweenTags } from '../../../../scripts/modules/task-manager/m
 import { findTasksPath } from '../utils/path-utils.js';
 
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 
 /**

@@ -9,10 +9,12 @@ import { AuthCommand } from './commands/auth.command.js';
 import { AutopilotCommand } from './commands/autopilot/index.js';
 import { BriefsCommand } from './commands/briefs.command.js';
 import { ContextCommand } from './commands/context.command.js';
-import { ExportCommand } from './commands/export.command.js';
+import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
+import { LoginCommand } from './commands/login.command.js';
+import { LogoutCommand } from './commands/logout.command.js';
 import { NextCommand } from './commands/next.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
 import { ShowCommand } from './commands/show.command.js';
@@ -70,8 +72,14 @@ export class CommandRegistry {
 		},
 		{
 			name: 'export',
-			description: 'Export tasks to external systems',
+			description: 'Export tasks to Hamster by creating a new brief',
 			commandClass: ExportCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'export-tag',
+			description: 'Export a specific tag to Hamster',
+			commandClass: ExportTagCommand as any,
 			category: 'task'
 		},
 		{
@@ -87,6 +95,18 @@ export class CommandRegistry {
 			name: 'auth',
 			description: 'Manage authentication with tryhamster.com',
 			commandClass: AuthCommand as any,
+			category: 'auth'
+		},
+		{
+			name: 'login',
+			description: 'Login to Hamster (alias for "auth login")',
+			commandClass: LoginCommand as any,
+			category: 'auth'
+		},
+		{
+			name: 'logout',
+			description: 'Logout from Hamster (alias for "auth logout")',
+			commandClass: LogoutCommand as any,
 			category: 'auth'
 		},
 		{

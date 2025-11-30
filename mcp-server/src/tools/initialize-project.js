@@ -1,11 +1,11 @@
-import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { initializeProjectDirect } from '../core/task-master-core.js';
+import { z } from 'zod';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
+import { initializeProjectDirect } from '../core/task-master-core.js';
 
 export function registerInitializeProjectTool(server) {
 	server.addTool({
@@ -24,7 +24,9 @@ export function registerInitializeProjectTool(server) {
 				.boolean()
 				.optional()
 				.default(true)
-				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
+				.describe(
+					'Add shell aliases (tm, taskmaster, hamster, ham) to shell config file.'
+				),
 			initGit: z
 				.boolean()
 				.optional()

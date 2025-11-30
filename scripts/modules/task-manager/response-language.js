@@ -1,9 +1,9 @@
+import { findConfigPath } from '../../../src/utils/path-utils.js';
 import {
 	getConfig,
 	isConfigFilePresent,
 	writeConfig
 } from '../config-manager.js';
-import { findConfigPath } from '../../../src/utils/path-utils.js';
 import { log } from '../utils.js';
 
 function setResponseLanguage(lang, options = {}) {
@@ -65,8 +65,6 @@ function setResponseLanguage(lang, options = {}) {
 			};
 		}
 
-		const successMessage = `Successfully set response language to: ${lang}`;
-		report('info', successMessage);
 		return {
 			success: true,
 			data: {

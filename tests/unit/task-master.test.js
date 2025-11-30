@@ -2,18 +2,18 @@
  * Tests for task-master.js initTaskMaster function
  */
 
-import { jest } from '@jest/globals';
-import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { initTaskMaster, TaskMaster } from '../../src/task-master.js';
+import path from 'path';
+import { jest } from '@jest/globals';
 import {
-	TASKMASTER_DIR,
-	TASKMASTER_TASKS_FILE,
 	LEGACY_CONFIG_FILE,
+	LEGACY_TASKS_FILE,
 	TASKMASTER_CONFIG_FILE,
-	LEGACY_TASKS_FILE
+	TASKMASTER_DIR,
+	TASKMASTER_TASKS_FILE
 } from '../../src/constants/paths.js';
+import { TaskMaster, initTaskMaster } from '../../src/task-master.js';
 
 // Mock the console to prevent noise during tests
 jest.spyOn(console, 'error').mockImplementation(() => {});

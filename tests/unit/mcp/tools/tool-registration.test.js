@@ -5,26 +5,26 @@
  */
 
 import {
-	describe,
-	it,
-	expect,
-	beforeEach,
 	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
 	jest
 } from '@jest/globals';
 
 import {
-	EXPECTED_TOOL_COUNTS,
 	EXPECTED_CORE_TOOLS,
+	EXPECTED_TOOL_COUNTS,
 	validateToolCounts,
 	validateToolStructure
 } from '../../../helpers/tool-counts.js';
 
 import { registerTaskMasterTools } from '../../../../mcp-server/src/tools/index.js';
 import {
-	toolRegistry,
 	coreTools,
-	standardTools
+	standardTools,
+	toolRegistry
 } from '../../../../mcp-server/src/tools/tool-registry.js';
 
 // Derive constants from imported registry to avoid brittle magic numbers

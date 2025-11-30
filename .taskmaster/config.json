@@ -1,26 +1,26 @@
 {
 	"models": {
 		"main": {
-			"provider": "anthropic",
-			"modelId": "claude-sonnet-4-5-20250929",
-			"maxTokens": 64000,
+			"provider": "claude-code",
+			"modelId": "haiku",
+			"maxTokens": 200000,
 			"temperature": 0.2
 		},
 		"research": {
 			"provider": "perplexity",
-			"modelId": "sonar-pro",
+			"modelId": "sonar-reasoning-pro",
 			"maxTokens": 8700,
 			"temperature": 0.1
 		},
 		"fallback": {
-			"provider": "anthropic",
-			"modelId": "claude-sonnet-4-20250514",
+			"provider": "claude-code",
+			"modelId": "sonnet",
 			"maxTokens": 64000,
 			"temperature": 0.2
 		}
 	},
 	"global": {
-		"logLevel": "info",
+		"logLevel": "silent",
 		"debug": false,
 		"defaultNumTasks": 10,
 		"defaultSubtasks": 5,
@@ -30,6 +30,8 @@
 		"bedrockBaseURL": "https://bedrock.us-east-1.amazonaws.com",
 		"responseLanguage": "English",
 		"enableCodebaseAnalysis": true,
+		"enableProxy": false,
+		"anonymousTelemetry": true,
 		"userId": "1234567890",
 		"azureBaseURL": "https://your-endpoint.azure.com/",
 		"defaultTag": "master"

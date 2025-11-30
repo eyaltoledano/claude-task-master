@@ -1,11 +1,11 @@
 // In tests/unit/parse-prd.test.js
 // Testing parse-prd.js file extension compatibility with real files
 
-import { jest } from '@jest/globals';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import os from 'os';
+import { jest } from '@jest/globals';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

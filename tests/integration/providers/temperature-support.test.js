@@ -10,21 +10,21 @@
  * base provider tests with concrete provider implementations.
  */
 
+import { AnthropicAIProvider } from '../../../src/ai-providers/anthropic.js';
+import { AzureProvider } from '../../../src/ai-providers/azure.js';
+import { BedrockAIProvider } from '../../../src/ai-providers/bedrock.js';
 import { ClaudeCodeProvider } from '../../../src/ai-providers/claude-code.js';
 import { CodexCliProvider } from '../../../src/ai-providers/codex-cli.js';
 import { GeminiCliProvider } from '../../../src/ai-providers/gemini-cli.js';
-import { GrokCliProvider } from '../../../src/ai-providers/grok-cli.js';
-import { AnthropicAIProvider } from '../../../src/ai-providers/anthropic.js';
-import { OpenAIProvider } from '../../../src/ai-providers/openai.js';
+import { VertexAIProvider } from '../../../src/ai-providers/google-vertex.js';
 import { GoogleAIProvider } from '../../../src/ai-providers/google.js';
+import { GrokCliProvider } from '../../../src/ai-providers/grok-cli.js';
+import { GroqProvider } from '../../../src/ai-providers/groq.js';
+import { OllamaAIProvider } from '../../../src/ai-providers/ollama.js';
+import { OpenAIProvider } from '../../../src/ai-providers/openai.js';
+import { OpenRouterAIProvider } from '../../../src/ai-providers/openrouter.js';
 import { PerplexityAIProvider } from '../../../src/ai-providers/perplexity.js';
 import { XAIProvider } from '../../../src/ai-providers/xai.js';
-import { GroqProvider } from '../../../src/ai-providers/groq.js';
-import { OpenRouterAIProvider } from '../../../src/ai-providers/openrouter.js';
-import { OllamaAIProvider } from '../../../src/ai-providers/ollama.js';
-import { BedrockAIProvider } from '../../../src/ai-providers/bedrock.js';
-import { AzureProvider } from '../../../src/ai-providers/azure.js';
-import { VertexAIProvider } from '../../../src/ai-providers/google-vertex.js';
 
 describe('Provider Temperature Support', () => {
 	describe('CLI Providers', () => {

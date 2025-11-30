@@ -3,27 +3,27 @@
  * Core functionality for managing AI model configurations
  */
 
-import https from 'https';
 import http from 'http';
-import {
-	getMainModelId,
-	getResearchModelId,
-	getFallbackModelId,
-	getAvailableModels,
-	getMainProvider,
-	getResearchProvider,
-	getFallbackProvider,
-	isApiKeySet,
-	getMcpApiKeyStatus,
-	getConfig,
-	writeConfig,
-	isConfigFilePresent,
-	getAllProviders,
-	getBaseUrlForRole
-} from '../config-manager.js';
-import { findConfigPath } from '../../../src/utils/path-utils.js';
-import { log } from '../utils.js';
+import https from 'https';
 import { CUSTOM_PROVIDERS } from '@tm/core';
+import { findConfigPath } from '../../../src/utils/path-utils.js';
+import {
+	getAllProviders,
+	getAvailableModels,
+	getBaseUrlForRole,
+	getConfig,
+	getFallbackModelId,
+	getFallbackProvider,
+	getMainModelId,
+	getMainProvider,
+	getMcpApiKeyStatus,
+	getResearchModelId,
+	getResearchProvider,
+	isApiKeySet,
+	isConfigFilePresent,
+	writeConfig
+} from '../config-manager.js';
+import { log } from '../utils.js';
 
 // Constants
 const CONFIG_MISSING_ERROR =

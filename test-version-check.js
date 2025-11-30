@@ -1,6 +1,6 @@
 import {
-	displayUpgradeNotification,
-	compareVersions
+	compareVersions,
+	displayUpgradeNotification
 } from './scripts/modules/commands.js';
 
 // Simulate different version scenarios

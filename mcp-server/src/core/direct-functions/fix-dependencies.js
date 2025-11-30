@@ -2,12 +2,12 @@
  * Direct function wrapper for fixDependenciesCommand
  */
 
+import fs from 'fs';
 import { fixDependenciesCommand } from '../../../../scripts/modules/dependency-manager.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
 
 /**
  * Fix invalid dependencies in tasks.json automatically

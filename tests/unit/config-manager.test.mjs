@@ -6,8 +6,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { jest } from '@jest/globals';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 import { sampleTasks } from '../fixtures/sample-tasks.js';
 
 // Disable chalk's color detection which can cause fs.readFileSync calls

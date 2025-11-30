@@ -1,6 +1,6 @@
+import path from 'path';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
-import path from 'path';
 
 describe('MCP Configuration Validation', () => {
 	describe('Profile MCP Configuration Properties', () => {

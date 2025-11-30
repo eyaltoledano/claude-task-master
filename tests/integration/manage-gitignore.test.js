@@ -4,8 +4,8 @@
  */
 
 import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
 import manageGitignoreFile from '../../src/utils/manage-gitignore.js';
 
 describe('manage-gitignore.js Integration Tests', () => {
@@ -171,7 +171,7 @@ cache/`;
 
 			// Verify log message
 			expect(logs).toContainEqual({
-				level: 'success',
+				level: 'debug',
 				message: expect.stringContaining('Updated')
 			});
 		});

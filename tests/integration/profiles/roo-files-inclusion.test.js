@@ -1,8 +1,8 @@
-import { jest } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import { execSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { jest } from '@jest/globals';
 
 describe('Roo Files Inclusion in Package', () => {
 	// This test verifies that the required Roo files are included in the final package

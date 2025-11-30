@@ -10,8 +10,8 @@ jest.mock('fs', () => ({
 
 // Import modules after mocking
 import fs from 'fs';
-import { convertRuleToProfileRule } from '../../../src/utils/rule-transformer.js';
 import { windsurfProfile } from '../../../src/profiles/windsurf.js';
+import { convertRuleToProfileRule } from '../../../src/utils/rule-transformer.js';
 
 describe('Windsurf Rule Transformer', () => {
 	// Set up spies on the mocked modules

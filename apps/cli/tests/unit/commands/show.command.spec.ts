@@ -2,8 +2,8 @@
  * @fileoverview Unit tests for ShowCommand
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { TmCore } from '@tm/core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock dependencies
 vi.mock('@tm/core', () => ({

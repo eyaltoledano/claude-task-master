@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
 import { fileURLToPath } from 'url';
+import chalk from 'chalk';
 import { createLogWrapper } from '../../../mcp-server/src/tools/utils.js';
-import { findProjectRoot } from '../utils.js';
 import {
 	LEGACY_CONFIG_FILE,
 	TASKMASTER_CONFIG_FILE
 } from '../../../src/constants/paths.js';
+import { findProjectRoot } from '../utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

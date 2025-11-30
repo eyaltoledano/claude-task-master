@@ -3,18 +3,18 @@
  * Direct function implementation for parsing PRD documents
  */
 
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
+import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
 import { parsePRD } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-import { createLogWrapper } from '../../tools/utils.js';
-import { getDefaultNumTasks } from '../../../../scripts/modules/config-manager.js';
-import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
 import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
+import { createLogWrapper } from '../../tools/utils.js';
+import { resolvePrdPath, resolveProjectPath } from '../utils/path-utils.js';
 
 /**
  * Direct function wrapper for parsing PRD documents and generating tasks.

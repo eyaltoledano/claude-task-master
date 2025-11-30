@@ -1,8 +1,3 @@
-import type React from 'react';
-import { useContext, useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { useQueryClient } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -10,14 +5,19 @@ import {
 	BreadcrumbList,
 	BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
+import { RefreshCw } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useContext, useState } from 'react';
 import { VSCodeContext } from '../webview/contexts/VSCodeContext';
+import { taskKeys, useTasks } from '../webview/hooks/useTaskQueries';
+import type { TaskMasterTask } from '../webview/types';
 import { AIActionsSection } from './TaskDetails/AIActionsSection';
+import { DetailsSection } from './TaskDetails/DetailsSection';
 import { SubtasksSection } from './TaskDetails/SubtasksSection';
 import { TaskMetadataSidebar } from './TaskDetails/TaskMetadataSidebar';
-import { DetailsSection } from './TaskDetails/DetailsSection';
 import { useTaskDetails } from './TaskDetails/useTaskDetails';
-import { useTasks, taskKeys } from '../webview/hooks/useTaskQueries';
-import type { TaskMasterTask } from '../webview/types';
 
 interface TaskDetailsViewProps {
 	taskId: string;

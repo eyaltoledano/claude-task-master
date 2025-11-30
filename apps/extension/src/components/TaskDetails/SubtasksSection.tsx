@@ -1,11 +1,11 @@
-import type React from 'react';
-import { useState } from 'react';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
-import { Plus, Loader2 } from 'lucide-react';
+import { Loader2, Plus } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import type { TaskMasterTask } from '../../webview/types';
 import { getStatusDotColor } from '../constants';
 

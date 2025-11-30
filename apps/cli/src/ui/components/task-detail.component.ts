@@ -9,11 +9,43 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { MarkedExtension, marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
+import TurndownService from 'turndown';
 import {
 	getComplexityWithColor,
 	getPriorityWithColor,
 	getStatusWithColor
 } from '../../utils/ui.js';
+
+// Initialize turndown for HTML to Markdown conversion
+const turndownService = new TurndownService({
+	headingStyle: 'atx',
+	codeBlockStyle: 'fenced',
+	bulletListMarker: '-'
+});
+
+/**
+ * Convert HTML content to Markdown, then render for terminal
+ * Handles tiptap HTML from Hamster gracefully
+ */
+export function renderContent(content: string): string {
+	if (!content) return '';
+
+	// Clean up escape characters first - order matters: handle escaped backslashes first
+	let cleaned = content
+		.replace(/\\\\/g, '\\')
+		.replace(/\\n/g, '\n')
+		.replace(/\\t/g, '\t')
+		.replace(/\\"/g, '"');
+
+	// Check if content has HTML tags - if so, convert to markdown first
+	if (/<[^>]+>/.test(cleaned)) {
+		cleaned = turndownService.turndown(cleaned);
+	}
+
+	// Render markdown to terminal
+	const result = marked(cleaned);
+	return typeof result === 'string' ? result.trim() : cleaned;
+}
 
 // Configure marked to use terminal renderer with subtle colors
 marked.use(
@@ -27,7 +59,7 @@ marked.use(
 				.join('\n');
 		},
 		blockquote: chalk.gray.italic,
-		html: chalk.gray,
+		html: chalk.gray, // Any remaining HTML will be grayed out (should be rare after turndown)
 		heading: chalk.white.bold, // White bold for headings
 		hr: chalk.gray,
 		listitem: chalk.white, // White for list items
@@ -101,6 +133,9 @@ export function displayTaskProperties(
 	// Use originalTaskId if provided (for subtasks like "104.1")
 	const displayId = originalTaskId || String(task.id);
 
+	// Render description with markdown/HTML support (handles tiptap HTML from Hamster)
+	const renderedDescription = renderContent(task.description || '');
+
 	// Build the left column (labels) and right column (values)
 	const labels = [
 		chalk.cyan('ID:'),
@@ -121,7 +156,7 @@ export function displayTaskProperties(
 		typeof task.complexity === 'number'
 			? getComplexityWithColor(task.complexity)
 			: chalk.gray('N/A'),
-		task.description || ''
+		renderedDescription
 	].join('\n');
 
 	table.push([labels, values]);
@@ -133,19 +168,8 @@ export function displayTaskProperties(
  * Display implementation details in a box
  */
 export function displayImplementationDetails(details: string): void {
-	// Handle all escaped characters properly
-	const cleanDetails = details
-		.replace(/\\n/g, '\n') // Convert \n to actual newlines
-		.replace(/\\t/g, '\t') // Convert \t to actual tabs
-		.replace(/\\"/g, '"') // Convert \" to actual quotes
-		.replace(/\\\\/g, '\\'); // Convert \\ to single backslash
-
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
-
-	// Parse markdown to terminal-friendly format
-	const markdownResult = marked(cleanDetails);
-	const formattedDetails =
-		typeof markdownResult === 'string' ? markdownResult.trim() : cleanDetails; // Fallback to original if Promise
+	const formattedDetails = renderContent(details);
 
 	console.log(
 		boxen(
@@ -153,8 +177,8 @@ export function displayImplementationDetails(details: string): void {
 			{
 				padding: 1,
 				borderStyle: 'round',
-				borderColor: 'cyan', // Changed to cyan to match the original
-				width: terminalWidth // Fixed width to match the original
+				borderColor: 'cyan',
+				width: terminalWidth
 			}
 		)
 	);
@@ -164,25 +188,14 @@ export function displayImplementationDetails(details: string): void {
  * Display test strategy in a box
  */
 export function displayTestStrategy(testStrategy: string): void {
-	// Handle all escaped characters properly (same as implementation details)
-	const cleanStrategy = testStrategy
-		.replace(/\\n/g, '\n') // Convert \n to actual newlines
-		.replace(/\\t/g, '\t') // Convert \t to actual tabs
-		.replace(/\\"/g, '"') // Convert \" to actual quotes
-		.replace(/\\\\/g, '\\'); // Convert \\ to single backslash
-
 	const terminalWidth = process.stdout.columns * 0.95 || 100;
-
-	// Parse markdown to terminal-friendly format (same as implementation details)
-	const markdownResult = marked(cleanStrategy);
-	const formattedStrategy =
-		typeof markdownResult === 'string' ? markdownResult.trim() : cleanStrategy; // Fallback to original if Promise
+	const formattedStrategy = renderContent(testStrategy);
 
 	console.log(
 		boxen(chalk.white.bold('Test Strategy:') + '\n\n' + formattedStrategy, {
 			padding: 1,
 			borderStyle: 'round',
-			borderColor: 'cyan', // Changed to cyan to match implementation details
+			borderColor: 'cyan',
 			width: terminalWidth
 		})
 	);

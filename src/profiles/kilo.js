@@ -1,9 +1,9 @@
+import fs from 'fs';
 // Kilo Code conversion profile for rule-transformer
 import path from 'path';
-import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
 import { ROO_MODES } from '../constants/profiles.js';
+import { COMMON_TOOL_MAPPINGS, createProfile } from './base-profile.js';
 
 // Utility function to apply kilo transformations to content
 function applyKiloTransformations(content) {

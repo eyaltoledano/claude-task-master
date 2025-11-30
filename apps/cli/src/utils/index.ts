@@ -12,6 +12,14 @@ export {
 	type CheckAuthOptions
 } from './auth-helpers.js';
 
+// Auth guard for commands requiring authentication
+export {
+	ensureAuthenticated,
+	withAuth,
+	type AuthGuardOptions,
+	type AuthGuardResult
+} from './auth-guard.js';
+
 // Command guard for local-only commands
 export {
 	checkAndBlockIfAuthenticated,

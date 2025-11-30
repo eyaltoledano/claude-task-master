@@ -2,7 +2,7 @@
  * Auth Domain tests
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthDomain } from './auth-domain.js';
 
 describe('AuthDomain', () => {

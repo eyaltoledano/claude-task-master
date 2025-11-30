@@ -3,24 +3,24 @@
  * Direct function implementation for adding or removing rules
  */
 
+import fs from 'fs';
+import path from 'path';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
-import {
-	convertAllRulesToProfileRules,
-	removeProfileRules,
-	getRulesProfile,
-	isValidProfile
-} from '../../../../src/utils/rule-transformer.js';
 import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
 import { RULES_ACTIONS } from '../../../../src/constants/rules-actions.js';
 import {
-	wouldRemovalLeaveNoProfiles,
-	getInstalledProfiles
+	getInstalledProfiles,
+	wouldRemovalLeaveNoProfiles
 } from '../../../../src/utils/profiles.js';
-import path from 'path';
-import fs from 'fs';
+import {
+	convertAllRulesToProfileRules,
+	getRulesProfile,
+	isValidProfile,
+	removeProfileRules
+} from '../../../../src/utils/rule-transformer.js';
 
 /**
  * Direct function wrapper for adding or removing rules.

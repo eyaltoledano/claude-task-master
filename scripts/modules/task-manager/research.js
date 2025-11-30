@@ -5,25 +5,61 @@
 
 import fs from 'fs';
 import path from 'path';
-import chalk from 'chalk';
+import { smoothStream } from 'ai';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { highlight } from 'cli-highlight';
-import { ContextGatherer } from '../utils/contextGatherer.js';
-import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { generateTextService } from '../ai-services-unified.js';
+import { marked } from 'marked';
+import { markedTerminal } from 'marked-terminal';
+import {
+	generateTextService,
+	streamTextService
+} from '../ai-services-unified.js';
 import { getPromptManager } from '../prompt-manager.js';
+import { displayAiUsageSummary } from '../ui.js';
 import {
 	log as consoleLog,
 	findProjectRoot,
-	readJSON,
-	flattenTasksWithSubtasks
+	flattenTasksWithSubtasks,
+	readJSON
 } from '../utils.js';
-import {
-	displayAiUsageSummary,
-	startLoadingIndicator,
-	stopLoadingIndicator
-} from '../ui.js';
+import { ContextGatherer } from '../utils/contextGatherer.js';
+import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+
+// Configure marked to use terminal renderer for beautiful markdown output
+marked.use(
+	markedTerminal({
+		code: (code) => {
+			// Syntax highlight code blocks
+			return code
+				.split('\n')
+				.map((line) => '    ' + chalk.cyan(line))
+				.join('\n');
+		},
+		blockquote: chalk.gray.italic,
+		html: chalk.gray,
+		heading: chalk.white.bold,
+		hr: chalk.gray,
+		listitem: chalk.white,
+		paragraph: chalk.white,
+		strong: chalk.white.bold,
+		em: chalk.white.italic,
+		codespan: chalk.cyan,
+		del: chalk.dim.strikethrough,
+		link: chalk.blue,
+		href: chalk.blue.underline,
+		showSectionPrefix: false,
+		unescape: true,
+		emoji: false,
+		tab: 4,
+		width: 100
+	})
+);
+
+marked.setOptions({
+	breaks: true,
+	gfm: true
+});
 
 /**
  * Perform AI-powered research with project context
@@ -234,51 +270,158 @@ async function performResearch(
 			);
 		}
 
-		// Start loading indicator for CLI mode
-		let loadingIndicator = null;
-		if (outputFormat === 'text') {
-			loadingIndicator = startLoadingIndicator('Researching with AI...\n');
-		}
-
 		let aiResult;
+		let researchResult = ''; // Initialize result accumulator for streaming
+
 		try {
-			// Call AI service with research role
-			aiResult = await generateTextService({
-				role: 'research', // Always use research role for research command
-				session,
-				projectRoot,
-				systemPrompt,
-				prompt: userPrompt,
-				commandName,
-				outputType
-			});
+			// Use streaming for CLI (better UX), regular generation for MCP (simpler)
+			if (outputFormat === 'text') {
+				// CLI: Stream entire response in muted text, then show formatted result
+				console.log(chalk.cyan('\n🔍 Researching with AI...\n'));
+
+				aiResult = await streamTextService({
+					role: 'research', // Always use research role for research command
+					session,
+					projectRoot,
+					systemPrompt,
+					prompt: userPrompt,
+					commandName,
+					outputType,
+					experimental_transform: smoothStream({
+						delayInMs: 15, // Slightly slower for more natural feel
+						chunking: 'word' // Stream word-by-word
+					})
+				});
+
+				// Stream text chunks as they arrive
+				// Track if we're inside reasoning tags for styling
+				let inThinkTag = false;
+
+				for await (const chunk of aiResult.mainResult.textStream) {
+					researchResult += chunk;
+
+					// Process chunk character by character to handle tag transitions
+					let displayChunk = '';
+					for (let i = 0; i < chunk.length; i++) {
+						// Check for opening <think> tag
+						if (chunk.slice(i).startsWith('<think>')) {
+							inThinkTag = true;
+							i += 6; // Skip past '<think>'
+							continue;
+						}
+						// Check for closing </think> tag
+						if (chunk.slice(i).startsWith('</think>')) {
+							inThinkTag = false;
+							i += 7; // Skip past '</think>'
+							continue;
+						}
+
+						displayChunk += chunk[i];
+					}
+
+					// Display with appropriate styling
+					if (displayChunk) {
+						if (inThinkTag) {
+							// Reasoning content in muted gray
+							process.stdout.write(chalk.gray.dim(displayChunk));
+						} else {
+							// Regular response content (also muted during streaming)
+							process.stdout.write(chalk.gray.dim(displayChunk));
+						}
+					}
+				}
+
+				// Add newlines for spacing
+				console.log('\n');
+
+				// For streamText, await the usage promise AFTER streaming completes
+				if (aiResult.mainResult.usage) {
+					const usage = await aiResult.mainResult.usage;
+
+					// Get actual token counts from the usage promise
+					const actualInputTokens =
+						usage.promptTokens || usage.inputTokens || 0;
+					const actualOutputTokens =
+						usage.completionTokens || usage.outputTokens || 0;
+					const actualTotalTokens =
+						usage.totalTokens || actualInputTokens + actualOutputTokens;
+
+					// Preserve all original telemetry fields (including totalCost, currency, etc.)
+					// and update only the token counts - cost should already be calculated by AI service
+					aiResult.telemetryData = {
+						...aiResult.telemetryData, // Spread ALL existing fields (preserves totalCost, currency, isUnknownCost, etc.)
+						inputTokens: actualInputTokens,
+						outputTokens: actualOutputTokens,
+						totalTokens: actualTotalTokens
+					};
+				}
+
+				// Now show the formatted result in a nice box
+				const terminalWidth = process.stdout.columns || 80;
+				const boxWidth = Math.min(terminalWidth - 4, 120);
+
+				// Header with query info
+				const header = boxen(
+					chalk.green.bold('Research Results') +
+						'\n\n' +
+						chalk.gray('Query: ') +
+						chalk.white(query) +
+						'\n' +
+						chalk.gray('Detail Level: ') +
+						chalk.cyan(detailLevel),
+					{
+						padding: { top: 1, bottom: 1, left: 2, right: 2 },
+						margin: { top: 0, bottom: 0 },
+						borderStyle: 'round',
+						borderColor: 'green',
+						width: boxWidth
+					}
+				);
+				console.log(header);
+
+				// Strip <think> sections from the final result (keep only the answer)
+				const cleanResult = researchResult
+					.replace(/<think>[\s\S]*?<\/think>/g, '')
+					.trim();
+
+				// Render markdown for beautiful formatting
+				const renderedMarkdown = await marked.parse(cleanResult);
+
+				// Wrap the rendered content in a nice box (same width as header)
+				const resultBox = boxen(renderedMarkdown.trim(), {
+					padding: { top: 1, bottom: 1, left: 2, right: 2 },
+					margin: { top: 0, bottom: 1 },
+					borderStyle: 'single',
+					borderColor: 'white',
+					width: boxWidth
+				});
+				console.log(resultBox);
+			} else {
+				// MCP: Use regular generation (no streaming benefit)
+				aiResult = await generateTextService({
+					role: 'research', // Always use research role for research command
+					session,
+					projectRoot,
+					systemPrompt,
+					prompt: userPrompt,
+					commandName,
+					outputType
+				});
+
+				researchResult = aiResult.mainResult;
+			}
 		} catch (error) {
-			if (loadingIndicator) {
-				stopLoadingIndicator(loadingIndicator);
-			}
 			throw error;
-		} finally {
-			if (loadingIndicator) {
-				stopLoadingIndicator(loadingIndicator);
-			}
 		}
 
-		const researchResult = aiResult.mainResult;
+		// Extract telemetry data (already fixed for streamText in streaming branch above)
 		const telemetryData = aiResult.telemetryData;
 		const tagInfo = aiResult.tagInfo;
 
-		// Format and display results
 		// Initialize interactive save tracking
 		let interactiveSaveInfo = { interactiveSaveOccurred: false };
 
 		if (outputFormat === 'text') {
-			displayResearchResults(
-				researchResult,
-				query,
-				detailLevel,
-				tokenBreakdown
-			);
-
 			// Display AI usage telemetry for CLI users
 			if (telemetryData) {
 				displayAiUsageSummary(telemetryData, 'cli');
@@ -475,57 +618,18 @@ function displayDetailedTokenBreakdown(
 }
 
 /**
- * Process research result text to highlight code blocks
- * @param {string} text - Raw research result text
- * @returns {string} Processed text with highlighted code blocks
- */
-function processCodeBlocks(text) {
-	// Regex to match code blocks with optional language specification
-	const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-
-	return text.replace(codeBlockRegex, (match, language, code) => {
-		try {
-			// Default to javascript if no language specified
-			const lang = language || 'javascript';
-
-			// Highlight the code using cli-highlight
-			const highlightedCode = highlight(code.trim(), {
-				language: lang,
-				ignoreIllegals: true // Don't fail on unrecognized syntax
-			});
-
-			// Add a subtle border around code blocks
-			const codeBox = boxen(highlightedCode, {
-				padding: { top: 0, bottom: 0, left: 1, right: 1 },
-				margin: { top: 0, bottom: 0 },
-				borderStyle: 'single',
-				borderColor: 'dim'
-			});
-
-			return '\n' + codeBox + '\n';
-		} catch (error) {
-			// If highlighting fails, return the original code block with basic formatting
-			return (
-				'\n' +
-				chalk.gray('```' + (language || '')) +
-				'\n' +
-				chalk.white(code.trim()) +
-				'\n' +
-				chalk.gray('```') +
-				'\n'
-			);
-		}
-	});
-}
-
-/**
  * Display research results in formatted output
  * @param {string} result - AI research result
  * @param {string} query - Original query
  * @param {string} detailLevel - Detail level used
  * @param {Object} tokenBreakdown - Detailed token usage
  */
-function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
+async function displayResearchResults(
+	result,
+	query,
+	detailLevel,
+	tokenBreakdown
+) {
 	// Header with query info
 	const header = boxen(
 		chalk.green.bold('Research Results') +
@@ -544,15 +648,15 @@ function displayResearchResults(result, query, detailLevel, tokenBreakdown) {
 	);
 	console.log(header);
 
-	// Process the result to highlight code blocks
-	const processedResult = processCodeBlocks(result);
+	// Render markdown for beautiful formatting (async for compatibility)
+	const renderedMarkdown = await marked.parse(result);
 
 	// Main research content in a clean box
-	const contentBox = boxen(processedResult, {
+	const contentBox = boxen(renderedMarkdown.trim(), {
 		padding: { top: 1, bottom: 1, left: 2, right: 2 },
 		margin: { top: 0, bottom: 1 },
 		borderStyle: 'single',
-		borderColor: 'gray'
+		borderColor: 'white'
 	});
 	console.log(contentBox);
 

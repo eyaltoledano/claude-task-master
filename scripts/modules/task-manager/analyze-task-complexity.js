@@ -1,30 +1,30 @@
-import chalk from 'chalk';
-import boxen from 'boxen';
-import readline from 'readline';
 import fs from 'fs';
+import readline from 'readline';
+import boxen from 'boxen';
+import chalk from 'chalk';
 
-import { log, readJSON, isSilentMode } from '../utils.js';
+import { isSilentMode, log, readJSON } from '../utils.js';
 
 import {
+	displayAiUsageSummary,
 	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
+	stopLoadingIndicator
 } from '../ui.js';
 
-import { generateObjectService } from '../ai-services-unified.js';
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
+import { generateObjectService } from '../ai-services-unified.js';
 
+import { LEGACY_TASKS_FILE } from '../../../src/constants/paths.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 import {
 	getDebugFlag,
 	getProjectName,
 	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
-import { LEGACY_TASKS_FILE } from '../../../src/constants/paths.js';
-import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
+import { flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { flattenTasksWithSubtasks } from '../utils.js';
 
 /**
  * Analyzes task complexity and generates expansion recommendations

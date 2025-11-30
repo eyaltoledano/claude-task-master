@@ -10,7 +10,8 @@ export {
 	generateSubtaskId,
 	isValidTaskId,
 	isValidSubtaskId,
-	getParentTaskId
+	getParentTaskId,
+	normalizeDisplayId
 } from './id-generator.js';
 
 // Export git utilities

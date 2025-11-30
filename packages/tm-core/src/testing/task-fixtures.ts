@@ -24,7 +24,7 @@
  * ```
  */
 
-import type { Task, Subtask, TaskMetadata } from '../common/types/index.js';
+import type { Subtask, Task, TaskMetadata } from '../common/types/index.js';
 
 /**
  * File structure for tasks.json

@@ -8,8 +8,8 @@ import {
 	taskExists
 } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
 	readJSON
 } from '../../../../scripts/modules/utils.js';
 

@@ -1,9 +1,59 @@
 {
-	"currentTag": "tdd-phase-1-core-rails",
-	"lastSwitched": "2025-11-10T19:45:04.383Z",
-	"branchTagMapping": {
-		"v017-adds": "v017-adds",
-		"next": "next"
+	"currentTag": "tm-core-phase-1",
+	"lastUpdated": "2025-11-28T02:21:32.160Z",
+	"metadata": {
+		"upgradePrompts": {
+			"triggers": {
+				"export_attempt": {
+					"firstShownAt": "2025-11-26T21:02:12.322Z",
+					"lastShownAt": "2025-11-26T21:02:12.322Z",
+					"showCount": 1,
+					"dismissed": false,
+					"action": "accepted",
+					"actionAt": "2025-11-28T02:20:29.155Z"
+				}
+			},
+			"metrics": {
+				"totalTaskCount": 0,
+				"tagCount": 0,
+				"listCommandCount": 0,
+				"tasksWithDependencies": 0
+			},
+			"lastUpdated": "2025-11-28T02:20:29.155Z",
+			"version": "1.0.0"
+		},
+		"exportedTags": {
+			"tm-core-phase-1": {
+				"briefId": "5f36141d-9749-47b4-b64b-7841a42cf68e",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/5f36141d-9749-47b4-b64b-7841a42cf68e",
+				"exportedAt": "2025-11-27T21:41:38.821Z"
+			},
+			"tdd-workflow-phase-0": {
+				"briefId": "b137627a-0573-4ae6-bda6-afea97e31b4f",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/b137627a-0573-4ae6-bda6-afea97e31b4f",
+				"exportedAt": "2025-11-27T21:51:39.086Z"
+			},
+			"autonomous-tdd-git-workflow": {
+				"briefId": "3f0e8ef0-c79d-4942-92be-0c9f2b6db0eb",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/3f0e8ef0-c79d-4942-92be-0c9f2b6db0eb",
+				"exportedAt": "2025-11-27T21:51:39.557Z"
+			},
+			"tdd-phase-1-core-rails": {
+				"briefId": "c14723fb-d1c1-428f-82f3-676c45479f60",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/c14723fb-d1c1-428f-82f3-676c45479f60",
+				"exportedAt": "2025-11-28T02:20:29.155Z"
+			},
+			"tm-start": {
+				"briefId": "f32d7ba2-1709-4ed1-ad48-e42a10e395dd",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/f32d7ba2-1709-4ed1-ad48-e42a10e395dd",
+				"exportedAt": "2025-11-28T02:21:31.612Z"
+			},
+			"cc-kiro-hooks": {
+				"briefId": "ee743dbe-f2ff-458e-8ff2-6b192e386805",
+				"briefUrl": "http://localhost:3000/home/hamster/briefs/ee743dbe-f2ff-458e-8ff2-6b192e386805",
+				"exportedAt": "2025-11-28T02:21:32.160Z"
+			}
+		}
 	},
 	"migrationNoticeShown": true
 }
