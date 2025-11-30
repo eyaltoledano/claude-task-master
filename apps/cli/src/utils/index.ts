@@ -28,7 +28,7 @@ export {
 	displayUpgradeNotification,
 	compareVersions,
 	restartWithNewVersion
-} from './auto-update.js';
+} from './auto-update/index.js';
 
 // Display helpers (command-specific helpers)
 export { displayCommandHeader } from './display-helpers.js';

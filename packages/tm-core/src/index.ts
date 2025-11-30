@@ -52,6 +52,9 @@ export * from './common/errors/index.js';
 export * from './common/utils/index.js';
 export * from './utils/time.utils.js';
 
+// Task validation schemas
+export * from './modules/tasks/validation/index.js';
+
 // ========== Domain-Specific Type Exports ==========
 
 // Task types
@@ -146,6 +149,22 @@ export { CommitMessageGenerator } from './modules/git/services/commit-message-ge
 // Tasks - Advanced
 export { PreflightChecker } from './modules/tasks/services/preflight-checker.service.js';
 export { TaskLoaderService } from './modules/tasks/services/task-loader.service.js';
+export {
+	TaskFileGeneratorService,
+	type GenerateTaskFilesOptions,
+	type GenerateTaskFilesResult
+} from './modules/tasks/services/task-file-generator.service.js';
 
 // Integration - Advanced
 export { ExportService } from './modules/integration/services/export.service.js';
+
+// ========== Testing Utilities ==========
+
+// Test fixtures for integration tests
+export {
+	createTask,
+	createSubtask,
+	createTasksFile,
+	TaskScenarios,
+	type TasksFile
+} from './testing/index.js';

@@ -12,8 +12,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTask, createTasksFile } from '../../fixtures/task-fixtures';
-import { getCliBinPath } from '../../helpers/test-utils';
+import { createTask, createTasksFile } from '@tm/core/testing';
+import { getCliBinPath } from '../../helpers/test-utils.js';
 
 // Capture initial working directory at module load time
 const initialCwd = process.cwd();

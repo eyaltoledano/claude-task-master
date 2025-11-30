@@ -3,32 +3,60 @@
  * Bug fix: Cancelled tasks should be treated as complete
  */
 
-import type { Task } from '@tm/core';
+import type { Subtask, Task, TaskStatus } from '@tm/core';
 import { describe, expect, it } from 'vitest';
 import {
-	type TaskStatistics,
 	calculateDependencyStatistics,
 	calculateSubtaskStatistics,
 	calculateTaskStatistics
-} from '../../../src/ui/components/dashboard.component.js';
+} from './dashboard.component.js';
+
+/**
+ * Local test helpers for dashboard statistics tests.
+ *
+ * These helpers create minimal task structures focused on status for statistics
+ * calculations. Only `id` and `status` are typically needed - all other fields
+ * have sensible defaults.
+ */
+const createTestTask = (
+	overrides: Partial<Omit<Task, 'id'>> & Pick<Task, 'id'>
+): Task => ({
+	title: '',
+	description: '',
+	status: 'pending',
+	priority: 'medium',
+	dependencies: [],
+	details: '',
+	testStrategy: '',
+	subtasks: [],
+	...overrides
+});
+
+const createTestSubtask = (
+	id: number | string,
+	parentId: string,
+	status: TaskStatus
+): Subtask => ({
+	id,
+	parentId,
+	title: '',
+	status,
+	description: '',
+	priority: 'medium',
+	dependencies: [],
+	details: '',
+	testStrategy: ''
+});
 
 describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 	describe('calculateTaskStatistics', () => {
 		it('should treat cancelled tasks as complete in percentage calculation', () => {
 			// Arrange: 14 done, 1 cancelled = 100% complete
 			const tasks: Task[] = [
-				...Array.from({ length: 14 }, (_, i) => ({
-					id: i + 1,
-					title: `Task ${i + 1}`,
-					status: 'done' as const,
-					dependencies: []
-				})),
-				{
-					id: 15,
-					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				}
+				...Array.from({ length: 14 }, (_, i) =>
+					createTestTask({ id: String(i + 1), status: 'done' })
+				),
+				createTestTask({ id: '15', status: 'cancelled' })
 			];
 
 			// Act
@@ -39,37 +67,16 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.done).toBe(14);
 			expect(stats.cancelled).toBe(1);
 			expect(stats.completedCount).toBe(15); // done + cancelled
-			// BUG: Current code shows 93% (14/15), should be 100% (15/15)
 			expect(stats.completionPercentage).toBe(100);
 		});
 
 		it('should treat completed status as complete in percentage calculation', () => {
-			// Arrange: Mix of done, completed, cancelled
+			// Arrange: Mix of done, completed, cancelled, pending
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Done Task',
-					status: 'done' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Completed Task',
-					status: 'completed' as const,
-					dependencies: []
-				},
-				{
-					id: 3,
-					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 4,
-					title: 'Pending Task',
-					status: 'pending' as const,
-					dependencies: []
-				}
+				createTestTask({ id: '1', status: 'done' }),
+				createTestTask({ id: '2', status: 'completed' }),
+				createTestTask({ id: '3', status: 'cancelled' }),
+				createTestTask({ id: '4', status: 'pending' })
 			];
 
 			// Act
@@ -87,18 +94,8 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should show 100% completion when all tasks are cancelled', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Cancelled 1',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Cancelled 2',
-					status: 'cancelled' as const,
-					dependencies: []
-				}
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'cancelled' })
 			];
 
 			// Act
@@ -108,25 +105,14 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.total).toBe(2);
 			expect(stats.cancelled).toBe(2);
 			expect(stats.completedCount).toBe(2); // All cancelled = all complete
-			// BUG: Current code shows 0%, should be 100%
 			expect(stats.completionPercentage).toBe(100);
 		});
 
 		it('should show 0% completion when no tasks are complete', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Pending Task',
-					status: 'pending' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'In Progress Task',
-					status: 'in-progress' as const,
-					dependencies: []
-				}
+				createTestTask({ id: '1', status: 'pending' }),
+				createTestTask({ id: '2', status: 'in-progress' })
 			];
 
 			// Act
@@ -141,18 +127,16 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat cancelled subtasks as complete in percentage calculation', () => {
 			// Arrange: Task with 3 done subtasks and 1 cancelled = 100%
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Parent Task',
-					status: 'in-progress' as const,
-					dependencies: [],
+				createTestTask({
+					id: '1',
+					status: 'in-progress',
 					subtasks: [
-						{ id: '1', title: 'Sub 1', status: 'done' },
-						{ id: '2', title: 'Sub 2', status: 'done' },
-						{ id: '3', title: 'Sub 3', status: 'done' },
-						{ id: '4', title: 'Sub 4', status: 'cancelled' }
+						createTestSubtask('1', '1', 'done'),
+						createTestSubtask('2', '1', 'done'),
+						createTestSubtask('3', '1', 'done'),
+						createTestSubtask('4', '1', 'cancelled')
 					]
-				}
+				})
 			];
 
 			// Act
@@ -163,24 +147,21 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			expect(stats.done).toBe(3);
 			expect(stats.cancelled).toBe(1);
 			expect(stats.completedCount).toBe(4); // done + cancelled
-			// BUG: Current code shows 75% (3/4), should be 100% (4/4)
 			expect(stats.completionPercentage).toBe(100);
 		});
 
 		it('should handle completed status in subtasks', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Parent Task',
-					status: 'in-progress' as const,
-					dependencies: [],
+				createTestTask({
+					id: '1',
+					status: 'in-progress',
 					subtasks: [
-						{ id: '1', title: 'Sub 1', status: 'done' },
-						{ id: '2', title: 'Sub 2', status: 'completed' },
-						{ id: '3', title: 'Sub 3', status: 'pending' }
+						createTestSubtask('1', '1', 'done'),
+						createTestSubtask('2', '1', 'completed'),
+						createTestSubtask('3', '1', 'pending')
 					]
-				}
+				})
 			];
 
 			// Act
@@ -198,51 +179,26 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		it('should treat cancelled tasks as satisfied dependencies', () => {
 			// Arrange: Task 15 depends on cancelled task 14
 			const tasks: Task[] = [
-				...Array.from({ length: 13 }, (_, i) => ({
-					id: i + 1,
-					title: `Task ${i + 1}`,
-					status: 'done' as const,
-					dependencies: []
-				})),
-				{
-					id: 14,
-					title: 'Cancelled Dependency',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 15,
-					title: 'Dependent Task',
-					status: 'pending' as const,
-					dependencies: [14]
-				}
+				...Array.from({ length: 13 }, (_, i) =>
+					createTestTask({ id: String(i + 1), status: 'done' })
+				),
+				createTestTask({ id: '14', status: 'cancelled' }),
+				createTestTask({ id: '15', status: 'pending', dependencies: ['14'] })
 			];
 
 			// Act
 			const stats = calculateDependencyStatistics(tasks);
 
-			// Assert
-			// Task 15 should be ready to work on since its dependency (14) is cancelled
-			// BUG: Current code shows task 15 as blocked, should show as ready
+			// Assert: Task 15 should be ready since its dependency (14) is cancelled
 			expect(stats.tasksBlockedByDeps).toBe(0);
-			expect(stats.tasksReadyToWork).toBeGreaterThan(0);
+			expect(stats.tasksReadyToWork).toBe(1);
 		});
 
 		it('should treat completed status as satisfied dependencies', () => {
 			// Arrange
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Completed Dependency',
-					status: 'completed' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Dependent Task',
-					status: 'pending' as const,
-					dependencies: [1]
-				}
+				createTestTask({ id: '1', status: 'completed' }),
+				createTestTask({ id: '2', status: 'pending', dependencies: ['1'] })
 			];
 
 			// Act
@@ -254,26 +210,11 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 		});
 
 		it('should count tasks with cancelled dependencies as ready', () => {
-			// Arrange: Multiple tasks depending on cancelled tasks
+			// Arrange: Multiple tasks depending on cancelled task
 			const tasks: Task[] = [
-				{
-					id: 1,
-					title: 'Cancelled Task',
-					status: 'cancelled' as const,
-					dependencies: []
-				},
-				{
-					id: 2,
-					title: 'Dependent 1',
-					status: 'pending' as const,
-					dependencies: [1]
-				},
-				{
-					id: 3,
-					title: 'Dependent 2',
-					status: 'pending' as const,
-					dependencies: [1]
-				}
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'pending', dependencies: ['1'] }),
+				createTestTask({ id: '3', status: 'pending', dependencies: ['1'] })
 			];
 
 			// Act
@@ -282,6 +223,22 @@ describe('dashboard.component - Bug Fix: Cancelled Tasks as Complete', () => {
 			// Assert
 			expect(stats.tasksBlockedByDeps).toBe(0);
 			expect(stats.tasksReadyToWork).toBe(2); // Both dependents should be ready
+		});
+
+		it('should block tasks when only some dependencies are complete', () => {
+			// Arrange: Task 3 depends on task 1 (cancelled) and task 2 (pending)
+			const tasks: Task[] = [
+				createTestTask({ id: '1', status: 'cancelled' }),
+				createTestTask({ id: '2', status: 'pending' }),
+				createTestTask({ id: '3', status: 'pending', dependencies: ['1', '2'] })
+			];
+
+			// Act
+			const stats = calculateDependencyStatistics(tasks);
+
+			// Assert: Task 3 blocked by pending task 2, only task 2 is ready
+			expect(stats.tasksBlockedByDeps).toBe(1);
+			expect(stats.tasksReadyToWork).toBe(1);
 		});
 	});
 });
