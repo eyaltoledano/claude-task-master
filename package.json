@@ -108,6 +108,7 @@
 		"ora": "^8.2.0",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
+		"terminal-link": "^5.0.0",
 		"turndown": "^7.2.2",
 		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
