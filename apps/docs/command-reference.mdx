@@ -6,12 +6,17 @@ description: "A comprehensive reference of all available Task Master commands"
 <AccordionGroup>
   <Accordion title="Parse PRD">
     ```bash
-    # Parse a PRD file and generate tasks
+    # Parse a PRD file and generate tasks locally
     task-master parse-prd <prd-file.txt>
+
+    # Parse to Hamster (team collaboration platform)
+    task-master parse-prd <prd-file.txt> --hamster
 
     # Limit the number of tasks generated
     task-master parse-prd <prd-file.txt> --num-tasks=10
     ```
+    
+    When using `--hamster`, you can choose to create a brief on Hamster instead of local tasks. This enables team collaboration, real-time sync, and removes the need for API keys as Hamster handles AI inference.
   </Accordion>
 
   <Accordion title="List Tasks">
@@ -19,14 +24,17 @@ description: "A comprehensive reference of all available Task Master commands"
     # List all tasks
     task-master list
 
-    # List tasks with a specific status
+    # List tasks with a specific status (new positional syntax)
+    task-master list done
+    task-master list in-progress
+    task-master list pending
+
+    # List all tasks including subtasks (shorthand)
+    task-master list all
+
+    # Legacy flag syntax (still supported)
     task-master list --status=<status>
-
-    # List tasks with subtasks
     task-master list --with-subtasks
-
-    # List tasks with a specific status and include subtasks
-    task-master list --status=<status> --with-subtasks
     ```
   </Accordion>
 
@@ -58,11 +66,18 @@ description: "A comprehensive reference of all available Task Master commands"
 
   <Accordion title="Update a Specific Task">
     ```bash
-    # Update a single task by ID with new information
+    # Update a single task by ID with new information (new positional syntax)
+    task-master update-task <id> <prompt>
+
+    # Examples with positional syntax (no quotes needed for multi-word prompts)
+    task-master update-task 1 Added implementation notes
+    task-master update-task 2.1 Updated API requirements
+
+    # Legacy flag syntax (still supported)
     task-master update-task --id=<id> --prompt="<prompt>"
 
     # Use research-backed updates with Perplexity AI
-    task-master update-task --id=<id> --prompt="<prompt>" --research
+    task-master update-task <id> <prompt> --research
     ```
   </Accordion>
 
@@ -90,14 +105,21 @@ description: "A comprehensive reference of all available Task Master commands"
 
   <Accordion title="Set Task Status">
     ```bash
-    # Set status of a single task
-    task-master set-status --id=<id> --status=<status>
+    # Set status of a single task (new positional syntax)
+    task-master set-status <id> <status>
+    # or use the new alias
+    task-master status <id> <status>
+
+    # Examples with positional syntax
+    task-master status 1 done
+    task-master status 2.1 in-progress
+    task-master set-status 3 pending
 
     # Set status for multiple tasks
-    task-master set-status --id=1,2,3 --status=<status>
+    task-master set-status 1,2,3 in-progress
 
-    # Set status for subtasks
-    task-master set-status --id=1.1,1.2 --status=<status>
+    # Legacy flag syntax (still supported)
+    task-master set-status --id=<id> --status=<status>
     ```
 
     When marking a task as "done", all of its subtasks will automatically be marked as "done" as well.
@@ -203,7 +225,62 @@ description: "A comprehensive reference of all available Task Master commands"
     ```bash
     # Initialize a new project with Task Master structure
     task-master init
+
+    # Non-interactive setup with defaults
+    task-master init --yes
+
+    # Pre-configure AI IDE rules during init
+    task-master init --rules cursor,windsurf
     ```
+    
+    The new init flow offers two workflow choices:
+    - **Solo (Taskmaster)**: Parse PRD → structured tasks → AI agent executes with control
+    - **Together (Hamster)**: Team writes brief → Hamster refines → aligned execution with Taskmaster
+  </Accordion>
+
+  <Accordion title="Export Tasks to Hamster">
+    ```bash
+    # Export local tasks to collaborative Hamster briefs
+    task-master export
+
+    # Export specific tags
+    task-master export tag1,tag2
+
+    # Export and invite team members during creation
+    task-master export --invite user1@example.com,user2@example.com
+    # or
+    task-master export -I user1@example.com,user2@example.com
+
+    # Preview what would be exported without creating a brief
+    task-master export --dry-run
+    ```
+    
+    Export transforms your local tasks into shareable team briefs on Hamster. The platform reverse-engineers your PRD from tasks and enables real-time team collaboration. No API keys required - Hamster handles all AI inference.
+  </Accordion>
+
+  <Accordion title="Authentication (Login/Logout)">
+    ```bash
+    # Login to Hamster (OAuth flow)
+    task-master login
+    # or
+    task-master auth login
+
+    # Login with token (for SSH/remote environments)
+    task-master login <token>
+
+    # Skip interactive prompts
+    task-master login --yes
+
+    # Logout from Hamster
+    task-master logout
+    # or
+    task-master auth logout
+
+    # Check authentication status
+    task-master auth status
+    ```
+    
+    Authentication is required for Hamster integration (export, parse-prd --hamster). The login flow uses OAuth for security and convenience.
   </Accordion>
 
   <Accordion title="TDD Workflow (Autopilot)">

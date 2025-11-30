@@ -3,4 +3,81 @@ title: "What's New"
 sidebarTitle: "What's New"
 ---
 
-An easy way to see the latest releases
+## Latest Release: Hamster Integration & Major UX Improvements
+
+### 🎯 Team Collaboration with Hamster
+
+Task Master now integrates with Hamster, enabling seamless team collaboration:
+
+- **Two Workflow Options**: Choose between Solo (local tasks) or Team (Hamster collaboration) during `task-master init`
+- **No API Keys for Teams**: Hamster handles all AI inference when using team workflow
+- **Real-time Sync**: Tasks sync instantly across your entire team
+- **Export to Hamster**: Transform local tasks into collaborative briefs with `task-master export`
+- **Parse to Hamster**: Create team briefs directly from PRDs with `task-master parse-prd --hamster`
+
+### 🚀 New Commands
+
+**Authentication Shortcuts**
+```bash
+task-master login   # Quick OAuth login to Hamster
+task-master logout  # Logout from Hamster
+```
+
+**Export & Collaboration**  
+```bash
+task-master export                    # Export tasks to Hamster
+task-master export --invite user@team.com  # Export and invite teammates
+```
+
+### ⚡ Simplified Command Syntax
+
+**New Positional Arguments** (backward compatible):
+```bash
+# Before (still works)
+task-master set-status --id=1 --status=done
+task-master update-task --id=2 --prompt="Updated requirements"
+
+# Now (simpler)
+task-master status 1 done
+task-master update-task 2 Updated requirements
+```
+
+**Smart Shortcuts**:
+- `task-master list done` - List completed tasks
+- `task-master list all` - Show all tasks including subtasks
+- `task-master status` - New alias for `set-status`
+
+### 🔧 Enhanced UX
+
+**Context-Aware Interface**
+- Shows `Brief: [name]` when connected to Hamster
+- Hamster-specific command help and examples
+- Progress indicators for cloud operations
+- Cleaner, less noisy output
+
+**Improved `init` Workflow**
+- Clear workflow selection with guided setup
+- Optional AI IDE rules configuration
+- Reduced log noise (15+ debug-level messages)
+- Non-interactive mode with `--yes` flag
+
+### 📊 Telemetry & Monitoring
+
+**Sentry Integration**
+- Comprehensive error tracking for better reliability
+- AI operation monitoring (token usage, performance)
+- MCP server instrumentation
+- Privacy-respecting anonymous telemetry (opt-out available)
+
+### 🛠️ Quality of Life
+
+- **Display Improvements**: Better task rendering with HTML/Markdown support
+- **ID Shortcuts**: `tm show ham31` normalizes to `HAM-31`
+- **Clickable URLs**: Terminal links for briefs and team invites
+- **Smart Messaging**: Better error handling and user feedback
+
+---
+
+## Previous Releases
+
+For complete release history, see the [CHANGELOG](/CHANGELOG).

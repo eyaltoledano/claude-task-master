@@ -1,0 +1,197 @@
+---
+title: "Hamster Integration"
+sidebarTitle: "Hamster Integration"
+---
+
+Task Master integrates seamlessly with Hamster, a team collaboration platform for AI-driven development. This integration enables you to move from solo development with local tasks to collaborative team workflows.
+
+## Overview
+
+Hamster integration offers two key benefits:
+
+1. **Team Collaboration**: Share your task plans with teammates through collaborative briefs
+2. **No API Keys Required**: Hamster handles all AI inference, removing the need to manage your own API keys
+
+## Workflow Options
+
+When you run `task-master init`, you can choose between two workflows:
+
+### Solo Workflow (Taskmaster)
+- Parse PRD → structured tasks → AI agent executes with local control
+- Tasks stored locally in JSON files
+- Requires your own AI API keys
+- Great for individual development and prototyping
+
+### Team Workflow (Hamster)
+- Team writes brief → Hamster refines → aligned execution with Taskmaster
+- Tasks live in cloud with real-time sync
+- No API keys needed - Hamster provides AI inference
+- Enables team collaboration and shared context
+
+## Getting Started with Hamster
+
+### 1. Authentication
+
+First, login to Hamster to enable team features:
+
+```bash
+# OAuth login flow
+task-master login
+
+# For SSH/remote environments, use token-based login
+task-master login <your-token>
+
+# Check authentication status
+task-master auth status
+```
+
+### 2. Create Team Briefs
+
+You have several options for creating collaborative briefs:
+
+#### From PRD (Parse to Hamster)
+```bash
+# Parse PRD directly to Hamster instead of local tasks
+task-master parse-prd your-prd.md --hamster
+```
+
+This will:
+- Create a new brief on Hamster with auto-generated title/description
+- Generate tasks on the platform (no local JSON files)
+- Show progress with real-time updates
+- Allow you to invite teammates during creation
+- Set your CLI context to the new brief
+
+#### Export Existing Tasks
+```bash
+# Export all local tasks to a new Hamster brief
+task-master export
+
+# Export specific tags
+task-master export frontend,backend
+
+# Export and invite team members
+task-master export --invite teammate1@company.com,teammate2@company.com
+```
+
+The export process:
+- Reverse-engineers your PRD from existing tasks
+- Creates a comprehensive brief with context
+- Imports all tasks atomically
+- Provides shareable URLs for team collaboration
+
+## Team Collaboration Features
+
+### Invite Team Members
+
+During brief creation, you can invite up to 10 teammates:
+
+```bash
+# Using the --invite flag
+task-master export --invite user1@example.com,user2@example.com
+
+# Or use the short form
+task-master export -I user1@example.com,user2@example.com
+```
+
+The system will show invitation status:
+- ✅ Invitation sent successfully
+- ✅ User is already a team member  
+- ❌ Error sending invitation
+
+### Real-time Sync
+
+When connected to Hamster:
+- Tasks sync in real-time across your team
+- Changes made by teammates appear instantly
+- Context is shared and maintained across the team
+- All team members see the same task state
+
+### Contextual UI
+
+Task Master automatically detects Hamster connection and provides context-aware UI:
+
+- Shows `Brief: [name]` instead of `tag: [name]`
+- Displays Hamster-specific command help
+- Progress indicators for cloud operations
+- Clickable URLs for brief and team invites
+
+## Command Reference
+
+### Authentication Commands
+```bash
+task-master login [token]           # Login to Hamster
+task-master logout                  # Logout from Hamster  
+task-master auth status             # Check auth status
+```
+
+### Brief Management
+```bash
+task-master parse-prd <file> --hamster    # Create brief from PRD
+task-master export [tags]                 # Export tasks to brief
+task-master export --invite <emails>      # Export with team invites
+task-master export --dry-run              # Preview export
+```
+
+### Task Operations
+All standard Task Master commands work with Hamster briefs:
+```bash
+task-master list                    # List brief tasks
+task-master next                    # Get next task
+task-master status <id> <status>    # Update task status
+task-master update-task <id> <text> # Update with AI (via Hamster)
+```
+
+## Privacy and Telemetry
+
+When using Hamster integration:
+
+- **Data Location**: Tasks and briefs are stored securely on Hamster's platform
+- **AI Processing**: All AI operations are handled by Hamster's infrastructure
+- **Telemetry**: Anonymous usage telemetry is collected to improve the service
+- **Opt-out**: You can disable telemetry with `anonymousTelemetry: false` in config
+
+## Best Practices
+
+### When to Use Hamster
+- **Team Projects**: When collaborating with multiple developers
+- **Client Work**: When you need to share progress and context
+- **API Key Management**: When you want to avoid managing multiple AI API keys
+- **Real-time Collaboration**: When team members need synchronized task updates
+
+### When to Use Solo Workflow  
+- **Personal Projects**: Individual development work
+- **Prototyping**: Quick experimentation and iteration
+- **Sensitive Code**: When you need complete local control
+- **Custom AI Setup**: When you have specific AI model preferences
+
+### Migration Between Workflows
+
+You can easily move between workflows:
+
+1. **Solo → Team**: Use `task-master export` to move local tasks to Hamster
+2. **Team → Solo**: Download tasks from Hamster brief and import locally (coming soon)
+
+## Troubleshooting
+
+### Authentication Issues
+```bash
+# Clear auth cache and re-login
+task-master logout
+task-master login
+
+# Check authentication status
+task-master auth status
+```
+
+### Sync Issues
+- Ensure stable internet connection
+- Check Hamster service status
+- Re-authenticate if needed
+
+### API Key Conflicts
+When using Hamster, you don't need local AI API keys. If you have both configured, Hamster takes precedence for team briefs.
+
+---
+
+For more information about Hamster's features and pricing, visit [hamster.ai](https://hamster.ai).

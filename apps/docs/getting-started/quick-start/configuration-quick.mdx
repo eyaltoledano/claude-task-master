@@ -4,9 +4,16 @@ sidebarTitle: "Configuration"
 
 ---
 
-Before getting started with Task Master, you'll need to set up your API keys. There are a couple of ways to do this depending on whether you're using the CLI or working inside MCP. It's also a good time to start getting familiar with the other configuration options available — even if you don’t need to adjust them yet, knowing what’s possible will help down the line.
+Before getting started with Task Master, you'll need to configure your workflow. Task Master offers two options: Solo workflow (requires API keys) or Team workflow with Hamster (no API keys needed).
 
-## API Key Setup
+## Choose Your Workflow
+
+During `task-master init`, you'll be prompted to choose between:
+
+1. **Solo (Taskmaster)**: Parse PRD → structured tasks → AI agent executes with local control
+2. **Together (Hamster)**: Team writes brief → Hamster refines → aligned execution  
+
+### For Solo Workflow: API Key Setup
 
 Task Master uses environment variables to securely store provider API keys and optional endpoint URLs.
 
@@ -81,6 +88,24 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
+```
+
+### For Team Workflow: Hamster Setup
+
+If you choose the Hamster workflow, configuration is much simpler:
+
+1. **No API Keys Required**: Hamster provides all AI inference
+2. **Authentication**: Login during init or manually with `task-master login`
+3. **Team Collaboration**: Invite teammates when creating briefs
+4. **Real-time Sync**: All configuration is managed on Hamster platform
+
+```bash
+# Initialize with Hamster workflow
+task-master init
+# Choose "Together (Hamster)" when prompted
+
+# Or login manually anytime
+task-master login
 ```
 
 ## What Else Can Be Configured?
