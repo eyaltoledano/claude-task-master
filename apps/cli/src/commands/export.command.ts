@@ -927,6 +927,11 @@ export class ExportCommand extends Command {
 				case 'already_member':
 					console.log(chalk.gray(`    ${inv.email}: Already a team member`));
 					break;
+				case 'already_invited':
+					console.log(
+						chalk.yellow(`    ${inv.email}: Already invited (pending)`)
+					);
+					break;
 				case 'error':
 				case 'failed':
 					console.log(

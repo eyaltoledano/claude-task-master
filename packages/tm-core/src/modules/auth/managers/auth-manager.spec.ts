@@ -72,9 +72,19 @@ vi.mock('../services/session-manager.js', () => {
 
 // Mock SupabaseAuthClient to avoid side effects
 vi.mock('../../integration/clients/supabase-client.js', () => {
+	let instance: any = null;
 	return {
 		SupabaseAuthClient: class {
 			constructor() {}
+			static getInstance() {
+				if (!instance) {
+					instance = new (this as any)();
+				}
+				return instance;
+			}
+			static resetInstance() {
+				instance = null;
+			}
 			refreshSession() {
 				return Promise.resolve({});
 			}
