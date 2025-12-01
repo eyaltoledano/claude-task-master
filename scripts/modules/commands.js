@@ -934,11 +934,14 @@ function registerCommands(programInstance) {
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (file, options) => {
+			// Resolve PRD path: prioritize --input option, then positional argument
+			const prdPath = options.input || file;
+
 			// Initialize TaskMaster
 			let taskMaster;
 			try {
 				const initOptions = {
-					prdPath: file || options.input || true,
+					prdPath: prdPath || true,
 					tag: options.tag
 				};
 				// Only include tasksPath if output is explicitly specified
@@ -978,7 +981,7 @@ function registerCommands(programInstance) {
 			const collaborationChoice = await promptHamsterCollaboration();
 			if (collaborationChoice === 'hamster') {
 				// User chose Hamster - send PRD to Hamster for brief creation
-				await handleParsePrdToHamster(file);
+				await handleParsePrdToHamster(taskMaster.getPrdPath());
 				return;
 			}
 
