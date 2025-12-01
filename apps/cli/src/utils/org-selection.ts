@@ -31,17 +31,17 @@ export interface EnsureOrgOptions {
 
 /**
  * Ensure an organization is selected, prompting if necessary.
- * 
+ *
  * This is a shared utility that can be used by any command that requires
  * an organization context. It will:
  * 1. Check if org is already selected in context
  * 2. If not, fetch orgs and auto-select if only one
  * 3. If multiple, prompt user to select
- * 
+ *
  * @param authManager - The AuthManager instance
  * @param options - Optional configuration
  * @returns OrgSelectionResult with orgId if successful
- * 
+ *
  * @example
  * ```typescript
  * const result = await ensureOrgSelected(authManager);
@@ -91,7 +91,9 @@ export async function ensureOrgSelected(
 				orgSlug: orgs[0].slug
 			});
 			if (!silent) {
-				console.log(chalk.gray(`  Auto-selected organization: ${orgs[0].name}`));
+				console.log(
+					chalk.gray(`  Auto-selected organization: ${orgs[0].name}`)
+				);
 			}
 			return {
 				success: true,
@@ -169,4 +171,3 @@ export function getSelectedOrg(authManager: AuthManager): OrgSelectionResult {
 		message: 'No organization selected'
 	};
 }
-
