@@ -1,5 +1,31 @@
 # task-master-ai
 
+## 0.36.0
+
+### Minor Changes
+
+- [#1446](https://github.com/eyaltoledano/claude-task-master/pull/1446) [`2316e94`](https://github.com/eyaltoledano/claude-task-master/commit/2316e94b288915bb906e1a61a87f59e291594fef) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Bring back `task-master generate` as a command and mcp tool (after popular demand)
+  - Generated files are now `.md` instead of `.txt`
+    - They also follow the markdownlint format making them look like more standard md files
+  - added parameters to generate allowing you to generate with the `--tag` flag
+    - If I am on an active tag and want to generate files from another tag, I can with the tag parameter
+  - See `task-master generate --help` for more information.
+
+- [#1454](https://github.com/eyaltoledano/claude-task-master/pull/1454) [`38ff7eb`](https://github.com/eyaltoledano/claude-task-master/commit/38ff7ebbc029919ea4cd5257573efbf1ea2f0eeb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Hamster rules to task-master rules
+
+## 0.36.0
+
+### Minor Changes
+
+- [#1446](https://github.com/eyaltoledano/claude-task-master/pull/1446) [`2316e94`](https://github.com/eyaltoledano/claude-task-master/commit/2316e94b288915bb906e1a61a87f59e291594fef) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Bring back `task-master generate` as a command and mcp tool (after popular demand)
+  - Generated files are now `.md` instead of `.txt`
+    - They also follow the markdownlint format making them look like more standard md files
+  - added parameters to generate allowing you to generate with the `--tag` flag
+    - If I am on an active tag and want to generate files from another tag, I can with the tag parameter
+  - See `task-master generate --help` for more information.
+
+- [#1454](https://github.com/eyaltoledano/claude-task-master/pull/1454) [`38ff7eb`](https://github.com/eyaltoledano/claude-task-master/commit/38ff7ebbc029919ea4cd5257573efbf1ea2f0eeb) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add Hamster rules to task-master rules
+
 ## 0.36.0-rc.2
 
 ### Patch Changes
