@@ -1,11 +1,11 @@
+import fs from 'fs';
+import path from 'path';
+import { jest } from '@jest/globals';
+import { rulesDirect } from '../../../mcp-server/src/core/direct-functions/rules.js';
 import {
 	getInstalledProfiles,
 	wouldRemovalLeaveNoProfiles
 } from '../../../src/utils/profiles.js';
-import { rulesDirect } from '../../../mcp-server/src/core/direct-functions/rules.js';
-import fs from 'fs';
-import path from 'path';
-import { jest } from '@jest/globals';
 
 // Mock logger
 const mockLog = {

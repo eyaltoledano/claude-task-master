@@ -3,8 +3,8 @@
  */
 
 import React from 'react';
-import { ToastNotification } from './ToastNotification';
 import type { ToastNotification as ToastType } from '../types';
+import { ToastNotification } from './ToastNotification';
 
 interface ToastContainerProps {
 	notifications: ToastType[];

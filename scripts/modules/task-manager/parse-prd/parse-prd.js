@@ -1,29 +1,29 @@
 import chalk from 'chalk';
 import {
-	StreamingError,
-	STREAMING_ERROR_CODES
+	STREAMING_ERROR_CODES,
+	StreamingError
 } from '../../../../src/utils/stream-parser.js';
 import { TimeoutManager } from '../../../../src/utils/timeout-manager.js';
 import { getDebugFlag, getDefaultPriority } from '../../config-manager.js';
 
 // Import configuration classes
-import { PrdParseConfig, LoggingConfig } from './parse-prd-config.js';
+import { LoggingConfig, PrdParseConfig } from './parse-prd-config.js';
 
 // Import helper functions
 import {
-	readPrdContent,
-	loadExistingTasks,
-	validateFileOperations,
-	processTasks,
-	saveTasksToFile,
 	buildPrompts,
 	displayCliSummary,
-	displayNonStreamingCliOutput
+	displayNonStreamingCliOutput,
+	loadExistingTasks,
+	processTasks,
+	readPrdContent,
+	saveTasksToFile,
+	validateFileOperations
 } from './parse-prd-helpers.js';
 
+import { handleNonStreamingService } from './parse-prd-non-streaming.js';
 // Import handlers
 import { handleStreamingService } from './parse-prd-streaming.js';
-import { handleNonStreamingService } from './parse-prd-non-streaming.js';
 
 // ============================================================================
 // MAIN PARSING FUNCTIONS (Simplified after refactoring)

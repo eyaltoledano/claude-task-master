@@ -4,6 +4,7 @@
 
 import { type WorkflowContext, createTmCore } from '@tm/core';
 import { Command } from 'commander';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
 	OutputFormatter,
@@ -13,7 +14,6 @@ import {
 	parseSubtasks,
 	validateTaskId
 } from './shared.js';
-import { getProjectRoot } from '../../utils/project-root.js';
 
 interface StartOptions extends AutopilotBaseOptions {
 	force?: boolean;

@@ -8,9 +8,10 @@ import {
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import type { Task, TaskStatus } from '../../../common/types/index.js';
-import { AuthManager } from '../../auth/managers/auth-manager.js';
+import { AuthDomain } from '../../auth/auth-domain.js';
+import type { AuthManager } from '../../auth/managers/auth-manager.js';
 import type { UserContext } from '../../auth/types.js';
-import { ConfigManager } from '../../config/managers/config-manager.js';
+import type { ConfigManager } from '../../config/managers/config-manager.js';
 import { FileStorage } from '../../storage/adapters/file-storage/index.js';
 
 // Type definitions for the bulk API response
@@ -33,6 +34,284 @@ interface BulkTasksResponse {
 	summary: {
 		message: string;
 		duration: number;
+	};
+}
+
+// ========== Generate Brief From Tasks Types ==========
+
+/**
+ * Task format for generating a brief
+ */
+export interface ImportTask {
+	/** External ID from source system (for sync/mapping) */
+	externalId: string;
+	/** Task content */
+	title: string;
+	description?: string;
+	details?: string;
+	/** Status */
+	status: 'todo' | 'in_progress' | 'done' | 'blocked';
+	/** Priority - Note: Hamster uses 'urgent' not 'critical' */
+	priority: 'low' | 'medium' | 'high' | 'urgent';
+	/** Relationships (using externalIds) */
+	dependencies?: string[];
+	parentId?: string;
+	/** Optional metadata */
+	metadata?: {
+		originalStatus?: string;
+		originalPriority?: string;
+		createdAt?: string;
+		updatedAt?: string;
+		testStrategy?: string;
+		[key: string]: unknown;
+	};
+}
+
+/**
+ * Options for generating a brief from tasks
+ */
+export interface GenerateBriefOptions {
+	/** Optional tag to export tasks from (uses active tag if not provided) */
+	tag?: string;
+	/** Filter by task status */
+	status?: TaskStatus;
+	/** Exclude subtasks from export */
+	excludeSubtasks?: boolean;
+	/** Optional organization ID (uses default if not provided) */
+	orgId?: string;
+	/** Generation options */
+	options?: {
+		/** Use AI to generate a brief title from task content */
+		generateTitle?: boolean;
+		/** Use AI to generate a brief description */
+		generateDescription?: boolean;
+		/** Preserve task hierarchy */
+		preserveHierarchy?: boolean;
+		/** Preserve dependency relationships */
+		preserveDependencies?: boolean;
+		/** Optional explicit title (overrides generation) */
+		title?: string;
+		/** Optional explicit description (overrides generation) */
+		description?: string;
+	};
+}
+
+/**
+ * Result of an invitation attempt
+ */
+export interface InvitationResult {
+	email: string;
+	status: 'sent' | 'already_member' | 'error' | 'failed';
+	error?: string;
+}
+
+// ========== Generate Brief From PRD Types ==========
+
+/**
+ * Options for generating a brief from PRD content
+ */
+export interface GenerateBriefFromPrdOptions {
+	/** The raw PRD content (required) */
+	prdContent: string;
+	/** Optional organization ID (uses default if not provided) */
+	orgId?: string;
+	/** Generation options */
+	options?: {
+		/** Use AI to generate a brief title from PRD content */
+		generateTitle?: boolean;
+		/** Use AI to generate a brief description */
+		generateDescription?: boolean;
+		/** Optional explicit title (overrides generation) */
+		title?: string;
+		/** Optional explicit description (overrides generation) */
+		description?: string;
+	};
+}
+
+/**
+ * Response from generate brief from PRD endpoint
+ */
+export interface GenerateBriefFromPrdResponse {
+	success: boolean;
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description?: string;
+		status: 'generating' | 'pending_plan' | 'ready';
+		createdAt: string;
+	};
+	jobId?: string;
+	invitations?: InvitationResult[];
+	error?: {
+		code: string;
+		message: string;
+		details?: unknown;
+	};
+}
+
+/**
+ * Result of the generate brief from PRD operation
+ */
+export interface GenerateBriefFromPrdResult {
+	/** Whether the operation was successful */
+	success: boolean;
+	/** Created brief details */
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description?: string;
+		status: 'generating' | 'pending_plan' | 'ready';
+	};
+	/** The organization/account ID the brief was created in */
+	orgId?: string;
+	/** Job ID for tracking plan generation progress */
+	jobId?: string;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
+	/** Error details if failed */
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
+// ========== Brief Status Polling Types ==========
+
+/**
+ * Progress details for task generation
+ */
+export interface BriefGenerationProgress {
+	/** Current phase of generation */
+	currentPhase: string;
+	/** Human-readable progress message */
+	message: string;
+	/** Detailed progress counts */
+	progress?: {
+		parentTasksGenerated?: number;
+		parentTasksProcessed?: number;
+		totalParentTasks?: number;
+		subtasksGenerated?: number;
+	};
+	/** Last update timestamp */
+	lastUpdatedAt?: string;
+}
+
+/**
+ * Response from brief status endpoint
+ */
+export interface BriefStatusResponse {
+	/** Brief ID */
+	briefId: string;
+	/** Brief title */
+	title: string;
+	/** Current generation status */
+	status: 'pending' | 'generating' | 'completed' | 'failed';
+	/** Detailed progress info */
+	progress?: BriefGenerationProgress;
+	/** When generation started */
+	startedAt?: string;
+	/** When generation completed */
+	completedAt?: string;
+	/** Error message if failed */
+	error?: string;
+}
+
+/**
+ * Result from polling brief status
+ */
+export interface BriefStatusResult {
+	success: boolean;
+	status?: BriefStatusResponse;
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
+/**
+ * Response from send team invitations endpoint
+ */
+export interface SendTeamInvitationsResponse {
+	success: boolean;
+	invitations: Array<{
+		email: string;
+		status: 'sent' | 'already_member' | 'failed';
+	}>;
+}
+
+/**
+ * Result from send team invitations
+ */
+export interface SendTeamInvitationsResult {
+	success: boolean;
+	invitations?: Array<{
+		email: string;
+		status: 'sent' | 'already_member' | 'failed';
+	}>;
+	error?: {
+		code: string;
+		message: string;
+	};
+}
+
+/**
+ * Response from generate brief from tasks endpoint
+ */
+export interface GenerateBriefResponse {
+	success: boolean;
+	brief: {
+		id: string;
+		url: string;
+		title: string;
+		description: string;
+		taskCount: number;
+		createdAt: string;
+	};
+	taskMapping: Array<{
+		externalId: string;
+		hamsterId: string;
+		parentHamsterId?: string;
+	}>;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
+	warnings?: string[];
+	error?: {
+		code: string;
+		message: string;
+		details?: unknown;
+	};
+}
+
+/**
+ * Result of the generate brief operation
+ */
+export interface GenerateBriefResult {
+	/** Whether the operation was successful */
+	success: boolean;
+	/** Created brief details */
+	brief?: {
+		id: string;
+		url: string;
+		title: string;
+		description: string;
+		taskCount: number;
+	};
+	/** Task mapping for future sync */
+	taskMapping?: Array<{
+		externalId: string;
+		hamsterId: string;
+		parentHamsterId?: string;
+	}>;
+	/** Invitation results (only present if inviteEmails was provided) */
+	invitations?: InvitationResult[];
+	/** Any warnings during import */
+	warnings?: string[];
+	/** Error details if failed */
+	error?: {
+		code: string;
+		message: string;
 	};
 }
 
@@ -112,8 +391,8 @@ export class ExportService {
 		const context = await this.authManager.getContext();
 
 		// Determine org and brief IDs
-		let orgId = options.orgId || context?.orgId;
-		let briefId = options.briefId || context?.briefId;
+		const orgId = options.orgId || context?.orgId;
+		const briefId = options.briefId || context?.briefId;
 
 		// Validate we have necessary IDs
 		if (!orgId) {
@@ -251,8 +530,24 @@ export class ExportService {
 	private transformTasksForBulkImport(tasks: Task[]): any[] {
 		const flatTasks: any[] = [];
 
+		// Build a set of all valid task/subtask IDs for dependency validation
+		const validIds = new Set<string>();
+		for (const task of tasks) {
+			validIds.add(String(task.id));
+			if (task.subtasks) {
+				for (const subtask of task.subtasks) {
+					validIds.add(`${task.id}.${subtask.id}`);
+				}
+			}
+		}
+
 		// Process each task and its subtasks
 		tasks.forEach((task) => {
+			// Filter dependencies to only include valid (existing) task IDs
+			const validDependencies = (task.dependencies || [])
+				.map(String)
+				.filter((dep) => validIds.has(dep));
+
 			// Add parent task
 			flatTasks.push({
 				externalId: String(task.id),
@@ -260,7 +555,7 @@ export class ExportService {
 				description: this.enrichDescription(task),
 				status: this.mapStatusForAPI(task.status),
 				priority: task.priority || 'medium',
-				dependencies: task.dependencies?.map(String) || [],
+				dependencies: validDependencies,
 				details: task.details,
 				testStrategy: task.testStrategy,
 				complexity: task.complexity,
@@ -276,6 +571,17 @@ export class ExportService {
 			// Add subtasks if they exist
 			if (task.subtasks && task.subtasks.length > 0) {
 				task.subtasks.forEach((subtask) => {
+					// Convert and filter subtask dependencies
+					const subtaskDependencies = (subtask.dependencies || [])
+						.map((dep) => {
+							// Convert subtask dependencies to full ID format
+							if (String(dep).includes('.')) {
+								return String(dep);
+							}
+							return `${task.id}.${dep}`;
+						})
+						.filter((dep) => validIds.has(dep));
+
 					flatTasks.push({
 						externalId: `${task.id}.${subtask.id}`,
 						parentExternalId: String(task.id),
@@ -283,14 +589,7 @@ export class ExportService {
 						description: this.enrichDescription(subtask),
 						status: this.mapStatusForAPI(subtask.status),
 						priority: subtask.priority || 'medium',
-						dependencies:
-							subtask.dependencies?.map((dep) => {
-								// Convert subtask dependencies to full ID format
-								if (String(dep).includes('.')) {
-									return String(dep);
-								}
-								return `${task.id}.${dep}`;
-							}) || [],
+						dependencies: subtaskDependencies,
 						details: subtask.details,
 						testStrategy: subtask.testStrategy,
 						complexity: subtask.complexity,
@@ -361,13 +660,13 @@ export class ExportService {
 		briefId: string,
 		tasks: any[]
 	): Promise<void> {
-		// Check if we should use the API endpoint or direct Supabase
-		const apiEndpoint =
-			process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
 
-		if (apiEndpoint) {
+		if (apiBaseUrl) {
 			// Use the new bulk import API endpoint
-			const apiUrl = `${apiEndpoint}/ai/api/v1/briefs/${briefId}/tasks`;
+			const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/${briefId}/tasks`;
 
 			// Transform tasks to flat structure for API
 			const flatTasks = this.transformTasksForBulkImport(tasks);
@@ -497,5 +796,807 @@ export class ExportService {
 		return (
 			uuidRegex.test(value) || ulidRegex.test(value) || slugRegex.test(value)
 		);
+	}
+
+	// ========== Generate Brief From Tasks ==========
+
+	/**
+	 * Generate a new brief from local tasks
+	 * This is the primary export method - creates a brief and imports all tasks atomically
+	 */
+	async generateBriefFromTasks(
+		options: GenerateBriefOptions = {}
+	): Promise<GenerateBriefResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			throw new TaskMasterError(
+				'Authentication required for export',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Get current context for org ID
+		const context = await this.authManager.getContext();
+		let orgId = options.orgId || context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!orgId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length === 0) {
+				return {
+					success: false,
+					error: {
+						code: 'NO_ORGANIZATIONS',
+						message:
+							'No organizations available. Please create an organization in Hamster first.'
+					}
+				};
+			}
+			// Use the first organization (most common case: user has one org)
+			orgId = organizations[0].id;
+		}
+
+		// Get tasks from the specified or active tag
+		const activeTag = this.configManager.getActiveTag();
+		const tag = options.tag || activeTag;
+
+		// Always read tasks from local file storage for export
+		const fileStorage = new FileStorage(this.configManager.getProjectRoot());
+		await fileStorage.initialize();
+
+		// Load tasks with filters applied
+		const tasks = await fileStorage.loadTasks(tag, {
+			status: options.status,
+			excludeSubtasks: options.excludeSubtasks
+		});
+
+		if (tasks.length === 0) {
+			return {
+				success: false,
+				error: {
+					code: 'NO_TASKS',
+					message: 'No tasks found to export'
+				}
+			};
+		}
+
+		// Transform tasks to import format
+		const importTasks = this.transformTasksForImport(tasks);
+
+		// Get project name from project root directory name
+		const projectName = this.getProjectName();
+
+		// Call the generate brief endpoint
+		return this.callGenerateBriefEndpoint({
+			tasks: importTasks,
+			source: {
+				tool: 'task-master',
+				version: this.getVersion(),
+				tag: tag,
+				projectName: projectName
+			},
+			orgId,
+			options: options.options
+		});
+	}
+
+	/**
+	 * Transform tasks to import format for the API
+	 */
+	private transformTasksForImport(tasks: Task[]): ImportTask[] {
+		const importTasks: ImportTask[] = [];
+
+		// Build a set of all valid task/subtask IDs for dependency validation
+		const validIds = new Set<string>();
+		for (const task of tasks) {
+			validIds.add(String(task.id));
+			if (task.subtasks) {
+				for (const subtask of task.subtasks) {
+					validIds.add(`${task.id}.${subtask.id}`);
+				}
+			}
+		}
+
+		for (const task of tasks) {
+			// Filter dependencies to only include valid (existing) task IDs
+			const validDependencies = (task.dependencies || [])
+				.map(String)
+				.filter((dep) => validIds.has(dep));
+
+			// Add parent task
+			importTasks.push({
+				externalId: String(task.id),
+				title: task.title,
+				description: this.enrichDescription(task),
+				details: task.details,
+				status: this.mapStatusForImport(task.status),
+				priority: this.mapPriorityForImport(task.priority),
+				dependencies: validDependencies,
+				metadata: {
+					originalStatus: task.status,
+					originalPriority: task.priority,
+					testStrategy: task.testStrategy,
+					complexity: task.complexity
+				}
+			});
+
+			// Add subtasks if they exist
+			if (task.subtasks && task.subtasks.length > 0) {
+				for (const subtask of task.subtasks) {
+					// Convert and filter subtask dependencies
+					const subtaskDependencies = (subtask.dependencies || [])
+						.map((dep) => {
+							// Convert subtask dependencies to full ID format
+							if (String(dep).includes('.')) {
+								return String(dep);
+							}
+							return `${task.id}.${dep}`;
+						})
+						.filter((dep) => validIds.has(dep));
+
+					importTasks.push({
+						externalId: `${task.id}.${subtask.id}`,
+						parentId: String(task.id),
+						title: subtask.title,
+						description: this.enrichDescription(subtask),
+						details: subtask.details,
+						status: this.mapStatusForImport(subtask.status),
+						priority: this.mapPriorityForImport(subtask.priority),
+						dependencies: subtaskDependencies,
+						metadata: {
+							originalStatus: subtask.status,
+							originalPriority: subtask.priority,
+							testStrategy: subtask.testStrategy,
+							complexity: subtask.complexity
+						}
+					});
+				}
+			}
+		}
+
+		return importTasks;
+	}
+
+	/**
+	 * Map internal status to import format
+	 */
+	private mapStatusForImport(status?: string): ImportTask['status'] {
+		switch (status) {
+			case 'pending':
+				return 'todo';
+			case 'in-progress':
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+			case 'completed':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			default:
+				return 'todo';
+		}
+	}
+
+	/**
+	 * Map internal priority to import format
+	 * Note: Hamster uses 'urgent' instead of 'critical'
+	 */
+	private mapPriorityForImport(priority?: string): ImportTask['priority'] {
+		switch (priority?.toLowerCase()) {
+			case 'low':
+				return 'low';
+			case 'medium':
+				return 'medium';
+			case 'high':
+				return 'high';
+			case 'critical':
+			case 'urgent':
+				return 'urgent';
+			default:
+				return 'medium';
+		}
+	}
+
+	/**
+	 * Get the current version of task-master
+	 */
+	private getVersion(): string {
+		// Try to get version from package.json or config
+		try {
+			// This will be populated at build time or from package.json
+			return process.env.npm_package_version || '1.0.0';
+		} catch {
+			return '1.0.0';
+		}
+	}
+
+	/**
+	 * Get the project name from the project root directory
+	 */
+	private getProjectName(): string | undefined {
+		try {
+			const projectRoot = this.configManager.getProjectRoot();
+			// Use the directory name as project name
+			return projectRoot.split(/[/\\]/).pop() || undefined;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * Call the generate brief from tasks endpoint
+	 */
+	private async callGenerateBriefEndpoint(request: {
+		tasks: ImportTask[];
+		source: {
+			tool: string;
+			version: string;
+			tag?: string;
+			projectName?: string;
+		};
+		orgId?: string;
+		options?: GenerateBriefOptions['options'];
+	}): Promise<GenerateBriefResult> {
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			throw new TaskMasterError(
+				'Export API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+				ERROR_CODES.MISSING_CONFIGURATION,
+				{ operation: 'generateBriefFromTasks' }
+			);
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/generate-from-tasks`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			throw new TaskMasterError(
+				'Not authenticated',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Build request body - use accountId for Hamster API
+		const accountId = request.orgId;
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message:
+						'No organization selected. Please run "tm auth" and select an organization first.'
+				}
+			};
+		}
+
+		const requestBody: Record<string, unknown> = {
+			tasks: request.tasks,
+			source: request.source,
+			accountId, // Hamster expects accountId, not orgId
+			options: {
+				generateTitle: request.options?.generateTitle ?? true,
+				generateDescription: request.options?.generateDescription ?? true,
+				preserveHierarchy: request.options?.preserveHierarchy ?? true,
+				preserveDependencies: request.options?.preserveDependencies ?? true,
+				title: request.options?.title,
+				description: request.options?.description
+			}
+		};
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId // Also send as header for redundancy
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			// Check content type to avoid JSON parse errors on HTML responses (e.g., 404 pages)
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				const text = await response.text();
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`
+					}
+				};
+			}
+
+			const jsonData = await response.json();
+			const result = jsonData as GenerateBriefResponse;
+
+			if (!response.ok || !result.success) {
+				// Try to extract error from various possible response formats
+				const errorMessage =
+					result.error?.message ||
+					(jsonData as any)?.message ||
+					(jsonData as any)?.error ||
+					`API request failed: ${response.status} - ${response.statusText}`;
+
+				const errorCode =
+					result.error?.code ||
+					(jsonData as any)?.code ||
+					(jsonData as any)?.statusCode ||
+					'API_ERROR';
+
+				return {
+					success: false,
+					warnings: result.warnings,
+					error: {
+						code: String(errorCode),
+						message: String(errorMessage)
+					}
+				};
+			}
+
+			return {
+				success: true,
+				brief: result.brief,
+				taskMapping: result.taskMapping,
+				invitations: result.invitations,
+				warnings: result.warnings
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to connect to API: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Generate Brief From PRD ==========
+
+	/**
+	 * Generate a new brief from PRD content
+	 * Sends PRD to Hamster which creates a brief and generates tasks asynchronously
+	 */
+	async generateBriefFromPrd(
+		options: GenerateBriefFromPrdOptions
+	): Promise<GenerateBriefFromPrdResult> {
+		if (!options.prdContent || options.prdContent.trim().length === 0) {
+			return {
+				success: false,
+				error: {
+					code: 'INVALID_INPUT',
+					message: 'PRD content is required'
+				}
+			};
+		}
+
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			throw new TaskMasterError(
+				'Authentication required for PRD import',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Get current context for org ID
+		const context = await this.authManager.getContext();
+		let orgId = options.orgId || context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!orgId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length === 0) {
+				return {
+					success: false,
+					error: {
+						code: 'NO_ORGANIZATIONS',
+						message:
+							'No organizations available. Please create an organization in Hamster first.'
+					}
+				};
+			}
+			// Use the first organization (most common case: user has one org)
+			orgId = organizations[0].id;
+		}
+
+		return this.callGenerateBriefFromPrdEndpoint({
+			prdContent: options.prdContent,
+			orgId,
+			options: options.options
+		});
+	}
+
+	/**
+	 * Call the generate brief from PRD endpoint
+	 */
+	private async callGenerateBriefFromPrdEndpoint(request: {
+		prdContent: string;
+		orgId?: string;
+		options?: GenerateBriefFromPrdOptions['options'];
+	}): Promise<GenerateBriefFromPrdResult> {
+		// Use AuthDomain to get the properly formatted API base URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			throw new TaskMasterError(
+				'API endpoint not configured. Please set TM_PUBLIC_BASE_DOMAIN environment variable.',
+				ERROR_CODES.MISSING_CONFIGURATION,
+				{ operation: 'generateBriefFromPrd' }
+			);
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/generate-from-prd`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			throw new TaskMasterError(
+				'Not authenticated',
+				ERROR_CODES.AUTHENTICATION_ERROR
+			);
+		}
+
+		// Build request body
+		const accountId = request.orgId;
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message:
+						'No organization selected. Please run "tm auth" and select an organization first.'
+				}
+			};
+		}
+
+		const requestBody: Record<string, unknown> = {
+			prdContent: request.prdContent,
+			accountId,
+			options: {
+				generateTitle: request.options?.generateTitle ?? true,
+				generateDescription: request.options?.generateDescription ?? true,
+				title: request.options?.title,
+				description: request.options?.description
+			}
+		};
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId
+				},
+				body: JSON.stringify(requestBody)
+			});
+
+			// Check content type to avoid JSON parse errors on HTML responses
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				const text = await response.text();
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status}): ${text.substring(0, 100)}...`
+					}
+				};
+			}
+
+			const jsonData = await response.json();
+			const result = jsonData as GenerateBriefFromPrdResponse;
+
+			if (!response.ok || !result.success) {
+				const errorMessage =
+					result.error?.message ||
+					(jsonData as any)?.message ||
+					(jsonData as any)?.error ||
+					`API request failed: ${response.status} - ${response.statusText}`;
+
+				const errorCode =
+					result.error?.code ||
+					(jsonData as any)?.code ||
+					(jsonData as any)?.statusCode ||
+					'API_ERROR';
+
+				return {
+					success: false,
+					error: {
+						code: String(errorCode),
+						message: String(errorMessage)
+					}
+				};
+			}
+
+			return {
+				success: true,
+				brief: result.brief,
+				orgId: accountId, // Include orgId for context setting
+				jobId: result.jobId,
+				invitations: result.invitations
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to connect to API: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Brief Status Polling ==========
+
+	/**
+	 * Get the current status of a brief's task generation
+	 * Used to poll progress after generateBriefFromPrd
+	 */
+	async getBriefStatus(briefId: string): Promise<BriefStatusResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Authentication required'
+				}
+			};
+		}
+
+		// Get API URL
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_CONFIGURATION',
+					message: 'API endpoint not configured'
+				}
+			};
+		}
+
+		const apiUrl = `${apiBaseUrl}/ai/api/v1/briefs/${briefId}/status`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Not authenticated'
+				}
+			};
+		}
+
+		// Get accountId from context (like generateBriefFromTasks)
+		const context = await this.authManager.getContext();
+		let accountId = context?.orgId;
+
+		// If no org in context, try to fetch and use the user's organizations
+		if (!accountId) {
+			const organizations = await this.authManager.getOrganizations();
+			if (organizations.length > 0) {
+				accountId = organizations[0].id;
+			}
+		}
+
+		if (!accountId) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_ACCOUNT',
+					message: 'No organization available'
+				}
+			};
+		}
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'x-account-id': accountId
+				}
+			});
+
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status})`
+					}
+				};
+			}
+
+			const jsonData = (await response.json()) as BriefStatusResponse;
+
+			if (!response.ok) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message:
+							(jsonData as any)?.message ||
+							`Failed to get status: ${response.status}`
+					}
+				};
+			}
+
+			return {
+				success: true,
+				status: jsonData
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to get brief status: ${errorMessage}`
+				}
+			};
+		}
+	}
+
+	// ========== Team Invitations ==========
+
+	/**
+	 * Send team invitations to collaborate on Hamster
+	 * This is a separate call from brief creation (Next.js endpoint, not NestJS)
+	 */
+	async sendTeamInvitations(
+		accountSlug: string,
+		emails: string[],
+		role: 'member' | 'admin' = 'member'
+	): Promise<SendTeamInvitationsResult> {
+		const isAuthenticated = await this.authManager.hasValidSession();
+		if (!isAuthenticated) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Authentication required'
+				}
+			};
+		}
+
+		// Get API URL - Note: This is a Next.js endpoint, NOT NestJS, so no /ai prefix
+		const authDomain = new AuthDomain();
+		const apiBaseUrl = authDomain.getApiBaseUrl();
+
+		if (!apiBaseUrl) {
+			return {
+				success: false,
+				error: {
+					code: 'MISSING_CONFIGURATION',
+					message: 'API endpoint not configured'
+				}
+			};
+		}
+
+		// Next.js endpoint: /api/teams/:accountSlug/invitations (no /ai prefix)
+		const apiUrl = `${apiBaseUrl}/api/teams/${accountSlug}/invitations`;
+
+		// Get auth token
+		const accessToken = await this.authManager.getAccessToken();
+		if (!accessToken) {
+			return {
+				success: false,
+				error: {
+					code: 'AUTH_REQUIRED',
+					message: 'Not authenticated'
+				}
+			};
+		}
+
+		try {
+			const response = await fetch(apiUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`
+				},
+				body: JSON.stringify({
+					emails: emails.slice(0, 10), // Max 10 emails
+					role
+				})
+			});
+
+			const contentType = response.headers.get('content-type') || '';
+			if (!contentType.includes('application/json')) {
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: `API returned non-JSON response (${response.status})`
+					}
+				};
+			}
+
+			const jsonData = (await response.json()) as SendTeamInvitationsResponse;
+
+			if (!response.ok || !jsonData.success) {
+				// Check if all users are already members - this is not an error
+				const invitations = jsonData.invitations || (jsonData as any)?.data;
+				const jsonError = (jsonData as any)?.error;
+
+				// Handle "already member" as success - check both invitations array and error message
+				const isAlreadyMember =
+					(invitations &&
+						Array.isArray(invitations) &&
+						invitations.length > 0 &&
+						invitations.every(
+							(inv: { status: string }) => inv.status === 'already_member'
+						)) ||
+					(jsonError?.code === 'invitation_failed' &&
+						jsonError?.message?.toLowerCase().includes('already member'));
+
+				if (isAlreadyMember) {
+					// Return success with synthetic invitations if we only got an error
+					const resultInvitations =
+						invitations ||
+						emails.map((email) => ({
+							email,
+							status: 'already_member' as const
+						}));
+					return {
+						success: true,
+						invitations: resultInvitations
+					};
+				}
+
+				const errorMessage =
+					(jsonData as any)?.message ||
+					(typeof jsonError === 'string'
+						? jsonError
+						: jsonError?.message || JSON.stringify(jsonError)) ||
+					`Failed to send invitations: ${response.status}`;
+
+				return {
+					success: false,
+					error: {
+						code: 'API_ERROR',
+						message: errorMessage
+					}
+				};
+			}
+
+			return {
+				success: true,
+				invitations: jsonData.invitations
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+
+			return {
+				success: false,
+				error: {
+					code: 'NETWORK_ERROR',
+					message: `Failed to send invitations: ${errorMessage}`
+				}
+			};
+		}
 	}
 }

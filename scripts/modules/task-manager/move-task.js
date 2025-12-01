@@ -1,16 +1,16 @@
 import path from 'path';
 import {
-	log,
-	readJSON,
-	writeJSON,
-	setTasksForTag,
-	traverseDependencies
-} from '../utils.js';
-import {
 	findCrossTagDependencies,
 	getDependentTaskIds,
 	validateSubtaskMove
 } from '../dependency-manager.js';
+import {
+	log,
+	readJSON,
+	setTasksForTag,
+	traverseDependencies,
+	writeJSON
+} from '../utils.js';
 
 /**
  * Find all dependencies recursively for a set of source tasks with depth limiting

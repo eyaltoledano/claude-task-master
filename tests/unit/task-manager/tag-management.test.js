@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import {
+	copyTag,
 	createTag,
 	deleteTag,
-	renameTag,
-	copyTag,
-	tags as listTags
+	tags as listTags,
+	renameTag
 } from '../../../scripts/modules/task-manager/tag-management.js';
 
 const TEMP_DIR = path.join(process.cwd(), '.tmp_tag_management_tests');

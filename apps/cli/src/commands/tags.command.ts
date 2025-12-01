@@ -3,9 +3,9 @@
  * Provides tag/brief management with file and API storage support
  */
 
-import { Command } from 'commander';
 import type { TmCore } from '@tm/core';
 import { createTmCore, getProjectPaths } from '@tm/core';
+import { Command } from 'commander';
 import { displayError } from '../utils/index.js';
 
 /**
@@ -28,12 +28,12 @@ import { displayError } from '../utils/index.js';
  * Priority: Medium (improves testability, maintainability, and code reuse)
  */
 import {
+	copyTag as legacyCopyTag,
 	createTag as legacyCreateTag,
 	deleteTag as legacyDeleteTag,
 	tags as legacyListTags,
-	useTag as legacyUseTag,
 	renameTag as legacyRenameTag,
-	copyTag as legacyCopyTag
+	useTag as legacyUseTag
 } from '../../../../scripts/modules/task-manager/tag-management.js';
 
 /**

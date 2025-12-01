@@ -4,6 +4,7 @@
  */
 
 import chalk from 'chalk';
+import { createUrlLink } from '../formatters/link-formatters.js';
 
 /**
  * Brief information for API storage
@@ -41,7 +42,9 @@ export function displayHeader(options: HeaderOptions = {}): void {
 		// Construct and display the brief URL or ID
 		if (briefInfo.webAppUrl && briefInfo.orgSlug) {
 			const briefUrl = `${briefInfo.webAppUrl}/home/${briefInfo.orgSlug}/briefs/${briefInfo.briefId}/plan`;
-			console.log(`Listing tasks from: ${chalk.dim(briefUrl)}`);
+			console.log(
+				`Listing tasks from: ${createUrlLink(briefUrl, { color: 'gray' })}`
+			);
 		} else if (briefInfo.webAppUrl) {
 			// Show web app URL and brief ID if org slug is missing
 			console.log(
@@ -49,7 +52,7 @@ export function displayHeader(options: HeaderOptions = {}): void {
 			);
 			console.log(
 				chalk.yellow(
-					`💡 Tip: Run ${chalk.cyan('tm context select')} to set your organization and see the full URL`
+					`Tip: Run ${chalk.cyan('tm context select')} to set your organization and see the full URL`
 				)
 			);
 		} else {

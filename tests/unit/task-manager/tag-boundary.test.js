@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import {
 	createTag,
-	useTag,
-	deleteTag
+	deleteTag,
+	useTag
 } from '../../../scripts/modules/task-manager/tag-management.js';
 
 // Temporary workspace for each test run

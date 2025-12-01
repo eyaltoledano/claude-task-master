@@ -1,6 +1,6 @@
 import { PromptManager } from '../../../scripts/modules/prompt-manager.js';
-import { ExpandTaskResponseSchema } from '../../../src/schemas/expand-task.js';
 import { SubtaskSchema } from '../../../src/schemas/base-schemas.js';
+import { ExpandTaskResponseSchema } from '../../../src/schemas/expand-task.js';
 
 describe('expand-task prompt template', () => {
 	let promptManager;

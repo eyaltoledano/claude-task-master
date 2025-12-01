@@ -1,5 +1,5 @@
-import { isSilentMode, log as consoleLog } from './utils.js';
 import { getDebugFlag } from './config-manager.js';
+import { log as consoleLog, isSilentMode } from './utils.js';
 
 /**
  * Create a unified logger and report function for bridge operations

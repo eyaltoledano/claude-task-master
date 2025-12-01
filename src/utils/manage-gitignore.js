@@ -229,7 +229,7 @@ function mergeWithExistingFile(
 			const hasNewContent =
 				newLines.length > 0 ? ' and merged new content' : '';
 			log(
-				'success',
+				'debug',
 				`Updated ${targetPath} according to user preference${hasNewContent}`
 			);
 		}

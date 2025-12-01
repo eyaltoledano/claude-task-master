@@ -1,12 +1,12 @@
 import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
 import { jest } from '@jest/globals';
-import {
-	removeProfileRules,
-	getRulesProfile
-} from '../../../src/utils/rule-transformer.js';
 import { removeTaskMasterMCPConfiguration } from '../../../src/utils/create-mcp-config.js';
+import {
+	getRulesProfile,
+	removeProfileRules
+} from '../../../src/utils/rule-transformer.js';
 
 // Mock logger
 const mockLog = {

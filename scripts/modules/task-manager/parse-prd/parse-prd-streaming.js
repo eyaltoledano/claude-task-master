@@ -3,18 +3,18 @@
  */
 
 import { createParsePrdTracker } from '../../../../src/progress/parse-prd-tracker.js';
-import { displayParsePrdStart } from '../../../../src/ui/parse-prd.js';
 import { getPriorityIndicators } from '../../../../src/ui/indicators.js';
+import { displayParsePrdStart } from '../../../../src/ui/parse-prd.js';
 import { TimeoutManager } from '../../../../src/utils/timeout-manager.js';
 import {
-	streamObjectService,
-	generateObjectService
+	generateObjectService,
+	streamObjectService
 } from '../../ai-services-unified.js';
 import {
+	getDefaultPriority,
 	getMainModelId,
 	getParametersForRole,
-	getResearchModelId,
-	getDefaultPriority
+	getResearchModelId
 } from '../../config-manager.js';
 import { LoggingConfig, prdResponseSchema } from './parse-prd-config.js';
 import { estimateTokens, reportTaskProgress } from './parse-prd-helpers.js';

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { jest } from '@jest/globals';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 
 // Mock modules first before any imports
 jest.mock('fs', () => ({
@@ -102,10 +102,10 @@ jest.mock('../../scripts/modules/utils.js', () => ({
 	resolveEnvVariable: jest.fn() // Example if needed
 }));
 
-// --- Import the module under test AFTER mocks are defined ---
-import * as configManager from '../../scripts/modules/config-manager.js';
 // Import the mocked 'fs' module to allow spying on its functions
 import fsMocked from 'fs';
+// --- Import the module under test AFTER mocks are defined ---
+import * as configManager from '../../scripts/modules/config-manager.js';
 
 // --- Test Data (Keep as is, ensure DEFAULT_CONFIG is accurate) ---
 const MOCK_PROJECT_ROOT = '/mock/project';
@@ -137,6 +137,7 @@ const DEFAULT_CONFIG = {
 		}
 	},
 	global: {
+		anonymousTelemetry: true,
 		logLevel: 'info',
 		debug: false,
 		defaultNumTasks: 10,

@@ -6,13 +6,13 @@
 
 import fs from 'fs';
 import path from 'path';
-import pkg from 'gpt-tokens';
 import Fuse from 'fuse.js';
+import pkg from 'gpt-tokens';
 import {
-	readJSON,
 	findTaskById,
-	truncate,
-	flattenTasksWithSubtasks
+	flattenTasksWithSubtasks,
+	readJSON,
+	truncate
 } from '../utils.js';
 
 const { encode } = pkg;

@@ -16,7 +16,8 @@ jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 }));
 
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
-	isProxyEnabled: jest.fn(() => false)
+	isProxyEnabled: jest.fn(() => false),
+	getAnonymousTelemetryEnabled: jest.fn(() => true)
 }));
 
 // Import after mocking

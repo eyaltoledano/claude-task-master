@@ -3,18 +3,18 @@
  * Tool to find the next task to work on based on dependencies and status
  */
 
-import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
+import { z } from 'zod';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { nextTaskDirect } from '../core/task-master-core.js';
 import {
-	resolveTasksPath,
-	resolveComplexityReportPath
+	resolveComplexityReportPath,
+	resolveTasksPath
 } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the nextTask tool with the MCP server

@@ -7,7 +7,7 @@
 ```bash
 # Project Setup
 task-master init                                    # Initialize Task Master in current project
-task-master parse-prd .taskmaster/docs/prd.txt      # Generate tasks from PRD document
+task-master parse-prd .taskmaster/docs/prd.md       # Generate tasks from PRD document
 task-master models --setup                        # Configure AI models interactively
 
 # Daily Development Workflow
@@ -40,9 +40,14 @@ task-master validate-dependencies                            # Check for depende
 
 - `.taskmaster/tasks/tasks.json` - Main task data file (auto-managed)
 - `.taskmaster/config.json` - AI model configuration (use `task-master models` to modify)
-- `.taskmaster/docs/prd.txt` - Product Requirements Document for parsing
+- `.taskmaster/docs/prd.md` - Product Requirements Document for parsing (`.md` extension recommended for better editor support)
 - `.taskmaster/tasks/*.txt` - Individual task files (auto-generated from tasks.json)
 - `.env` - API keys for CLI usage
+
+**PRD File Format:** While both `.txt` and `.md` extensions work, **`.md` is recommended** because:
+- Markdown syntax highlighting in editors improves readability
+- Proper rendering when previewing in VS Code, GitHub, or other tools
+- Better collaboration through formatted documentation
 
 ### Claude Code Integration Files
 
@@ -61,11 +66,11 @@ project/
 │   │   ├── task-1.md      # Individual task files
 │   │   └── task-2.md
 │   ├── docs/              # Documentation directory
-│   │   ├── prd.txt        # Product requirements
+│   │   ├── prd.md         # Product requirements (.md recommended)
 │   ├── reports/           # Analysis reports directory
 │   │   └── task-complexity-report.json
 │   ├── templates/         # Template files
-│   │   └── example_prd.txt  # Example PRD template
+│   │   └── example_prd.md  # Example PRD template (.md recommended)
 │   └── config.json        # AI models & settings
 ├── .claude/
 │   ├── settings.json      # Claude Code configuration
@@ -137,8 +142,8 @@ complexity_report; // = task-master complexity-report
 # Initialize Task Master
 task-master init
 
-# Create or obtain PRD, then parse it
-task-master parse-prd .taskmaster/docs/prd.txt
+# Create or obtain PRD, then parse it (use .md extension for better editor support)
+task-master parse-prd .taskmaster/docs/prd.md
 
 # Analyze complexity and expand tasks
 task-master analyze-complexity --research

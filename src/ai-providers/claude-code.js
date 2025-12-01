@@ -11,14 +11,14 @@
  *
  */
 
+import { execSync } from 'child_process';
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
-import { BaseAIProvider } from './base-provider.js';
 import {
 	getClaudeCodeSettingsForCommand,
 	getSupportedModelsForProvider
 } from '../../scripts/modules/config-manager.js';
-import { execSync } from 'child_process';
 import { log } from '../../scripts/modules/utils.js';
+import { BaseAIProvider } from './base-provider.js';
 
 let _claudeCliChecked = false;
 let _claudeCliAvailable = null;

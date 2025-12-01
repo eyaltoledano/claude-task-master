@@ -4,12 +4,12 @@
  */
 import fs from 'fs';
 import path from 'path';
-import inquirer from 'inquirer';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
 import { log } from '../../scripts/modules/utils.js';
-import { getRulesProfile } from './rule-transformer.js';
 import { RULE_PROFILES } from '../constants/profiles.js';
+import { getRulesProfile } from './rule-transformer.js';
 
 // =============================================================================
 // PROFILE DETECTION

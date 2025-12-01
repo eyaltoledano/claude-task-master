@@ -1,10 +1,10 @@
-import {
-	checkForUpdate,
-	displayUpgradeNotification,
-	compareVersions
-} from './scripts/modules/commands.js';
 import fs from 'fs';
 import path from 'path';
+import {
+	checkForUpdate,
+	compareVersions,
+	displayUpgradeNotification
+} from './scripts/modules/commands.js';
 
 // Force our current version for testing
 process.env.FORCE_VERSION = '0.9.30';

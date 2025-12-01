@@ -1,5 +1,5 @@
+import { ExternalLink, MessageSquare, Plus, Terminal } from 'lucide-react';
 import React from 'react';
-import { ExternalLink, Terminal, MessageSquare, Plus } from 'lucide-react';
 import { TaskMasterLogo } from '../../components/TaskMasterLogo';
 
 interface EmptyStateProps {

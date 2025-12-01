@@ -15,8 +15,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import readline from 'readline';
+import { fileURLToPath } from 'url';
 
 // Get project root and import prompt manager
 const __filename = fileURLToPath(import.meta.url);

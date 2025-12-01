@@ -1,12 +1,12 @@
 import {
-	jest,
-	beforeAll,
 	afterAll,
-	beforeEach,
 	afterEach,
+	beforeAll,
+	beforeEach,
 	describe,
+	expect,
 	it,
-	expect
+	jest
 } from '@jest/globals';
 
 // Import the actual PromptManager to test with real prompt files

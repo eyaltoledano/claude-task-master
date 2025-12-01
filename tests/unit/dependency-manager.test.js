@@ -4,8 +4,8 @@
 
 import { jest } from '@jest/globals';
 import {
-	sampleTasks,
-	crossLevelDependencyTasks
+	crossLevelDependencyTasks,
+	sampleTasks
 } from '../fixtures/sample-tasks.js';
 
 // Create mock functions that we can control in tests
@@ -58,13 +58,13 @@ jest.mock('boxen', () => jest.fn((text) => `[boxed: ${text}]`));
 
 // Now import SUT after mocks are in place
 import {
-	validateTaskDependencies,
-	isCircularDependency,
-	removeDuplicateDependencies,
+	canMoveWithDependencies,
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
+	isCircularDependency,
+	removeDuplicateDependencies,
 	validateAndFixDependencies,
-	canMoveWithDependencies
+	validateTaskDependencies
 } from '../../scripts/modules/dependency-manager.js';
 
 jest.mock('../../scripts/modules/ui.js', () => ({

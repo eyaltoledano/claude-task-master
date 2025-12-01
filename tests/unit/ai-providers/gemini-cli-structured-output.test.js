@@ -32,11 +32,13 @@ jest.unstable_mockModule('ai-sdk-provider-gemini-cli', () => ({
 // Mock utilities
 jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
-	findProjectRoot: jest.fn(() => '/mock/project')
+	findProjectRoot: jest.fn(() => '/mock/project'),
+	resolveEnvVariable: jest.fn((key) => process.env[key])
 }));
 
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
-	isProxyEnabled: jest.fn(() => false)
+	isProxyEnabled: jest.fn(() => false),
+	getAnonymousTelemetryEnabled: jest.fn(() => true)
 }));
 
 // Import after mocking
