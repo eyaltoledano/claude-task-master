@@ -416,6 +416,9 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
+				// Auto-set context to the new brief FIRST (needed for invitations)
+				await this.setContextToBrief(result.brief.url);
+
 				// Send invitations separately if user provided emails
 				if (inviteEmails.length > 0) {
 					await this.sendInvitationsForBrief(result.brief.url, inviteEmails);
@@ -423,9 +426,6 @@ export class ExportCommand extends Command {
 
 				// Always show the invite URL
 				this.showInviteUrl(result.brief.url);
-
-				// Auto-set context to the new brief
-				await this.setContextToBrief(result.brief.url);
 
 				// Track exported tag for future reference
 				const exportedTag = options?.tag || 'master';
@@ -599,6 +599,9 @@ export class ExportCommand extends Command {
 				spinner.succeed('Export complete');
 				this.displaySuccessResult(result);
 
+				// Auto-set context to the new brief FIRST (needed for invitations)
+				await this.setContextToBrief(result.brief.url);
+
 				// Send invitations separately if user provided emails
 				if (inviteEmails.length > 0) {
 					await this.sendInvitationsForBrief(result.brief.url, inviteEmails);
@@ -606,9 +609,6 @@ export class ExportCommand extends Command {
 
 				// Always show the invite URL (whether they invited or not)
 				this.showInviteUrl(result.brief.url);
-
-				// Auto-set context to the new brief
-				await this.setContextToBrief(result.brief.url);
 
 				// Track exported tag for future reference
 				const exportedTag = options?.tag || 'master';
@@ -785,6 +785,12 @@ export class ExportCommand extends Command {
 			console.log('');
 		}
 
+		// Set context to first successful brief BEFORE sending invitations
+		// (invitations need org context to work)
+		if (successful.length > 0 && successful[0].brief) {
+			await this.setContextToBrief(successful[0].brief.url);
+		}
+
 		// Send invitations separately after all exports (if user provided emails)
 		if (inviteEmails.length > 0 && successful.length > 0) {
 			// Send invitations for the first successful brief (they all share the same org)
@@ -794,10 +800,8 @@ export class ExportCommand extends Command {
 			);
 		}
 
-		// If only one successful, auto-set context to it
-		if (successful.length === 1 && successful[0].brief) {
-			await this.setContextToBrief(successful[0].brief.url);
-		} else if (successful.length > 1) {
+		// If multiple successful, allow user to change context to a different brief
+		if (successful.length > 1) {
 			// For multiple successful exports, show option to set context
 			const briefChoices = successful.map((r) => ({
 				name: `${r.tag} - ${r.brief?.title}`,
