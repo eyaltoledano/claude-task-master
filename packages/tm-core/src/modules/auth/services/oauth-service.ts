@@ -446,7 +446,18 @@ export class OAuthService {
 	private async checkAndThrowIfMFARequired(): Promise<void> {
 		const mfaCheck = await this.supabaseClient.checkMFARequired();
 
-		if (mfaCheck.required && mfaCheck.factorId && mfaCheck.factorType) {
+		if (mfaCheck.required) {
+			// MFA is required - check if we have complete factor information
+			if (!mfaCheck.factorId || !mfaCheck.factorType) {
+				this.logger.error('MFA required but factor information is incomplete', {
+					mfaCheck
+				});
+				throw new AuthenticationError(
+					'MFA is required but the server returned incomplete factor configuration. Please contact support or try re-enrolling MFA.',
+					'MFA_REQUIRED_INCOMPLETE'
+				);
+			}
+
 			this.logger.info('MFA verification required after OAuth login', {
 				factorId: mfaCheck.factorId,
 				factorType: mfaCheck.factorType
