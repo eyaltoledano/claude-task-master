@@ -10,8 +10,14 @@ sidebarTitle: "CLI Commands"
     # Parse a PRD file and generate tasks
     task-master parse-prd <prd-file.txt>
 
+    # Alternative syntax using --input parameter
+    task-master parse-prd --input=<prd-file.txt>
+
     # Limit the number of tasks generated
     task-master parse-prd <prd-file.txt> --num-tasks=10
+
+    # Using --input parameter with task limit
+    task-master parse-prd --input=<prd-file.txt> --num-tasks=10
     ```
   </Accordion>
 
