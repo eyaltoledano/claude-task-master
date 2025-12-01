@@ -85,7 +85,7 @@ The CLI is organized into a series of commands, each with its own set of options
 ### 4. Project and Configuration
 
 -   **`init`**: Initializes a new project.
--   **`generate`**: Generates individual task files.
+-   **`generate`**: Generates individual task files in Markdown format. Supports `--tag` parameter to generate from specific tags.
 -   **`migrate`**: Migrates a project to the new directory structure.
 -   **`research`**: Performs AI-powered research.
     -   `--query <query>`: The research query.
@@ -167,7 +167,7 @@ These functions are crucial for managing the relationships between tasks.
 
 These functions are for managing the project and its configuration.
 
--   **`generateTaskFiles()`**: Generates individual task files from `tasks.json`.
+-   **`generateTaskFiles()`**: Generates individual task files in Markdown format from `tasks.json`.
 -   **`migrateProject()`**: Migrates the project to the new `.taskmaster` directory structure.
 -   **`performResearch(query, options)`**: Performs AI-powered research with project context.
 
@@ -225,7 +225,7 @@ The MCP tools can be categorized in the same way as the core functionalities:
 ### 5. Project and Configuration
 
 -   **`initialize_project`**: Initializes a new project.
--   **`generate`**: Generates individual task files.
+-   **`generate`**: Generates individual task files in Markdown format. Supports `--tag` parameter to generate from specific tags.
 -   **`models`**: Manages AI model configurations.
 -   **`research`**: Performs AI-powered research.
 

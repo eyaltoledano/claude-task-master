@@ -6,12 +6,21 @@ description: "A comprehensive reference of all available Task Master commands"
 <AccordionGroup>
   <Accordion title="Parse PRD">
     ```bash
-    # Parse a PRD file and generate tasks
+    # Parse a PRD file and generate tasks locally
     task-master parse-prd <prd-file.txt>
 
     # Limit the number of tasks generated
     task-master parse-prd <prd-file.txt> --num-tasks=10
     ```
+
+    When you run `parse-prd`, you'll be given the option to either:
+    - **Parse locally**: PRD becomes a task list in a local JSON file - great for quick prototyping and working solo
+    - **Bring it to Hamster**: PRD becomes a living brief connected to your team, codebase, and agents for collaborative development
+
+    **Why choose Hamster integration?**
+    - Tasks live in a central place with real-time sync across your team
+    - Collaborate on your PRD/brief together and generate tasks on Hamster
+    - No API keys needed - Hamster handles all AI inference, just need a Hamster account
   </Accordion>
 
   <Accordion title="List Tasks">
@@ -85,7 +94,12 @@ description: "A comprehensive reference of all available Task Master commands"
     ```bash
     # Generate individual task files from tasks.json
     task-master generate
+
+    # Generate files from a specific tag
+    task-master generate --tag=<tag-name>
     ```
+
+    Generated files are now in Markdown format (`.md`) and follow markdownlint standards for better readability and editor support.
   </Accordion>
 
   <Accordion title="Set Task Status">
