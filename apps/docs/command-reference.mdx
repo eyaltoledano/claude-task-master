@@ -199,6 +199,31 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
   </Accordion>
 
+  <Accordion title="Authentication">
+    ```bash
+    # Browser-based OAuth authentication
+    task-master auth login
+    
+    # Token-based authentication (for remote/SSH environments)
+    task-master auth login <token>
+    
+    # Non-interactive authentication (MFA prompts still required if enabled)
+    task-master auth login -y
+    task-master auth login <token> -y
+    
+    # Check authentication status
+    task-master auth status
+    
+    # Refresh authentication token
+    task-master auth refresh
+    
+    # Logout and clear credentials
+    task-master auth logout
+    ```
+
+    **Multi-Factor Authentication (MFA)**: If your account has MFA enabled, you must complete MFA verification during login. MFA prompts cannot be skipped even with the `-y` flag. See the [Authentication Guide](/getting-started/authentication) for details.
+  </Accordion>
+
   <Accordion title="Initialize a Project">
     ```bash
     # Initialize a new project with Task Master structure

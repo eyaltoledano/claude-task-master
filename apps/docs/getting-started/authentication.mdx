@@ -1,0 +1,248 @@
+---
+title: "Authentication"
+description: "How to authenticate with Task Master using OAuth and MFA"
+---
+
+Task Master uses OAuth 2.0 authentication to securely connect with your tryhamster.com account. This guide covers the authentication process, multi-factor authentication (MFA) requirements, and troubleshooting.
+
+## Authentication Methods
+
+### Browser-Based OAuth (Recommended)
+
+The default authentication method opens your browser and uses OAuth 2.0 with PKCE for secure authentication:
+
+```bash
+task-master auth login
+```
+
+This will:
+1. Start a local server on your machine
+2. Open your browser to the tryhamster.com authentication page
+3. Redirect you back to the local server after authentication
+4. Save your authentication tokens securely
+
+### Token-Based Authentication
+
+For remote environments or automated setups, you can authenticate with a pre-generated token:
+
+```bash
+task-master auth login <token>
+```
+
+## Multi-Factor Authentication (MFA)
+
+If you have MFA enabled on your tryhamster.com account, Task Master will **automatically enforce MFA verification** during the login process.
+
+### MFA Requirements
+
+- **MFA is enforced**: If your account has MFA enabled, you must complete MFA verification
+- **Cannot be skipped**: MFA prompts cannot be bypassed with the `-y` flag
+- **Supported methods**: TOTP (Time-based One-Time Password) authenticators like Google Authenticator, Authy, etc.
+
+### MFA Authentication Flow
+
+1. Complete initial OAuth authentication in your browser
+2. Return to the terminal where Task Master will prompt for your MFA code
+3. Enter your 6-digit authentication code from your authenticator app
+4. Authentication completes after successful MFA verification
+
+```bash
+$ task-master auth login
+✓ Opening browser for authentication...
+✓ Please complete authentication in your browser
+⏳ Waiting for authentication...
+
+🔐 MFA Required
+Please enter your 6-digit authentication code: 123456
+✓ MFA verification successful!
+✓ Authentication successful!
+  Logged in as: user@example.com
+```
+
+### MFA Error Handling
+
+If MFA verification fails, you'll see one of these errors:
+
+- **Invalid MFA code**: The code was incorrect or expired
+- **MFA verification failed**: Technical issue with MFA verification
+- **MFA required but incomplete**: Server configuration issue (contact support)
+
+You can retry MFA verification up to 3 times before needing to restart the authentication process.
+
+## Authentication Commands
+
+### Login
+```bash
+# Interactive browser authentication
+task-master auth login
+
+# Token-based authentication  
+task-master auth login <token>
+
+# Non-interactive mode (MFA prompts still required if enabled)
+task-master auth login -y
+task-master auth login <token> -y
+```
+
+### Check Status
+```bash
+task-master auth status
+```
+
+Shows your current authentication status, including:
+- Login status and email
+- Token expiration time
+- Selected organization and brief context
+
+### Refresh Token
+```bash
+task-master auth refresh
+```
+
+Refreshes your authentication token without requiring re-login.
+
+### Logout
+```bash
+task-master auth logout
+```
+
+Logs out and clears all stored authentication data.
+
+## Workspace Context Setup
+
+After successful authentication, Task Master will guide you through setting up your workspace context:
+
+1. **Organization Selection**: Choose which organization to work with
+2. **Brief Selection**: Choose which brief/project to focus on
+
+This context setup can be skipped during login with the `-y` flag and configured later:
+
+```bash
+task-master context
+```
+
+## Security Features
+
+### PKCE (Proof Key for Code Exchange)
+Task Master uses PKCE for OAuth flows, providing additional security against authorization code interception attacks.
+
+### Local Server Security
+- The callback server only binds to `127.0.0.1` (localhost)
+- Automatically assigns an available port
+- Shuts down immediately after receiving the callback
+- 5-minute timeout for security
+
+### Token Storage
+- Tokens are stored securely in local configuration files
+- Refresh tokens enable seamless re-authentication
+- Configurable token expiration (via `TM_TOKEN_EXPIRY_MINUTES` environment variable)
+
+## Environment Variables
+
+### Token Expiry Override
+```bash
+# Override default token expiration (for testing)
+export TM_TOKEN_EXPIRY_MINUTES=60  # 1 hour instead of default
+```
+
+## Troubleshooting
+
+### Browser Won't Open
+If the browser doesn't open automatically:
+1. Copy the authentication URL from the terminal
+2. Paste it manually into your browser
+3. Complete authentication normally
+
+### MFA Issues
+
+**Invalid MFA Code**
+- Ensure your device's time is synchronized
+- Try generating a new code
+- Check if you're using the correct authenticator app
+
+**MFA Verification Timeout**
+- Complete MFA verification within the 5-minute timeout
+- If timeout occurs, restart the authentication process
+
+**MFA Not Working**
+- Verify MFA is properly configured on tryhamster.com
+- Try disabling and re-enabling MFA
+- Contact support if issues persist
+
+### Network Issues
+
+**Connection Refused**
+- Check your internet connection
+- Verify tryhamster.com is accessible
+- Try using a VPN if behind corporate firewall
+
+**Timeout Errors**
+- Increase timeout if on slow connection
+- Complete authentication within 5 minutes
+- Restart authentication if timeout occurs
+
+### Token Issues
+
+**Token Expired**
+```bash
+# Refresh your token
+task-master auth refresh
+
+# Or re-authenticate
+task-master auth login
+```
+
+**Invalid Credentials**
+- Re-authenticate with `task-master auth login`
+- Check that your account is active on tryhamster.com
+
+## Remote/SSH Environments
+
+For servers or environments without browser access:
+
+1. **Generate a token** on a machine with browser access:
+   ```bash
+   # On your local machine
+   task-master auth login
+   # Copy the displayed token
+   ```
+
+2. **Use token on remote machine**:
+   ```bash
+   # On remote server
+   task-master auth login <copied-token>
+   ```
+
+3. **For automation**, use the `-y` flag:
+   ```bash
+   task-master auth login <token> -y
+   ```
+
+<Note>
+MFA verification is still required even in remote environments if your account has MFA enabled. The MFA prompt will appear in the terminal after token authentication.
+</Note>
+
+## Integration with Editors
+
+Task Master authentication works seamlessly with MCP-enabled editors:
+
+- **Cursor**: Authentication status shown in MCP panel
+- **VS Code**: Works with Task Master MCP extension
+- **Claude Code**: Full integration support
+
+Authentication tokens are shared across CLI and MCP interfaces automatically.
+
+## Best Practices
+
+1. **Use OAuth flow** when possible for better security
+2. **Enable MFA** on your tryhamster.com account for additional security
+3. **Refresh tokens regularly** to avoid expiration issues
+4. **Logout on shared machines** to protect your credentials
+5. **Monitor auth status** before running important operations
+
+## Getting Help
+
+If you encounter authentication issues:
+- Check the [FAQ](/getting-started/faq) for common solutions
+- Join our [Discord community](https://discord.gg/fWJkU7rf) for support  
+- Report authentication bugs on [GitHub](https://github.com/eyaltoledano/claude-task-master/issues)
