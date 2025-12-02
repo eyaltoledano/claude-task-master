@@ -203,9 +203,8 @@ async function promptHamsterCollaboration() {
 		{
 			type: 'list',
 			name: 'choice',
-			message: chalk.cyan('How would you like to parse your PRD?'),
+			message: chalk.cyan('How would you like to parse your PRD?\n'),
 			choices: [
-				'\n',
 				{
 					name: [
 						chalk.bold('Parse locally'),

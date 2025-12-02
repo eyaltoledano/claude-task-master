@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { ui } from '@tm/cli';
-import { AuthManager, AUTH_TIMEOUT_MS } from '@tm/core';
+import { AUTH_TIMEOUT_MS, AuthManager } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
@@ -815,20 +815,14 @@ async function promptStorageSelection() {
 
 	try {
 		// Display header
-		console.log(
-			'\n' +
-				chalk.bold.cyan('You need a plan before you execute.') +
-				' ' +
-				chalk.white('How do you want to build it?\n')
-		);
+		console.log(chalk.bold.cyan('You need a plan before you execute.\n'));
 
 		const { storageType } = await inquirer.prompt([
 			{
 				type: 'list',
 				name: 'storageType',
-				message: chalk.cyan('Choose one:'),
+				message: chalk.white('How do you want to build it?\n'),
 				choices: [
-					'\n',
 					{
 						name: [
 							chalk.bold('Solo (Taskmaster)'),
