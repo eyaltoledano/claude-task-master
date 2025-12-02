@@ -63,7 +63,7 @@ import {
 	validateDependenciesCommand
 } from './dependency-manager.js';
 
-import { checkAndBlockIfAuthenticated } from '@tm/cli';
+import { checkAndBlockIfAuthenticated, ensureOrgSelected } from '@tm/cli';
 import { LOCAL_ONLY_COMMANDS } from '@tm/core';
 
 import {
@@ -382,6 +382,19 @@ async function handleParsePrdToHamster(prdPath) {
 		}
 
 		const authManager = AuthManager.getInstance();
+
+		// Ensure an organization is selected before proceeding
+		const orgResult = await ensureOrgSelected(authManager, {
+			promptMessage: 'Select an organization to create the brief in:'
+		});
+		if (!orgResult.success) {
+			console.error(
+				chalk.red(
+					`\n  ${orgResult.message || 'Organization selection cancelled.'}\n`
+				)
+			);
+			return;
+		}
 
 		// Read PRD file content
 		const prdContent = fs.readFileSync(prdPath, 'utf-8');

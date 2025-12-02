@@ -1589,7 +1589,11 @@ export class ExportService {
 					const resultInvitations = Array.isArray(invitations)
 						? (invitations as Array<{
 								email: string;
-								status: 'sent' | 'already_member' | 'already_invited' | 'failed';
+								status:
+									| 'sent'
+									| 'already_member'
+									| 'already_invited'
+									| 'failed';
 							}>)
 						: emails.map((email) => ({
 								email,

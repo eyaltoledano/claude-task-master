@@ -100,7 +100,7 @@ export class ExportCommand extends Command {
 
 		// Default action
 		this.action(async (options?: any) => {
-			await this.executeExport(options);
+			return await this.executeExport(options);
 		});
 	}
 

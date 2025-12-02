@@ -427,7 +427,7 @@ Examples:
 			// Direct browser authentication - no menu needed
 			const credentials = await this.authenticateWithBrowser();
 
-			ui.displaySuccess('Authentication successful!');
+			// Display user info (auth success message is already shown by authenticateWithBrowserMFA)
 			console.log(
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
@@ -569,7 +569,7 @@ Examples:
 			// Authenticate with the token
 			const credentials = await this.authenticateWithToken(token);
 
-			ui.displaySuccess('Authentication successful!');
+			// Display user info (auth success message is already shown by authenticateWithToken spinner)
 			console.log(
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);

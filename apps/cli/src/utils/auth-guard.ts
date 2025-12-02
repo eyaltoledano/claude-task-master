@@ -5,12 +5,15 @@
  *
  * Uses the shared authenticateWithBrowserMFA utility for consistent
  * login UX across all commands (auth login, parse-prd, export, etc.)
+ *
+ * After successful authentication, ensures org selection is completed.
  */
 
-import { type AuthCredentials, AuthDomain } from '@tm/core';
+import { type AuthCredentials, AuthDomain, AuthManager } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { authenticateWithBrowserMFA } from './auth-ui.js';
+import { ensureOrgSelected } from './org-selection.js';
 
 /**
  * Options for the auth guard
@@ -71,6 +74,28 @@ export async function ensureAuthenticated(
 	// Check if already authenticated
 	const hasSession = await authDomain.hasValidSession();
 	if (hasSession) {
+		// Only get AuthManager when we need to check org selection
+		const authManager = AuthManager.getInstance();
+		
+		// Check if org is already selected (quick check before any API calls)
+		const context = authManager.getContext();
+		if (context?.orgId) {
+			// Org already selected, return immediately without further API calls
+			return { authenticated: true };
+		}
+
+		// Org not selected, need to prompt
+		const orgResult = await ensureOrgSelected(authManager, {
+			promptMessage: 'Select an organization to continue:'
+		});
+
+		if (!orgResult.success) {
+			return {
+				authenticated: true,
+				error: orgResult.message || 'Organization selection required'
+			};
+		}
+
 		return { authenticated: true };
 	}
 
@@ -105,6 +130,28 @@ export async function ensureAuthenticated(
 	// Trigger OAuth flow using shared browser auth with MFA support
 	try {
 		const credentials = await authenticateWithBrowserMFA(authDomain);
+
+		// Display user info (auth success message is already shown by authenticateWithBrowserMFA)
+		if (credentials.email) {
+			console.log(chalk.gray(`  Logged in as: ${credentials.email}`));
+		}
+		console.log('');
+
+		// After successful authentication, ensure org is selected
+		// This is REQUIRED for all Hamster operations
+		const authManager = AuthManager.getInstance();
+		const orgResult = await ensureOrgSelected(authManager, {
+			promptMessage: 'Select an organization to continue:'
+		});
+
+		if (!orgResult.success) {
+			return {
+				authenticated: true, // Auth succeeded, but org selection failed
+				credentials,
+				error: orgResult.message || 'Organization selection required'
+			};
+		}
+
 		return {
 			authenticated: true,
 			credentials

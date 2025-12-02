@@ -17,8 +17,8 @@ import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { ui } from '@tm/cli';
-import { AUTH_TIMEOUT_MS, AuthManager } from '@tm/core';
+import { authenticateWithBrowserMFA, ensureOrgSelected, ui } from '@tm/cli';
+import { AuthManager } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
@@ -419,7 +419,8 @@ async function initializeProject(options = {}) {
 						log('success', 'Already authenticated with Hamster');
 						authCredentials = existingCredentials;
 					} else {
-						// Trigger OAuth flow
+						// Use shared browser auth with MFA support
+						// This is the SAME auth flow used by 'tm auth login' and 'tm parse-prd'
 						log('info', 'Starting authentication flow...');
 						console.log(chalk.blue('\n🔐 Authentication Required\n'));
 						console.log(
@@ -430,93 +431,22 @@ async function initializeProject(options = {}) {
 						console.log(
 							chalk.gray('  This enables sync across devices with Hamster.\n')
 						);
-						let countdownInterval = null;
-						let authSpinner = null;
 
-						const startCountdown = (totalMs) => {
-							const startTime = Date.now();
-							const endTime = startTime + totalMs;
-
-							const updateCountdown = () => {
-								const remaining = Math.max(0, endTime - Date.now());
-								const mins = Math.floor(remaining / 60000);
-								const secs = Math.floor((remaining % 60000) / 1000);
-								const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-
-								if (authSpinner) {
-									authSpinner.text = `Waiting for authentication... ${chalk.cyan(timeStr)} remaining`;
-								}
-
-								if (remaining <= 0 && countdownInterval) {
-									clearInterval(countdownInterval);
-								}
-							};
-
-							authSpinner = ora({
-								text: `Waiting for authentication... ${chalk.cyan('10:00')} remaining`,
-								spinner: 'dots'
-							}).start();
-
-							countdownInterval = setInterval(updateCountdown, 1000);
-						};
-
-						const stopCountdown = (success) => {
-							if (countdownInterval) {
-								clearInterval(countdownInterval);
-								countdownInterval = null;
-							}
-							if (authSpinner) {
-								if (success) {
-									authSpinner.succeed('Authentication successful!');
-								} else {
-									authSpinner.fail('Authentication failed');
-								}
-								authSpinner = null;
-							}
-						};
-
-						authCredentials = await authManager.authenticateWithOAuth({
-							openBrowser: async (authUrl) => {
-								await open(authUrl);
-							},
-							timeout: AUTH_TIMEOUT_MS,
-							onAuthUrl: (authUrl) => {
-								console.log(
-									chalk.blue.bold('\n[auth] Browser Authentication\n')
-								);
-								console.log(
-									chalk.white('  Opening your browser to authenticate...')
-								);
-								console.log(
-									chalk.gray("  If the browser doesn't open, visit:")
-								);
-								console.log(chalk.cyan.underline(`  ${authUrl}\n`));
-							},
-							onWaitingForAuth: () => {
-								console.log(
-									chalk.dim(
-										'  If you signed up, check your email to confirm your account.'
-									)
-								);
-								console.log(
-									chalk.dim(
-										'  The CLI will automatically detect when you log in.\n'
-									)
-								);
-								startCountdown(AUTH_TIMEOUT_MS);
-							},
-							onSuccess: () => {
-								stopCountdown(true);
-							},
-							onError: (error) => {
-								stopCountdown(false);
-								log('error', `Authentication failed: ${error.message}`);
-							}
-						});
+						// Use shared auth utility - handles MFA automatically
+						authCredentials = await authenticateWithBrowserMFA(authManager);
 
 						// Track auth_completed event
-						// TODO: Send to Segment telemetry when implemented
 						log('debug', `Auth completed - taskmaster_id: ${taskmasterId}`);
+					}
+
+					// Ensure org is selected (required for all Hamster operations)
+					// This runs for both new auth AND existing auth
+					// Uses shared utility from @tm/cli
+					const orgResult = await ensureOrgSelected(authManager, {
+						promptMessage: 'Select an organization to continue:'
+					});
+					if (!orgResult.success) {
+						log('warn', orgResult.message || 'Organization selection required');
 					}
 				} catch (authError) {
 					log(
@@ -721,6 +651,9 @@ async function initializeProject(options = {}) {
 				authCredentials
 			);
 			rl.close();
+			// Exit cleanly after command completes
+			// Required because Supabase client keeps connections alive
+			process.exit(0);
 		} catch (error) {
 			if (rl) {
 				rl.close();
