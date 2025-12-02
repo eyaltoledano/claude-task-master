@@ -199,6 +199,59 @@ description: "A comprehensive reference of all available Task Master commands"
     ```
   </Accordion>
 
+  <Accordion title="Authentication">
+    ```bash
+    # Login to Hamster (opens browser for OAuth)
+    task-master auth login
+
+    # Login with token (for SSH/remote environments)
+    task-master auth login <token>
+
+    # Non-interactive login with token (for scripts)
+    task-master auth login <token> -y
+
+    # Check authentication status
+    task-master auth status
+
+    # Logout and clear credentials
+    task-master auth logout
+
+    # Refresh authentication token
+    task-master auth refresh
+    ```
+
+    **Multi-Factor Authentication (MFA)**: If MFA is enabled on your account, you'll be prompted to enter your 6-digit authentication code after the initial login step.
+
+    **Organization Selection**: After authentication, you'll be prompted to select an organization for Hamster operations.
+  </Accordion>
+
+  <Accordion title="Export Tasks to Hamster">
+    ```bash
+    # Interactive export (select tags and tasks)
+    task-master export
+
+    # Export specific tag non-interactively
+    task-master export --tag <tag-name>
+
+    # Export with custom title and description
+    task-master export --tag <tag-name> --title "My Project" --description "Project description"
+
+    # Export and invite collaborators
+    task-master export --invite
+
+    # Export specific tag (alias)
+    task-master export-tag <tag-name>
+    ```
+
+    The export command creates a new brief on Hamster from your local tasks. You can:
+    - Select which tags to export
+    - Choose specific tasks from each tag
+    - Set custom titles and descriptions for the generated brief
+    - Invite team members to collaborate on the exported tasks
+
+    **Multiple Tags**: You can select multiple tags for export, which will create separate briefs for each tag.
+  </Accordion>
+
   <Accordion title="Initialize a Project">
     ```bash
     # Initialize a new project with Task Master structure
