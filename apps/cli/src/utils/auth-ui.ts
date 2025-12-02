@@ -11,10 +11,12 @@ import {
 	AUTH_TIMEOUT_MS,
 	type AuthCredentials,
 	AuthenticationError,
-	MFA_MAX_ATTEMPTS
+	MFA_MAX_ATTEMPTS,
+	type OAuthFlowOptions
 } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import open from 'open';
 import ora, { type Ora } from 'ora';
 import * as ui from './ui.js';
 
@@ -266,4 +268,112 @@ export async function handleMFAFlow(
 		`MFA verification failed after ${result.attemptsUsed} attempts`,
 		'MFA_VERIFICATION_FAILED'
 	);
+}
+
+/**
+ * Authentication provider interface for browser OAuth with MFA
+ * Can be satisfied by either AuthManager or AuthDomain
+ */
+export interface BrowserAuthProvider {
+	authenticateWithOAuth(options?: OAuthFlowOptions): Promise<AuthCredentials>;
+	verifyMFAWithRetry(
+		factorId: string,
+		codeProvider: () => Promise<string>,
+		options?: {
+			maxAttempts?: number;
+			onInvalidCode?: (attempt: number, remaining: number) => void;
+		}
+	): Promise<{
+		success: boolean;
+		credentials?: AuthCredentials;
+		attemptsUsed: number;
+	}>;
+}
+
+/**
+ * Shared browser authentication with MFA support
+ *
+ * This is the SINGLE implementation of browser-based OAuth login with MFA handling.
+ * Used by both the auth login command and any protected commands that trigger login
+ * (like parse-prd when "Bring it to Hamster" is selected).
+ *
+ * @param authProvider - AuthManager or AuthDomain instance
+ * @returns AuthCredentials on success
+ * @throws AuthenticationError on failure
+ *
+ * @example
+ * ```typescript
+ * // From auth command
+ * const authManager = AuthManager.getInstance();
+ * const credentials = await authenticateWithBrowserMFA(authManager);
+ *
+ * // From auth-guard (for protected commands)
+ * const authDomain = new AuthDomain();
+ * const credentials = await authenticateWithBrowserMFA(authDomain);
+ * ```
+ */
+export async function authenticateWithBrowserMFA(
+	authProvider: BrowserAuthProvider
+): Promise<AuthCredentials> {
+	const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
+
+	try {
+		const credentials = await authProvider.authenticateWithOAuth({
+			// Callback to handle browser opening
+			openBrowser: async (authUrl: string) => {
+				await open(authUrl);
+			},
+			timeout: AUTH_TIMEOUT_MS,
+
+			// Callback when auth URL is ready
+			onAuthUrl: (authUrl: string) => {
+				displayAuthInstructions(authUrl);
+			},
+
+			// Callback when waiting for authentication
+			onWaitingForAuth: () => {
+				displayWaitingForAuth();
+				countdownTimer.start();
+			},
+
+			// Callback on success
+			onSuccess: () => {
+				countdownTimer.stop('success');
+			},
+
+			// Don't handle onError here - we need to check error type in catch block
+			// to differentiate between MFA_REQUIRED (not a failure) and actual failures
+			onError: () => {
+				// Timer will be stopped in catch block with appropriate status
+			}
+		});
+
+		return credentials;
+	} catch (error: unknown) {
+		// Check if MFA is required BEFORE showing failure message
+		if (error instanceof AuthenticationError && error.code === 'MFA_REQUIRED') {
+			// Stop spinner without showing failure - MFA is required, not a failure
+			countdownTimer.stop('mfa');
+
+			if (!error.mfaChallenge?.factorId) {
+				throw new AuthenticationError(
+					'MFA challenge information missing',
+					'MFA_VERIFICATION_FAILED'
+				);
+			}
+
+			// Use shared MFA flow handler
+			return handleMFAFlow(
+				authProvider.verifyMFAWithRetry.bind(authProvider),
+				error.mfaChallenge.factorId
+			);
+		}
+
+		// Only show failure for actual errors, not MFA requirement
+		countdownTimer.stop('failure');
+		throw error;
+	} finally {
+		// Ensure cleanup
+		countdownTimer.cleanup();
+	}
 }

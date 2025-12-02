@@ -3,24 +3,14 @@
  * Provides reusable authentication checking and OAuth flow triggering
  * for commands that require authentication.
  *
- * Includes MFA (Multi-Factor Authentication) support.
+ * Uses the shared authenticateWithBrowserMFA utility for consistent
+ * login UX across all commands (auth login, parse-prd, export, etc.)
  */
 
-import {
-	AUTH_TIMEOUT_MS,
-	type AuthCredentials,
-	AuthDomain,
-	AuthenticationError
-} from '@tm/core';
+import { type AuthCredentials, AuthDomain } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import open from 'open';
-import {
-	AuthCountdownTimer,
-	displayAuthInstructions,
-	displayWaitingForAuth,
-	handleMFAFlow
-} from './auth-ui.js';
+import { authenticateWithBrowserMFA } from './auth-ui.js';
 
 /**
  * Options for the auth guard
@@ -112,9 +102,9 @@ export async function ensureAuthenticated(
 		}
 	}
 
-	// Trigger OAuth flow
+	// Trigger OAuth flow using shared browser auth with MFA support
 	try {
-		const credentials = await authenticateWithBrowser(authDomain);
+		const credentials = await authenticateWithBrowserMFA(authDomain);
 		return {
 			authenticated: true,
 			credentials
@@ -124,74 +114,6 @@ export async function ensureAuthenticated(
 			authenticated: false,
 			error: error instanceof Error ? error.message : String(error)
 		};
-	}
-}
-
-/**
- * Authenticate with browser using OAuth 2.0 with PKCE
- * Includes MFA handling if the user has MFA enabled.
- */
-async function authenticateWithBrowser(
-	authDomain: AuthDomain
-): Promise<AuthCredentials> {
-	const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
-
-	try {
-		const credentials = await authDomain.authenticateWithOAuth({
-			// Callback to handle browser opening
-			openBrowser: async (authUrl: string) => {
-				await open(authUrl);
-			},
-			timeout: AUTH_TIMEOUT_MS,
-
-			// Callback when auth URL is ready
-			onAuthUrl: (authUrl: string) => {
-				displayAuthInstructions(authUrl);
-			},
-
-			// Callback when waiting for authentication
-			onWaitingForAuth: () => {
-				displayWaitingForAuth();
-				countdownTimer.start();
-			},
-
-			// Callback on success
-			onSuccess: () => {
-				countdownTimer.stop('success');
-			},
-
-			// Callback on error
-			onError: () => {
-				countdownTimer.stop('failure');
-			}
-		});
-
-		return credentials;
-	} catch (error: unknown) {
-		// Check if MFA is required BEFORE showing failure message
-		if (error instanceof AuthenticationError && error.code === 'MFA_REQUIRED') {
-			// Stop spinner without showing failure - MFA is required, not a failure
-			countdownTimer.stop('mfa');
-
-			if (!error.mfaChallenge?.factorId) {
-				throw new AuthenticationError(
-					'MFA challenge information missing',
-					'MFA_VERIFICATION_FAILED'
-				);
-			}
-
-			// Use shared MFA flow handler
-			return handleMFAFlow(
-				authDomain.verifyMFAWithRetry.bind(authDomain),
-				error.mfaChallenge.factorId
-			);
-		}
-
-		countdownTimer.stop('failure');
-		throw error;
-	} finally {
-		// Ensure cleanup
-		countdownTimer.cleanup();
 	}
 }
 
