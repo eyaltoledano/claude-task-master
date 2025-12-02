@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
+	AuthManager,
 	FileStorage,
 	type GenerateBriefResult,
 	type InvitationResult,
@@ -28,6 +29,7 @@ import { createUrlLink } from '../ui/index.js';
 import { ensureAuthenticated } from '../utils/auth-guard.js';
 import { selectBriefFromInput } from '../utils/brief-selection.js';
 import { displayError } from '../utils/error-handler.js';
+import { ensureOrgSelected } from '../utils/org-selection.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**
@@ -330,6 +332,23 @@ export class ExportCommand extends Command {
 					success: false,
 					action: 'cancelled',
 					message: 'No tags selected'
+				};
+				return;
+			}
+
+			// Force org selection after tag selection
+			// User can choose which org to export to, with current org pre-selected
+			const authManager = AuthManager.getInstance();
+			const orgResult = await ensureOrgSelected(authManager, {
+				promptMessage: 'Select an organization to export to:',
+				forceSelection: true
+			});
+			if (!orgResult.success) {
+				console.log(chalk.gray('\n  Export cancelled.\n'));
+				this.lastResult = {
+					success: false,
+					action: 'cancelled',
+					message: orgResult.message || 'Organization selection cancelled'
 				};
 				return;
 			}
@@ -972,9 +991,8 @@ export class ExportCommand extends Command {
 		try {
 			if (!this.taskMasterCore) return;
 
-			// Get AuthManager from TmCore
-			const authManager = (this.taskMasterCore.auth as any).authManager;
-			if (!authManager) return;
+			// Get AuthManager singleton
+			const authManager = AuthManager.getInstance();
 
 			// Use the selectBriefFromInput utility which properly resolves
 			// the brief and sets all context fields (org, brief details, etc.)

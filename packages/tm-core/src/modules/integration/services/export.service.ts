@@ -1534,14 +1534,46 @@ export class ExportService {
 				};
 			}
 
-			const jsonData = (await response.json()) as SendTeamInvitationsResponse;
+			const jsonData = (await response.json()) as Record<string, unknown>;
 
-			if (!response.ok || !jsonData.success) {
-				// Check if all users are already members - this is not an error
-				const invitations = jsonData.invitations || (jsonData as any)?.data;
-				const jsonError = (jsonData as any)?.error;
+			// Extract invitations from various possible response structures
+			const dataField = jsonData.data as Record<string, unknown> | undefined;
+			const invitations =
+				jsonData.invitations ||
+				dataField?.invitations ||
+				dataField ||
+				(Array.isArray(jsonData) ? jsonData : null);
+			const jsonError = jsonData.error as
+				| { code?: string; message?: string }
+				| string
+				| undefined;
 
-				// Handle "already member" as success - check both invitations array and error message
+			// Success case: 200 OK with invitations array
+			if (response.ok && invitations && Array.isArray(invitations)) {
+				return {
+					success: true,
+					invitations: invitations.map(
+						(inv: { email?: string; status?: string }) => ({
+							email: inv.email || '',
+							status: (inv.status || 'sent') as
+								| 'sent'
+								| 'already_member'
+								| 'already_invited'
+								| 'failed'
+						})
+					)
+				};
+			}
+
+			// Error case: check for specific error conditions
+			if (!response.ok || jsonError) {
+				// Parse error object safely
+				const errorObj =
+					typeof jsonError === 'object' && jsonError !== null
+						? (jsonError as { code?: string; message?: string })
+						: null;
+
+				// Handle "already member" as success
 				const isAlreadyMember =
 					(invitations &&
 						Array.isArray(invitations) &&
@@ -1549,17 +1581,24 @@ export class ExportService {
 						invitations.every(
 							(inv: { status: string }) => inv.status === 'already_member'
 						)) ||
-					(jsonError?.code === 'invitation_failed' &&
-						jsonError?.message?.toLowerCase().includes('already member'));
+					(errorObj?.code === 'invitation_failed' &&
+						errorObj?.message?.toLowerCase().includes('already member'));
 
 				if (isAlreadyMember) {
 					// Return success with synthetic invitations if we only got an error
-					const resultInvitations =
-						invitations ||
-						emails.map((email) => ({
-							email,
-							status: 'already_member' as const
-						}));
+					const resultInvitations = Array.isArray(invitations)
+						? (invitations as Array<{
+								email: string;
+								status:
+									| 'sent'
+									| 'already_member'
+									| 'already_invited'
+									| 'failed';
+							}>)
+						: emails.map((email) => ({
+								email,
+								status: 'already_member' as const
+							}));
 					return {
 						success: true,
 						invitations: resultInvitations
@@ -1567,10 +1606,10 @@ export class ExportService {
 				}
 
 				const errorMessage =
-					(jsonData as any)?.message ||
+					(jsonData.message as string) ||
 					(typeof jsonError === 'string'
 						? jsonError
-						: jsonError?.message || JSON.stringify(jsonError)) ||
+						: errorObj?.message || JSON.stringify(jsonError)) ||
 					`Failed to send invitations: ${response.status}`;
 
 				return {
@@ -1582,9 +1621,13 @@ export class ExportService {
 				};
 			}
 
+			// Fallback: no invitations in response
 			return {
-				success: true,
-				invitations: jsonData.invitations
+				success: false,
+				error: {
+					code: 'INVALID_RESPONSE',
+					message: 'No invitations in response'
+				}
 			};
 		} catch (error) {
 			const errorMessage =

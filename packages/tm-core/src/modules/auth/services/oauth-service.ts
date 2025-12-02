@@ -114,8 +114,9 @@ export class OAuthService {
 							error
 						);
 
-			// Notify error
-			if (onError) {
+			// Only notify error for actual failures, NOT for MFA_REQUIRED
+			// MFA requirement is a continuation of the auth flow, not an error
+			if (onError && authError.code !== 'MFA_REQUIRED') {
 				onError(authError);
 			}
 

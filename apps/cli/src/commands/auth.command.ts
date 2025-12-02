@@ -4,7 +4,6 @@
  */
 
 import {
-	AUTH_TIMEOUT_MS,
 	type AuthCredentials,
 	AuthManager,
 	AuthenticationError
@@ -12,14 +11,8 @@ import {
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
-import open from 'open';
 import ora from 'ora';
-import {
-	AuthCountdownTimer,
-	displayAuthInstructions,
-	displayWaitingForAuth,
-	handleMFAFlow
-} from '../utils/auth-ui.js';
+import { authenticateWithBrowserMFA, handleMFAFlow } from '../utils/auth-ui.js';
 import { displayError } from '../utils/error-handler.js';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
@@ -434,7 +427,7 @@ Examples:
 			// Direct browser authentication - no menu needed
 			const credentials = await this.authenticateWithBrowser();
 
-			ui.displaySuccess('Authentication successful!');
+			// Display user info (auth success message is already shown by authenticateWithBrowserMFA)
 			console.log(
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
@@ -497,70 +490,11 @@ Examples:
 
 	/**
 	 * Authenticate with browser using OAuth 2.0 with PKCE
-	 * Uses shared countdown timer from auth-ui.ts
-	 * Includes MFA handling if user has MFA enabled
+	 * Uses shared authenticateWithBrowserMFA for consistent login UX
+	 * across all commands (auth login, parse-prd, export, etc.)
 	 */
 	private async authenticateWithBrowser(): Promise<AuthCredentials> {
-		const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
-
-		try {
-			// Use AuthManager's new unified OAuth flow method with callbacks
-			const credentials = await this.authManager.authenticateWithOAuth({
-				// Callback to handle browser opening
-				openBrowser: async (authUrl) => {
-					await open(authUrl);
-				},
-				timeout: AUTH_TIMEOUT_MS,
-
-				// Callback when auth URL is ready
-				onAuthUrl: (authUrl) => {
-					displayAuthInstructions(authUrl);
-				},
-
-				// Callback when waiting for authentication
-				onWaitingForAuth: () => {
-					displayWaitingForAuth();
-					countdownTimer.start();
-				},
-
-				// Callback on success
-				onSuccess: () => {
-					countdownTimer.stop('success');
-				},
-
-				// Callback on error
-				onError: () => {
-					countdownTimer.stop('failure');
-				}
-			});
-
-			return credentials;
-		} catch (error) {
-			// Check if MFA is required BEFORE showing failure message
-			if (
-				error instanceof AuthenticationError &&
-				error.code === 'MFA_REQUIRED'
-			) {
-				// Stop spinner without showing failure - MFA is required, not a failure
-				countdownTimer.stop('mfa');
-
-				if (!error.mfaChallenge?.factorId) {
-					throw new AuthenticationError(
-						'MFA challenge information missing',
-						'MFA_VERIFICATION_FAILED'
-					);
-				}
-
-				// Use shared MFA flow handler
-				return this.handleMFAVerification(error);
-			}
-
-			countdownTimer.stop('failure');
-			throw error;
-		} finally {
-			// Ensure cleanup
-			countdownTimer.cleanup();
-		}
+		return authenticateWithBrowserMFA(this.authManager);
 	}
 
 	/**
@@ -635,7 +569,7 @@ Examples:
 			// Authenticate with the token
 			const credentials = await this.authenticateWithToken(token);
 
-			ui.displaySuccess('Authentication successful!');
+			// Display user info (auth success message is already shown by authenticateWithToken spinner)
 			console.log(
 				chalk.gray(`  Logged in as: ${credentials.email || credentials.userId}`)
 			);
