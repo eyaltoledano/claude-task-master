@@ -45,6 +45,7 @@ export async function selectBriefInteractive(
 		// Prompt for selection with search
 		const selectedBrief = await search<(typeof briefs)[0] | null>({
 			message: 'Search for a brief:',
+			pageSize: 15,
 			source: async (input) => {
 				const searchTerm = input?.toLowerCase() || '';
 
