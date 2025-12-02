@@ -3,6 +3,7 @@
  */
 
 import {
+	type AuthError,
 	type Session,
 	type SupabaseClient as SupabaseJSClient,
 	type User,
@@ -11,6 +12,92 @@ import {
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
 import { AuthenticationError } from '../../auth/types.js';
+
+/**
+ * Check if an error is a Supabase auth error
+ * Supabase auth errors have __isAuthError: true and a code property
+ */
+function isSupabaseAuthError(
+	error: unknown
+): error is AuthError & { code?: string } {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'__isAuthError' in error &&
+		(error as Record<string, unknown>).__isAuthError === true
+	);
+}
+
+/**
+ * User-friendly error messages for common Supabase auth error codes
+ * Note: refresh_token_not_found and refresh_token_already_used are expected
+ * during MFA flows and should not trigger these messages in that context.
+ */
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+	refresh_token_not_found:
+		'Your session has expired. Please log in again with: task-master login',
+	refresh_token_already_used:
+		'Your session has expired (token was already used). Please log in again with: task-master login',
+	invalid_refresh_token:
+		'Your session has expired (invalid token). Please log in again with: task-master login',
+	session_expired:
+		'Your session has expired. Please log in again with: task-master login',
+	user_not_found:
+		'User account not found. Please log in again with: task-master login',
+	invalid_credentials:
+		'Invalid credentials. Please log in again with: task-master login'
+};
+
+/**
+ * Error codes caused by stale sessions that can be recovered from
+ * by clearing the session storage and retrying.
+ *
+ * These errors occur when there's a stale session with an invalid refresh token
+ * and Supabase tries to use it during authentication. The fix is to clear
+ * the stale session and retry the operation.
+ */
+const RECOVERABLE_STALE_SESSION_ERRORS = [
+	'refresh_token_not_found',
+	'refresh_token_already_used'
+];
+
+/**
+ * Check if an error is caused by a stale session and can be recovered
+ * by clearing the session storage and retrying.
+ */
+function isRecoverableStaleSessionError(error: unknown): boolean {
+	if (!isSupabaseAuthError(error)) return false;
+	return RECOVERABLE_STALE_SESSION_ERRORS.includes(error.code || '');
+}
+
+/**
+ * Convert a Supabase auth error to a user-friendly AuthenticationError
+ */
+function toAuthenticationError(
+	error: AuthError,
+	defaultMessage: string
+): AuthenticationError {
+	const code = (error as AuthError).code;
+	const userMessage = code
+		? AUTH_ERROR_MESSAGES[code] || `${defaultMessage}: ${error.message}`
+		: `${defaultMessage}: ${error.message}`;
+
+	// Map Supabase error codes to our AuthErrorCode
+	let authErrorCode: 'REFRESH_FAILED' | 'NOT_AUTHENTICATED' | 'INVALID_CODE' =
+		'REFRESH_FAILED';
+	if (
+		code === 'refresh_token_not_found' ||
+		code === 'refresh_token_already_used' ||
+		code === 'invalid_refresh_token' ||
+		code === 'session_expired'
+	) {
+		authErrorCode = 'NOT_AUTHENTICATED';
+	} else if (code === 'invalid_credentials' || code === 'user_not_found') {
+		authErrorCode = 'INVALID_CODE';
+	}
+
+	return new AuthenticationError(userMessage, authErrorCode, error);
+}
 
 export class SupabaseAuthClient {
 	private static instance: SupabaseAuthClient | null = null;
@@ -98,7 +185,10 @@ export class SupabaseAuthClient {
 			} = await client.auth.getSession();
 
 			if (error) {
-				this.logger.warn('Failed to restore session:', error);
+				// MFA-expected errors are normal during auth flows - don't log warnings
+				if (!isRecoverableStaleSessionError(error)) {
+					this.logger.warn('Failed to restore session:', error);
+				}
 				return null;
 			}
 
@@ -108,7 +198,14 @@ export class SupabaseAuthClient {
 
 			return session;
 		} catch (error) {
-			this.logger.error('Error initializing session:', error);
+			// MFA-expected errors (refresh_token_not_found, etc.) are normal during auth flows
+			if (isRecoverableStaleSessionError(error)) {
+				this.logger.debug('Session not available (expected during MFA flow)');
+			} else if (isSupabaseAuthError(error)) {
+				this.logger.warn('Session expired or invalid');
+			} else {
+				this.logger.error('Error initializing session:', error);
+			}
 			return null;
 		}
 	}
@@ -213,13 +310,23 @@ export class SupabaseAuthClient {
 			} = await client.auth.getSession();
 
 			if (error) {
-				this.logger.warn('Failed to get session:', error);
+				// MFA-expected errors are normal during auth flows - don't log warnings
+				if (!isRecoverableStaleSessionError(error)) {
+					this.logger.warn('Failed to get session:', error);
+				}
 				return null;
 			}
 
 			return session;
 		} catch (error) {
-			this.logger.error('Error getting session:', error);
+			// MFA-expected errors (refresh_token_not_found, etc.) are normal during auth flows
+			if (isRecoverableStaleSessionError(error)) {
+				this.logger.debug('Session not available (expected during MFA flow)');
+			} else if (isSupabaseAuthError(error)) {
+				this.logger.warn('Session expired or invalid');
+			} else {
+				this.logger.error('Error getting session:', error);
+			}
 			return null;
 		}
 	}
@@ -241,10 +348,8 @@ export class SupabaseAuthClient {
 
 			if (error) {
 				this.logger.error('Failed to refresh session:', error);
-				throw new AuthenticationError(
-					`Failed to refresh session: ${error.message}`,
-					'REFRESH_FAILED'
-				);
+				// Use user-friendly error message for known Supabase auth errors
+				throw toAuthenticationError(error, 'Failed to refresh session');
 			}
 
 			if (session) {
@@ -255,6 +360,11 @@ export class SupabaseAuthClient {
 		} catch (error) {
 			if (error instanceof AuthenticationError) {
 				throw error;
+			}
+
+			// Handle raw Supabase auth errors that might be thrown
+			if (isSupabaseAuthError(error)) {
+				throw toAuthenticationError(error, 'Session refresh failed');
 			}
 
 			throw new AuthenticationError(
@@ -344,8 +454,12 @@ export class SupabaseAuthClient {
 	/**
 	 * Verify a one-time token and create a session
 	 * Used for CLI authentication with pre-generated tokens
+	 *
+	 * Note: If MFA is enabled and there's a stale session, Supabase might throw
+	 * refresh_token_not_found errors. We handle this by clearing the stale session
+	 * and retrying once.
 	 */
-	async verifyOneTimeCode(token: string): Promise<Session> {
+	async verifyOneTimeCode(token: string, isRetry = false): Promise<Session> {
 		const client = this.getClient();
 
 		try {
@@ -359,11 +473,19 @@ export class SupabaseAuthClient {
 			});
 
 			if (error) {
+				// If this is an MFA-expected error (like refresh_token_not_found),
+				// it might be due to a stale session interfering. Clear and retry once.
+				if (!isRetry && isRecoverableStaleSessionError(error)) {
+					this.logger.debug(
+						'MFA-expected error during token verification, clearing stale session and retrying'
+					);
+					await this.sessionStorage.clear();
+					return this.verifyOneTimeCode(token, true);
+				}
+
 				this.logger.error('Failed to verify token:', error);
-				throw new AuthenticationError(
-					`Failed to verify token: ${error.message}`,
-					'INVALID_CODE'
-				);
+				// Use user-friendly error message for known Supabase auth errors
+				throw toAuthenticationError(error, 'Failed to verify token');
 			}
 
 			if (!data?.session) {
@@ -378,6 +500,19 @@ export class SupabaseAuthClient {
 		} catch (error) {
 			if (error instanceof AuthenticationError) {
 				throw error;
+			}
+
+			// Handle raw Supabase auth errors that might be thrown
+			if (isSupabaseAuthError(error)) {
+				// If this is an MFA-expected error and we haven't retried, clear session and retry
+				if (!isRetry && isRecoverableStaleSessionError(error)) {
+					this.logger.debug(
+						'MFA-expected error during token verification, clearing stale session and retrying'
+					);
+					await this.sessionStorage.clear();
+					return this.verifyOneTimeCode(token, true);
+				}
+				throw toAuthenticationError(error, 'Token verification failed');
 			}
 
 			throw new AuthenticationError(
