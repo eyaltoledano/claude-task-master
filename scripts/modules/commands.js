@@ -388,7 +388,7 @@ async function handleParsePrdToHamster(prdPath) {
 		// even if they have one already selected in context
 		const orgResult = await ensureOrgSelected(authManager, {
 			promptMessage: 'Select an organization to create the brief in:',
-			forcePrompt: true
+			forceSelection: true
 		});
 		if (!orgResult.success) {
 			console.error(

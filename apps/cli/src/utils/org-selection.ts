@@ -3,7 +3,7 @@
  * Provides reusable org selection flow for commands that require org context.
  */
 
-import { AuthManager } from '@tm/core';
+import type { AuthManager } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import * as ui from './ui.js';
@@ -28,7 +28,7 @@ export interface EnsureOrgOptions {
 	/** Custom message to show when prompting */
 	promptMessage?: string;
 	/** If true, always prompt for org selection even if one is already set */
-	forcePrompt?: boolean;
+	forceSelection?: boolean;
 }
 
 /**
@@ -57,13 +57,13 @@ export async function ensureOrgSelected(
 	authManager: AuthManager,
 	options: EnsureOrgOptions = {}
 ): Promise<OrgSelectionResult> {
-	const { silent = false, promptMessage, forcePrompt = false } = options;
+	const { silent = false, promptMessage, forceSelection = false } = options;
 
 	try {
 		const context = authManager.getContext();
 
-		// If org is already selected and we're not forcing a prompt, return it
-		if (context?.orgId && !forcePrompt) {
+		// If org is already selected and we're not forcing selection, return it
+		if (context?.orgId && !forceSelection) {
 			return {
 				success: true,
 				orgId: context.orgId,
@@ -121,10 +121,7 @@ export async function ensureOrgSelected(
 				name: 'orgId',
 				message: promptMessage || 'Select an organization:',
 				choices: orgs.map((org) => ({
-					name:
-						org.id === context?.orgId
-							? `${org.name} (current)`
-							: org.name,
+					name: org.id === context?.orgId ? `${org.name} (current)` : org.name,
 					value: org.id
 				})),
 				default: defaultOrg >= 0 ? defaultOrg : 0
