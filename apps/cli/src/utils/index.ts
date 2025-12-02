@@ -20,6 +20,12 @@ export {
 	type AuthGuardResult
 } from './auth-guard.js';
 
+// Shared browser authentication with MFA support
+export { authenticateWithBrowserMFA } from './auth-ui.js';
+
+// Organization selection utility
+export { ensureOrgSelected, type OrgSelectionResult } from './org-selection.js';
+
 // Command guard for local-only commands
 export {
 	checkAndBlockIfAuthenticated,

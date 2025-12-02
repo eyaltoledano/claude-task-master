@@ -63,7 +63,7 @@ import {
 	validateDependenciesCommand
 } from './dependency-manager.js';
 
-import { checkAndBlockIfAuthenticated } from '@tm/cli';
+import { checkAndBlockIfAuthenticated, ensureOrgSelected } from '@tm/cli';
 import { LOCAL_ONLY_COMMANDS } from '@tm/core';
 
 import {
@@ -203,9 +203,8 @@ async function promptHamsterCollaboration() {
 		{
 			type: 'list',
 			name: 'choice',
-			message: chalk.cyan('How would you like to parse your PRD?'),
+			message: chalk.cyan('How would you like to parse your PRD?\n'),
 			choices: [
-				'\n',
 				{
 					name: [
 						chalk.bold('Parse locally'),
@@ -383,6 +382,22 @@ async function handleParsePrdToHamster(prdPath) {
 		}
 
 		const authManager = AuthManager.getInstance();
+
+		// Always prompt for organization selection for parse-prd
+		// This allows users to choose which org to create the brief in
+		// even if they have one already selected in context
+		const orgResult = await ensureOrgSelected(authManager, {
+			promptMessage: 'Select an organization to create the brief in:',
+			forceSelection: true
+		});
+		if (!orgResult.success) {
+			console.error(
+				chalk.red(
+					`\n  ${orgResult.message || 'Organization selection cancelled.'}\n`
+				)
+			);
+			return;
+		}
 
 		// Read PRD file content
 		const prdContent = fs.readFileSync(prdPath, 'utf-8');
