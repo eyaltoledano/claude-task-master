@@ -6,18 +6,19 @@ import crypto from 'crypto';
 import http from 'http';
 import os from 'os';
 import { URL } from 'url';
-import { Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { TASKMASTER_VERSION } from '../../../common/constants/index.js';
 import { getLogger } from '../../../common/logger/index.js';
-import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
+import type { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { getAuthConfig } from '../config.js';
-import { ContextStore } from '../services/context-store.js';
+import type { ContextStore } from '../services/context-store.js';
 import {
-	AuthConfig,
-	AuthCredentials,
+	type AuthConfig,
+	type AuthCredentials,
 	AuthenticationError,
-	CliData,
-	OAuthFlowOptions
+	type CliData,
+	type MFAChallenge,
+	type OAuthFlowOptions
 } from '../types.js';
 
 export class OAuthService {
@@ -125,7 +126,7 @@ export class OAuthService {
 	/**
 	 * Start the OAuth flow (internal implementation)
 	 */
-	private async startFlow(timeout: number = 300000): Promise<AuthCredentials> {
+	private async startFlow(timeout = 300000): Promise<AuthCredentials> {
 		const state = this.generateState();
 
 		// Store the original state for verification
@@ -289,6 +290,10 @@ export class OAuthService {
 					email: session.user.email
 				});
 
+				// Check if MFA is required for this user
+				// This will throw MFA_REQUIRED error if MFA verification is needed
+				await this.checkAndThrowIfMFARequired();
+
 				// Calculate expiration - can be overridden with TM_TOKEN_EXPIRY_MINUTES
 				let expiresAt: string | undefined;
 				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
@@ -363,6 +368,10 @@ export class OAuthService {
 					email: user?.email
 				});
 
+				// Check if MFA is required for this user
+				// This will throw MFA_REQUIRED error if MFA verification is needed
+				await this.checkAndThrowIfMFARequired();
+
 				// Calculate expiration time - can be overridden with TM_TOKEN_EXPIRY_MINUTES
 				let expiresAt: string | undefined;
 				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
@@ -428,5 +437,43 @@ export class OAuthService {
 	 */
 	getAuthorizationUrl(): string | null {
 		return this.authorizationUrl;
+	}
+
+	/**
+	 * Check if MFA is required and throw appropriate error if so
+	 * This ensures OAuth flow enforces MFA when user has it enabled
+	 */
+	private async checkAndThrowIfMFARequired(): Promise<void> {
+		const mfaCheck = await this.supabaseClient.checkMFARequired();
+
+		if (mfaCheck.required) {
+			// MFA is required - check if we have complete factor information
+			if (!mfaCheck.factorId || !mfaCheck.factorType) {
+				this.logger.error('MFA required but factor information is incomplete', {
+					mfaCheck
+				});
+				throw new AuthenticationError(
+					'MFA is required but the server returned incomplete factor configuration. Please contact support or try re-enrolling MFA.',
+					'MFA_REQUIRED_INCOMPLETE'
+				);
+			}
+
+			this.logger.info('MFA verification required after OAuth login', {
+				factorId: mfaCheck.factorId,
+				factorType: mfaCheck.factorType
+			});
+
+			const mfaChallenge: MFAChallenge = {
+				factorId: mfaCheck.factorId,
+				factorType: mfaCheck.factorType
+			};
+
+			throw new AuthenticationError(
+				'MFA verification required. Please provide your authentication code.',
+				'MFA_REQUIRED',
+				undefined,
+				mfaChallenge
+			);
+		}
 	}
 }

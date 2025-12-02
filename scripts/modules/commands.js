@@ -493,6 +493,8 @@ async function handleParsePrdToHamster(prdPath) {
 							);
 						} else if (inv.status === 'failed') {
 							console.log(chalk.red(`    ${inv.email}: Failed to send`));
+						} else if (inv.status === 'already_invited') {
+							console.log(chalk.gray(`    ${inv.email}: Already invited`));
 						}
 					}
 					console.log('');

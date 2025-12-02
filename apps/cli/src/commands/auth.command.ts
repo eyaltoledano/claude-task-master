@@ -155,7 +155,7 @@ Examples:
 	async executeLogin(
 		token?: string,
 		yes?: boolean,
-		showHeader: boolean = true
+		showHeader = true
 	): Promise<void> {
 		try {
 			const result = token
@@ -393,7 +393,7 @@ Examples:
 	 */
 	async performInteractiveAuth(
 		yes?: boolean,
-		showHeader: boolean = true
+		showHeader = true
 	): Promise<AuthResult> {
 		if (showHeader) {
 			ui.displayBanner('Task Master Authentication');
@@ -498,6 +498,7 @@ Examples:
 	/**
 	 * Authenticate with browser using OAuth 2.0 with PKCE
 	 * Uses shared countdown timer from auth-ui.ts
+	 * Includes MFA handling if user has MFA enabled
 	 */
 	private async authenticateWithBrowser(): Promise<AuthCredentials> {
 		const countdownTimer = new AuthCountdownTimer(AUTH_TIMEOUT_MS);
@@ -535,6 +536,25 @@ Examples:
 
 			return credentials;
 		} catch (error) {
+			// Check if MFA is required BEFORE showing failure message
+			if (
+				error instanceof AuthenticationError &&
+				error.code === 'MFA_REQUIRED'
+			) {
+				// Stop spinner without showing failure - MFA is required, not a failure
+				countdownTimer.stop('mfa');
+
+				if (!error.mfaChallenge?.factorId) {
+					throw new AuthenticationError(
+						'MFA challenge information missing',
+						'MFA_VERIFICATION_FAILED'
+					);
+				}
+
+				// Use shared MFA flow handler
+				return this.handleMFAVerification(error);
+			}
+
 			countdownTimer.stop('failure');
 			throw error;
 		} finally {
@@ -605,7 +625,7 @@ Examples:
 	private async performTokenAuth(
 		token: string,
 		yes?: boolean,
-		showHeader: boolean = true
+		showHeader = true
 	): Promise<AuthResult> {
 		if (showHeader) {
 			ui.displayBanner('Task Master Authentication');

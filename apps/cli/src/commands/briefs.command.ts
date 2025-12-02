@@ -17,6 +17,7 @@ import {
 	selectBriefFromInput,
 	selectBriefInteractive
 } from '../utils/brief-selection.js';
+import { ensureOrgSelected } from '../utils/org-selection.js';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -180,7 +181,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			}
 
 			// Ensure org is selected - prompt if not
-			const orgId = await this.ensureOrgSelected();
+			const orgId = await this.ensureOrgSelectedLocal();
 			if (!orgId) {
 				process.exit(1);
 			}
@@ -248,63 +249,11 @@ Note: Briefs must be created through the Hamster Studio web interface.
 
 	/**
 	 * Ensure an organization is selected, prompting if necessary
+	 * Uses the shared org-selection utility
 	 */
-	private async ensureOrgSelected(): Promise<string | null> {
-		const context = this.authManager.getContext();
-
-		// If org is already selected, return it
-		if (context?.orgId) {
-			return context.orgId;
-		}
-
-		// No org selected - check if we can auto-select
-		const orgs = await this.authManager.getOrganizations();
-
-		if (orgs.length === 0) {
-			ui.displayError(
-				'No organizations available. Please create or join an organization first.'
-			);
-			return null;
-		}
-
-		if (orgs.length === 1) {
-			// Auto-select the only org
-			await this.authManager.updateContext({
-				orgId: orgs[0].id,
-				orgName: orgs[0].name,
-				orgSlug: orgs[0].slug
-			});
-			console.log(chalk.gray(`  Auto-selected organization: ${orgs[0].name}`));
-			return orgs[0].id;
-		}
-
-		// Multiple orgs - prompt for selection
-		console.log(chalk.yellow('No organization selected.'));
-
-		const response = await inquirer.prompt<{ orgId: string }>([
-			{
-				type: 'list',
-				name: 'orgId',
-				message: 'Select an organization:',
-				choices: orgs.map((org) => ({
-					name: org.name,
-					value: org.id
-				}))
-			}
-		]);
-
-		const selectedOrg = orgs.find((o) => o.id === response.orgId);
-		if (selectedOrg) {
-			await this.authManager.updateContext({
-				orgId: selectedOrg.id,
-				orgName: selectedOrg.name,
-				orgSlug: selectedOrg.slug
-			});
-			ui.displaySuccess(`Selected organization: ${selectedOrg.name}`);
-			return selectedOrg.id;
-		}
-
-		return null;
+	private async ensureOrgSelectedLocal(): Promise<string | null> {
+		const result = await ensureOrgSelected(this.authManager);
+		return result.success ? result.orgId || null : null;
 	}
 
 	/**

@@ -101,7 +101,7 @@ export interface GenerateBriefOptions {
  */
 export interface InvitationResult {
 	email: string;
-	status: 'sent' | 'already_member' | 'error' | 'failed';
+	status: 'sent' | 'already_member' | 'already_invited' | 'error' | 'failed';
 	error?: string;
 }
 
@@ -237,7 +237,7 @@ export interface SendTeamInvitationsResponse {
 	success: boolean;
 	invitations: Array<{
 		email: string;
-		status: 'sent' | 'already_member' | 'failed';
+		status: 'sent' | 'already_member' | 'already_invited' | 'failed';
 	}>;
 }
 
@@ -248,7 +248,7 @@ export interface SendTeamInvitationsResult {
 	success: boolean;
 	invitations?: Array<{
 		email: string;
-		status: 'sent' | 'already_member' | 'failed';
+		status: 'sent' | 'already_member' | 'already_invited' | 'failed';
 	}>;
 	error?: {
 		code: string;
