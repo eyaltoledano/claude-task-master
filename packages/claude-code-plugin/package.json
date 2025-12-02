@@ -1,6 +1,6 @@
 {
 	"name": "@tm/claude-code-plugin",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"description": "Task Master AI plugin for Claude Code - AI-powered task management with commands, agents, and MCP integration",
 	"type": "module",
 	"private": true,
