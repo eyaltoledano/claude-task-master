@@ -651,9 +651,6 @@ async function initializeProject(options = {}) {
 				authCredentials
 			);
 			rl.close();
-			// Exit cleanly after command completes
-			// Required because Supabase client keeps connections alive
-			process.exit(0);
 		} catch (error) {
 			if (rl) {
 				rl.close();

@@ -383,9 +383,12 @@ async function handleParsePrdToHamster(prdPath) {
 
 		const authManager = AuthManager.getInstance();
 
-		// Ensure an organization is selected before proceeding
+		// Always prompt for organization selection for parse-prd
+		// This allows users to choose which org to create the brief in
+		// even if they have one already selected in context
 		const orgResult = await ensureOrgSelected(authManager, {
-			promptMessage: 'Select an organization to create the brief in:'
+			promptMessage: 'Select an organization to create the brief in:',
+			forcePrompt: true
 		});
 		if (!orgResult.success) {
 			console.error(

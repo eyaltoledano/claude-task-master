@@ -27,6 +27,8 @@ export interface EnsureOrgOptions {
 	silent?: boolean;
 	/** Custom message to show when prompting */
 	promptMessage?: string;
+	/** If true, always prompt for org selection even if one is already set */
+	forcePrompt?: boolean;
 }
 
 /**
@@ -55,13 +57,13 @@ export async function ensureOrgSelected(
 	authManager: AuthManager,
 	options: EnsureOrgOptions = {}
 ): Promise<OrgSelectionResult> {
-	const { silent = false, promptMessage } = options;
+	const { silent = false, promptMessage, forcePrompt = false } = options;
 
 	try {
 		const context = authManager.getContext();
 
-		// If org is already selected, return it
-		if (context?.orgId) {
+		// If org is already selected and we're not forcing a prompt, return it
+		if (context?.orgId && !forcePrompt) {
 			return {
 				success: true,
 				orgId: context.orgId,
@@ -70,7 +72,7 @@ export async function ensureOrgSelected(
 			};
 		}
 
-		// No org selected - check if we can auto-select
+		// Fetch available orgs
 		const orgs = await authManager.getOrganizations();
 
 		if (orgs.length === 0) {
@@ -104,9 +106,14 @@ export async function ensureOrgSelected(
 		}
 
 		// Multiple orgs - prompt for selection
-		if (!silent) {
+		if (!silent && !context?.orgId) {
 			console.log(chalk.yellow('No organization selected.'));
 		}
+
+		// Set default to current org if one is selected
+		const defaultOrg = context?.orgId
+			? orgs.findIndex((o) => o.id === context.orgId)
+			: 0;
 
 		const response = await inquirer.prompt<{ orgId: string }>([
 			{
@@ -114,9 +121,13 @@ export async function ensureOrgSelected(
 				name: 'orgId',
 				message: promptMessage || 'Select an organization:',
 				choices: orgs.map((org) => ({
-					name: org.name,
+					name:
+						org.id === context?.orgId
+							? `${org.name} (current)`
+							: org.name,
 					value: org.id
-				}))
+				})),
+				default: defaultOrg >= 0 ? defaultOrg : 0
 			}
 		]);
 

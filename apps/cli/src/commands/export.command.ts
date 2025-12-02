@@ -28,6 +28,7 @@ import { createUrlLink } from '../ui/index.js';
 import { ensureAuthenticated } from '../utils/auth-guard.js';
 import { selectBriefFromInput } from '../utils/brief-selection.js';
 import { displayError } from '../utils/error-handler.js';
+import { ensureOrgSelected } from '../utils/org-selection.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**
@@ -100,7 +101,7 @@ export class ExportCommand extends Command {
 
 		// Default action
 		this.action(async (options?: any) => {
-			return await this.executeExport(options);
+			await this.executeExport(options);
 		});
 	}
 
@@ -332,6 +333,25 @@ export class ExportCommand extends Command {
 					message: 'No tags selected'
 				};
 				return;
+			}
+
+			// Force org selection after tag selection
+			// User can choose which org to export to, with current org pre-selected
+			const authManager = (this.taskMasterCore!.auth as any).authManager;
+			if (authManager) {
+				const orgResult = await ensureOrgSelected(authManager, {
+					promptMessage: 'Select an organization to export to:',
+					forcePrompt: true
+				});
+				if (!orgResult.success) {
+					console.log(chalk.gray('\n  Export cancelled.\n'));
+					this.lastResult = {
+						success: false,
+						action: 'cancelled',
+						message: orgResult.message || 'Organization selection cancelled'
+					};
+					return;
+				}
 			}
 
 			// Handle multiple tags export
