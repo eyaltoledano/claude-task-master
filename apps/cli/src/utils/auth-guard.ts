@@ -76,7 +76,7 @@ export async function ensureAuthenticated(
 	if (hasSession) {
 		// Only get AuthManager when we need to check org selection
 		const authManager = AuthManager.getInstance();
-		
+
 		// Check if org is already selected (quick check before any API calls)
 		const context = authManager.getContext();
 		if (context?.orgId) {
