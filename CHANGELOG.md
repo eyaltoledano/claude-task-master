@@ -1,5 +1,117 @@
 # task-master-ai
 
+## 0.36.0
+
+### Minor Changes
+
+- [#1452](https://github.com/eyaltoledano/claude-task-master/pull/1452) [`4046b3c`](https://github.com/eyaltoledano/claude-task-master/commit/4046b3ca4479adf0239679eb5ba18b7b4aec0749) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add Hamster integration for `parse-prd` command
+
+  Your tasks are only as good as the context behind them. Now when you run `parse-prd`, you can choose to bring your PRD to Hamster instead of parsing locally.
+
+  **New Workflow Choice**
+  - **Parse locally**: PRD becomes a task list in a local JSON file - great for quick prototyping and vibing solo
+  - **Bring it to Hamster**: PRD becomes a living brief connected to your team, codebase, and agents
+
+  **Why Hamster?**
+  - Tasks live in a central place with real-time sync across your team
+  - Collaborate on your PRD/brief together, generate tasks on Hamster, bring them into Taskmaster
+  - No API keys needed - Hamster handles all AI inference, just need a Hamster account
+
+  **Hamster Integration**
+  - OAuth login flow when choosing Hamster (same as export command)
+  - Create brief directly from PRD content with auto-generated title/description
+  - Progress bar showing task generation phases (analyzing → generating → processing)
+  - Invite teammates during brief creation
+  - Auto-set context to new brief when complete
+
+  **Quality of Life**
+  - Clickable brief URL and team invite URL in terminal
+  - Shows task count as they're generated
+  - Graceful fallback if generation takes longer than expected
+
+- [#1452](https://github.com/eyaltoledano/claude-task-master/pull/1452) [`4046b3c`](https://github.com/eyaltoledano/claude-task-master/commit/4046b3ca4479adf0239679eb5ba18b7b4aec0749) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Redesign `tm init` with clearer workflow selection and reduced noise
+
+  Choose how you want to plan: Solo with Taskmaster or Together with Hamster. The new init flow guides you through setup with context-appropriate options and cleaner output.
+
+  **New Workflow Selection**
+  - Clear framing: "You need a plan before you execute. How do you want to build it?"
+  - **Solo (Taskmaster)**: Parse PRD → structured tasks → AI agent executes with control
+  - **Together (Hamster)**: Team writes brief → Hamster refines → aligned execution with Taskmaster
+
+  **Cleaner Experience**
+  - Optional AI IDE rules setup (Y/n prompt instead of always showing)
+  - 15+ log messages moved to debug level - much less noise
+  - Skip Git prompts when using Hamster (not needed for cloud storage)
+  - Skip AI model configuration for Hamster (uses Hamster's AI)
+
+  **Hamster Integration**
+  - OAuth login flow when choosing Hamster workflow
+  - Context-aware guidance based on your workflow choice
+
+  **Quality of Life**
+  - Run `tm rules --setup` anytime if you declined during init
+  - Use `--yes` flag for fully non-interactive setup
+  - Use `--rules cursor,windsurf` to specify rules upfront
+
+- [#1452](https://github.com/eyaltoledano/claude-task-master/pull/1452) [`4046b3c`](https://github.com/eyaltoledano/claude-task-master/commit/4046b3ca4479adf0239679eb5ba18b7b4aec0749) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Introduce `tm export` command - bring Task Master to your team
+
+  Share your task plans with teammates by exporting local tasks to collaborative briefs on Hamster. Select which tags to export, invite team members, and start collaborating instantly.
+
+  **New `tm export` Command**
+  - Export your local tasks to shareable team briefs
+  - Hamster will reverse engineer your PRD based on your tasks (reverse parse prd!)
+  - Select multiple tags to export in one go, import all tasks across tags to Hamster
+  - Hamster will generate brief titles and descriptions from your task content
+  - Automatically sets your CLI context to the new brief
+  - All AI calls handled by Hamster, zero API keys needed - just a Hamster account!
+
+  **Team Collaboration**
+  - Invite teammates during export with `-I, --invite` flag
+  - Add up to 10 team members by email
+  - See invitation status: sent, already a member, or error
+
+  **Quality of Life Improvements**
+  - New `tm login` / `tm logout` shortcuts
+  - Display ID shortcuts: `tm show ham31` now works (normalizes to HAM-31)
+  - Better task rendering with proper HTML/Markdown support
+
+- [#1452](https://github.com/eyaltoledano/claude-task-master/pull/1452) [`4046b3c`](https://github.com/eyaltoledano/claude-task-master/commit/4046b3ca4479adf0239679eb5ba18b7b4aec0749) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add simpler positional syntax and Hamster-aware UI improvements
+  - **Simpler command syntax**: Use positional arguments without flags
+    - `tm update-task 1 Added implementation` (no quotes needed for multi-word prompts)
+    - `tm status 1 done` (new alias for set-status) or `tm set-status 1,1.1,2 in-progress`
+    - `tm list done` or `tm list in-progress` or `tm list all` (shortcut for --with-subtasks)
+  - **Hamster-aware help**: Context-specific command list when connected to Hamster
+    - Shows only relevant commands for Hamster workflow
+    - Beautiful boxed section headers with improved spacing
+    - Clear usage examples with new positional syntax
+    - Better visual alignment and cleaner formatting
+  - **Progress indicators**: Added loading spinner to `update-task` when connected to Hamster
+    - Shows "Updating task X on Hamster..." during AI processing
+    - Cleaner, more responsive UX for long-running operations
+  - **Improved context display**: Show 'Brief: [name]' instead of 'tag: [name]' when connected to Hamster
+  - **Cleaner Hamster updates**: Simplified update display (removed redundant Mode/Prompt info)
+  - **Smart messaging**: "NO TASKS AVAILABLE" warning only shows when literally no tasks exist
+    - Removed misleading messages when tasks are just completed/in-progress/blocked
+    - Better UX for filtered task lists
+  - **Updated help everywhere**: Regular help menu now shows new positional argument syntax
+    - All suggested actions updated across commands
+    - Consistent syntax in all UI components
+  - **Auto-detection**: Automatically detects Hamster connection for better UX
+  - **Backward compatible**: All old flag syntax still works (`--id`, `--status`, etc.)
+
+### Patch Changes
+
+- [#1452](https://github.com/eyaltoledano/claude-task-master/pull/1452) [`4046b3c`](https://github.com/eyaltoledano/claude-task-master/commit/4046b3ca4479adf0239679eb5ba18b7b4aec0749) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add Sentry integration for error tracking and AI telemetry monitoring
+  - **Sentry Integration**: Added comprehensive error tracking and AI operation monitoring using Sentry with Vercel AI SDK integration
+  - **AI Telemetry**: All AI operations (generateText, streamText, generateObject, streamObject) now automatically track spans, token usage, prompts, and responses
+  - **MCP Server Instrumentation**: Wrapped FastMCP server with `Sentry.wrapMcpServerWithSentry()` to automatically capture spans for all MCP tool interactions
+  - **Privacy Controls**: Added `anonymousTelemetry` config option (default: true) allowing local storage users to opt out of telemetry
+  - **Complete Coverage**: Telemetry enabled for all AI commands including parse-prd, expand, update-task, analyze-complexity, and research
+  - **Internal Telemetry**: Sentry DSN is hardcoded internally for Task Master's telemetry (not user-configurable)
+  - **Dual Initialization**: Automatic Sentry initialization in both CLI (scripts/dev.js) and MCP Server (mcp-server/src/index.js) with full MCP instrumentation
+
+- [#1463](https://github.com/eyaltoledano/claude-task-master/pull/1463) [`55595f6`](https://github.com/eyaltoledano/claude-task-master/commit/55595f680c8b52b5421d3e0c7640bf2050efe44f) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix package issue in earlier rc
+
 ## 0.36.0-rc.3
 
 ### Minor Changes
