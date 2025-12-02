@@ -38,3 +38,12 @@ export {
 	LOCAL_ONLY_COMMANDS,
 	type LocalOnlyCommand
 } from './constants.js';
+
+// Auth error utilities (shared with CLI)
+export {
+	isSupabaseAuthError,
+	AUTH_ERROR_MESSAGES,
+	RECOVERABLE_STALE_SESSION_ERRORS,
+	isRecoverableStaleSessionError,
+	toAuthenticationError
+} from './utils/index.js';

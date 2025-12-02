@@ -96,6 +96,13 @@ export {
 	type LocalOnlyCommand
 } from './modules/auth/index.js';
 
+// Auth error utilities (shared with CLI)
+export {
+	isSupabaseAuthError,
+	AUTH_ERROR_MESSAGES,
+	isRecoverableStaleSessionError
+} from './modules/auth/index.js';
+
 // Brief types
 export type { Brief } from './modules/briefs/types.js';
 export type { TagWithStats } from './modules/briefs/services/brief-service.js';
