@@ -23,10 +23,10 @@
 // This file serves as the main entry point for the package
 // The primary functionality is provided through the CLI commands
 
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-import { createRequire } from 'module';
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -82,8 +82,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		.option('-a, --author <author>', 'Author name')
 		.option('--skip-install', 'Skip installing dependencies')
 		.option('--dry-run', 'Show what would be done without making changes')
-		.option('--aliases', 'Add shell aliases (tm, taskmaster)')
-		.option('--no-aliases', 'Skip shell aliases (tm, taskmaster)')
+		.option('--aliases', 'Add shell aliases (tm, taskmaster, hamster, ham)')
+		.option('--no-aliases', 'Skip shell aliases (tm, taskmaster, hamster, ham)')
 		.option('--git', 'Initialize Git repository')
 		.option('--no-git', 'Skip Git repository initialization')
 		.option('--git-tasks', 'Store tasks in Git')

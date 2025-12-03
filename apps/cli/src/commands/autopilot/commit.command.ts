@@ -4,8 +4,8 @@
 
 import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
 import { Command } from 'commander';
-import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 import { getProjectRoot } from '../../utils/project-root.js';
+import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 type CommitOptions = AutopilotBaseOptions;
 

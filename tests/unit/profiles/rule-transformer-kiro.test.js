@@ -18,8 +18,8 @@ jest.mock('../../../scripts/modules/utils.js', () => ({
 
 // Import modules after mocking
 import fs from 'fs';
-import { convertRuleToProfileRule } from '../../../src/utils/rule-transformer.js';
 import { kiroProfile } from '../../../src/profiles/kiro.js';
+import { convertRuleToProfileRule } from '../../../src/utils/rule-transformer.js';
 
 describe('Kiro Rule Transformer', () => {
 	// Set up spies on the mocked modules

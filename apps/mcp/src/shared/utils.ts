@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
 	LOCAL_ONLY_COMMANDS,
-	createTmCore,
-	type LocalOnlyCommand
+	type LocalOnlyCommand,
+	createTmCore
 } from '@tm/core';
 import type { ContentResult, Context } from 'fastmcp';
 import packageJson from '../../../../package.json' with { type: 'json' };

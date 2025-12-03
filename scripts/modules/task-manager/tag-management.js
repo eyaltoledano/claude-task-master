@@ -1,28 +1,28 @@
-import path from 'path';
 import fs from 'fs';
-import inquirer from 'inquirer';
-import chalk from 'chalk';
+import path from 'path';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
+import inquirer from 'inquirer';
 
 import {
+	tryAddTagViaRemote,
+	tryListTagsViaRemote,
+	tryUseTagViaRemote
+} from '@tm/bridge';
+import { displayBanner, getStatusWithColor } from '../ui.js';
+import {
+	findProjectRoot,
+	getCurrentTag,
+	getTasksForTag,
 	log,
 	readJSON,
-	writeJSON,
-	getCurrentTag,
 	resolveTag,
-	getTasksForTag,
 	setTasksForTag,
-	findProjectRoot,
-	truncate
+	truncate,
+	writeJSON
 } from '../utils.js';
-import { displayBanner, getStatusWithColor } from '../ui.js';
 import findNextTask from './find-next-task.js';
-import {
-	tryListTagsViaRemote,
-	tryUseTagViaRemote,
-	tryAddTagViaRemote
-} from '@tm/bridge';
 
 /**
  * Create a new tag context

@@ -5,8 +5,8 @@
 
 import { tags } from '../../../../scripts/modules/task-manager/tag-management.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 

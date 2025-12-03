@@ -6,8 +6,8 @@
 import path from 'path';
 import { performResearch } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';
 

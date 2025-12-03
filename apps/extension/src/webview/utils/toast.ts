@@ -2,7 +2,7 @@
  * Toast notification utilities
  */
 
-import type { ToastNotification, AppAction } from '../types';
+import type { AppAction, ToastNotification } from '../types';
 
 let toastIdCounter = 0;
 

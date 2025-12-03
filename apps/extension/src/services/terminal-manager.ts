@@ -3,8 +3,8 @@
  * Uses @tm/core for consistent task management with the CLI
  */
 
+import { type TmCore, createTmCore } from '@tm/core';
 import * as vscode from 'vscode';
-import { createTmCore, type TmCore } from '@tm/core';
 import type { ExtensionLogger } from '../utils/logger';
 
 export interface TerminalExecutionOptions {

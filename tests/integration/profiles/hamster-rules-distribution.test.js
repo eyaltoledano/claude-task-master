@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import { execSync } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import * as profilesModule from '../../../src/profiles/index.js';
 

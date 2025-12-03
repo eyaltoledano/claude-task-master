@@ -1,8 +1,8 @@
+import fs from 'fs';
 // VS Code conversion profile for rule-transformer
 import path from 'path';
-import fs from 'fs';
 import { log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
+import { COMMON_TOOL_MAPPINGS, createProfile } from './base-profile.js';
 
 /**
  * Transform standard MCP config format to VS Code format

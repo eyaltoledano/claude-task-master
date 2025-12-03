@@ -8,6 +8,23 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	isEmpty: jest.fn(() => false)
 }));
 
+// Mock marked-terminal to avoid chalk dependency issues
+jest.unstable_mockModule('marked-terminal', () => ({
+	markedTerminal: jest.fn(() => ({}))
+}));
+
+// Mock marked to avoid terminal rendering
+jest.unstable_mockModule('marked', () => ({
+	marked: Object.assign(
+		jest.fn((text) => text),
+		{
+			use: jest.fn(),
+			setOptions: jest.fn(),
+			parse: jest.fn((text) => Promise.resolve(text))
+		}
+	)
+}));
+
 // Mock UI-affecting external libs to minimal no-op implementations
 jest.unstable_mockModule('chalk', () => ({
 	default: {
@@ -31,14 +48,26 @@ jest.unstable_mockModule('chalk', () => ({
 		),
 		yellow: jest.fn((text) => text),
 		red: jest.fn((text) => text),
-		gray: jest.fn((text) => text),
+		gray: Object.assign(
+			jest.fn((text) => text),
+			{
+				italic: jest.fn((text) => text),
+				dim: jest.fn((text) => text)
+			}
+		),
 		blue: Object.assign(
 			jest.fn((text) => text),
 			{
-				bold: jest.fn((text) => text)
+				bold: jest.fn((text) => text),
+				underline: jest.fn((text) => text)
 			}
 		),
-		bold: jest.fn((text) => text)
+		dim: Object.assign(
+			jest.fn((text) => text),
+			{
+				strikethrough: jest.fn((text) => text)
+			}
+		)
 	}
 }));
 
@@ -88,6 +117,14 @@ jest.unstable_mockModule(
 		generateTextService: jest.fn().mockResolvedValue({
 			mainResult:
 				'Test research result with ```javascript\nconsole.log("test");\n```',
+			telemetryData: {}
+		}),
+		streamTextService: jest.fn().mockResolvedValue({
+			mainResult: {
+				textStream: (async function* () {
+					yield 'Test research result';
+				})()
+			},
 			telemetryData: {}
 		})
 	})

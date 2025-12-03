@@ -102,3 +102,9 @@ apps/extension/vsix-build/
 # No longer needed in .gitignore as state is stored globally
 
 .scannerwork
+
+# OS specific
+
+# Task files
+tasks.json
+tasks/ 

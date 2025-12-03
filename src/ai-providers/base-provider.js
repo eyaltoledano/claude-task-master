@@ -1,16 +1,17 @@
 import {
+	JSONParseError,
+	NoObjectGeneratedError,
 	generateObject,
 	generateText,
-	streamText,
 	streamObject,
-	zodSchema,
-	JSONParseError,
-	NoObjectGeneratedError
+	streamText,
+	zodSchema
 } from 'ai';
 import { jsonrepair } from 'jsonrepair';
-import { log, findProjectRoot } from '../../scripts/modules/utils.js';
-import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
 import { EnvHttpProxyAgent } from 'undici';
+import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
+import { findProjectRoot, log } from '../../scripts/modules/utils.js';
+import { getAITelemetryConfig, hashProjectRoot } from '../telemetry/sentry.js';
 
 /**
  * Base class for all AI providers
@@ -207,13 +208,32 @@ export class BaseAIProvider {
 			);
 
 			const client = await this.getClient(params);
+
+			// Get Sentry telemetry config with function ID and metadata for better tracing
+			// Format: provider.model.command.method
+			const commandName = params.commandName || 'unknown';
+			const functionId = `${this.name}.${params.modelId}.${commandName}.generateText`;
+
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+
 			const result = await generateText({
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
-					: {})
+					: {}),
+				...(telemetryConfig && { experimental_telemetry: telemetryConfig })
 			});
 
 			log(
@@ -252,13 +272,35 @@ export class BaseAIProvider {
 			log('debug', `Streaming ${this.name} text with model: ${params.modelId}`);
 
 			const client = await this.getClient(params);
+
+			// Get Sentry telemetry config with function ID and metadata for better tracing
+			// Format: provider.model.command.method
+			const commandName = params.commandName || 'unknown';
+			const functionId = `${this.name}.${params.modelId}.${commandName}.streamText`;
+
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+
 			const stream = await streamText({
 				model: client(params.modelId),
 				messages: params.messages,
 				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
-					: {})
+					: {}),
+				...(telemetryConfig && { experimental_telemetry: telemetryConfig }),
+				...(params.experimental_transform && {
+					experimental_transform: params.experimental_transform
+				})
 			});
 
 			log(
@@ -290,6 +332,24 @@ export class BaseAIProvider {
 			);
 
 			const client = await this.getClient(params);
+
+			// Get Sentry telemetry config with function ID and metadata for better tracing
+			// Format: provider.model.command.method
+			const commandName = params.commandName || 'unknown';
+			const functionId = `${this.name}.${params.modelId}.${commandName}.streamObject`;
+
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+
 			const result = await streamObject({
 				model: client(params.modelId),
 				messages: params.messages,
@@ -298,7 +358,8 @@ export class BaseAIProvider {
 				maxOutputTokens: params.maxTokens,
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
-					: {})
+					: {}),
+				...(telemetryConfig && { experimental_telemetry: telemetryConfig })
 			});
 
 			log(
@@ -336,6 +397,23 @@ export class BaseAIProvider {
 
 			const client = await this.getClient(params);
 
+			// Get Sentry telemetry config with function ID and metadata for better tracing
+			// Format: provider.model.command.method.objectName
+			const commandName = params.commandName || 'unknown';
+			const functionId = `${this.name}.${params.modelId}.${commandName}.generateObject.${params.objectName}`;
+
+			// Build telemetry metadata for enhanced filtering/grouping in Sentry
+			const metadata = {
+				command: commandName,
+				outputType: params.outputType,
+				tag: params.tag,
+				projectHash: hashProjectRoot(params.projectRoot),
+				userId: params.userId, // Hamster user ID if authenticated
+				briefId: params.briefId // Hamster brief ID if connected
+			};
+
+			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
+
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
@@ -346,7 +424,8 @@ export class BaseAIProvider {
 				maxTokens: params.maxTokens,
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
-					: {})
+					: {}),
+				...(telemetryConfig && { experimental_telemetry: telemetryConfig })
 			});
 
 			log(

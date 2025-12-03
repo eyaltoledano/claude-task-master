@@ -3,23 +3,24 @@
  * Provides a clean interface for workspace context management
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
-import inquirer from 'inquirer';
-import ora from 'ora';
 import {
 	AuthManager,
-	createTmCore,
+	type TmCore,
 	type UserContext,
-	type TmCore
+	createTmCore
 } from '@tm/core';
-import * as ui from '../utils/ui.js';
-import { checkAuthentication } from '../utils/auth-helpers.js';
+import chalk from 'chalk';
+import { Command } from 'commander';
+import inquirer from 'inquirer';
+import ora from 'ora';
 import { getBriefStatusWithColor } from '../ui/formatters/status-formatters.js';
+import { checkAuthentication } from '../utils/auth-helpers.js';
 import {
-	selectBriefInteractive,
-	selectBriefFromInput
+	selectBriefFromInput,
+	selectBriefInteractive
 } from '../utils/brief-selection.js';
+import { ensureOrgSelected } from '../utils/org-selection.js';
+import * as ui from '../utils/ui.js';
 
 /**
  * Result type from context command
@@ -60,13 +61,17 @@ export class ContextCommand extends Command {
 		// Accept optional positional argument for brief ID or Hamster URL
 		this.argument('[briefOrUrl]', 'Brief ID or Hamster brief URL');
 
+		// Global option for this command and its subcommands
+		this.option('--no-header', 'Suppress the header display');
+
 		// Default action: if an argument is provided, resolve and set context; else show
-		this.action(async (briefOrUrl?: string) => {
+		this.action(async (briefOrUrl?: string, options?: { header?: boolean }) => {
+			const showHeader = options?.header !== false;
 			if (briefOrUrl && briefOrUrl.trim().length > 0) {
-				await this.executeSetFromBriefInput(briefOrUrl.trim());
+				await this.executeSetFromBriefInput(briefOrUrl.trim(), showHeader);
 				return;
 			}
-			await this.executeShow();
+			await this.executeShow(showHeader);
 		});
 	}
 
@@ -77,6 +82,7 @@ export class ContextCommand extends Command {
 		this.command('org')
 			.description('Select an organization')
 			.argument('[orgId]', 'Organization ID or slug to select directly')
+			.option('--no-header', 'Suppress the header display')
 			.action(async (orgId?: string) => {
 				await this.executeSelectOrg(orgId);
 			});
@@ -89,6 +95,7 @@ export class ContextCommand extends Command {
 		this.command('brief')
 			.description('Select a brief within the current organization')
 			.argument('[briefIdOrUrl]', 'Brief ID or Hamster URL to select directly')
+			.option('--no-header', 'Suppress the header display')
 			.action(async (briefIdOrUrl?: string) => {
 				await this.executeSelectBrief(briefIdOrUrl);
 			});
@@ -100,6 +107,7 @@ export class ContextCommand extends Command {
 	private addClearCommand(): void {
 		this.command('clear')
 			.description('Clear all context selections')
+			.option('--no-header', 'Suppress the header display')
 			.action(async () => {
 				await this.executeClear();
 			});
@@ -115,6 +123,7 @@ export class ContextCommand extends Command {
 			.option('--org-name <name>', 'Organization name')
 			.option('--brief <id>', 'Brief ID')
 			.option('--brief-name <name>', 'Brief name')
+			.option('--no-header', 'Suppress the header display')
 			.action(async (options) => {
 				await this.executeSet(options);
 			});
@@ -123,9 +132,9 @@ export class ContextCommand extends Command {
 	/**
 	 * Execute show current context
 	 */
-	private async executeShow(): Promise<void> {
+	private async executeShow(showHeader: boolean = true): Promise<void> {
 		try {
-			const result = await this.displayContext();
+			const result = await this.displayContext(showHeader);
 			this.setLastResult(result);
 		} catch (error: any) {
 			ui.displayError(`Failed to show context: ${(error as Error).message}`);
@@ -136,7 +145,9 @@ export class ContextCommand extends Command {
 	/**
 	 * Display current context
 	 */
-	private async displayContext(): Promise<ContextResult> {
+	private async displayContext(
+		showHeader: boolean = true
+	): Promise<ContextResult> {
 		// Check authentication first
 		const isAuthenticated = await checkAuthentication(this.authManager, {
 			message:
@@ -153,7 +164,9 @@ export class ContextCommand extends Command {
 
 		const context = this.authManager.getContext();
 
-		console.log(chalk.cyan('\n🌍 Workspace Context\n'));
+		if (showHeader) {
+			console.log(chalk.cyan('\n🌍 Workspace Context\n'));
+		}
 
 		if (context && (context.orgId || context.briefId)) {
 			if (context.orgName || context.orgId) {
@@ -507,7 +520,10 @@ export class ContextCommand extends Command {
 	 * Execute setting context from a brief ID or Hamster URL
 	 * All parsing logic is in tm-core
 	 */
-	private async executeSetFromBriefInput(input: string): Promise<void> {
+	private async executeSetFromBriefInput(
+		input: string,
+		_showHeader: boolean = true
+	): Promise<void> {
 		try {
 			// Check authentication
 			if (!(await checkAuthentication(this.authManager))) {
@@ -607,7 +623,8 @@ export class ContextCommand extends Command {
 
 	/**
 	 * Interactive context setup (for post-auth flow)
-	 * Prompts user to select org and brief
+	 * Organization selection is MANDATORY - you cannot proceed without an org.
+	 * Brief selection is optional.
 	 */
 	async setupContextInteractive(): Promise<{
 		success: boolean;
@@ -615,30 +632,35 @@ export class ContextCommand extends Command {
 		briefSelected: boolean;
 	}> {
 		try {
-			// Ask if user wants to set up workspace context
-			const { setupContext } = await inquirer.prompt([
+			// Organization selection is REQUIRED - use the shared utility
+			// It will auto-select if only one org, or prompt if multiple
+			const orgResult = await ensureOrgSelected(this.authManager, {
+				promptMessage: 'Select an organization:'
+			});
+
+			if (!orgResult.success || !orgResult.orgId) {
+				// This should rarely happen (only if user has no orgs)
+				return { success: false, orgSelected: false, briefSelected: false };
+			}
+
+			// Brief selection is optional - ask if they want to select one
+			const { selectBrief } = await inquirer.prompt([
 				{
 					type: 'confirm',
-					name: 'setupContext',
-					message: 'Would you like to set up your workspace context now?',
+					name: 'selectBrief',
+					message: 'Would you like to select a brief now?',
 					default: true
 				}
 			]);
 
-			if (!setupContext) {
-				return { success: true, orgSelected: false, briefSelected: false };
-			}
-
-			// Select organization
-			const orgResult = await this.selectOrganization();
-			if (!orgResult.success || !orgResult.context?.orgId) {
-				return { success: false, orgSelected: false, briefSelected: false };
+			if (!selectBrief) {
+				return { success: true, orgSelected: true, briefSelected: false };
 			}
 
 			// Select brief using shared utility
 			const briefResult = await selectBriefInteractive(
 				this.authManager,
-				orgResult.context.orgId
+				orgResult.orgId
 			);
 			return {
 				success: true,
@@ -648,7 +670,7 @@ export class ContextCommand extends Command {
 		} catch (error) {
 			console.error(
 				chalk.yellow(
-					'\nContext setup skipped due to error. You can set it up later with "tm context"'
+					'\nContext setup encountered an error. You can set it up later with "tm context"'
 				)
 			);
 			return { success: false, orgSelected: false, briefSelected: false };

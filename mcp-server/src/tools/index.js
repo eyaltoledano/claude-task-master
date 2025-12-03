@@ -5,12 +5,12 @@
 
 import logger from '../logger.js';
 import {
-	toolRegistry,
 	coreTools,
-	standardTools,
 	getAvailableTools,
 	getToolRegistration,
-	isValidTool
+	isValidTool,
+	standardTools,
+	toolRegistry
 } from './tool-registry.js';
 
 /**

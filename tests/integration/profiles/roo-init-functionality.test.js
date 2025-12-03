@@ -1,8 +1,8 @@
-import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
-import { rooProfile } from '../../../src/profiles/roo.js';
+import { jest } from '@jest/globals';
 import { COMMON_TOOL_MAPPINGS } from '../../../src/profiles/base-profile.js';
+import { rooProfile } from '../../../src/profiles/roo.js';
 
 describe('Roo Profile Initialization Functionality', () => {
 	let rooProfileContent;

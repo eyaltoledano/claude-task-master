@@ -1,7 +1,7 @@
-import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
 import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 import { convertAllRulesToProfileRules } from '../../../src/utils/rule-transformer.js';
 

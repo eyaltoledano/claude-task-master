@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { z } from 'zod';
 import { ZAIProvider } from '../../../src/ai-providers/zai.js';
 

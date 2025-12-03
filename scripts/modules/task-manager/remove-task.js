@@ -1,6 +1,6 @@
-import path from 'path';
 import * as fs from 'fs';
-import { readJSON, writeJSON, log, findTaskById } from '../utils.js';
+import path from 'path';
+import { findTaskById, log, readJSON, writeJSON } from '../utils.js';
 import taskExists from './task-exists.js';
 
 /**

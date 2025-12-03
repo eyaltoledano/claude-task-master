@@ -1,9 +1,9 @@
 import { jest } from '@jest/globals';
 import {
 	displayCrossTagDependencyError,
-	displaySubtaskMoveError,
-	displayInvalidTagCombinationError,
 	displayDependencyValidationHints,
+	displayInvalidTagCombinationError,
+	displaySubtaskMoveError,
 	formatTaskIdForDisplay
 } from '../../../../../scripts/modules/ui.js';
 

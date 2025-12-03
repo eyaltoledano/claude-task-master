@@ -6,6 +6,7 @@
 import path from 'node:path';
 import type { StorageType } from '../../common/types/index.js';
 import type { Brief } from '../briefs/types.js';
+import { type AuthBlockResult, checkAuthBlock } from './command.guard.js';
 import { AuthManager } from './managers/auth-manager.js';
 import type {
 	Organization,
@@ -13,10 +14,10 @@ import type {
 } from './services/organization.service.js';
 import type {
 	AuthCredentials,
+	MFAVerificationResult,
 	OAuthFlowOptions,
 	UserContext
 } from './types.js';
-import { checkAuthBlock, type AuthBlockResult } from './command.guard.js';
 
 /**
  * Display information for storage context
@@ -105,6 +106,25 @@ export class AuthDomain {
 	 */
 	async verifyMFA(factorId: string, code: string): Promise<AuthCredentials> {
 		return this.authManager.verifyMFA(factorId, code);
+	}
+
+	/**
+	 * Verify MFA with retry support
+	 * Allows multiple attempts with a callback for prompting the user
+	 *
+	 * @param factorId - MFA factor ID from the MFA_REQUIRED error
+	 * @param codeProvider - Function that prompts for and returns the MFA code
+	 * @param options - Optional configuration for retry behavior
+	 */
+	async verifyMFAWithRetry(
+		factorId: string,
+		codeProvider: () => Promise<string>,
+		options?: {
+			maxAttempts?: number;
+			onInvalidCode?: (attempt: number, remaining: number) => void;
+		}
+	): Promise<MFAVerificationResult> {
+		return this.authManager.verifyMFAWithRetry(factorId, codeProvider, options);
 	}
 
 	/**
@@ -274,9 +294,9 @@ export class AuthDomain {
 
 	/**
 	 * Get web app base URL from environment configuration
-	 * @private
+	 * Handles protocol detection and localhost vs production domains
 	 */
-	private getWebAppUrl(): string | undefined {
+	getApiBaseUrl(): string | undefined {
 		const baseDomain =
 			process.env.TM_BASE_DOMAIN || process.env.TM_PUBLIC_BASE_DOMAIN;
 
@@ -295,5 +315,12 @@ export class AuthDomain {
 		}
 
 		return `https://${baseDomain}`;
+	}
+
+	/**
+	 * @deprecated Use getApiBaseUrl() instead
+	 */
+	private getWebAppUrl(): string | undefined {
+		return this.getApiBaseUrl();
 	}
 }

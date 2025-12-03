@@ -7,22 +7,22 @@
  * This file exists for backward compatibility during the migration period.
  */
 
-import path from 'path';
 import fs from 'fs';
-import {
-	TASKMASTER_TASKS_FILE,
-	LEGACY_TASKS_FILE,
-	TASKMASTER_DOCS_DIR,
-	TASKMASTER_REPORTS_DIR,
-	COMPLEXITY_REPORT_FILE,
-	TASKMASTER_CONFIG_FILE,
-	LEGACY_CONFIG_FILE
-} from '../constants/paths.js';
-import { getLoggerOrDefault } from './logger-utils.js';
+import path from 'path';
 import {
 	findProjectRoot as findProjectRootCore,
 	normalizeProjectRoot as normalizeProjectRootCore
 } from '@tm/core';
+import {
+	COMPLEXITY_REPORT_FILE,
+	LEGACY_CONFIG_FILE,
+	LEGACY_TASKS_FILE,
+	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_DOCS_DIR,
+	TASKMASTER_REPORTS_DIR,
+	TASKMASTER_TASKS_FILE
+} from '../constants/paths.js';
+import { getLoggerOrDefault } from './logger-utils.js';
 
 /**
  * Normalize project root to ensure it doesn't end with .taskmaster

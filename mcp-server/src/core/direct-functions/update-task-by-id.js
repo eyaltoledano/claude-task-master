@@ -5,8 +5,8 @@
 
 import { updateTaskById } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { createLogWrapper } from '../../tools/utils.js';

@@ -2,10 +2,10 @@
  * Tests for SessionManager
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger
 const mockLogger = {
@@ -59,8 +59,8 @@ vi.mock('./context-store.js', () => ({
 	}
 }));
 
-import { SessionManager } from './session-manager.js';
 import { AuthenticationError } from '../types.js';
+import { SessionManager } from './session-manager.js';
 
 describe('SessionManager', () => {
 	beforeEach(() => {

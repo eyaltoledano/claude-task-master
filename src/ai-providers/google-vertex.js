@@ -4,9 +4,9 @@
  */
 
 import { createVertex } from '@ai-sdk/google-vertex';
-import { BaseAIProvider } from './base-provider.js';
 import { resolveEnvVariable } from '../../scripts/modules/utils.js';
 import { log } from '../../scripts/modules/utils.js';
+import { BaseAIProvider } from './base-provider.js';
 
 // Vertex-specific error classes
 class VertexAuthError extends Error {

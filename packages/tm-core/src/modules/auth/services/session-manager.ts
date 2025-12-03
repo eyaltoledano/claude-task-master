@@ -8,9 +8,9 @@ import os from 'os';
 import path from 'path';
 import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
-import { ContextStore } from './context-store.js';
 import type { AuthCredentials } from '../types.js';
 import { AuthenticationError } from '../types.js';
+import { ContextStore } from './context-store.js';
 
 /**
  * SessionManager - Focused service for session and token management
