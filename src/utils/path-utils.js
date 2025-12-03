@@ -453,15 +453,22 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 	}
 
 	// Only warn once per command execution to prevent spam during init
-	const warningKey = `config_warning_${projectRoot}`;
+	// Skip warning if:
+	// Global suppress flag is set (during API mode detection)
+	const isWarningSuppressed = global._tmSuppressConfigWarnings === true;
+	const shouldSkipWarning = isWarningSuppressed || args?.storageType === 'api';
 
-	if (!global._tmConfigWarningsThisRun) {
-		global._tmConfigWarningsThisRun = new Set();
-	}
+	if (!shouldSkipWarning) {
+		const warningKey = `config_warning_${projectRoot}`;
 
-	if (!global._tmConfigWarningsThisRun.has(warningKey)) {
-		global._tmConfigWarningsThisRun.add(warningKey);
-		logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+		if (!global._tmConfigWarningsThisRun) {
+			global._tmConfigWarningsThisRun = new Set();
+		}
+
+		if (!global._tmConfigWarningsThisRun.has(warningKey)) {
+			global._tmConfigWarningsThisRun.add(warningKey);
+			logger.warn?.(`No configuration file found in project: ${projectRoot}`);
+		}
 	}
 
 	return null;

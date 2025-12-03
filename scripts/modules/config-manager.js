@@ -72,6 +72,23 @@ const DEFAULTS = {
 let loadedConfig = null;
 let loadedConfigRoot = null; // Track which root loaded the config
 
+/**
+ * Suppress config file warnings (useful during API mode detection)
+ * Uses global object so it can be shared across modules without circular deps
+ * @param {boolean} suppress - Whether to suppress warnings
+ */
+export function setSuppressConfigWarnings(suppress) {
+	global._tmSuppressConfigWarnings = suppress;
+}
+
+/**
+ * Check if config warnings are currently suppressed
+ * @returns {boolean}
+ */
+function isConfigWarningSuppressed() {
+	return global._tmSuppressConfigWarnings === true;
+}
+
 // Custom Error for configuration issues
 class ConfigurationError extends Error {
 	constructor(message) {
@@ -80,9 +97,10 @@ class ConfigurationError extends Error {
 	}
 }
 
-function _loadAndValidateConfig(explicitRoot = null) {
+function _loadAndValidateConfig(explicitRoot = null, options = {}) {
 	const defaults = DEFAULTS; // Use the defined defaults
 	let rootToUse = explicitRoot;
+	const { storageType } = options;
 	let configSource = explicitRoot
 		? `explicit root (${explicitRoot})`
 		: 'defaults (no root provided yet)';
@@ -114,7 +132,7 @@ function _loadAndValidateConfig(explicitRoot = null) {
 	if (hasProjectMarkers) {
 		// Only try to find config if we have project markers
 		// This prevents the repeated warnings during init
-		configPath = findConfigPath(null, { projectRoot: rootToUse });
+		configPath = findConfigPath(null, { projectRoot: rootToUse, storageType });
 	}
 
 	if (configPath) {
@@ -203,29 +221,36 @@ function _loadAndValidateConfig(explicitRoot = null) {
 		}
 	} else {
 		// Config file doesn't exist at the determined rootToUse.
-		if (explicitRoot) {
-			// Only warn if an explicit root was *expected*.
-			console.warn(
-				chalk.yellow(
-					`Warning: Configuration file not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
-				)
-			);
-		} else {
-			// Don't warn about missing config during initialization
-			// Only warn if this looks like an existing project (has .taskmaster dir or legacy config marker)
-			const hasTaskmasterDir = fs.existsSync(
-				path.join(rootToUse, TASKMASTER_DIR)
-			);
-			const hasLegacyMarker = fs.existsSync(
-				path.join(rootToUse, LEGACY_CONFIG_FILE)
-			);
+		// Skip warnings if:
+		// 1. Global suppress flag is set (during API mode detection)
+		// 2. storageType is explicitly 'api' (remote storage mode - no local config expected)
+		const shouldWarn = !isConfigWarningSuppressed() && storageType !== 'api';
 
-			if (hasTaskmasterDir || hasLegacyMarker) {
+		if (shouldWarn) {
+			if (explicitRoot) {
+				// Warn about explicit root not having config
 				console.warn(
 					chalk.yellow(
-						`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
+						`Warning: Configuration file not found at provided project root (${explicitRoot}). Using default configuration. Run 'task-master models --setup' to configure.`
 					)
 				);
+			} else {
+				// Don't warn about missing config during initialization
+				// Only warn if this looks like an existing project (has .taskmaster dir or legacy config marker)
+				const hasTaskmasterDir = fs.existsSync(
+					path.join(rootToUse, TASKMASTER_DIR)
+				);
+				const hasLegacyMarker = fs.existsSync(
+					path.join(rootToUse, LEGACY_CONFIG_FILE)
+				);
+
+				if (hasTaskmasterDir || hasLegacyMarker) {
+					console.warn(
+						chalk.yellow(
+							`Warning: Configuration file not found at derived root (${rootToUse}). Using defaults.`
+						)
+					);
+				}
 			}
 		}
 		// Keep config as defaults
@@ -241,9 +266,11 @@ function _loadAndValidateConfig(explicitRoot = null) {
  * Handles MCP initialization context gracefully.
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
  * @param {boolean} forceReload - Force reloading the config file.
+ * @param {object} options - Optional configuration options.
+ * @param {'api'|'file'|'auto'} [options.storageType] - Storage type to suppress warnings for API mode.
  * @returns {object} The loaded configuration object.
  */
-function getConfig(explicitRoot = null, forceReload = false) {
+function getConfig(explicitRoot = null, forceReload = false, options = {}) {
 	// Determine if a reload is necessary
 	const needsLoad =
 		!loadedConfig ||
@@ -251,7 +278,7 @@ function getConfig(explicitRoot = null, forceReload = false) {
 		(explicitRoot && explicitRoot !== loadedConfigRoot);
 
 	if (needsLoad) {
-		const newConfig = _loadAndValidateConfig(explicitRoot); // _load handles null explicitRoot
+		const newConfig = _loadAndValidateConfig(explicitRoot, options); // _load handles null explicitRoot
 
 		// Only update the global cache if loading was forced or if an explicit root
 		// was provided (meaning we attempted to load a specific project's config).

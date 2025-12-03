@@ -72,7 +72,8 @@ import {
 	getDebugFlag,
 	getDefaultNumTasks,
 	isApiKeySet,
-	isConfigFilePresent
+	isConfigFilePresent,
+	setSuppressConfigWarnings
 } from './config-manager.js';
 
 import {
@@ -161,13 +162,19 @@ function isConnectedToHamster() {
 		}
 
 		// Fallback: Check if storage type is 'api' (user selected Hamster during init)
+		// Suppress warnings during this check since we're detecting API mode
 		try {
-			const config = getConfig();
+			setSuppressConfigWarnings(true);
+			const config = getConfig(null, false, { storageType: 'api' });
+			setSuppressConfigWarnings(false);
 			if (config?.storage?.type === 'api') {
 				return true;
 			}
 		} catch {
+			setSuppressConfigWarnings(false);
 			// Config check failed, continue
+		} finally {
+			setSuppressConfigWarnings(false);
 		}
 
 		return false;
