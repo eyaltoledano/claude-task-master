@@ -843,7 +843,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.GROK_CLI,
 		CUSTOM_PROVIDERS.MCP,
 		CUSTOM_PROVIDERS.CODEX_CLI,
-		CUSTOM_PROVIDERS.CORTEX_CODE
+		CUSTOM_PROVIDERS.SNOWFLAKE
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -995,12 +995,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.AWS_ACCESS_KEY_ID; // Bedrock uses AWS credentials
 				placeholderValue = 'YOUR_AWS_ACCESS_KEY_ID_HERE';
 				break;
-			case 'cortex-code':
-				return true; // No key needed
 			case 'snowflake':
-				apiKeyToCheck = mcpEnv.SNOWFLAKE_API_KEY; // Snowflake REST API access
-				placeholderValue = 'YOUR_SNOWFLAKE_API_KEY_HERE';
-				break;
+				return true; // No key strictly required - supports Cortex Code CLI fallback
 		default:
 			return false; // Unknown provider
 		}
@@ -1171,27 +1167,6 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	return undefined;
 }
 
-/**
- * Get Cortex Code provider settings for a specific command.
- * @param {string} commandName - The name of the command being executed.
- * @param {string|null} explicitRoot - Optional explicit project root path.
- * @returns {object} Cortex Code settings object.
- */
-function getCortexCodeSettingsForCommand(commandName, explicitRoot = null) {
-	const config = getConfig(explicitRoot);
-	const settings = config.cortexCode || {};
-
-	return {
-		connection: settings.connection || 'default',
-		timeout: settings.timeout || 60000,
-		retries: settings.retries || 3,
-		plan: settings.enablePlanningMode || false,
-		noMcp: settings.disableMcp || false,
-		skillsFile: settings.skillsFile || null,
-		workingDirectory: settings.workingDirectory || null
-	};
-}
-
 // Export the providers without API keys array for use in other modules
 export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
@@ -1218,8 +1193,6 @@ export {
 	// Grok CLI settings
 	getGrokCliSettings,
 	getGrokCliSettingsForCommand,
-	// Cortex Code settings
-	getCortexCodeSettingsForCommand,
 	// Validation
 	validateProvider,
 	validateProviderModelCombination,
