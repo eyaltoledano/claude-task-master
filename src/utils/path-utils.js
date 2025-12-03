@@ -23,6 +23,7 @@ import {
 	TASKMASTER_TASKS_FILE
 } from '../constants/paths.js';
 import { getLoggerOrDefault } from './logger-utils.js';
+import { isConfigWarningSuppressed } from '../../scripts/modules/config-manager.js';
 
 /**
  * Normalize project root to ensure it doesn't end with .taskmaster
@@ -455,8 +456,8 @@ export function findConfigPath(explicitPath = null, args = null, log = null) {
 	// Only warn once per command execution to prevent spam during init
 	// Skip warning if:
 	// Global suppress flag is set (during API mode detection)
-	const isWarningSuppressed = global._tmSuppressConfigWarnings === true;
-	const shouldSkipWarning = isWarningSuppressed || args?.storageType === 'api';
+	const shouldSkipWarning =
+		isConfigWarningSuppressed() || args?.storageType === 'api';
 
 	if (!shouldSkipWarning) {
 		const warningKey = `config_warning_${projectRoot}`;

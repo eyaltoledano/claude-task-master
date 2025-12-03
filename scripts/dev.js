@@ -10,6 +10,7 @@
 
 import { join } from 'node:path';
 import { AuthManager, findProjectRoot } from '@tm/core';
+import { setSuppressConfigWarnings } from './modules/config-manager.js';
 
 import dotenv from 'dotenv';
 import { initializeSentry } from '../src/telemetry/sentry.js';
@@ -42,9 +43,10 @@ try {
 	const authManager = AuthManager.getInstance();
 	const hasValidSession = await authManager.hasValidSession();
 	if (hasValidSession) {
-		global._tmSuppressConfigWarnings = true;
+		setSuppressConfigWarnings(true);
 	}
 } catch {
+	setSuppressConfigWarnings(false);
 	// Auth check failed, continue without suppressing
 }
 

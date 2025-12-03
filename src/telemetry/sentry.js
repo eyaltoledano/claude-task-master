@@ -44,10 +44,9 @@ export function initializeSentry(options = {}) {
 	// This applies to local storage users only
 	// Hamster users don't use local config (API storage), so this check doesn't affect them
 	// Suppress config warnings during this check to avoid noisy output at startup
+	setSuppressConfigWarnings(true);
 	try {
-		setSuppressConfigWarnings(true);
 		const telemetryEnabled = getAnonymousTelemetryEnabled(options.projectRoot);
-		setSuppressConfigWarnings(false);
 
 		if (!telemetryEnabled) {
 			console.log(
@@ -59,6 +58,7 @@ export function initializeSentry(options = {}) {
 	} catch (error) {
 		// If there's an error checking telemetry preferences (e.g., config not available yet),
 		// default to enabled. This ensures telemetry works during initialization.
+	} finally {
 		setSuppressConfigWarnings(false);
 	}
 

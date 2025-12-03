@@ -85,7 +85,7 @@ export function setSuppressConfigWarnings(suppress) {
  * Check if config warnings are currently suppressed
  * @returns {boolean}
  */
-function isConfigWarningSuppressed() {
+export function isConfigWarningSuppressed() {
 	return global._tmSuppressConfigWarnings === true;
 }
 
