@@ -87,7 +87,9 @@ Place your PRD file in the `.taskmaster/docs` folder in your project.
 
 # Parse your PRD into Tasks
 
-This is where the Task Master magic begins.
+This is where the Task Master magic begins. When you run the parse command, you'll be given a choice between two workflows.
+
+## Workflow Selection
 
 In Cursor's AI chat, instruct the agent to generate tasks from your PRD:
 
@@ -101,10 +103,32 @@ The agent will execute the following command which you can alternatively paste i
 task-master parse-prd .taskmaster/docs/<prd-name>.md
 ```
 
-This will:
+You'll then be prompted to choose your workflow:
 
+### Solo (Taskmaster) Workflow
+- **Parse locally**: PRD becomes a task list in a local JSON file
+- **Great for**: Quick prototyping, individual work, full control over AI models
+- **Requires**: Your own API keys for AI providers
+- **Result**: Tasks stored in `.taskmaster/tasks/tasks.json`
+
+### Together (Hamster) Workflow  
+- **Bring it to Hamster**: PRD becomes a living brief connected to your team
+- **Great for**: Team collaboration, sharing context, no API key management
+- **Requires**: Hamster account (free)
+- **Result**: Tasks stored in Hamster with real-time team sync
+
+## What Happens Next
+
+**Solo workflow**:
 - Parse your PRD document
 - Generate a structured `tasks.json` file with tasks, dependencies, priorities, and test strategies
+
+**Hamster workflow**:
+- OAuth login to Hamster
+- Create brief directly from PRD content with auto-generated title/description
+- Invite teammates during brief creation (optional)
+- Progress bar showing task generation phases
+- Auto-set context to new brief when complete
 
 Now that you have written and parsed a PRD, you are ready to start setting up your tasks.
 

@@ -1,0 +1,192 @@
+---
+title: "Hamster Team Integration"
+description: "Collaborate with your team using Task Master's Hamster integration"
+---
+
+# Team Collaboration with Hamster
+
+Task Master now integrates seamlessly with Hamster to enable team-based project management and AI-powered task execution. This integration lets you move beyond solo development to true collaborative workflows.
+
+## Overview
+
+The Hamster integration transforms Task Master from a solo tool into a team platform:
+
+- **Shared Context**: Your entire team works from the same brief, ensuring alignment
+- **No API Keys**: Hamster handles all AI operations, removing setup friction
+- **Real-time Sync**: Tasks and updates sync across all team members instantly
+- **Collaborative Planning**: Write and refine briefs together, then generate tasks
+
+## Getting Started with Hamster
+
+### 1. Initialize with Team Workflow
+
+When you run `task-master init`, choose the **"Together (Hamster)"** workflow:
+
+```bash
+task-master init
+```
+
+This will:
+- Skip local AI model configuration (Hamster handles this)
+- Set up OAuth authentication with Hamster
+- Configure your project for team collaboration
+
+### 2. Authentication
+
+Use the built-in authentication commands:
+
+```bash
+# Log in to Hamster
+task-master login
+
+# Log out of Hamster  
+task-master logout
+```
+
+## Working with Briefs
+
+### Creating Briefs from PRDs
+
+When you parse a PRD with Hamster integration, your document becomes a collaborative brief:
+
+```bash
+task-master parse-prd .taskmaster/docs/feature.md
+```
+
+Choose **"Bring it to Hamster"** and the system will:
+
+1. **OAuth Login**: Authenticate with your Hamster account
+2. **Brief Creation**: Convert your PRD into a structured brief
+3. **Team Invites**: Optionally invite teammates during creation
+4. **Task Generation**: Generate tasks with progress indicators
+5. **Context Setting**: Automatically set your CLI context to the new brief
+
+### Brief Features
+
+- **Auto-generated titles and descriptions** from your PRD content
+- **Progress tracking** during task generation phases
+- **Clickable URLs** for easy access to briefs and team invites
+- **Real-time collaboration** with your entire team
+
+## Exporting Local Tasks to Team
+
+Already have local tasks? Export them to create collaborative briefs:
+
+```bash
+# Export all local tasks to Hamster
+task-master export
+
+# Export and invite team members
+task-master export --invite
+
+# Export specific tags
+task-master export --tags=feature,bug-fix
+```
+
+The export process:
+- **Reverse engineers** your PRD from existing tasks
+- **Creates collaborative brief** with auto-generated content
+- **Invites team members** (up to 10 via email)
+- **Syncs your context** to the new team brief
+
+## Enhanced User Experience
+
+### Hamster-Aware Commands
+
+When connected to Hamster, Task Master provides optimized experiences:
+
+- **Context-specific help**: Shows only relevant commands for team workflows
+- **Progress indicators**: Loading spinners for long-running operations
+- **Better displays**: Shows "Brief: [name]" instead of "tag: [name]"
+- **Simplified updates**: Cleaner update displays without redundant info
+
+### Improved Command Syntax
+
+All the new positional argument syntax works seamlessly with Hamster:
+
+```bash
+# Set task status with new syntax
+task-master status HAM-31 done
+task-master status ham31.2 in-progress
+
+# Update tasks with natural syntax
+task-master update-task HAM-31 Added authentication logic
+
+# List tasks by status
+task-master list done
+task-master list in-progress
+```
+
+### Task ID Flexibility
+
+Hamster task IDs work naturally with case-insensitive matching:
+
+```bash
+# All of these work the same way
+task-master show HAM-31
+task-master show ham31
+task-master show ham-31
+```
+
+## Team Benefits
+
+### Alignment
+- **Single source of truth**: Everyone works from the same brief
+- **Shared context**: Team members see the same task breakdown
+- **Coordinated execution**: No duplicate work or conflicting implementations
+
+### Collaboration  
+- **Real-time updates**: Changes sync across all team members
+- **Team invites**: Easy onboarding of new members
+- **Collective intelligence**: Leverage team knowledge in task generation
+
+### Simplified Setup
+- **Zero API keys**: No individual API key management
+- **Centralized AI**: Hamster handles all AI operations
+- **Instant start**: New team members can start immediately
+
+## Best Practices
+
+### Brief Writing
+- **Write collaboratively**: Use Hamster's brief editing to refine together
+- **Include context**: More team context leads to better task generation
+- **Define responsibilities**: Clarify who owns what parts of the brief
+
+### Task Management
+- **Regular syncs**: Use `task-master next` to stay aligned on priorities
+- **Status updates**: Keep task statuses current for team visibility
+- **Communication**: Use brief comments for coordination
+
+### Workflow Integration
+- **Branch alignment**: Create branches that match task assignments
+- **PR references**: Reference Hamster task IDs in pull requests
+- **Review coordination**: Coordinate code reviews through brief discussions
+
+## Troubleshooting
+
+### Authentication Issues
+- Check your internet connection
+- Ensure you have a valid Hamster account
+- Try `task-master logout` then `task-master login` to refresh
+
+### Sync Problems
+- Verify you're connected to the correct brief
+- Check that all team members are using the same brief context
+- Contact your team admin if brief permissions are restricted
+
+### Performance
+- Use `task-master list` filters to focus on relevant tasks
+- Consider organizing large briefs with clear task hierarchies
+- Break down complex briefs into multiple focused ones
+
+## Migration from Solo to Team
+
+Already using Task Master solo? Here's how to migrate:
+
+1. **Export existing tasks**: `task-master export --invite`
+2. **Invite your team**: Add team members during export
+3. **Switch context**: Your CLI automatically switches to the team brief
+4. **Coordinate**: Share the brief URL with your team
+5. **Continue working**: Use the same Task Master commands with team sync
+
+The migration preserves all your task structure while adding team collaboration capabilities.

@@ -4,11 +4,20 @@ sidebarTitle: "Configuration"
 
 ---
 
-Before getting started with Task Master, you'll need to set up your API keys. There are a couple of ways to do this depending on whether you're using the CLI or working inside MCP. It's also a good time to start getting familiar with the other configuration options available — even if you don’t need to adjust them yet, knowing what’s possible will help down the line.
+Before getting started with Task Master, you'll need to set up your workflow and configuration. Task Master offers two main approaches:
+
+- **Solo (Taskmaster)**: Work independently with local tasks and your own API keys
+- **Together (Hamster)**: Collaborate with your team using Hamster's cloud platform (no API keys required)
+
+This guide covers both approaches. If you choose the Hamster workflow, you can skip the API key setup since Hamster handles all AI operations for you.
 
 ## API Key Setup
 
-Task Master uses environment variables to securely store provider API keys and optional endpoint URLs.
+<Note>
+**Using Hamster Workflow?** If you plan to use the Team (Hamster) workflow, you can skip this API key setup entirely. Hamster handles all AI operations, so you only need a Hamster account. Jump to the [initialization step](/getting-started/quick-start/prd-quick) to get started.
+</Note>
+
+For the Solo (Taskmaster) workflow, Task Master uses environment variables to securely store provider API keys and optional endpoint URLs.
 
 ### MCP Usage: mcp.json file
 
