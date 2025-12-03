@@ -63,7 +63,9 @@ jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info'),
 	isProxyEnabled: jest.fn(() => false),
-	getAnonymousTelemetryEnabled: jest.fn(() => true)
+	getAnonymousTelemetryEnabled: jest.fn(() => true),
+	setSuppressConfigWarnings: jest.fn(),
+	isConfigWarningSuppressed: jest.fn(() => false)
 }));
 
 // Mock utils
