@@ -1,5 +1,5 @@
-import { log, readJSON, writeJSON, getCurrentTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
+import { getCurrentTag, log, readJSON, writeJSON } from '../utils.js';
 
 /**
  * Add a subtask to a parent task

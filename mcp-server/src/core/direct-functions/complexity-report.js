@@ -4,9 +4,9 @@
  */
 
 import {
-	readComplexityReport,
+	disableSilentMode,
 	enableSilentMode,
-	disableSilentMode
+	readComplexityReport
 } from '../../../../scripts/modules/utils.js';
 
 /**

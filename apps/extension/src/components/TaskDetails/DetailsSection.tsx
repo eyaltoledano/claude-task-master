@@ -1,5 +1,5 @@
-import type React from 'react';
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import type React from 'react';
 
 interface MarkdownRendererProps {
 	content: string;

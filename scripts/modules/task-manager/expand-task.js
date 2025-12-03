@@ -11,17 +11,17 @@ import {
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { generateObjectService } from '../ai-services-unified.js';
 
+import { tryExpandViaRemote } from '@tm/bridge';
+import { createBridgeLogger } from '../bridge-utils.js';
 import {
+	getDebugFlag,
 	getDefaultSubtasks,
-	hasCodebaseAnalysis,
-	getDebugFlag
+	hasCodebaseAnalysis
 } from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { tryExpandViaRemote } from '@tm/bridge';
-import { createBridgeLogger } from '../bridge-utils.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).

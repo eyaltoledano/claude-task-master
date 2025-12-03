@@ -3,8 +3,8 @@
  * UI functions specifically for PRD parsing operations
  */
 
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
 import Table from 'cli-table3';
 import { formatElapsedTime } from '../utils/format.js';
 

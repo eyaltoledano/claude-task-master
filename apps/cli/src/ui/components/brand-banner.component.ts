@@ -5,39 +5,19 @@
  */
 
 import chalk from 'chalk';
-import boxen from 'boxen';
 import figlet from 'figlet';
 import gradient from 'gradient-string';
+import { createLink } from '../formatters/link-formatters.js';
 
 // Create a cool color gradient for the banner
 const coolGradient = gradient(['#00b4d8', '#0077b6', '#03045e']);
 
-/**
- * Render ASCII banner text with gradient and creator credit
- */
-function renderBannerWithCredit(text: string): void {
-	try {
-		const bannerText = figlet.textSync(text, {
-			font: 'Standard',
-			horizontalLayout: 'default',
-			verticalLayout: 'default'
-		});
-		console.log(coolGradient(bannerText));
-	} catch (error) {
-		// Fallback to simple text if figlet fails
-		console.log(coolGradient(`=== ${text} ===`));
-	}
-	console.log(
-		chalk.dim('by ') + chalk.cyan.underline('https://x.com/eyaltoledano')
-	);
-}
-
 export interface AsciiBannerOptions {
 	/** Version string to display */
 	version?: string;
-	/** Project name to display */
+	/** Project name to display (kept for compatibility but not displayed) */
 	projectName?: string;
-	/** Skip the version/project info box */
+	/** Skip the version/project info box (kept for compatibility) */
 	skipInfoBox?: boolean;
 }
 
@@ -49,38 +29,59 @@ function isBannerHidden(): boolean {
 }
 
 /**
+ * Get terminal width for right-aligning content
+ */
+function getTerminalWidth(): number {
+	return process.stdout.columns || 80;
+}
+
+/**
  * Display the fancy ASCII art banner for the CLI
  * Can be hidden by setting TM_HIDE_BANNER=true
  */
 export function displayAsciiBanner(options: AsciiBannerOptions = {}): void {
 	if (isBannerHidden()) return;
 
-	const { version, projectName, skipInfoBox = false } = options;
+	const { version } = options;
 
-	// Display the banner with creator credit
-	renderBannerWithCredit('Task Master');
-
-	// Display version and project info if provided
-	if (!skipInfoBox && (version || projectName)) {
-		const infoParts: string[] = [];
-
-		if (version) {
-			infoParts.push(`${chalk.bold('Version:')} ${version}`);
-		}
-
-		if (projectName) {
-			infoParts.push(`${chalk.bold('Project:')} ${projectName}`);
-		}
-
-		console.log(
-			boxen(chalk.white(infoParts.join('   ')), {
-				padding: 1,
-				margin: { top: 0, bottom: 1 },
-				borderStyle: 'round',
-				borderColor: 'cyan'
-			})
-		);
+	// Render ASCII banner
+	try {
+		const bannerText = figlet.textSync('Task Master', {
+			font: 'Standard',
+			horizontalLayout: 'default',
+			verticalLayout: 'default'
+		});
+		console.log(coolGradient(bannerText));
+	} catch {
+		console.log(coolGradient('=== Task Master ==='));
 	}
+
+	// Credits line with version right-aligned
+	const xLink = createLink('x.com/eyaltoledano', 'https://x.com/eyaltoledano');
+	const byText = chalk.dim('by ') + chalk.cyan(xLink);
+
+	// Version with clickable link to GitHub release
+	const cleanVersion = version ? version.replace(/^v/, '') : '';
+	const releaseUrl = `https://github.com/eyaltoledano/claude-task-master/releases/tag/task-master-ai%40${cleanVersion}`;
+	const versionLink = version
+		? createLink(`v${cleanVersion}`, releaseUrl, { color: 'gray' })
+		: '';
+
+	if (versionLink) {
+		// Calculate spacing for right alignment
+		const byLength = 22; // "by x.com/eyaltoledano" approximate visible length
+		const versionLength = cleanVersion.length + 1; // "v" + version
+		const termWidth = getTerminalWidth();
+		const spacing = Math.max(2, termWidth - byLength - versionLength - 2);
+		console.log(byText + ' '.repeat(spacing) + versionLink);
+	} else {
+		console.log(byText);
+	}
+
+	// Hamster promo
+	const hamsterLink = createLink('tryhamster.com', 'https://tryhamster.com');
+	console.log(chalk.dim('Taskmaster for teams: ') + chalk.magenta(hamsterLink));
+	console.log('');
 }
 
 /**
@@ -90,15 +91,24 @@ export function displayAsciiBanner(options: AsciiBannerOptions = {}): void {
 export function displayInitBanner(): void {
 	if (isBannerHidden()) return;
 
-	// Display the banner with creator credit
-	renderBannerWithCredit('Task Master AI');
+	// Render ASCII banner
+	try {
+		const bannerText = figlet.textSync('Task Master', {
+			font: 'Standard',
+			horizontalLayout: 'default',
+			verticalLayout: 'default'
+		});
+		console.log(coolGradient(bannerText));
+	} catch {
+		console.log(coolGradient('=== Task Master ==='));
+	}
 
-	console.log(
-		boxen(chalk.white(`${chalk.bold('Initializing')} your new project`), {
-			padding: 1,
-			margin: { top: 0, bottom: 1 },
-			borderStyle: 'round',
-			borderColor: 'cyan'
-		})
-	);
+	// Credits line
+	const xLink = createLink('x.com/eyaltoledano', 'https://x.com/eyaltoledano');
+	console.log(chalk.dim('by ') + chalk.cyan(xLink));
+
+	// Hamster promo
+	const hamsterLink = createLink('tryhamster.com', 'https://tryhamster.com');
+	console.log(chalk.dim('Taskmaster for teams: ') + chalk.magenta(hamsterLink));
+	console.log('');
 }

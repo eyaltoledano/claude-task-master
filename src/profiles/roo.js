@@ -1,9 +1,9 @@
+import fs from 'fs';
 // Roo Code conversion profile for rule-transformer
 import path from 'path';
-import fs from 'fs';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
-import { createProfile, COMMON_TOOL_MAPPINGS } from './base-profile.js';
 import { ROO_MODES } from '../constants/profiles.js';
+import { COMMON_TOOL_MAPPINGS, createProfile } from './base-profile.js';
 
 // Import the shared MCP configuration helper
 import { formatJSONWithTabs } from '../utils/create-mcp-config.js';

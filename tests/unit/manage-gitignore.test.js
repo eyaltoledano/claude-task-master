@@ -3,10 +3,10 @@
  * Tests the logic with Jest spies instead of mocked modules
  */
 
-import { jest } from '@jest/globals';
 import fs from 'fs';
-import path from 'path';
 import os from 'os';
+import path from 'path';
+import { jest } from '@jest/globals';
 
 // Import the module under test and its exports
 import manageGitignoreFile, {

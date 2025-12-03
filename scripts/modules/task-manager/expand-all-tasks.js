@@ -1,14 +1,14 @@
-import { log, readJSON, isSilentMode, findProjectRoot } from '../utils.js';
-import {
-	startLoadingIndicator,
-	stopLoadingIndicator,
-	displayAiUsageSummary
-} from '../ui.js';
-import expandTask from './expand-task.js';
-import { getDebugFlag } from '../config-manager.js';
-import { aggregateTelemetry } from '../utils.js';
-import chalk from 'chalk';
 import boxen from 'boxen';
+import chalk from 'chalk';
+import { getDebugFlag } from '../config-manager.js';
+import {
+	displayAiUsageSummary,
+	startLoadingIndicator,
+	stopLoadingIndicator
+} from '../ui.js';
+import { findProjectRoot, isSilentMode, log, readJSON } from '../utils.js';
+import { aggregateTelemetry } from '../utils.js';
+import expandTask from './expand-task.js';
 
 /**
  * Expand all eligible pending or in-progress tasks using the expandTask function.

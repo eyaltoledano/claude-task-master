@@ -5,6 +5,7 @@
 import { WorkflowOrchestrator } from '@tm/core';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
+import { getProjectRoot } from '../../utils/project-root.js';
 import {
 	AutopilotBaseOptions,
 	OutputFormatter,
@@ -12,7 +13,6 @@ import {
 	hasWorkflowState,
 	loadWorkflowState
 } from './shared.js';
-import { getProjectRoot } from '../../utils/project-root.js';
 
 interface AbortOptions extends AutopilotBaseOptions {
 	force?: boolean;

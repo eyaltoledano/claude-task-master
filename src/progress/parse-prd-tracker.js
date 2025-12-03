@@ -1,17 +1,17 @@
 import chalk from 'chalk';
-import { newMultiBar } from './cli-progress-factory.js';
-import { BaseProgressTracker } from './base-progress-tracker.js';
-import {
-	createProgressHeader,
-	createProgressRow,
-	createBorder
-} from './tracker-ui.js';
 import {
 	getCliPriorityIndicators,
+	getPriorityColors,
 	getPriorityIndicator,
-	getStatusBarPriorityIndicators,
-	getPriorityColors
+	getStatusBarPriorityIndicators
 } from '../ui/indicators.js';
+import { BaseProgressTracker } from './base-progress-tracker.js';
+import { newMultiBar } from './cli-progress-factory.js';
+import {
+	createBorder,
+	createProgressHeader,
+	createProgressRow
+} from './tracker-ui.js';
 
 // Get centralized priority indicators
 const PRIORITY_INDICATORS = getCliPriorityIndicators();

@@ -1,6 +1,6 @@
+import fs from 'fs';
 // Cursor conversion profile for rule-transformer
 import path from 'path';
-import fs from 'fs';
 import { log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 

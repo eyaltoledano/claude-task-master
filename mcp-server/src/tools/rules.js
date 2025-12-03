@@ -3,14 +3,14 @@
  * Tool to add or remove rules from a project (MCP server)
  */
 
-import { z } from 'zod';
 import {
 	createErrorResponse,
 	handleApiResult,
 	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { rulesDirect } from '../core/direct-functions/rules.js';
+import { z } from 'zod';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
+import { rulesDirect } from '../core/direct-functions/rules.js';
 
 /**
  * Register the rules tool with the MCP server

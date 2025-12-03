@@ -5,8 +5,8 @@
 
 import { setTaskStatus } from '../../../../scripts/modules/task-manager.js';
 import {
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
 import { nextTaskDirect } from './next-task.js';

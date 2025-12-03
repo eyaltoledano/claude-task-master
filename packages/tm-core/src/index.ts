@@ -42,6 +42,9 @@ export type {
 	TagsWithStatsResult
 } from './common/interfaces/storage.interface.js';
 
+// Storage adapters - FileStorage for direct local file access
+export { FileStorage } from './modules/storage/index.js';
+
 // Constants
 export * from './common/constants/index.js';
 
@@ -87,6 +90,8 @@ export { AuthenticationError } from './modules/auth/types.js';
 
 // Auth constants
 export {
+	AUTH_TIMEOUT_MS,
+	MFA_MAX_ATTEMPTS,
 	LOCAL_ONLY_COMMANDS,
 	type LocalOnlyCommand
 } from './modules/auth/index.js';
@@ -116,7 +121,8 @@ export type { CommitMessageOptions } from './modules/git/services/commit-message
 // Integration types
 export type {
 	ExportTasksOptions,
-	ExportResult
+	ExportResult,
+	ImportTask
 } from './modules/integration/services/export.service.js';
 
 // Reports types
@@ -127,10 +133,26 @@ export type {
 	TaskComplexityData
 } from './modules/reports/types.js';
 
+// Prompts types
+export type {
+	PromptAction,
+	PromptDisplayOptions,
+	PromptDisplayResult,
+	PromptMetrics,
+	PromptState,
+	PromptStateStore,
+	PromptType,
+	TriggerCondition,
+	TriggerEvaluationResult,
+	TriggerType,
+	UpgradePromptConfig
+} from './modules/prompts/index.js';
+
 // ========== Advanced API (for CLI/Extension/MCP) ==========
 
 // Auth - Advanced
 export { AuthManager } from './modules/auth/managers/auth-manager.js';
+export { AuthDomain } from './modules/auth/auth-domain.js';
 
 // Briefs - Advanced
 export { BriefsDomain } from './modules/briefs/briefs-domain.js';
@@ -156,7 +178,32 @@ export {
 } from './modules/tasks/services/task-file-generator.service.js';
 
 // Integration - Advanced
-export { ExportService } from './modules/integration/services/export.service.js';
+export {
+	ExportService,
+	type GenerateBriefOptions,
+	type GenerateBriefResult,
+	type GenerateBriefFromPrdOptions,
+	type GenerateBriefFromPrdResult,
+	type BriefStatusResult,
+	type BriefStatusResponse,
+	type BriefGenerationProgress,
+	type SendTeamInvitationsResult,
+	type InvitationResult
+} from './modules/integration/services/export.service.js';
+
+// Prompts - Advanced
+export { PromptService } from './modules/prompts/services/prompt-service.js';
+export { PromptStateManager } from './modules/prompts/services/prompt-state-manager.js';
+export {
+	TriggerEvaluator,
+	type TriggerContext
+} from './modules/prompts/services/trigger-evaluator.js';
+export {
+	DEFAULT_PROMPT_CONFIG,
+	DEFAULT_TRIGGER_CONDITIONS,
+	PROMPT_STATE_KEY,
+	PROMPT_STATE_VERSION
+} from './modules/prompts/constants.js';
 
 // ========== Testing Utilities ==========
 

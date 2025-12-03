@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import TaskMasterMCPServer from './src/index.js';
 import dotenv from 'dotenv';
+import TaskMasterMCPServer from './src/index.js';
 import logger from './src/logger.js';
 
 // Load environment variables

@@ -3,20 +3,20 @@
  * Tool to parse PRD document and generate tasks
  */
 
-import { z } from 'zod';
 import {
-	handleApiResult,
-	withNormalizedProjectRoot,
+	checkProgressCapability,
 	createErrorResponse,
-	checkProgressCapability
+	handleApiResult,
+	withNormalizedProjectRoot
 } from '@tm/mcp';
-import { parsePRDDirect } from '../core/task-master-core.js';
+import { z } from 'zod';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import {
 	PRD_FILE,
 	TASKMASTER_DOCS_DIR,
 	TASKMASTER_TASKS_FILE
 } from '../../../src/constants/paths.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
+import { parsePRDDirect } from '../core/task-master-core.js';
 
 /**
  * Register the parse_prd tool

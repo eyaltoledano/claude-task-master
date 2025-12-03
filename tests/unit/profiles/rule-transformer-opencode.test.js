@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 import { opencodeProfile } from '../../../src/profiles/opencode.js';
+import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
 
 describe('Rule Transformer - OpenCode Profile', () => {
 	test('should have correct profile configuration', () => {

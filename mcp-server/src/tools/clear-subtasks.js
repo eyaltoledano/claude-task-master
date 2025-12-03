@@ -3,11 +3,11 @@
  * Tool for clearing subtasks from parent tasks
  */
 
+import { createErrorResponse, handleApiResult, withToolContext } from '@tm/mcp';
 import { z } from 'zod';
-import { handleApiResult, createErrorResponse, withToolContext } from '@tm/mcp';
+import { resolveTag } from '../../../scripts/modules/utils.js';
 import { clearSubtasksDirect } from '../core/task-master-core.js';
 import { findTasksPath } from '../core/utils/path-utils.js';
-import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
  * Register the clearSubtasks tool with the MCP server

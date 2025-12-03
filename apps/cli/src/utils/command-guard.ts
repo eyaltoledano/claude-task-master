@@ -3,8 +3,8 @@
  * CLI presentation layer - uses tm-core for logic, displays with cardBox
  */
 
+import { type LocalOnlyCommand, type TmCore, createTmCore } from '@tm/core';
 import chalk from 'chalk';
-import { createTmCore, type TmCore, type LocalOnlyCommand } from '@tm/core';
 import { displayCardBox } from '../ui/components/cardBox.component.js';
 
 /**

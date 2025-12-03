@@ -2,10 +2,10 @@
  * Hook for handling VS Code messages
  */
 
-import { useEffect, useCallback, useRef } from 'react';
-import type { AppState, AppAction } from '../types';
-import { createToast } from '../utils/toast';
+import { useCallback, useEffect, useRef } from 'react';
 import { REQUEST_TIMEOUT } from '../constants';
+import type { AppAction, AppState } from '../types';
+import { createToast } from '../utils/toast';
 
 interface PendingRequest {
 	resolve: Function;

@@ -7,12 +7,12 @@
  * This script creates a modified version of dev.js that simulates different error scenarios.
  */
 
+import { execSync, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { execSync, spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -6,12 +6,12 @@ import fs from 'fs';
 import path from 'path';
 import boxen from 'boxen';
 import chalk from 'chalk';
-import { ensureTagMetadata, findTaskById } from '../../utils.js';
 import { displayParsePrdSummary } from '../../../../src/ui/parse-prd.js';
 import { TimeoutManager } from '../../../../src/utils/timeout-manager.js';
-import { displayAiUsageSummary } from '../../ui.js';
-import { getPromptManager } from '../../prompt-manager.js';
 import { getDefaultPriority } from '../../config-manager.js';
+import { getPromptManager } from '../../prompt-manager.js';
+import { displayAiUsageSummary } from '../../ui.js';
+import { ensureTagMetadata, findTaskById } from '../../utils.js';
 
 /**
  * Estimate token count from text

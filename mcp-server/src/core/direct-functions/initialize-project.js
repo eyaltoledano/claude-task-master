@@ -1,10 +1,10 @@
+import os from 'os'; // Import os module for home directory check
 import { initializeProject } from '../../../../scripts/init.js'; // Import core function and its logger if needed separately
 import {
-	enableSilentMode,
-	disableSilentMode
+	disableSilentMode,
+	enableSilentMode
 	// isSilentMode // Not used directly here
 } from '../../../../scripts/modules/utils.js';
-import os from 'os'; // Import os module for home directory check
 import { RULE_PROFILES } from '../../../../src/constants/profiles.js';
 import { convertAllRulesToProfileRules } from '../../../../src/utils/rule-transformer.js';
 

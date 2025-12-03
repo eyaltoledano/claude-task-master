@@ -3,20 +3,20 @@
  */
 
 import React, { useReducer, useState, useEffect, useRef } from 'react';
-import { VSCodeContext } from './contexts/VSCodeContext';
-import { QueryProvider } from './providers/QueryProvider';
 import { AppContent } from './components/AppContent';
-import { ToastContainer } from './components/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { appReducer, initialState } from './reducers/appReducer';
-import { useWebviewHeight } from './hooks/useWebviewHeight';
+import { ToastContainer } from './components/ToastContainer';
+import { VSCodeContext } from './contexts/VSCodeContext';
 import { useVSCodeMessages } from './hooks/useVSCodeMessages';
+import { useWebviewHeight } from './hooks/useWebviewHeight';
+import { QueryProvider } from './providers/QueryProvider';
+import { appReducer, initialState } from './reducers/appReducer';
 import {
-	showSuccessToast,
-	showInfoToast,
-	showWarningToast,
+	createToast,
 	showErrorToast,
-	createToast
+	showInfoToast,
+	showSuccessToast,
+	showWarningToast
 } from './utils/toast';
 
 export const App: React.FC = () => {

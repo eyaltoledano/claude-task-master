@@ -2,13 +2,13 @@
  * Direct function wrapper for analyzeTaskComplexity
  */
 
+import fs from 'fs';
 import analyzeTaskComplexity from '../../../../scripts/modules/task-manager/analyze-task-complexity.js';
 import {
-	enableSilentMode,
 	disableSilentMode,
+	enableSilentMode,
 	isSilentMode
 } from '../../../../scripts/modules/utils.js';
-import fs from 'fs';
 import { createLogWrapper } from '../../tools/utils.js'; // Import the new utility
 
 /**

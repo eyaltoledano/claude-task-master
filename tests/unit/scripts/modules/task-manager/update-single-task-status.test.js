@@ -5,8 +5,8 @@ import { jest } from '@jest/globals';
 
 // Import test fixtures
 import {
-	isValidTaskStatus,
-	TASK_STATUS_OPTIONS
+	TASK_STATUS_OPTIONS,
+	isValidTaskStatus
 } from '../../../../../src/constants/task-status.js';
 
 // Sample tasks data for testing
