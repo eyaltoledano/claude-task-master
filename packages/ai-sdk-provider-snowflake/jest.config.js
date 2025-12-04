@@ -62,6 +62,9 @@ export default {
 	silent: false,
 
 	// Force exit after tests (handles async cleanup)
+	// TODO: This masks potential async cleanup issues. Consider investigating
+	// proper cleanup in teardown hooks and removing this once all async
+	// operations are properly handled.
 	forceExit: true,
 
 	// ========================================================================
@@ -73,10 +76,10 @@ export default {
 	collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/index.ts'],
 	coverageThreshold: {
 		global: {
-			branches: 10,
-			functions: 20,
-			lines: 20,
-			statements: 20
+			branches: 50,
+			functions: 50,
+			lines: 50,
+			statements: 50
 		}
 	},
 
@@ -126,12 +129,7 @@ export default {
 			// Longer timeout for API calls
 			testTimeout: 120000,
 			// Disable coverage thresholds for integration tests
-			coverageThreshold: {},
-			globals: {
-				'ts-jest': {
-					useESM: true
-				}
-			}
+			coverageThreshold: {}
 		}
 	],
 

@@ -2,6 +2,21 @@
  * Type definitions for Snowflake Cortex built-in tools
  */
 
+import { z } from 'zod';
+
+/**
+ * Tool definition type that works with AI SDK
+ * Note: Using z.ZodType<TInput, z.ZodTypeDef, unknown> to allow schemas with defaults
+ * where the input type (before defaults) differs from output type (after defaults)
+ *
+ * This is the centralized interface - do not duplicate in individual tool files.
+ */
+export interface ToolDefinition<TInput, TOutput> {
+	description: string;
+	parameters: z.ZodType<TInput, z.ZodTypeDef, unknown>;
+	execute: (input: TInput) => Promise<TOutput>;
+}
+
 /**
  * File metadata returned by skills loader and file operations
  */

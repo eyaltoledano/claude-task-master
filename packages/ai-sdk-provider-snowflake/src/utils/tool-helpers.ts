@@ -378,14 +378,5 @@ export function getFinishReason(response: Record<string, unknown>): string {
 	return 'stop';
 }
 
-/**
- * Export default
- */
-export default {
-	convertToolsToSnowflakeFormat,
-	parseToolCalls,
-	createToolResult,
-	executeTool,
-	hasToolCalls,
-	getFinishReason
-};
+// Named exports are preferred over default exports
+// All functions are exported individually above

@@ -35,10 +35,9 @@ async function initLoadConnectionConfiguration() {
 	if (loadConnectionConfigurationInitialized) return;
 	loadConnectionConfigurationInitialized = true;
 	try {
-		// @ts-expect-error - Snowflake SDK doesn't export this path in types
-		const connConfigModule = await import(
-			'snowflake-sdk/lib/configuration/connection_configuration.js'
-		);
+		// Dynamic import of SDK internal module - not in public types
+		const modulePath = 'snowflake-sdk/lib/configuration/connection_configuration.js';
+		const connConfigModule = await import(/* @vite-ignore */ modulePath);
 		loadConnectionConfiguration = connConfigModule.loadConnectionConfiguration;
 	} catch {
 		// SDK's connection config loader not available, will use fallback
@@ -401,6 +400,9 @@ export function generateJwtToken(
  * Exchange JWT for OAuth access token
  * Uses Snowflake's OAuth token endpoint
  */
+// Default timeout for OAuth token exchange (30 seconds)
+const OAUTH_TIMEOUT_MS = 30000;
+
 async function exchangeJwtForToken(
 	jwtToken: string,
 	accountUrl: string,
@@ -421,30 +423,44 @@ async function exchangeJwtForToken(
 		formData.append('scope', scope);
 	}
 
-	const response = await fetch(tokenEndpoint, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			Accept: 'application/json'
-		},
-		body: formData.toString()
-	});
+	// Create AbortController for timeout
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), OAUTH_TIMEOUT_MS);
 
-	if (!response.ok) {
-		const errorBody = await response.text();
-		throw new Error(`Token exchange failed (${response.status}): ${errorBody}`);
+	try {
+		const response = await fetch(tokenEndpoint, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				Accept: 'application/json'
+			},
+			body: formData.toString(),
+			signal: controller.signal
+		});
+
+		if (!response.ok) {
+			const errorBody = await response.text();
+			throw new Error(`Token exchange failed (${response.status}): ${errorBody}`);
+		}
+
+		const result = (await response.json()) as {
+			access_token: string;
+			expires_in?: number;
+			token_type?: string;
+		};
+
+		return {
+			accessToken: result.access_token,
+			expiresIn: result.expires_in
+		};
+	} catch (error) {
+		if (error instanceof Error && error.name === 'AbortError') {
+			throw new Error(`Token exchange timed out after ${OAUTH_TIMEOUT_MS}ms`);
+		}
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
 	}
-
-	const result = (await response.json()) as {
-		access_token: string;
-		expires_in?: number;
-		token_type?: string;
-	};
-
-	return {
-		accessToken: result.access_token,
-		expiresIn: result.expires_in
-	};
 }
 
 /**

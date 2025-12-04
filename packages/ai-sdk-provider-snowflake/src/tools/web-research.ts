@@ -6,17 +6,12 @@
  */
 
 import { z } from 'zod';
-import type { SearchResult, WebSearchResult, FetchUrlResult } from './types.js';
-
-/**
- * Tool definition type that works with AI SDK
- * Note: Using z.ZodType<TInput, z.ZodTypeDef, unknown> to allow schemas with defaults
- */
-export interface ToolDefinition<TInput, TOutput> {
-	description: string;
-	parameters: z.ZodType<TInput, z.ZodTypeDef, unknown>;
-	execute: (input: TInput) => Promise<TOutput>;
-}
+import type {
+	SearchResult,
+	WebSearchResult,
+	FetchUrlResult,
+	ToolDefinition
+} from './types.js';
 
 /**
  * Parse DuckDuckGo HTML search results
@@ -87,6 +82,13 @@ function decodeHtmlEntities(text: string): string {
 }
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Extract main content from HTML
  */
 function extractMainContent(html: string, selector?: string): string {
@@ -102,7 +104,8 @@ function extractMainContent(html: string, selector?: string): string {
 
 	if (selector) {
 		if (selector.startsWith('#')) {
-			const id = selector.slice(1);
+			// Escape regex special chars in selector to prevent ReDoS
+			const id = escapeRegex(selector.slice(1));
 			const idPattern = new RegExp(
 				`<[^>]*id=["']${id}["'][^>]*>([\\s\\S]*?)<\\/`,
 				'i'
@@ -110,7 +113,8 @@ function extractMainContent(html: string, selector?: string): string {
 			const match = content.match(idPattern);
 			if (match) content = match[1];
 		} else if (selector.startsWith('.')) {
-			const className = selector.slice(1);
+			// Escape regex special chars in selector to prevent ReDoS
+			const className = escapeRegex(selector.slice(1));
 			const classPattern = new RegExp(
 				`<[^>]*class=["'][^"']*${className}[^"']*["'][^>]*>([\\s\\S]*?)<\\/`,
 				'i'

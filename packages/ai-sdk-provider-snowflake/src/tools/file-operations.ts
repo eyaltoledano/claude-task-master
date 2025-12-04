@@ -13,19 +13,9 @@ import type {
 	FileSearchResult,
 	FileReadResult,
 	GrepMatch,
-	GrepResult
+	GrepResult,
+	ToolDefinition
 } from './types.js';
-
-/**
- * Tool definition type that works with AI SDK
- * Note: Using z.ZodType<TInput, z.ZodTypeDef, unknown> to allow schemas with defaults
- * where the input type (before defaults) differs from output type (after defaults)
- */
-export interface ToolDefinition<TInput, TOutput> {
-	description: string;
-	parameters: z.ZodType<TInput, z.ZodTypeDef, unknown>;
-	execute: (input: TInput) => Promise<TOutput>;
-}
 
 /**
  * Get file type based on extension
@@ -146,17 +136,36 @@ async function buildTree(
 }
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Match files against a glob-like pattern
+ * Converts simple glob patterns (* and ?) to regex safely
  */
 function matchPattern(filename: string, pattern: string): boolean {
-	const regexPattern = pattern
-		.replace(/\./g, '\\.')
-		.replace(/\*/g, '.*')
-		.replace(/\?/g, '.');
+	// First, escape all special regex characters except our glob wildcards
+	// We handle * and ? separately after escaping
+	let regexPattern = '';
+	for (let i = 0; i < pattern.length; i++) {
+		const char = pattern[i];
+		if (char === '*') {
+			regexPattern += '[^/]*'; // Match any char except path separator (non-greedy)
+		} else if (char === '?') {
+			regexPattern += '[^/]'; // Match single char except path separator
+		} else {
+			// Escape regex special characters
+			regexPattern += escapeRegex(char);
+		}
+	}
 	try {
 		return new RegExp(`^${regexPattern}$`, 'i').test(filename);
 	} catch {
-		return filename.includes(pattern.replace(/\*/g, ''));
+		// Fallback to simple string matching
+		return filename.toLowerCase().includes(pattern.replace(/[*?]/g, '').toLowerCase());
 	}
 }
 
