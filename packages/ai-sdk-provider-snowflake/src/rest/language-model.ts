@@ -302,7 +302,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 		const messages = this.convertPromptToMessages(options.prompt, promptCachingEnabled);
 
 		// Normalize model ID - strip cortex/ prefix if present
-		const modelId = this.modelId.replace(/^cortex\//, '');
+		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
 
 		// Build request body for Cortex REST API
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api
@@ -707,7 +707,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 		const messages = this.convertPromptToMessages(options.prompt, promptCachingEnabled);
 
 		// Normalize model ID - strip cortex/ prefix if present
-		const modelId = this.modelId.replace(/^cortex\//, '');
+		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
 
 		// Build request body for streaming
 		const body: Record<string, unknown> = {
