@@ -25,6 +25,7 @@ import {
 	parseErrorFromStderr
 } from './errors.js';
 import { removeUnsupportedFeatures, convertPromptToMessages, isClaudeModel } from '../schema/index.js';
+import type { CortexMessage } from '../schema/index.js';
 import type { SnowflakeProviderSettings, SnowflakeModelId } from '../types.js';
 
 /**
@@ -479,7 +480,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 	 * Uses the shared convertPromptToMessages function from schema/transformer.ts.
 	 * CLI doesn't enable caching format by default since not all Claude models support it.
 	 */
-	private convertPrompt(prompt: LanguageModelV2Prompt): Array<{ role: string; content?: string; content_list?: Array<{ type: string; text: string; cache_control?: { type: string } }> }> {
+	private convertPrompt(prompt: LanguageModelV2Prompt): CortexMessage[] {
 		// CLI doesn't enable caching by default - some Claude models (like claude-4-opus) don't support it
 		return convertPromptToMessages(
 			prompt as Array<{ role: string; content: unknown }>,

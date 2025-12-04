@@ -29,22 +29,45 @@ const baseConfig = {
 };
 
 export default {
-	// Parallel execution - optimized for test performance
-	maxWorkers: '50%', // Use 50% of available CPU cores for optimal performance
-	workerIdleMemoryLimit: '512MB', // Memory limit per worker
-	maxConcurrency: 5, // Allow up to 5 tests to run concurrently within a worker
+	// ========================================================================
+	// Parallel Execution Configuration
+	// ========================================================================
 	
-	// Performance optimizations
+	// Use 75% of CPUs for maximum parallelization (increase from 50%)
+	maxWorkers: '75%',
+	
+	// Allow more concurrent tests within each worker
+	maxConcurrency: 10,
+	
+	// Memory management
+	workerIdleMemoryLimit: '512MB',
+	
+	// ========================================================================
+	// Performance Optimizations
+	// ========================================================================
+	
 	cache: true,
 	cacheDirectory: '<rootDir>/node_modules/.cache/jest',
 	
-	// Test execution
-	testTimeout: parseInt(process.env.TEST_TIMEOUT || '30000', 10), // Default 30s timeout
-	bail: false, // Run all tests
+	// Run tests in parallel within each file using it.concurrent
+	// Note: it.concurrent.each enables parallel execution of parameterized tests
+	
+	// ========================================================================
+	// Test Execution
+	// ========================================================================
+	
+	testTimeout: parseInt(process.env.TEST_TIMEOUT || '30000', 10),
+	bail: false,
 	verbose: false,
 	silent: false,
 	
-	// Coverage - at root level
+	// Force exit after tests (handles async cleanup)
+	forceExit: true,
+	
+	// ========================================================================
+	// Coverage Configuration
+	// ========================================================================
+	
 	collectCoverage: true,
 	coverageDirectory: 'coverage',
 	collectCoverageFrom: [
@@ -52,8 +75,6 @@ export default {
 		'!src/**/*.d.ts',
 		'!src/**/index.ts',
 	],
-	// Coverage thresholds - relaxed for integration tests
-	// Integration tests hit real APIs and can't cover all code paths
 	coverageThreshold: {
 		global: {
 			branches: 10,
@@ -63,12 +84,14 @@ export default {
 		},
 	},
 	
-	// Force exit after tests complete - required for integration tests that may have lingering handles
-	forceExit: true,
+	// ========================================================================
+	// Test Projects (Parallel Execution by Category)
+	// ========================================================================
 	
-	// Projects for different test types
 	projects: [
-		// Unit tests - run in parallel
+		// ----------------------------------------------------------------------
+		// Unit Tests - Run in full parallel
+		// ----------------------------------------------------------------------
 		{
 			...baseConfig,
 			displayName: 'unit',
@@ -82,30 +105,47 @@ export default {
 				'<rootDir>/tests/integration.test.ts',
 				'<rootDir>/tests/integration/',
 			],
-			maxWorkers: '50%', // Parallel unit tests
+			// Maximum parallelization for unit tests (fast, no API calls)
+			maxWorkers: '100%',
+			maxConcurrency: 20,
 		},
-		// Integration tests (requires credentials)
+		
+		// ----------------------------------------------------------------------
+		// Integration Tests - Parallel with rate limiting consideration
+		// ----------------------------------------------------------------------
 		{
 			...baseConfig,
 			displayName: 'integration',
 			testEnvironment: 'node',
 			roots: ['<rootDir>/tests'],
 			testMatch: [
+				// Legacy integration test (to be deprecated)
 				'<rootDir>/tests/integration.test.ts',
+				// New organized integration tests
 				'<rootDir>/tests/integration/**/*.test.ts',
 			],
-			// Increase workers for faster integration tests
-			// Note: Adjust if you hit Snowflake API rate limits
+			// Moderate parallelization for API tests (avoid rate limits)
 			maxWorkers: '50%',
-			// Use globals for timeout in integration tests
+			maxConcurrency: 5,
+			// Longer timeout for API calls
+			testTimeout: 120000,
+			// Disable coverage thresholds for integration tests
+			coverageThreshold: {},
 			globals: {
 				'ts-jest': {
 					useESM: true,
 				},
 			},
-			// Disable coverage thresholds for integration tests - they test functionality, not code paths
-			coverageThreshold: {},
 		},
 	],
+	
+	// ========================================================================
+	// Reporter Configuration
+	// ========================================================================
+	
+	reporters: [
+		'default',
+		// Uncomment for detailed test timing analysis:
+		// ['jest-slow-test-reporter', { numTests: 10, warnOnSlowerThan: 5000 }]
+	],
 };
-

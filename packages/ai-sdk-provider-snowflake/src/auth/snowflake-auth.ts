@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-// @ts-expect-error - jsonwebtoken doesn't have types installed
+// @ts-ignore - jsonwebtoken lacks TypeScript declarations
 import jwt from 'jsonwebtoken';
 import type {
 	SnowflakeConnectionConfig,

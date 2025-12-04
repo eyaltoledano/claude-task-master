@@ -49,9 +49,6 @@ export {
 	ModelHelpers
 } from './models.js';
 
-// Legacy model helpers (re-export for backward compatibility)
-export { ModelHelpers as LegacyModelHelpers } from './model-helpers.js';
-
 // Tool helpers
 export {
 	convertToolsToSnowflakeFormat,

@@ -152,9 +152,10 @@ export async function testModelStructuredOutput(
 		}
 
 		// Use generateObject with a schema - this is what OpenAI models need
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const response: any = await generateObject({
 			model,
-			schema: TestResponseSchema,
+			schema: TestResponseSchema as any,
 			prompt: 'Respond with status "ok".',
 		});
 

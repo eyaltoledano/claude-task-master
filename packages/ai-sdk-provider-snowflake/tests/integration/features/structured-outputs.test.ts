@@ -82,7 +82,8 @@ skipIfNoCredentials('Structured Outputs Integration Tests', () => {
 				try {
 					const result = await generateObject({
 						model,
-						schema: TestResponseSchema,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						schema: TestResponseSchema as any,
 						prompt: 'What is 2 + 2? Provide your answer with confidence level.',
 					});
 
@@ -143,7 +144,8 @@ skipIfNoCredentials('Structured Outputs Integration Tests', () => {
 			try {
 			const result = await generateObject({
 				model,
-				schema: TestResponseSchema,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						schema: TestResponseSchema as any,
 				prompt: 'What is 2 + 2? Provide your answer with confidence level.',
 			});
 
@@ -216,7 +218,8 @@ skipIfNoCredentials('Structured Outputs Integration Tests', () => {
 				try {
 					const result = await generateObject({
 						model,
-						schema: TestResponseSchema,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						schema: TestResponseSchema as any,
 						prompt: 'What is 2 + 2? Provide your answer with confidence level.',
 					});
 
@@ -285,7 +288,8 @@ skipIfNoCredentials('Structured Outputs Integration Tests', () => {
 				try {
 					const result = await generateObject({
 						model,
-						schema: TestResponseSchema,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						schema: TestResponseSchema as any,
 						prompt: 'What is 2 + 2? Provide your answer with confidence level.',
 					});
 

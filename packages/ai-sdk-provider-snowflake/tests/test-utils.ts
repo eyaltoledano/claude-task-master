@@ -1,15 +1,19 @@
 /**
  * Centralized Test Utilities for Snowflake Provider Tests
  * 
- * This module provides consistent credential checking and CLI availability
- * detection across all unit and integration tests.
+ * This module provides:
+ * - Consistent credential checking and CLI availability detection
+ * - Shared mock helpers to reduce duplication across test files
+ * - Common test fixtures and factory functions
  * 
- * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for test skip logic.
- * All test files should import from this module instead of implementing
- * their own credential checks.
+ * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for test skip logic
+ * and shared test utilities. All test files should import from this 
+ * module instead of implementing their own.
  */
 
 import { resolve } from 'path';
+import { EventEmitter } from 'events';
+import type { ChildProcess } from 'child_process';
 
 /**
  * Comprehensive credential checking that covers all authentication methods:
@@ -202,3 +206,213 @@ export const logTestEnvironment = (testSuiteName: string): void => {
 	}
 };
 
+// ==================== Shared Mock Helpers ====================
+
+/**
+ * Mock ChildProcess type for CLI tests
+ */
+export interface MockChildProcess extends EventEmitter {
+	stdout: EventEmitter & { destroy: jest.Mock };
+	stderr: EventEmitter & { destroy: jest.Mock };
+	unref: jest.Mock;
+	kill: jest.Mock;
+}
+
+/**
+ * Create a mock ChildProcess with EventEmitter
+ * Use this in CLI-based tests that need to mock child_process.spawn
+ * 
+ * @example
+ * ```typescript
+ * import { createMockChildProcess } from '../test-utils';
+ * 
+ * const mockChild = createMockChildProcess();
+ * mockSpawn.mockReturnValue(mockChild as any);
+ * 
+ * // Simulate successful output
+ * setTimeout(() => {
+ *   mockChild.stdout.emit('data', 'output data');
+ *   mockChild.emit('exit', 0);
+ * }, 10);
+ * ```
+ */
+export function createMockChildProcess(): MockChildProcess {
+	const mockChild = new EventEmitter() as MockChildProcess;
+	mockChild.stdout = Object.assign(new EventEmitter(), { 
+		destroy: jest.fn() 
+	});
+	mockChild.stderr = Object.assign(new EventEmitter(), { 
+		destroy: jest.fn() 
+	});
+	mockChild.unref = jest.fn();
+	mockChild.kill = jest.fn();
+	return mockChild;
+}
+
+/**
+ * Options for creating mock responses
+ */
+export interface MockResponseOptions {
+	/** HTTP status code (default: 200) */
+	status?: number;
+	/** Response headers */
+	headers?: Record<string, string>;
+	/** Whether this is a streaming response */
+	isStream?: boolean;
+}
+
+/**
+ * Create a mock Response object for REST API tests
+ * 
+ * @example
+ * ```typescript
+ * import { createMockResponse } from '../test-utils';
+ * 
+ * mockFetch.mockResolvedValueOnce(createMockResponse({
+ *   choices: [{ message: { content: 'Hello!' }, finish_reason: 'stop' }],
+ *   usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
+ * }));
+ * ```
+ */
+export function createMockResponse(
+	body: object | string,
+	options: MockResponseOptions = {}
+): Response {
+	const { status = 200, headers = {}, isStream = false } = options;
+	const responseBody = typeof body === 'string' ? body : JSON.stringify(body);
+	
+	const responseHeaders = new Headers({
+		'content-type': isStream ? 'text/event-stream' : 'application/json',
+		'x-request-id': 'test-request-id',
+		...headers
+	});
+	
+	return {
+		ok: status >= 200 && status < 300,
+		status,
+		statusText: status === 200 ? 'OK' : 'Error',
+		headers: responseHeaders,
+		json: async () => typeof body === 'string' ? JSON.parse(body) : body,
+		text: async () => responseBody,
+		blob: async () => new Blob([responseBody]),
+		arrayBuffer: async () => new ArrayBuffer(0),
+		formData: async () => new FormData(),
+		clone: () => createMockResponse(body, options),
+		body: null,
+		bodyUsed: false,
+		redirected: false,
+		type: 'basic' as ResponseType,
+		url: 'https://test.snowflakecomputing.com/api/v2/cortex/inference:complete'
+	} as Response;
+}
+
+/**
+ * Create a streaming mock response for SSE (Server-Sent Events) testing
+ * 
+ * @example
+ * ```typescript
+ * import { createStreamingResponse } from '../test-utils';
+ * 
+ * mockFetch.mockResolvedValueOnce(createStreamingResponse([
+ *   'data: {"choices":[{"delta":{"content":"Hello"}}]}',
+ *   'data: {"choices":[{"delta":{"content":" world"}}]}',
+ *   'data: {"choices":[{"finish_reason":"stop"}]}'
+ * ]));
+ * ```
+ */
+export function createStreamingResponse(events: string[]): Response {
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		start(controller) {
+			events.forEach(event => {
+				controller.enqueue(encoder.encode(event + '\n'));
+			});
+			controller.close();
+		}
+	});
+	
+	return {
+		ok: true,
+		status: 200,
+		statusText: 'OK',
+		headers: new Headers({ 'content-type': 'text/event-stream' }),
+		body: stream,
+		json: async () => ({}),
+		text: async () => '',
+		blob: async () => new Blob(),
+		arrayBuffer: async () => new ArrayBuffer(0),
+		formData: async () => new FormData(),
+		clone: () => createStreamingResponse(events),
+		bodyUsed: false,
+		redirected: false,
+		type: 'basic' as ResponseType,
+		url: 'https://test.snowflakecomputing.com/api/v2/cortex/inference:complete'
+	} as Response;
+}
+
+/**
+ * Create a mock error response
+ * 
+ * @example
+ * ```typescript
+ * import { createErrorResponse } from '../test-utils';
+ * 
+ * mockFetch.mockResolvedValueOnce(createErrorResponse(429, 'Rate limit exceeded'));
+ * ```
+ */
+export function createErrorResponse(status: number, message: string): Response {
+	return createMockResponse(
+		{ error: { message, code: status } },
+		{ status }
+	);
+}
+
+/**
+ * Standard success response body for Cortex API
+ */
+export interface CortexResponseBody {
+	choices: Array<{
+		message: { content: string; tool_calls?: any[] };
+		finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter';
+	}>;
+	usage: {
+		prompt_tokens: number;
+		completion_tokens: number;
+		total_tokens: number;
+		cache_creation_input_tokens?: number;
+		cache_read_input_tokens?: number;
+	};
+	thinking?: string;
+	structured_output?: Array<{ raw_message: unknown }>;
+}
+
+/**
+ * Create a standard Cortex success response
+ * 
+ * @example
+ * ```typescript
+ * import { createCortexResponse } from '../test-utils';
+ * 
+ * mockFetch.mockResolvedValueOnce(createCortexResponse('Hello, world!'));
+ * mockFetch.mockResolvedValueOnce(createCortexResponse('Done', { thinking: 'Let me think...' }));
+ * ```
+ */
+export function createCortexResponse(
+	content: string,
+	extras: Partial<Omit<CortexResponseBody, 'choices'>> = {}
+): Response {
+	const body: CortexResponseBody = {
+		choices: [{
+			message: { content },
+			finish_reason: 'stop'
+		}],
+		usage: {
+			prompt_tokens: 10,
+			completion_tokens: 5,
+			total_tokens: 15,
+			...extras.usage
+		},
+		...extras
+	};
+	return createMockResponse(body);
+}

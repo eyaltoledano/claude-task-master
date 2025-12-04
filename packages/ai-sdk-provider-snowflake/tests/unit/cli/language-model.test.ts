@@ -2,7 +2,7 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import { CliLanguageModel } from '../../../src/cli/language-model.js';
 import type { LanguageModelV2CallOptions } from '@ai-sdk/provider';
 import { spawn, type ChildProcess } from 'child_process';
-import { EventEmitter } from 'events';
+import { createMockChildProcess } from '../../test-utils.js';
 
 // Mock child_process
 jest.mock('child_process');
@@ -50,14 +50,14 @@ describe('CliLanguageModel', () => {
 					connection: 'test-connection',
 					timeout: 30000,
 					dangerouslyAllowAllToolCalls: true,
-					enableMcpServers: false
+					noMcp: true
 				}
 			});
 
 			expect(testModel.settings.connection).toBe('test-connection');
 			expect(testModel.settings.timeout).toBe(30000);
 			expect(testModel.settings.dangerouslyAllowAllToolCalls).toBe(true);
-			expect(testModel.settings.enableMcpServers).toBe(false);
+			expect(testModel.settings.noMcp).toBe(true);
 		});
 	});
 
@@ -470,7 +470,8 @@ describe('CliLanguageModel', () => {
 
 	describe('Streaming', () => {
 		it('should throw error for doStream', async () => {
-			await expect(model.doStream({} as any)).rejects.toThrow(
+			// CLI doStream() takes no arguments and always throws
+			await expect((model as any).doStream()).rejects.toThrow(
 				'Streaming is not yet supported'
 			);
 		});
@@ -579,31 +580,3 @@ describe('CliLanguageModel', () => {
 		});
 	});
 });
-
-/**
- * Create a mock ChildProcess with EventEmitter
- */
-function createMockChildProcess() {
-	const mockChild = new EventEmitter() as any;
-	mockChild.stdout = new EventEmitter();
-	mockChild.stderr = new EventEmitter();
-	mockChild.stdout.destroy = jest.fn();
-	mockChild.stderr.destroy = jest.fn();
-	mockChild.unref = jest.fn();
-	mockChild.kill = jest.fn();
-	return mockChild;
-}
-
-/**
- * Create a mock ChildProcess with EventEmitter
- */
-function createMockChildProcess() {
-	const mockChild = new EventEmitter() as any;
-	mockChild.stdout = new EventEmitter();
-	mockChild.stderr = new EventEmitter();
-	mockChild.stdout.destroy = jest.fn();
-	mockChild.stderr.destroy = jest.fn();
-	mockChild.unref = jest.fn();
-	return mockChild;
-}
-

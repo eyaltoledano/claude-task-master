@@ -295,7 +295,7 @@ export class TokenCache {
 	 * Clean up expired tokens from in-memory cache
 	 */
 	cleanup(): void {
-		for (const [key, token] of this.inMemoryCache.entries()) {
+		for (const [key, token] of Array.from(this.inMemoryCache.entries())) {
 			if (this.isExpired(token)) {
 				this.inMemoryCache.delete(key);
 			}

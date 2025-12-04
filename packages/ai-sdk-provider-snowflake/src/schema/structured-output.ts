@@ -12,7 +12,7 @@
  */
 
 import { removeUnsupportedFeatures, type JSONSchema } from './transformer.js';
-import { ModelHelpers } from '../utils/model-helpers.js';
+import { ModelHelpers } from '../utils/models.js';
 
 // ==================== JSON Extraction Utilities ====================
 // (Merged from json-parser.ts - these are only used by this module)

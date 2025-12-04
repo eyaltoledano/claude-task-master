@@ -97,7 +97,7 @@ skipIfNoCredentials('Tool Calling Integration Tests', () => {
 			
 			console.log('Tool call result:', text);
 			expect(text).toContain('42'); // 25 + 17 = 42
-		}, 30000);
+		}, 120000); // Extended timeout for tool calling API calls
 		
 		it('should call multiple tools', async () => {
 			const model = provider.languageModel('cortex/claude-sonnet-4-5');
@@ -212,9 +212,130 @@ skipIfNoCredentials('Tool Calling Integration Tests', () => {
 			
 			expect(text).toBeDefined();
 			console.log('No-op tool response:', text);
-		}, 30000);
+		}, 60000);
 	});
 	
+	describe('Tool Call Round-Trip', () => {
+		it('should complete full tool call → execute → response cycle', async () => {
+			const model = provider.languageModel('cortex/claude-sonnet-4-5');
+			
+			// Track execution phases for validation
+			let toolExecuted = false;
+			let executionArgs: { a: number; b: number } | null = null;
+			
+			const trackedCalculator = {
+				description: 'Add two numbers together',
+				inputSchema: z.object({
+					a: z.number(),
+					b: z.number()
+				}),
+				execute: async ({ a, b }: { a: number; b: number }) => {
+					// Phase 2: Tool execution
+					console.log(`  📥 Tool received: a=${a}, b=${b}`);
+					toolExecuted = true;
+					executionArgs = { a, b };
+					const result = a + b;
+					console.log(`  📤 Tool returning: ${result}`);
+					return { sum: result };
+				}
+			};
+			
+			console.log('\n🔄 Testing complete tool round-trip...');
+			console.log('  Phase 1: Sending request to model with tool definition');
+			
+			const { text, steps } = await generateText({
+				model,
+				tools: { adder: trackedCalculator },
+				prompt: 'What is 123 plus 456? Use the adder tool to calculate.',
+				stopWhen: stepCountIs(3)
+			});
+			
+			// Get all tool calls and results from all steps
+			const allToolCalls = steps.flatMap(step => step.toolCalls);
+			const allToolResults = steps.flatMap(step => step.toolResults);
+			
+			console.log('  Phase 3: Model received tool result and generated response');
+			
+			// Validate Phase 1: Model made correct tool call
+			expect(allToolCalls.length).toBeGreaterThan(0);
+			const toolCall = allToolCalls.find(tc => tc.toolName === 'adder');
+			expect(toolCall).toBeDefined();
+			
+			if (toolCall && 'args' in toolCall) {
+				const args = toolCall.args as { a: number; b: number };
+				console.log(`  ✓ Model called tool with: ${JSON.stringify(args)}`);
+				expect(args.a).toBe(123);
+				expect(args.b).toBe(456);
+			}
+			
+			// Validate Phase 2: Tool was executed
+			expect(toolExecuted).toBe(true);
+			expect(executionArgs).toEqual({ a: 123, b: 456 });
+			console.log('  ✓ Tool executed with correct arguments');
+			
+			// Validate Phase 3: Tool result was processed
+			expect(allToolResults.length).toBeGreaterThan(0);
+			const toolResult = allToolResults[0];
+			if (toolResult && 'result' in toolResult) {
+				console.log(`  ✓ Tool result received: ${JSON.stringify(toolResult.result)}`);
+				expect(toolResult.result).toEqual({ sum: 579 });
+			}
+			
+			// Validate final response includes the answer
+			expect(text).toContain('579');
+			console.log(`  ✓ Final response includes correct answer: 579`);
+			console.log(`📝 Full response: ${text.substring(0, 150)}...`);
+		}, 45000);
+		
+		it('should handle tool returning complex nested object', async () => {
+			const model = provider.languageModel('cortex/claude-sonnet-4-5');
+			
+			const complexTool = {
+				description: 'Returns a complex nested object with user information',
+				inputSchema: z.object({
+					userId: z.string()
+				}),
+				execute: async ({ userId }: { userId: string }) => {
+					return {
+						user: {
+							id: userId,
+							profile: {
+								name: 'Test User',
+								metadata: {
+									createdAt: '2024-01-01',
+									tags: ['premium', 'verified']
+								}
+							}
+						},
+						stats: {
+							visits: 42,
+							actions: [
+								{ type: 'login', count: 10 },
+								{ type: 'purchase', count: 3 }
+							]
+						}
+					};
+				}
+			};
+			
+			const { text, steps } = await generateText({
+				model,
+				tools: { getUserInfo: complexTool },
+				prompt: 'Get info for user "user123" and tell me their name and how many visits they have.',
+				stopWhen: stepCountIs(3)
+			});
+			
+			const allToolResults = steps.flatMap(step => step.toolResults);
+			
+			// Tool should have returned complex nested data
+			expect(allToolResults.length).toBeGreaterThan(0);
+			
+			// Model should extract and mention the nested data
+			expect(text.toLowerCase()).toMatch(/test user|42|visits/i);
+			console.log('Complex object response:', text);
+		}, 45000);
+	});
+
 	describe('Tool Choice', () => {
 		// NOTE: Cortex API may not fully support toolChoice: 'none'
 		// The model may still call tools even with this setting

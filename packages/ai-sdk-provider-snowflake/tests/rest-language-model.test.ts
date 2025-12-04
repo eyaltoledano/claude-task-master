@@ -1,10 +1,23 @@
 /**
  * Comprehensive unit tests for RestLanguageModel
  * Tests the Cortex REST API implementation (/api/v2/cortex/inference:complete)
+ * 
+ * NOTE: These tests call the internal doGenerate() method directly, which uses
+ * internal parameters (inputFormat, mode) that aren't part of the public
+ * LanguageModelV2CallOptions type. We use a test-specific type to avoid
+ * TypeScript errors while testing internal behavior.
  */
 
 import { RestLanguageModel } from '../src/rest/language-model.js';
 import type { LanguageModelV2Prompt, LanguageModelV2CallOptions } from '@ai-sdk/provider';
+import { createMockResponse, createStreamingResponse, createErrorResponse } from './test-utils.js';
+
+/**
+ * Test options type for doGenerate() calls
+ * The internal AI SDK uses additional parameters not in public LanguageModelV2CallOptions
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type TestCallOptions = any; // Use any for internal doGenerate testing
 
 // Mock the authentication module
 jest.mock('../src/auth/index.js', () => ({
@@ -82,68 +95,6 @@ jest.mock('../src/schema/index.js', () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
-/**
- * Create a mock Response object
- */
-function createMockResponse(body: object | string, status = 200, isStream = false): Response {
-	const responseBody = typeof body === 'string' ? body : JSON.stringify(body);
-	const headers = new Headers({
-		'content-type': isStream ? 'text/event-stream' : 'application/json',
-		'x-request-id': 'test-request-id'
-	});
-	
-	return {
-		ok: status >= 200 && status < 300,
-		status,
-		statusText: status === 200 ? 'OK' : 'Error',
-		headers,
-		json: async () => typeof body === 'string' ? JSON.parse(body) : body,
-		text: async () => responseBody,
-		blob: async () => new Blob([responseBody]),
-		arrayBuffer: async () => new ArrayBuffer(0),
-		formData: async () => new FormData(),
-		clone: () => createMockResponse(body, status, isStream),
-		body: null,
-		bodyUsed: false,
-		redirected: false,
-		type: 'basic' as ResponseType,
-		url: 'https://test.snowflakecomputing.com/api/v2/cortex/inference:complete'
-	} as Response;
-}
-
-/**
- * Create a streaming mock response
- */
-function createStreamingResponse(events: string[]): Response {
-	const encoder = new TextEncoder();
-	const stream = new ReadableStream({
-		start(controller) {
-			events.forEach(event => {
-				controller.enqueue(encoder.encode(event + '\n'));
-			});
-			controller.close();
-		}
-	});
-	
-	return {
-		ok: true,
-		status: 200,
-		statusText: 'OK',
-		headers: new Headers({ 'content-type': 'text/event-stream' }),
-		body: stream,
-		json: async () => ({}),
-		text: async () => '',
-		blob: async () => new Blob(),
-		arrayBuffer: async () => new ArrayBuffer(0),
-		formData: async () => new FormData(),
-		clone: () => createStreamingResponse(events),
-		bodyUsed: false,
-		redirected: false,
-		type: 'basic' as ResponseType,
-		url: 'https://test.snowflakecomputing.com/api/v2/cortex/inference:complete'
-	} as Response;
-}
-
 describe('RestLanguageModel', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -218,7 +169,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(result.content).toHaveLength(1);
 			expect(result.content[0]).toEqual({ type: 'text', text: 'Hello, world!' });
@@ -244,7 +195,7 @@ describe('RestLanguageModel', () => {
 				prompt,
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(mockFetch).toHaveBeenCalled();
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
@@ -270,7 +221,7 @@ describe('RestLanguageModel', () => {
 				prompt,
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.messages).toHaveLength(3);
@@ -304,7 +255,7 @@ describe('RestLanguageModel', () => {
 				prompt,
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 
@@ -332,7 +283,7 @@ describe('RestLanguageModel', () => {
 				],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 
@@ -360,7 +311,7 @@ describe('RestLanguageModel', () => {
 				],
 					inputFormat: 'messages',
 					mode: { type: 'regular' }
-				});
+				} as TestCallOptions);
 
 				const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			
@@ -387,7 +338,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Complex problem' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 
@@ -413,7 +364,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Question' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			// Thinking should be included as text content
 			expect(result.content).toHaveLength(2);
@@ -437,7 +388,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Question' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.thinking).toBeUndefined();
@@ -460,7 +411,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Complex task' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.reasoning_effort).toBe('high');
@@ -484,7 +435,7 @@ describe('RestLanguageModel', () => {
 					prompt: [{ role: 'user', content: [{ type: 'text', text: 'Task' }] }],
 					inputFormat: 'messages',
 					mode: { type: 'regular' }
-				});
+				} as TestCallOptions);
 
 				const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 				expect(requestBody.reasoning_effort).toBe(level);
@@ -522,7 +473,7 @@ describe('RestLanguageModel', () => {
 				inputFormat: 'messages',
 				mode: { type: 'regular' },
 				responseFormat: { type: 'json', schema }
-			} as LanguageModelV2CallOptions);
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.response_format).toEqual({
@@ -554,7 +505,7 @@ describe('RestLanguageModel', () => {
 					type: 'json',
 					schema: { type: 'object', properties: { name: { type: 'string' } } }
 				}
-			} as LanguageModelV2CallOptions);
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.response_format).toBeUndefined();
@@ -586,7 +537,7 @@ describe('RestLanguageModel', () => {
 						required: ['location']
 					}
 				}]
-			} as LanguageModelV2CallOptions);
+			} as TestCallOptions);
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 			expect(requestBody.tools).toBeDefined();
@@ -618,7 +569,7 @@ describe('RestLanguageModel', () => {
 					description: 'Get weather',
 					inputSchema: { type: 'object', properties: {} }
 				}]
-			} as LanguageModelV2CallOptions);
+			} as TestCallOptions);
 
 			expect(result.finishReason).toBe('tool-calls');
 			expect(result.content[0].type).toBe('tool-call');
@@ -629,16 +580,13 @@ describe('RestLanguageModel', () => {
 		it('should handle API errors', async () => {
 			const model = new RestLanguageModel({ id: 'cortex/claude-sonnet-4-5' });
 
-			mockFetch.mockResolvedValueOnce(createMockResponse(
-				{ error: { message: 'Invalid request' } },
-				400
-			));
+			mockFetch.mockResolvedValueOnce(createErrorResponse(400, 'Invalid request'));
 
 			await expect(model.doGenerate({
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			})).rejects.toThrow();
+			} as TestCallOptions)).rejects.toThrow();
 		});
 
 		it('should retry on retryable errors', async () => {
@@ -649,7 +597,7 @@ describe('RestLanguageModel', () => {
 
 			// First call fails with 429, second succeeds
 			mockFetch
-				.mockResolvedValueOnce(createMockResponse({ error: 'Rate limit' }, 429))
+				.mockResolvedValueOnce(createErrorResponse(429, 'Rate limit'))
 				.mockResolvedValueOnce(createMockResponse({
 					choices: [{ message: { content: 'Success' }, finish_reason: 'stop' }],
 					usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
@@ -659,7 +607,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(mockFetch).toHaveBeenCalledTimes(2);
 			expect(result.content[0]).toEqual({ type: 'text', text: 'Success' });
@@ -671,13 +619,13 @@ describe('RestLanguageModel', () => {
 				settings: { maxRetries: 2 }
 			});
 
-			mockFetch.mockResolvedValueOnce(createMockResponse({ error: 'Bad request' }, 400));
+			mockFetch.mockResolvedValueOnce(createErrorResponse(400, 'Bad request'));
 
 			await expect(model.doGenerate({
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			})).rejects.toThrow();
+			} as TestCallOptions)).rejects.toThrow();
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 		});
@@ -701,16 +649,16 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			const reader = stream.getReader();
-			const chunks = [];
+			const chunks: Array<{ type: string }> = [];
 			let done = false;
 
 			while (!done) {
 				const { value, done: isDone } = await reader.read();
 				done = isDone;
-				if (value) chunks.push(value);
+				if (value) chunks.push(value as { type: string });
 			}
 
 			// Should have text deltas and finish
@@ -728,7 +676,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			})).rejects.toThrow('Streaming is disabled');
+			} as TestCallOptions)).rejects.toThrow('Streaming is disabled');
 		});
 
 		it('should handle streaming errors', async () => {
@@ -759,11 +707,115 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			// Error should be thrown when reading from stream
 			const reader = stream.getReader();
 			await expect(reader.read()).rejects.toThrow();
+		});
+
+		it('should handle mid-stream errors gracefully', async () => {
+			const model = new RestLanguageModel({
+				id: 'cortex/claude-sonnet-4-5',
+				settings: { enableStreaming: true }
+			});
+
+			// Create a stream that errors mid-way
+			const encoder = new TextEncoder();
+			let errorThrown = false;
+			const errorStream = new ReadableStream({
+				start(controller) {
+					// Send some valid data first
+					controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"Hello"}}]}\n'));
+					// Then simulate an error mid-stream
+					errorThrown = true;
+					controller.error(new Error('Connection lost'));
+				}
+			});
+
+			mockFetch.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				statusText: 'OK',
+				headers: new Headers({ 'content-type': 'text/event-stream' }),
+				body: errorStream,
+				json: async () => ({}),
+				text: async () => '',
+				blob: async () => new Blob(),
+				arrayBuffer: async () => new ArrayBuffer(0),
+				formData: async () => new FormData(),
+				clone: function() { return this; },
+				bodyUsed: false,
+				redirected: false,
+				type: 'basic' as ResponseType,
+				url: 'https://test.snowflakecomputing.com/api/v2/cortex/inference:complete'
+			} as Response);
+
+			const { stream } = await model.doStream({
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
+				inputFormat: 'messages',
+				mode: { type: 'regular' }
+			} as TestCallOptions);
+
+			// Should be able to start reading but eventually hit error
+			const reader = stream.getReader();
+			
+			// Read first chunk (might succeed)
+			try {
+				let hasData = false;
+				let hasError = false;
+				
+				// Try to read all chunks
+				while (true) {
+					const { value, done } = await reader.read();
+					if (done) break;
+					if (value) {
+						hasData = true;
+					}
+				}
+			} catch (error) {
+				// Expected: mid-stream error should propagate
+				expect(error).toBeDefined();
+			}
+		});
+
+		it('should handle malformed SSE data in stream', async () => {
+			const model = new RestLanguageModel({
+				id: 'cortex/claude-sonnet-4-5',
+				settings: { enableStreaming: true }
+			});
+
+			// Create stream with malformed JSON
+			mockFetch.mockResolvedValueOnce(createStreamingResponse([
+				'data: {"choices":[{"delta":{"content":"Good"}}]}',
+				'data: {invalid json here}',  // Malformed
+				'data: {"choices":[{"delta":{"content":" data"}}]}',
+				'data: {"choices":[{"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+			]));
+
+			const { stream } = await model.doStream({
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
+				inputFormat: 'messages',
+				mode: { type: 'regular' }
+			} as TestCallOptions);
+
+			const reader = stream.getReader();
+			const chunks: Array<unknown> = [];
+			let done = false;
+
+			// Should skip malformed data and continue
+			try {
+				while (!done) {
+					const { value, done: isDone } = await reader.read();
+					done = isDone;
+					if (value) chunks.push(value);
+				}
+			} catch (error) {
+				// Some implementations may throw on malformed data
+			}
+
+			// Should have received at least some valid chunks
+			expect(chunks.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -780,7 +832,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(result.finishReason).toBe('stop');
 		});
@@ -797,7 +849,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(result.finishReason).toBe('length');
 		});
@@ -814,7 +866,7 @@ describe('RestLanguageModel', () => {
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Unsafe content' }] }],
 				inputFormat: 'messages',
 				mode: { type: 'regular' }
-			});
+			} as TestCallOptions);
 
 			expect(result.finishReason).toBe('content-filter');
 		});

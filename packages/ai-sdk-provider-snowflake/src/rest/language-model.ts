@@ -555,7 +555,14 @@ export class RestLanguageModel implements LanguageModelV2 {
 					text = JSON.stringify(result.structured_output[0].raw_message);
 				} else {
 					// Fall back to regular choices format
-					const choice = result.choices?.[0];
+					// Type assertion: Cortex API can return content_list for Claude models
+					const choice = result.choices?.[0] as {
+						message?: { 
+							content?: string; 
+							content_list?: Array<{ type: string; text?: string }>;
+						};
+						finish_reason?: string;
+					} | undefined;
 					
 					// Handle content_list format (Claude via Cortex)
 					if (choice?.message?.content_list && Array.isArray(choice.message.content_list)) {
