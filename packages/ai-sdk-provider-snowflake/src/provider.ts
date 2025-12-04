@@ -91,11 +91,17 @@ async function checkCliAvailable(): Promise<boolean> {
  * Returns true if any of:
  * - Direct token (apiKey) + either baseURL or account (to derive URL)
  * - Key pair auth (account + user + private key)
+ *
+ * Checks both CORTEX_* and SNOWFLAKE_* environment variables to match
+ * the priority order used in the authentication module (snowflake-auth.ts).
+ * CORTEX_* variables take precedence over SNOWFLAKE_* equivalents.
  */
 function hasRestCredentials(settings: SnowflakeProviderSettings): boolean {
-	const account = process.env.SNOWFLAKE_ACCOUNT;
-	const envApiKey = process.env.SNOWFLAKE_API_KEY;
-	const envBaseUrl = process.env.SNOWFLAKE_BASE_URL;
+	// Check both CORTEX_* (priority) and SNOWFLAKE_* variables
+	const account = process.env.CORTEX_ACCOUNT || process.env.SNOWFLAKE_ACCOUNT;
+	const envApiKey = process.env.CORTEX_API_KEY || process.env.SNOWFLAKE_API_KEY;
+	const envBaseUrl =
+		process.env.CORTEX_BASE_URL || process.env.SNOWFLAKE_BASE_URL;
 
 	// Check settings first - apiKey with either explicit baseURL or account to derive URL
 	if (settings.apiKey && (settings.baseURL || account)) {
@@ -108,7 +114,7 @@ function hasRestCredentials(settings: SnowflakeProviderSettings): boolean {
 	}
 
 	// Check for key pair authentication (account + user + private key)
-	const user = process.env.SNOWFLAKE_USER;
+	const user = process.env.CORTEX_USER || process.env.SNOWFLAKE_USER;
 	const privateKeyPath =
 		process.env.SNOWFLAKE_PRIVATE_KEY_PATH ||
 		process.env.SNOWFLAKE_PRIVATE_KEY_FILE;
