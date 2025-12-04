@@ -1,29 +1,42 @@
 # TODO: Move to apps/docs inside our documentation website
 
-# Cortex Code Integration Guide
+# Snowflake Provider Integration Guide
 
-This guide covers how to use Task Master with Snowflake's Cortex Code CLI for AI-powered development workflows using Snowflake's hosted models.
+This guide covers how to use Task Master with Snowflake's Cortex AI models for AI-powered development workflows. The unified Snowflake provider supports both **REST API** and **Cortex Code CLI** backends.
 
 ## Overview
 
-Cortex Code integration allows Task Master to leverage Snowflake's Cortex AI models through the Cortex Code CLI without requiring direct API keys. The integration uses secure Snowflake connection authentication managed via TOML configuration files.
+The Snowflake provider (`snowflake`) enables Task Master to leverage Snowflake's Cortex AI models with multiple authentication and execution options. All models use the standardized `cortex/<modelId>` naming convention.
 
 **Key Benefits:**
-- 🔒 Secure connection-based authentication (no API keys)
-- 🎯 Planning mode for read-only analysis
-- 🛠️ Custom skills support for specialized operations
-- 🔌 Built-in Model Context Protocol (MCP) support
+- 🔒 Multiple authentication methods: key pair, connection profiles, direct tokens
+- 🔄 Automatic backend selection: REST API (default) or Cortex Code CLI
+- 🎯 Planning mode for read-only analysis (CLI mode)
+- 🛠️ Custom skills support (CLI mode)
+- 🔌 Built-in Model Context Protocol (MCP) support (CLI mode)
 - ⚡ All Snowflake Cortex models available
+- 💰 Use existing Snowflake credits - no additional AI subscriptions
+
+**Execution Modes:**
+- **REST API** (default): Direct API calls using key pair or token authentication
+- **Cortex Code CLI**: Uses the `cortex` CLI tool for enhanced features
+- **Auto**: Automatically selects REST if credentials are available, otherwise CLI
 
 ## Prerequisites
 
-### 1. Request Access
+### For REST API (Default)
 
-Contact your **Snowflake Account Executive** to request Cortex Code CLI access. This is currently in private preview.
+1. **Snowflake Account** with Cortex enabled
+2. **Authentication credentials** (one of the following):
+   - Key pair authentication (RSA private key)
+   - OAuth/PAT token
+   - Connection profile with credentials
 
-### 2. Install Cortex Code CLI
+### For Cortex Code CLI (Optional)
 
-Follow Snowflake's installation instructions for your platform. Verify installation:
+1. **Request Access**: Contact your Snowflake Account Executive for Cortex Code CLI access (private preview)
+
+2. **Install Cortex Code CLI**: Follow Snowflake's installation instructions:
 
 ```bash
 cortex --version
@@ -35,21 +48,53 @@ Add to PATH if needed:
 export PATH="$PATH:/path/to/cortex"
 ```
 
-### 3. Verify CLI Availability
-
-Test that the CLI is accessible:
-```bash
-cortex --help
-# Should display help without errors
-```
-
 ## Authentication Setup
 
-Cortex Code uses **connection-based authentication** via Snowflake configuration files.
+The Snowflake provider supports multiple authentication methods in order of priority:
 
-### Create Connection Configuration
+### Method 1: Environment Variables (Recommended for REST API)
 
-Create or edit `~/.snowflake/config.toml`:
+The simplest approach for REST API is using environment variables:
+
+```bash
+# Required for key pair authentication
+export SNOWFLAKE_ACCOUNT="your-account"       # e.g., "xyz12345" or "org-account"
+export SNOWFLAKE_USER="your.name@company.com"
+export SNOWFLAKE_PRIVATE_KEY_PATH="/path/to/rsa_key.p8"
+
+# Optional: for encrypted private keys
+export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE="your-passphrase"
+# Aliases also supported: SNOWFLAKE_PRIVATE_KEY_FILE_PWD, SNOWSQL_PRIVATE_KEY_PASSPHRASE, PRIVATE_KEY_PASSPHRASE
+
+# Optional: specify role
+export SNOWFLAKE_ROLE="YOUR_ROLE"
+```
+
+**Or** use direct token authentication:
+
+```bash
+export SNOWFLAKE_API_KEY="your-oauth-or-pat-token"
+export SNOWFLAKE_ACCOUNT="your-account"  # URL derived automatically
+
+# Optional: explicit base URL (only needed if account name differs from URL)
+# export SNOWFLAKE_BASE_URL="https://your-account.snowflakecomputing.com"
+```
+
+### Method 2: Connection Profile (Recommended for CLI mode)
+
+Create `~/.snowflake/connections.toml`:
+
+```toml
+[default]
+account = "YOUR_ACCOUNT"
+user = "YOUR_USERNAME"
+private_key_path = "/path/to/rsa_key.p8"
+private_key_passphrase = "optional-passphrase"
+role = "YOUR_ROLE"
+warehouse = "YOUR_WAREHOUSE"
+```
+
+Or use `~/.snowflake/config.toml` (legacy format):
 
 ```toml
 [connections.default]
@@ -60,44 +105,43 @@ warehouse = "YOUR_WAREHOUSE"
 role = "YOUR_ROLE"
 ```
 
-**Important**: Replace with your actual Snowflake credentials.
+### Generate RSA Key Pair (for Key Pair Auth)
 
-### Get Personal Access Token (PAT)
+```bash
+# Generate private key (with passphrase)
+openssl genrsa 2048 | openssl pkcs8 -topk8 -v2 des3 -inform PEM -out rsa_key.p8
 
-1. Log into Snowflake web console
-2. Go to **Settings** → **Security**
-3. Generate a new **Personal Access Token**
-4. Use this token as the `password` value
+# Generate public key
+openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub
+
+# Configure in Snowflake
+ALTER USER YOUR_USER SET RSA_PUBLIC_KEY='<public_key_content>';
+```
 
 ### Secure Your Configuration
 
 Set appropriate file permissions:
 
 ```bash
+chmod 600 ~/.snowflake/connections.toml
 chmod 600 ~/.snowflake/config.toml
-```
-
-### Test Connection
-
-Verify your connection works:
-
-```bash
-cortex connection list
-# Should show your configured connection(s)
+chmod 600 /path/to/rsa_key.p8
 ```
 
 ### Multiple Connections
 
-You can configure multiple connections for different environments:
+Configure multiple connections for different environments:
 
 ```toml
-[connections.default]
+[default]
 account = "prod_account"
-# ... other settings
+user = "prod_user"
+private_key_path = "/path/to/prod_key.p8"
 
-[connections.dev]
+[dev]
 account = "dev_account"
-# ... other settings
+user = "dev_user"
+private_key_path = "/path/to/dev_key.p8"
 ```
 
 Then specify which to use in Task Master configuration.
@@ -358,22 +402,68 @@ Disable if needed:
 }
 ```
 
+### Claude-Specific Features
+
+The Snowflake provider uses the **OpenAI SDK-compatible endpoint** (`/api/v2/cortex/v1/chat/completions`) which supports OpenRouter-compatible features for Claude models.
+
+See: [Snowflake OpenAI SDK Compatibility](https://docs.snowflake.com/en/user-guide/snowflake-cortex/open_ai_sdk)
+
+**1. Prompt Caching** ✅ **Available**
+
+Enable prompt caching for Claude models to reduce costs when using repeated system prompts:
+
+```json
+{
+  "snowflake": {
+    "enablePromptCaching": true
+  }
+}
+```
+
+When enabled, system messages are automatically marked with `cache_control: { type: "ephemeral" }`, which tells Claude to cache the system prompt content.
+
+Benefits:
+- Cache writes: 1.25x input cost (one-time)
+- Cache reads: 0.1x input cost (subsequent requests)
+- Ideal for repeated system instructions across requests
+
+Note: Only Claude models support explicit `cache_control` for prompt caching. OpenAI models support implicit caching automatically.
+
+**2. Reasoning Tokens** (Claude Models)
+
+Enable extended thinking for Claude models with reasoning tokens:
+
+```json
+{
+  "snowflake": {
+    "reasoning": "medium"
+  }
+}
+```
+
+**Effort levels:**
+- `"low"` - Minimal reasoning, faster responses
+- `"medium"` - Balanced thinking time (recommended)
+- `"high"` - Extended reasoning for complex problems
+
+When enabled, the API response includes reasoning details in OpenRouter format.
+
+**3. Extended Usage Information**
+
+When using Claude models with caching or reasoning, the usage response includes extended details:
+
+```typescript
+// Response usage object
+{
+  inputTokens: 1500,
+  outputTokens: 500,
+  totalTokens: 2000,
+  cachedInputTokens: 1200,  // Tokens read from cache (when prompt caching is available)
+  reasoningTokens: 150       // Tokens used for reasoning (when reasoning is enabled)
+}
+```
+
 ### Performance Optimization
-
-**1. Prompt Caching** (Automatic)
-
-Snowflake Cortex supports [prompt caching](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#prompt-caching) for reduced cost and latency:
-
-- **Claude models**: Automatic caching for claude-3-7-sonnet onwards
-  - Cache prompts 1024+ tokens
-  - Cache reads: 0.1x input cost
-  - Cache writes: 1.25x input cost
-  - Great for repeated system instructions or document analysis
-
-- **OpenAI models**: Implicit caching for all models
-  - Cache prompts 1024+ tokens  
-  - Cache reads: 0.25x-0.50x input cost
-  - No additional cost for cache writes
 
 **2. Connection Reuse**
 - CLI availability checks are cached (1-hour TTL)
@@ -405,25 +495,47 @@ Snowflake Cortex supports [prompt caching](https://docs.snowflake.com/en/user-gu
 
 ## Integration with AI SDK
 
-Task Master's Cortex Code integration uses the `@tm/ai-sdk-provider-cortex-code` package, providing full compatibility with Vercel AI SDK.
+Task Master's Snowflake integration uses the unified `@tm/ai-sdk-provider-snowflake` package, providing full compatibility with Vercel AI SDK.
 
 ### Features
 
+- ✅ **Unified Provider**: Single package for both REST API and CLI backends
 - ✅ **Full AI SDK Compatibility**: Works with `generateText` and other AI SDK functions
 - ✅ **Type Safety**: Complete TypeScript support with proper type definitions
-- ✅ **Automatic Error Handling**: Graceful degradation when Cortex Code is unavailable
+- ✅ **Multiple Auth Methods**: Key pair, connection profiles, direct token
+- ✅ **Auto-Detection**: Automatically selects CLI or REST based on availability
+- ✅ **Token Caching**: Persistent credential caching using Snowflake's credential manager
 - ✅ **Retry Logic**: Built-in retry mechanism for reliability
-- ✅ **Connection Management**: Automatic connection discovery and validation
+
+### Credential Caching
+
+The provider uses Snowflake's built-in credential manager for persistent token caching:
+
+- **Shared with other Snowflake tools**: Uses the same cache as Snowflake CLI, drivers, etc.
+- **Platform-specific secure storage**:
+  - macOS: `~/Library/Caches/Snowflake/credential_cache_v1.json`
+  - Linux: `~/.cache/snowflake/credential_cache_v1.json`
+  - Windows: `%LOCALAPPDATA%\Snowflake\Caches\credential_cache_v1.json`
+- **Automatic TTL expiry**: Tokens are refreshed before expiry
+- **File locking**: Safe for concurrent access from multiple processes
+
+See: [Snowflake Credential Manager](https://github.com/snowflakedb/snowflake-connector-nodejs/blob/master/lib/authentication/secure_storage/json_credential_manager.js)
 
 ### Direct SDK Usage
 
 ```typescript
 import { generateText } from 'ai';
-import { createCortexCode } from '@tm/ai-sdk-provider-cortex-code';
+import { createSnowflake, snowflake } from '@tm/ai-sdk-provider-snowflake';
 
-// Create provider
-const provider = createCortexCode();
-const model = provider('claude-3-5-sonnet-20241022');
+// Use default provider (auto-detects best backend)
+const model = snowflake('cortex/claude-sonnet-4-5');
+
+// Or create a custom provider
+const provider = createSnowflake({
+  connection: 'default',
+  executionMode: 'auto' // 'auto' | 'rest' | 'cli'
+});
+const customModel = provider('cortex/claude-sonnet-4-5');
 
 // Generate text
 const result = await generateText({
@@ -437,17 +549,29 @@ console.log(result.text);
 ### Custom Configuration in SDK
 
 ```typescript
-const provider = createCortexCode({
-  defaultSettings: {
-    connection: 'production',
-    timeout: 120000,
-    maxRetries: 3
-  }
+import { createSnowflake } from '@tm/ai-sdk-provider-snowflake';
+
+// Force CLI mode
+const cliProvider = createSnowflake({
+  executionMode: 'cli',
+  connection: 'production',
+  timeout: 120000,
+  maxRetries: 3
 });
 
-const model = provider('llama3.1-70b', {
+// Force REST API mode
+const restProvider = createSnowflake({
+  executionMode: 'rest',
+  connection: 'production',
+  // Or use direct authentication
+  apiKey: 'your-oauth-token',
+  baseURL: 'https://your-account.snowflakecomputing.com'
+});
+
+// With CLI-specific options
+const model = cliProvider('cortex/llama3.1-70b', {
   plan: true,              // Enable planning mode
-  noMcp: false,           // Enable MCP
+  noMcp: false,            // Enable MCP
   skillsFile: './skills.json'
 });
 ```
@@ -460,7 +584,7 @@ import {
   isConnectionError,
   isTimeoutError,
   isInstallationError
-} from '@tm/ai-sdk-provider-cortex-code';
+} from '@tm/ai-sdk-provider-snowflake';
 
 try {
   const result = await generateText({ model, prompt: '...' });
@@ -470,7 +594,7 @@ try {
   } else if (isTimeoutError(error)) {
     console.error('Request timed out - try increasing timeout');
   } else if (isConnectionError(error)) {
-    console.error('Connection not found - verify config.toml');
+    console.error('Connection not found - verify connections.toml');
   } else if (isInstallationError(error)) {
     console.error('Cortex CLI not installed - install first');
   }
@@ -785,7 +909,7 @@ A: Only the prompts and task data necessary for AI processing. Task Master doesn
 
 - **Task Master Docs**: [docs.task-master.dev](https://docs.task-master.dev)
 - **Snowflake Cortex Code**: [docs.snowflake.com/cortex-cli](https://docs.snowflake.com/en/developer-guide/cortex-cli)
-- **AI SDK Provider Package**: [README](../packages/ai-sdk-provider-cortex-code/README.md)
+- **Unified AI SDK Provider Package**: [README](../../packages/ai-sdk-provider-snowflake/README.md)
 
 ### Support Channels
 

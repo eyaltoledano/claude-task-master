@@ -1,0 +1,58 @@
+{
+	"name": "@tm/ai-sdk-provider-snowflake",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Unified AI SDK provider for Snowflake Cortex with REST API and CLI support",
+	"type": "module",
+	"types": "./dist/index.d.ts",
+	"main": "./dist/index.js",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"clean": "rm -rf dist",
+		"prebuild": "npm run clean",
+		"prepublishOnly": "npm run build",
+		"test": "jest",
+		"test:unit": "jest --selectProjects unit",
+		"test:integration": "jest --selectProjects integration",
+		"test:watch": "jest --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^1.0.0",
+		"@ai-sdk/openai-compatible": "^0.2.0",
+		"@ai-sdk/provider": "^2.0.0",
+		"@ai-sdk/provider-utils": "^2.0.0",
+		"snowflake-sdk": "^2.3.1",
+		"zod": "^3.23.0"
+	},
+	"optionalDependencies": {
+		"@ai-sdk/mcp": "^0.1.0"
+	},
+	"devDependencies": {
+		"@jest/globals": "^29.7.0",
+		"@types/node": "^22.18.6"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"keywords": [
+		"ai",
+		"cortex",
+		"snowflake",
+		"language-model",
+		"provider",
+		"rest-api",
+		"cli"
+	],
+	"files": [
+		"dist/**/*",
+		"README.md"
+	]
+}
+

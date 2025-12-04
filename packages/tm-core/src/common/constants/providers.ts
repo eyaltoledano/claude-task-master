@@ -14,7 +14,6 @@ export const VALIDATED_PROVIDERS = [
 	'xai',
 	'groq',
 	'mistral',
-	'cortex-code',
 	'snowflake'
 ] as const;
 
@@ -34,7 +33,6 @@ export const CUSTOM_PROVIDERS = {
 	GEMINI_CLI: 'gemini-cli',
 	GROK_CLI: 'grok-cli',
 	CODEX_CLI: 'codex-cli',
-	CORTEX_CODE: 'cortex-code',
 	SNOWFLAKE: 'snowflake'
 } as const;
 

@@ -1,5 +1,5 @@
 /**
- * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'kilo' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
+ * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cortex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'kilo' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
  */
 
 /**
@@ -14,6 +14,7 @@
  * - claude: Claude Code integration
  * - cline: Cline IDE rules
  * - codex: Codex integration
+ * - cortex: Snowflake Cortex Code CLI integration
  * - cursor: Cursor IDE rules
  * - gemini: Gemini integration
  * - kiro: Kiro IDE rules
@@ -35,6 +36,7 @@ export const RULE_PROFILES = [
 	'claude',
 	'cline',
 	'codex',
+	'cortex',
 	'cursor',
 	'gemini',
 	'kiro',
