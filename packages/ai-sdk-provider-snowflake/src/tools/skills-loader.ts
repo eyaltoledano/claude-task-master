@@ -25,17 +25,12 @@
  */
 
 import { z } from 'zod';
-import type { SkillMetadata, FileInfo, ListSkillsResult } from './types.js';
-
-/**
- * Tool definition type that works with AI SDK
- * Note: Using z.ZodType<TInput, z.ZodTypeDef, unknown> to allow schemas with defaults
- */
-export interface ToolDefinition<TInput, TOutput> {
-	description: string;
-	parameters: z.ZodType<TInput, z.ZodTypeDef, unknown>;
-	execute: (input: TInput) => Promise<TOutput>;
-}
+import type {
+	SkillMetadata,
+	FileInfo,
+	ListSkillsResult,
+	ToolDefinition
+} from './types.js';
 
 /**
  * Get file type based on extension

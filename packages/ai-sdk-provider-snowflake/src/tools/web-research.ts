@@ -190,10 +190,13 @@ function htmlToMarkdown(html: string): string {
 	});
 	md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, content) => {
 		let i = 0;
-		return content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
-			i++;
-			return `${i}. ${liContent}\n`;
-		});
+		return content.replace(
+			/<li[^>]*>([\s\S]*?)<\/li>/gi,
+			(_liMatch: string, liContent: string) => {
+				i++;
+				return `${i}. ${liContent}\n`;
+			}
+		);
 	});
 
 	// Paragraphs

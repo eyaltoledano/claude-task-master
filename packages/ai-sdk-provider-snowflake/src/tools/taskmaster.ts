@@ -10,18 +10,9 @@ import type {
 	TaskSummary,
 	TaskDetails,
 	ListTasksResult,
-	CurrentContextResult
+	CurrentContextResult,
+	ToolDefinition
 } from './types.js';
-
-/**
- * Tool definition type that works with AI SDK
- * Note: Using z.ZodType<TInput, z.ZodTypeDef, unknown> to allow schemas with defaults
- */
-export interface ToolDefinition<TInput, TOutput> {
-	description: string;
-	parameters: z.ZodType<TInput, z.ZodTypeDef, unknown>;
-	execute: (input: TInput) => Promise<TOutput>;
-}
 
 /**
  * Load tasks from tasks.json file

@@ -345,7 +345,10 @@ Just return the raw JSON object.`;
 			// Convert unquoted property names to quoted ones
 			// Only match unquoted keys at object boundaries (after { or ,)
 			try {
-				const fixedJson = jsonText.replace(/([{,]\s*)(\w+)(\s*):/g, '$1"$2"$3:');
+				const fixedJson = jsonText.replace(
+					/([{,]\s*)(\w+)(\s*):/g,
+					'$1"$2"$3:'
+				);
 				return JSON.parse(fixedJson);
 			} catch (secondError) {
 				throw new Error(

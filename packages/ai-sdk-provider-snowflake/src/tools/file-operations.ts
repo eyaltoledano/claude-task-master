@@ -165,7 +165,9 @@ function matchPattern(filename: string, pattern: string): boolean {
 		return new RegExp(`^${regexPattern}$`, 'i').test(filename);
 	} catch {
 		// Fallback to simple string matching
-		return filename.toLowerCase().includes(pattern.replace(/[*?]/g, '').toLowerCase());
+		return filename
+			.toLowerCase()
+			.includes(pattern.replace(/[*?]/g, '').toLowerCase());
 	}
 }
 

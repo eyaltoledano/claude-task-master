@@ -36,7 +36,8 @@ async function initLoadConnectionConfiguration() {
 	loadConnectionConfigurationInitialized = true;
 	try {
 		// Dynamic import of SDK internal module - not in public types
-		const modulePath = 'snowflake-sdk/lib/configuration/connection_configuration.js';
+		const modulePath =
+			'snowflake-sdk/lib/configuration/connection_configuration.js';
 		const connConfigModule = await import(/* @vite-ignore */ modulePath);
 		loadConnectionConfiguration = connConfigModule.loadConnectionConfiguration;
 	} catch {
@@ -440,7 +441,9 @@ async function exchangeJwtForToken(
 
 		if (!response.ok) {
 			const errorBody = await response.text();
-			throw new Error(`Token exchange failed (${response.status}): ${errorBody}`);
+			throw new Error(
+				`Token exchange failed (${response.status}): ${errorBody}`
+			);
 		}
 
 		const result = (await response.json()) as {

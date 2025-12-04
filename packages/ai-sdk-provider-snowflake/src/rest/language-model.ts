@@ -447,7 +447,10 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 			try {
 				const fs = await import('fs');
-				fs.appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+				fs.appendFileSync(
+					logFile,
+					JSON.stringify(logEntry, null, 2) + '\n---\n'
+				);
 				console.log(`[DEBUG snowflake:rest] Log written to: ${logFile}`);
 			} catch (e) {
 				// Ignore file write errors in non-Node environments
