@@ -426,33 +426,32 @@ export class RestLanguageModel implements LanguageModelV2 {
 			}
 		}
 
-		// Log all requests to file for debugging
-		const logDir = process.env.SNOWFLAKE_LOG_DIR || '/tmp';
-		const logFile = `${logDir}/snowflake-rest-requests.log`;
-		const timestamp = new Date().toISOString();
-		const auth = await this.ensureAuth();
-		const logEntry = {
-			timestamp,
-			baseURL: auth.baseURL,
-			endpoint: '/api/v2/cortex/inference:complete',
-			modelId: this.modelId,
-			normalizedModelId: modelId,
-			requestBody: body
-		};
-
-		try {
-			const fs = await import('fs');
-			fs.appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
-		} catch (e) {
-			// Ignore file write errors in non-Node environments
-		}
-
 		// Debug logging - enable via DEBUG=snowflake:rest environment variable
 		if (process.env.DEBUG?.includes('snowflake:rest')) {
+			const logDir = process.env.SNOWFLAKE_LOG_DIR || '/tmp';
+			const logFile = `${logDir}/snowflake-rest-requests.log`;
+			const timestamp = new Date().toISOString();
+			const auth = await this.ensureAuth();
+			const logEntry = {
+				timestamp,
+				baseURL: auth.baseURL,
+				endpoint: '/api/v2/cortex/inference:complete',
+				modelId: this.modelId,
+				normalizedModelId: modelId,
+				requestBody: body
+			};
+
 			console.log(`[DEBUG snowflake:rest] Base URL: ${auth.baseURL}`);
 			console.log(`[DEBUG snowflake:rest] Request body for ${modelId}:`);
 			console.log(JSON.stringify(body, null, 2));
-			console.log(`[DEBUG snowflake:rest] Log written to: ${logFile}`);
+
+			try {
+				const fs = await import('fs');
+				fs.appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
+				console.log(`[DEBUG snowflake:rest] Log written to: ${logFile}`);
+			} catch (e) {
+				// Ignore file write errors in non-Node environments
+			}
 		}
 
 		// Execute request with retries

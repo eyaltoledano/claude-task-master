@@ -28,6 +28,7 @@
 		"@ai-sdk/openai-compatible": "^0.2.0",
 		"@ai-sdk/provider": "^2.0.0",
 		"@ai-sdk/provider-utils": "^2.0.0",
+		"jsonwebtoken": "^9.0.0",
 		"snowflake-sdk": "^2.3.1",
 		"zod": "^3.23.0"
 	},

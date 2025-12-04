@@ -722,7 +722,7 @@ Snowflake provides AI models through Snowflake's data platform and requires spec
    ```
 
    **Snowflake Web UI Alternative to generate PAT:**
-   1. Click your username in the bottom left and Navigate to: **Settings** → **Authentication** → **Programatic Access Tokens**
+   1. Click your username in the bottom left and Navigate to: **Settings** → **Authentication** → **Programmatic Access Tokens**
    2. Click **Generate new token**
    3. Provide a **Name** (e.g. task_master_pat) and **Comment** (e.g., "Task Master Integration")
    4. Set expiration (recommended: 90 days, max varies by account)
@@ -792,7 +792,7 @@ Snowflake provides AI models through Snowflake's data platform and requires spec
    - **Model Naming**: Use `snowflake/` prefix when you are using a PAT (e.g., `snowflake/claude-sonnet-4-5`) and `cortex/` when you are using Cortex Code CLI.
    - **Unlisted Models**: Task Master supports ANY Cortex model available through REST, even if not listed when you run `task-master models`
    - **REST API Format**: Model names use lowercase REST API format (e.g., `llama3.1-8b`), not SQL uppercase format (`LLAMA3.1-8B`)
-   - **Cross-Region Availability**: To enable [cross-region inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) for broader model access, an adminstrator can set the the [`CORTEX_ENABLED_CROSS_REGION`](https://docs.snowflake.com/en/sql-reference/parameters#cortex-enabled-cross-region) parameter with statements like:
+   - **Cross-Region Availability**: To enable [cross-region inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) for broader model access, an administrator can set the [`CORTEX_ENABLED_CROSS_REGION`](https://docs.snowflake.com/en/sql-reference/parameters#cortex-enabled-cross-region) parameter with statements like:
    ```sql
    ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'ANY_REGION';
    ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'AWS_US,AZURE_US';

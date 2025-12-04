@@ -343,8 +343,9 @@ Just return the raw JSON object.`;
 		} catch (parseError) {
 			// Try to fix common JavaScript object syntax issues
 			// Convert unquoted property names to quoted ones
+			// Only match unquoted keys at object boundaries (after { or ,)
 			try {
-				const fixedJson = jsonText.replace(/(\w+):/g, '"$1":');
+				const fixedJson = jsonText.replace(/([{,]\s*)(\w+)(\s*):/g, '$1"$2"$3:');
 				return JSON.parse(fixedJson);
 			} catch (secondError) {
 				throw new Error(

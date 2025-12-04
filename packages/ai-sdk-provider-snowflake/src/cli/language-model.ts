@@ -319,9 +319,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 		} catch (parseError) {
 			// Try to fix common JavaScript object syntax issues
 			// Convert unquoted property names to quoted ones
-			// Pattern: word followed by colon (not in a string)
+			// Only match unquoted keys at object boundaries (after { or ,)
 			try {
-				const fixedJson = jsonText.replace(/(\s*)(\w+)(\s*):/g, '$1"$2"$3:');
+				const fixedJson = jsonText.replace(/([{,]\s*)(\w+)(\s*):/g, '$1"$2"$3:');
 				return JSON.parse(fixedJson);
 			} catch {
 				throw new Error(
