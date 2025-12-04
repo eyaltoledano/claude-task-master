@@ -3,7 +3,42 @@ title: FAQ
 sidebarTitle: "FAQ"
 ---
 
-Coming soon. 
+## 🔐 Authentication Issues
+
+### "Your session has expired. Please log in again with: task-master login"
+
+This error occurs when your authentication token has expired or become invalid. This is normal behavior for security reasons. To resolve:
+
+```bash
+task-master login
+```
+
+If you continue having issues, you can also try:
+
+```bash
+task-master logout
+task-master login
+```
+
+### Debugging Authentication Problems
+
+If you're experiencing authentication issues, enable debug mode to see detailed error information:
+
+```bash
+DEBUG=true task-master login
+```
+
+This will show stack traces and detailed error messages that can help identify the issue.
+
+### MFA (Multi-Factor Authentication) Issues
+
+Task Master supports MFA-enabled accounts. If you have MFA enabled:
+
+1. The `task-master login` command will automatically handle the MFA flow
+2. Follow the prompts to complete your MFA verification
+3. Your session will remain valid until it expires
+
+## 🛠️ Configuration Issues 
 
 ## 💬 Getting Help
 
