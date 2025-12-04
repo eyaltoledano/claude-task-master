@@ -104,9 +104,7 @@ describe('Snowflake Integration (Optional)', () => {
 
 		expect(client).toBeDefined();
 		expect(typeof client).toBe('function');
-		const { createSnowflake } = await import(
-			'@tm/ai-sdk-provider-snowflake'
-		);
+		const { createSnowflake } = await import('@tm/ai-sdk-provider-snowflake');
 		expect(createSnowflake).toHaveBeenCalledWith(
 			expect.objectContaining({ executionMode: 'rest' })
 		);
@@ -215,9 +213,7 @@ describe('Snowflake Provider Execution Modes', () => {
 		const provider = new SnowflakeProvider();
 		provider.getClient({});
 
-		const { createSnowflake } = await import(
-			'@tm/ai-sdk-provider-snowflake'
-		);
+		const { createSnowflake } = await import('@tm/ai-sdk-provider-snowflake');
 		expect(createSnowflake).toHaveBeenCalledWith(
 			expect.objectContaining({ executionMode: 'auto' })
 		);
@@ -227,9 +223,7 @@ describe('Snowflake Provider Execution Modes', () => {
 		const provider = new SnowflakeProvider({ executionMode: 'rest' });
 		provider.getClient({});
 
-		const { createSnowflake } = await import(
-			'@tm/ai-sdk-provider-snowflake'
-		);
+		const { createSnowflake } = await import('@tm/ai-sdk-provider-snowflake');
 		expect(createSnowflake).toHaveBeenCalledWith(
 			expect.objectContaining({ executionMode: 'rest' })
 		);
@@ -239,9 +233,7 @@ describe('Snowflake Provider Execution Modes', () => {
 		const provider = new SnowflakeProvider({ executionMode: 'cli' });
 		provider.getClient({});
 
-		const { createSnowflake } = await import(
-			'@tm/ai-sdk-provider-snowflake'
-		);
+		const { createSnowflake } = await import('@tm/ai-sdk-provider-snowflake');
 		expect(createSnowflake).toHaveBeenCalledWith(
 			expect.objectContaining({ executionMode: 'cli' })
 		);
@@ -251,12 +243,9 @@ describe('Snowflake Provider Execution Modes', () => {
 		const provider = new SnowflakeProvider({ executionMode: 'rest' });
 		provider.getClient({ executionMode: 'cli' });
 
-		const { createSnowflake } = await import(
-			'@tm/ai-sdk-provider-snowflake'
-		);
+		const { createSnowflake } = await import('@tm/ai-sdk-provider-snowflake');
 		expect(createSnowflake).toHaveBeenCalledWith(
 			expect.objectContaining({ executionMode: 'cli' })
 		);
 	});
 });
-

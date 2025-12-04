@@ -35,15 +35,19 @@ export interface CliResponse {
 
 /**
  * Convert AI SDK prompt to CLI messages format
- * 
+ *
  * @param prompt - AI SDK prompt (array of messages)
  * @returns Array of CLI messages
  */
-export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[] {
+export function convertToCliMessages(
+	prompt: LanguageModelV2Prompt
+): CliMessage[] {
 	const messages: CliMessage[] = [];
 
 	// In AI SDK v5, prompt is an array of messages
-	const promptArray = Array.isArray(prompt) ? prompt : (prompt as unknown as unknown[]);
+	const promptArray = Array.isArray(prompt)
+		? prompt
+		: (prompt as unknown as unknown[]);
 
 	// Convert prompt messages
 	for (const message of promptArray) {
@@ -51,9 +55,10 @@ export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[
 		switch (msg.role) {
 			case 'system': {
 				// System messages provide instructions/context
-				const content = typeof msg.content === 'string'
-					? msg.content
-					: JSON.stringify(msg.content);
+				const content =
+					typeof msg.content === 'string'
+						? msg.content
+						: JSON.stringify(msg.content);
 
 				messages.push({
 					role: 'system',
@@ -66,17 +71,17 @@ export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[
 				// Handle different content types
 				const content = Array.isArray(msg.content)
 					? (msg.content as { type: string; text?: string }[])
-						.map((part) => {
-							if (part.type === 'text') {
-								return part.text;
-							}
-							// CLI doesn't support images in the same way
-							if (part.type === 'image') {
-								return '[Image content not supported in CLI mode]';
-							}
-							return '';
-						})
-						.join('\n')
+							.map((part) => {
+								if (part.type === 'text') {
+									return part.text;
+								}
+								// CLI doesn't support images in the same way
+								if (part.type === 'image') {
+									return '[Image content not supported in CLI mode]';
+								}
+								return '';
+							})
+							.join('\n')
 					: msg.content;
 
 				messages.push({
@@ -91,7 +96,9 @@ export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[
 				if (Array.isArray(msg.content)) {
 					const contentArray = msg.content as { type: string; text?: string }[];
 					const textParts = contentArray.filter((part) => part.type === 'text');
-					const toolParts = contentArray.filter((part) => part.type === 'tool-call');
+					const toolParts = contentArray.filter(
+						(part) => part.type === 'tool-call'
+					);
 
 					if (textParts.length > 0) {
 						const content = textParts.map((part) => part.text).join('\n');
@@ -120,7 +127,10 @@ export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[
 
 			case 'tool': {
 				// Tool results would need special handling
-				const toolContent = msg.content as { toolName: string; result: unknown }[];
+				const toolContent = msg.content as {
+					toolName: string;
+					result: unknown;
+				}[];
 				for (const toolResult of toolContent) {
 					messages.push({
 						role: 'user',
@@ -137,7 +147,7 @@ export function convertToCliMessages(prompt: LanguageModelV2Prompt): CliMessage[
 
 /**
  * Convert CLI response to AI SDK format
- * 
+ *
  * @param response - CLI response object
  * @returns AI SDK compatible response data
  */
@@ -152,9 +162,9 @@ export function convertFromCliResponse(response: CliResponse): {
 		text: response.content,
 		usage: response.usage
 			? {
-				promptTokens: response.usage.prompt_tokens || 0,
-				completionTokens: response.usage.completion_tokens || 0
-			}
+					promptTokens: response.usage.prompt_tokens || 0,
+					completionTokens: response.usage.completion_tokens || 0
+				}
 			: undefined
 	};
 }
@@ -162,11 +172,13 @@ export function convertFromCliResponse(response: CliResponse): {
 /**
  * Create a simple prompt string from AI SDK messages
  * This is used for the --print flag in Cortex Code
- * 
+ *
  * @param prompt - AI SDK prompt object
  * @returns A formatted prompt string
  */
-export function createPromptFromMessages(prompt: LanguageModelV2Prompt): string {
+export function createPromptFromMessages(
+	prompt: LanguageModelV2Prompt
+): string {
 	const messages = convertToCliMessages(prompt);
 
 	// Combine all messages into a single prompt
@@ -188,7 +200,7 @@ export function createPromptFromMessages(prompt: LanguageModelV2Prompt): string 
 /**
  * Escape a string for safe usage in shell arguments
  * This prevents command injection when passing user input to CLI
- * 
+ *
  * @param arg - The argument to escape
  * @returns Escaped argument safe for shell usage
  */
@@ -209,7 +221,7 @@ export function escapeShellArg(arg: string): string {
 
 /**
  * Build CLI arguments array from prompt
- * 
+ *
  * @param prompt - AI SDK prompt object
  * @returns Array of CLI arguments
  */
@@ -223,7 +235,7 @@ export function buildCliArgs(prompt: LanguageModelV2Prompt): string[] {
 /**
  * Parse conversation context from message history
  * Useful for maintaining context across multiple calls
- * 
+ *
  * @param messages - Array of messages
  * @returns Formatted conversation context
  */
@@ -235,4 +247,3 @@ export function formatConversationContext(messages: CliMessage[]): string {
 		})
 		.join('\n\n');
 }
-

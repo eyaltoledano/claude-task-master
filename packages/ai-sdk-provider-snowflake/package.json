@@ -50,9 +50,5 @@
 		"rest-api",
 		"cli"
 	],
-	"files": [
-		"dist/**/*",
-		"README.md"
-	]
+	"files": ["dist/**/*", "README.md"]
 }
-

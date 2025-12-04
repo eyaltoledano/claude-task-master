@@ -20,8 +20,8 @@ import { generateText, generateObject, streamText } from 'ai';
 import { z } from 'zod';
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { 
-	createSnowflake, 
+import {
+	createSnowflake,
 	snowflake,
 	getAvailableModels,
 	ModelHelpers,
@@ -32,10 +32,10 @@ import {
 } from '../src/index.js';
 import { authenticate, clearAuthCache } from '../src/auth/index.js';
 import type { SnowflakeProviderSettings } from '../src/types.js';
-import { 
-	hasCredentials, 
-	skipIfNoCredentials, 
-	getCredentialInfo 
+import {
+	hasCredentials,
+	skipIfNoCredentials,
+	getCredentialInfo
 } from './test-utils.js';
 
 // Load environment variables from root .env file
@@ -93,38 +93,46 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 	describe('REST API Mode', () => {
 		const restSettings: SnowflakeProviderSettings = {
-			executionMode: 'rest',
+			executionMode: 'rest'
 		};
 
 		// Use it.concurrent for parallel test execution
-		it.concurrent('should generate text using REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate text using REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "Hello" and nothing else.',
-				maxTokens: 50,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "Hello" and nothing else.',
+					maxTokens: 50
+				});
 
-			expect(result.text).toBeDefined();
-			expect(result.text.toLowerCase()).toContain('hello');
-		}, 60000);
+				expect(result.text).toBeDefined();
+				expect(result.text.toLowerCase()).toContain('hello');
+			},
+			60000
+		);
 
-		it.concurrent('should handle system and user messages via REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should handle system and user messages via REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				system: 'You are a helpful assistant that responds briefly.',
-				prompt: 'What is 2+2?',
-				maxTokens: 50,
-			});
+				const result = await generateText({
+					model,
+					system: 'You are a helpful assistant that responds briefly.',
+					prompt: 'What is 2+2?',
+					maxTokens: 50
+				});
 
-			expect(result.text).toBeDefined();
-			expect(result.text).toContain('4');
-		}, 60000);
+				expect(result.text).toBeDefined();
+				expect(result.text).toContain('4');
+			},
+			60000
+		);
 
 		it('should stream text using REST API', async () => {
 			const provider = createSnowflake(restSettings);
@@ -133,7 +141,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const result = streamText({
 				model,
 				prompt: 'Count from 1 to 5.',
-				maxTokens: 100,
+				maxTokens: 100
 			});
 
 			const chunks: string[] = [];
@@ -146,70 +154,81 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			expect(fullText.length).toBeGreaterThan(0);
 		}, 60000);
 
-		it.concurrent('should generate structured output (JSON) via REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate structured output (JSON) via REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const PersonSchema = z.object({
-				name: z.string().describe('The name of the person'),
-				age: z.number().describe('The age of the person'),
-			});
+				const PersonSchema = z.object({
+					name: z.string().describe('The name of the person'),
+					age: z.number().describe('The age of the person')
+				});
 
-			const result = await generateObject({
-				model,
-				schema: PersonSchema,
-				prompt:
-					'Generate a fictional person named John who is 30 years old.',
-			});
+				const result = await generateObject({
+					model,
+					schema: PersonSchema,
+					prompt: 'Generate a fictional person named John who is 30 years old.'
+				});
 
-			expect(result.object).toBeDefined();
-			expect(result.object.name).toBeDefined();
-			expect(typeof result.object.age).toBe('number');
-		}, 60000);
+				expect(result.object).toBeDefined();
+				expect(result.object.name).toBeDefined();
+				expect(typeof result.object.age).toBe('number');
+			},
+			60000
+		);
 
-		it.concurrent('should handle multi-turn conversations via REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should handle multi-turn conversations via REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				messages: [
-					{ role: 'user', content: 'My name is Alice.' },
-					{
-						role: 'assistant',
-						content: 'Hello Alice! Nice to meet you.',
-					},
-					{ role: 'user', content: 'What is my name?' },
-				],
-				maxTokens: 50,
-			});
+				const result = await generateText({
+					model,
+					messages: [
+						{ role: 'user', content: 'My name is Alice.' },
+						{
+							role: 'assistant',
+							content: 'Hello Alice! Nice to meet you.'
+						},
+						{ role: 'user', content: 'What is my name?' }
+					],
+					maxTokens: 50
+				});
 
-			expect(result.text).toBeDefined();
-			expect(result.text.toLowerCase()).toContain('alice');
-		}, 60000);
+				expect(result.text).toBeDefined();
+				expect(result.text.toLowerCase()).toContain('alice');
+			},
+			60000
+		);
 
-		it.concurrent('should respect maxTokens parameter via REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should respect maxTokens parameter via REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Write a very short sentence about cats.',
-				maxTokens: 100,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Write a very short sentence about cats.',
+					maxTokens: 100
+				});
 
-			// Verify we got a response 
-			expect(result.text).toBeDefined();
-			expect(result.text.length).toBeGreaterThan(0);
-			// Response should be reasonable length (not excessively long)
-			expect(result.text.length).toBeLessThan(2000);
-		}, 60000);
+				// Verify we got a response
+				expect(result.text).toBeDefined();
+				expect(result.text.length).toBeGreaterThan(0);
+				// Response should be reasonable length (not excessively long)
+				expect(result.text.length).toBeLessThan(2000);
+			},
+			60000
+		);
 	});
 
 	// CLI tests use Cortex Code CLI (cortex command)
 	describe('CLI Mode', () => {
 		const cliSettings: SnowflakeProviderSettings = {
-			executionMode: 'cli',
+			executionMode: 'cli'
 		};
 
 		// Check if Cortex CLI is available before running these tests
@@ -218,7 +237,10 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		beforeAll(async () => {
 			try {
 				const { execSync } = await import('child_process');
-				const output = execSync('cortex --version', { encoding: 'utf-8', timeout: 5000 });
+				const output = execSync('cortex --version', {
+					encoding: 'utf-8',
+					timeout: 5000
+				});
 				cliAvailable = output.includes('cortex') || /\d+\.\d+/.test(output);
 				if (cliAvailable) {
 					console.log('Cortex CLI available:', output.trim());
@@ -239,7 +261,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 			const result = await generateText({
 				model,
-				prompt: 'Say "Hello" and nothing else.',
+				prompt: 'Say "Hello" and nothing else.'
 			});
 
 			expect(result.text).toBeDefined();
@@ -255,7 +277,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const result = await generateText({
 				model,
 				system: 'You are a helpful assistant. Be very brief.',
-				prompt: 'What is the capital of France?',
+				prompt: 'What is the capital of France?'
 			});
 
 			expect(result.text).toBeDefined();
@@ -278,7 +300,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			try {
 				const result = streamText({
 					model,
-					prompt: 'Count from 1 to 3.',
+					prompt: 'Count from 1 to 3.'
 				});
 
 				// Try to consume the stream - should throw
@@ -290,15 +312,23 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				// If we somehow got results, that's unexpected but may happen with AI SDK v5
 				// The key is that the doStream method throws - we verified that in the console
 				if (gotChunks) {
-					console.log('[WARN] Stream returned chunks - AI SDK may have fallen back to doGenerate');
+					console.log(
+						'[WARN] Stream returned chunks - AI SDK may have fallen back to doGenerate'
+					);
 				} else {
 					throw new Error('Expected streaming to throw an error for CLI mode');
 				}
 			} catch (error) {
 				const err = error as Error;
 				// The error should mention streaming not supported
-				if (err.message.includes('streaming') || err.message.includes('Streaming')) {
-					console.log('[PASS] CLI streaming correctly throws error:', err.message.substring(0, 60));
+				if (
+					err.message.includes('streaming') ||
+					err.message.includes('Streaming')
+				) {
+					console.log(
+						'[PASS] CLI streaming correctly throws error:',
+						err.message.substring(0, 60)
+					);
 				} else {
 					// Re-throw if it's not the expected error
 					throw error;
@@ -318,10 +348,10 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 					{ role: 'user', content: 'Remember: The secret word is "banana".' },
 					{
 						role: 'assistant',
-						content: 'I will remember that the secret word is banana.',
+						content: 'I will remember that the secret word is banana.'
 					},
-					{ role: 'user', content: 'What is the secret word?' },
-				],
+					{ role: 'user', content: 'What is the secret word?' }
+				]
 			});
 
 			expect(result.text).toBeDefined();
@@ -331,7 +361,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 	describe('Auto Mode', () => {
 		const autoSettings: SnowflakeProviderSettings = {
-			executionMode: 'auto',
+			executionMode: 'auto'
 		};
 
 		it('should auto-detect and use available execution mode', async () => {
@@ -341,7 +371,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const result = await generateText({
 				model,
 				prompt: 'Say "test" and nothing else.',
-				maxTokens: 20,
+				maxTokens: 20
 			});
 
 			expect(result.text).toBeDefined();
@@ -356,7 +386,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const result = await generateText({
 				model,
 				prompt: 'Say "default" and nothing else.',
-				maxTokens: 20,
+				maxTokens: 20
 			});
 
 			expect(result.text).toBeDefined();
@@ -366,99 +396,119 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 	describe('Model ID Variations', () => {
 		const restSettings: SnowflakeProviderSettings = {
-			executionMode: 'rest',
+			executionMode: 'rest'
 		};
 
 		// Use it.concurrent for parallel execution
-		it.concurrent('should handle model ID without cortex/ prefix', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider('llama3.1-8b'); // Use valid model without prefix
+		it.concurrent(
+			'should handle model ID without cortex/ prefix',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider('llama3.1-8b'); // Use valid model without prefix
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "prefix" and nothing else.',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "prefix" and nothing else.',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, 60000);
+				expect(result.text).toBeDefined();
+			},
+			60000
+		);
 
-		it.concurrent('should handle model ID with cortex/ prefix', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider('cortex/llama3.1-8b'); // Use valid model with prefix
+		it.concurrent(
+			'should handle model ID with cortex/ prefix',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider('cortex/llama3.1-8b'); // Use valid model with prefix
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "prefixed" and nothing else.',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "prefixed" and nothing else.',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, 60000);
+				expect(result.text).toBeDefined();
+			},
+			60000
+		);
 	});
 
 	describe('Error Handling', () => {
 		// Use it.concurrent for parallel execution of error tests
-		it.concurrent('should handle invalid model gracefully', async () => {
-			const provider = createSnowflake({ executionMode: 'rest' });
-			const model = provider('cortex/invalid-model-xyz');
+		it.concurrent(
+			'should handle invalid model gracefully',
+			async () => {
+				const provider = createSnowflake({ executionMode: 'rest' });
+				const model = provider('cortex/invalid-model-xyz');
 
-			await expect(
-				generateText({
-					model,
-					prompt: 'Hello',
-					maxTokens: 10,
-				})
-			).rejects.toThrow();
-		}, 60000);
+				await expect(
+					generateText({
+						model,
+						prompt: 'Hello',
+						maxTokens: 10
+					})
+				).rejects.toThrow();
+			},
+			60000
+		);
 
-		it.concurrent('should handle empty prompt', async () => {
-			const provider = createSnowflake({ executionMode: 'rest' });
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should handle empty prompt',
+			async () => {
+				const provider = createSnowflake({ executionMode: 'rest' });
+				const model = provider(TEST_MODEL);
 
-			// Empty prompt should either throw or return empty
-			try {
-				const result = await generateText({
-					model,
-					prompt: '',
-					maxTokens: 10,
-				});
-				// If it doesn't throw, result should be defined
-				expect(result).toBeDefined();
-			} catch (error) {
-				// If it throws, that's also acceptable behavior
-				expect(error).toBeDefined();
-			}
-		}, 60000);
+				// Empty prompt should either throw or return empty
+				try {
+					const result = await generateText({
+						model,
+						prompt: '',
+						maxTokens: 10
+					});
+					// If it doesn't throw, result should be defined
+					expect(result).toBeDefined();
+				} catch (error) {
+					// If it throws, that's also acceptable behavior
+					expect(error).toBeDefined();
+				}
+			},
+			60000
+		);
 	});
 
 	// Use describe.each for model matrix tests - parallel execution
 	describe('Different Model Types', () => {
 		const restSettings: SnowflakeProviderSettings = {
-			executionMode: 'rest',
+			executionMode: 'rest'
 		};
 
 		// Test a variety of models to ensure compatibility
 		// Note: Model availability varies by Snowflake account
 		const modelsToTest = [
 			'cortex/llama3.1-8b',
-			'cortex/mistral-large2',
+			'cortex/mistral-large2'
 			// Add more models if available in your account
 		];
 
 		// Use it.concurrent.each for parallel model testing
-		it.concurrent.each(modelsToTest)('should work with model: %s', async (modelId) => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(modelId);
+		it.concurrent.each(modelsToTest)(
+			'should work with model: %s',
+			async (modelId) => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(modelId);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "ok" and nothing else.',
-				maxTokens: 10,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "ok" and nothing else.',
+					maxTokens: 10
+				});
 
-			expect(result.text).toBeDefined();
-		}, 60000);
+				expect(result.text).toBeDefined();
+			},
+			60000
+		);
 	});
 
 	describe('Connection Configuration', () => {
@@ -478,14 +528,14 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 			const provider = createSnowflake({
 				connection: connectionName,
-				executionMode: 'rest',
+				executionMode: 'rest'
 			});
 			const model = provider(TEST_MODEL);
 
 			const result = await generateText({
 				model,
 				prompt: 'Say "connection" and nothing else.',
-				maxTokens: 20,
+				maxTokens: 20
 			});
 
 			expect(result.text).toBeDefined();
@@ -504,7 +554,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			await generateText({
 				model,
 				prompt: 'Say "first".',
-				maxTokens: 10,
+				maxTokens: 10
 			});
 			const durationFirst = Date.now() - startFirst;
 
@@ -513,7 +563,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			await generateText({
 				model,
 				prompt: 'Say "second".',
-				maxTokens: 10,
+				maxTokens: 10
 			});
 			const durationSecond = Date.now() - startSecond;
 
@@ -533,16 +583,18 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		// Test prompt caching with Claude models (if available)
 		it('should work with prompt caching enabled for Claude model (if available)', async () => {
 			// Use Claude models from the single source of truth
-			const { CLAUDE_PREFIXED_MODEL_IDS } = await import('../src/utils/models.js');
+			const { CLAUDE_PREFIXED_MODEL_IDS } = await import(
+				'../src/utils/models.js'
+			);
 			const CLAUDE_MODELS = CLAUDE_PREFIXED_MODEL_IDS;
-			
+
 			let result1;
 			let workingModel: string | null = null;
 
 			// Try each Claude model to find one that works
 			for (const modelId of CLAUDE_MODELS) {
 				try {
-					const provider = createSnowflake({ 
+					const provider = createSnowflake({
 						executionMode: 'rest',
 						enablePromptCaching: true
 					});
@@ -553,9 +605,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						model,
 						system: systemPrompt,
 						prompt: 'What is 2+2?',
-						maxTokens: 50,
+						maxTokens: 50
 					});
-					
+
 					if (result1.text) {
 						workingModel = modelId;
 						console.log(`Claude model available: ${modelId}`);
@@ -580,15 +632,17 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		// Test reasoning tokens with Claude models (if available)
 		it('should work with reasoning mode enabled for Claude model (if available)', async () => {
 			// Use Claude models from the single source of truth
-			const { CLAUDE_PREFIXED_MODEL_IDS } = await import('../src/utils/models.js');
+			const { CLAUDE_PREFIXED_MODEL_IDS } = await import(
+				'../src/utils/models.js'
+			);
 			const CLAUDE_MODELS = CLAUDE_PREFIXED_MODEL_IDS;
-			
+
 			let result;
 			let workingModel: string | null = null;
 
 			for (const modelId of CLAUDE_MODELS) {
 				try {
-					const provider = createSnowflake({ 
+					const provider = createSnowflake({
 						executionMode: 'rest',
 						reasoning: 'low'
 					});
@@ -597,16 +651,18 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 					result = await generateText({
 						model,
 						prompt: 'What is the capital of France? Answer in one word.',
-						maxTokens: 50,
+						maxTokens: 50
 					});
-					
+
 					if (result.text) {
 						workingModel = modelId;
 						console.log(`Claude model available for reasoning: ${modelId}`);
 						break;
 					}
 				} catch (error) {
-					console.log(`Claude model ${modelId} not available for reasoning, trying next...`);
+					console.log(
+						`Claude model ${modelId} not available for reasoning, trying next...`
+					);
 				}
 			}
 
@@ -622,7 +678,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 		// Test that non-Claude models work without these features
 		it('should work normally without Claude features on other models', async () => {
-			const provider = createSnowflake({ 
+			const provider = createSnowflake({
 				executionMode: 'rest',
 				enablePromptCaching: true, // Should be ignored for non-Claude
 				reasoning: 'high' // Should be ignored for non-Claude
@@ -634,7 +690,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				model,
 				system: 'You are a helpful assistant.',
 				prompt: 'What is 1+1?',
-				maxTokens: 50,
+				maxTokens: 50
 			});
 
 			expect(result.text).toBeDefined();
@@ -657,7 +713,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const provider = createSnowflake({
 				connection: 'test-connection',
 				timeout: 120000,
-				executionMode: 'rest',
+				executionMode: 'rest'
 			});
 
 			expect(provider).toBeDefined();
@@ -678,10 +734,12 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		const restSettings: SnowflakeProviderSettings = { executionMode: 'rest' };
 
 		// Feature matrix for text generation tests
-		const textGenerationMatrix: ReadonlyArray<readonly [string, string, RegExp]> = [
+		const textGenerationMatrix: ReadonlyArray<
+			readonly [string, string, RegExp]
+		> = [
 			['Simple greeting', 'Say "hello" and nothing else.', /hello/i],
 			['Math question', 'What is 2+2? Answer with just the number.', /4/],
-			['Single word', 'Say "test" only.', /test/i],
+			['Single word', 'Say "test" only.', /test/i]
 		];
 
 		// Use it.concurrent.each for parallel test execution
@@ -694,7 +752,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				const result = await generateText({
 					model,
 					prompt,
-					maxTokens: 50,
+					maxTokens: 50
 				});
 
 				expect(result.text).toBeDefined();
@@ -721,19 +779,19 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				[
 					{ role: 'user', content: 'What is 5+3?' },
 					{ role: 'assistant', content: '8' },
-					{ role: 'user', content: 'Add 2 to that.' },
+					{ role: 'user', content: 'Add 2 to that.' }
 				],
-				/10/,
+				/10/
 			],
 			[
 				'Subtraction',
 				[
 					{ role: 'user', content: 'What is 10-3?' },
 					{ role: 'assistant', content: '7' },
-					{ role: 'user', content: 'Subtract 2.' },
+					{ role: 'user', content: 'Subtract 2.' }
 				],
-				/5/,
-			],
+				/5/
+			]
 		];
 
 		// Use it.concurrent.each for parallel test execution
@@ -746,7 +804,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				const result = await generateText({
 					model,
 					messages: [...messages],
-					maxTokens: 50,
+					maxTokens: 50
 				});
 
 				expect(result.text).toBeDefined();
@@ -760,74 +818,86 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 	describe('Structured Output Matrix (from Cortex Code)', () => {
 		const restSettings: SnowflakeProviderSettings = { executionMode: 'rest' };
 
-		it.concurrent('should generate simple person object', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate simple person object',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const PersonSchema = z.object({
-				name: z.string(),
-				age: z.number(),
-			});
+				const PersonSchema = z.object({
+					name: z.string(),
+					age: z.number()
+				});
 
-			const result = await generateObject({
-				model,
-				schema: PersonSchema,
-				prompt: 'Generate: name="Alice", age=25',
-			});
+				const result = await generateObject({
+					model,
+					schema: PersonSchema,
+					prompt: 'Generate: name="Alice", age=25'
+				});
 
-			expect(result.object).toBeDefined();
-			expect(result.object).toHaveProperty('name');
-			expect(result.object).toHaveProperty('age');
-			expect(typeof result.object.name).toBe('string');
-			expect(typeof result.object.age).toBe('number');
-		}, 60000);
+				expect(result.object).toBeDefined();
+				expect(result.object).toHaveProperty('name');
+				expect(result.object).toHaveProperty('age');
+				expect(typeof result.object.name).toBe('string');
+				expect(typeof result.object.age).toBe('number');
+			},
+			60000
+		);
 
-		it.concurrent('should generate task object', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate task object',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const TaskSchema = z.object({
-				id: z.number(),
-				title: z.string(),
-				done: z.boolean(),
-			});
+				const TaskSchema = z.object({
+					id: z.number(),
+					title: z.string(),
+					done: z.boolean()
+				});
 
-			const result = await generateObject({
-				model,
-				schema: TaskSchema,
-				prompt: 'Generate: id=1, title="Test", done=true',
-			});
+				const result = await generateObject({
+					model,
+					schema: TaskSchema,
+					prompt: 'Generate: id=1, title="Test", done=true'
+				});
 
-			expect(result.object).toBeDefined();
-			expect(result.object).toHaveProperty('id');
-			expect(result.object).toHaveProperty('title');
-			expect(result.object).toHaveProperty('done');
-			expect(typeof result.object.id).toBe('number');
-			expect(typeof result.object.title).toBe('string');
-			expect(typeof result.object.done).toBe('boolean');
-		}, 60000);
+				expect(result.object).toBeDefined();
+				expect(result.object).toHaveProperty('id');
+				expect(result.object).toHaveProperty('title');
+				expect(result.object).toHaveProperty('done');
+				expect(typeof result.object.id).toBe('number');
+				expect(typeof result.object.title).toBe('string');
+				expect(typeof result.object.done).toBe('boolean');
+			},
+			60000
+		);
 
-		it.concurrent('should generate user profile object', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate user profile object',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const UserSchema = z.object({
-				username: z.string(),
-				score: z.number(),
-				active: z.boolean(),
-			});
+				const UserSchema = z.object({
+					username: z.string(),
+					score: z.number(),
+					active: z.boolean()
+				});
 
-			const result = await generateObject({
-				model,
-				schema: UserSchema,
-				prompt: 'Generate: username="test", score=100, active=false',
-			});
+				const result = await generateObject({
+					model,
+					schema: UserSchema,
+					prompt: 'Generate: username="test", score=100, active=false'
+				});
 
-			expect(result.object).toBeDefined();
-			expect(result.object).toHaveProperty('username');
-			expect(result.object).toHaveProperty('score');
-			expect(result.object).toHaveProperty('active');
-		}, 60000);
+				expect(result.object).toBeDefined();
+				expect(result.object).toHaveProperty('username');
+				expect(result.object).toHaveProperty('score');
+				expect(result.object).toHaveProperty('active');
+			},
+			60000
+		);
 	});
 
 	describe('Performance Tests (from Cortex Code)', () => {
@@ -841,7 +911,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				generateText({
 					model,
 					prompt: `Say "${i}"`,
-					maxTokens: 10,
+					maxTokens: 10
 				})
 			);
 
@@ -861,9 +931,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				type: 'object' as const,
 				properties: {
 					name: { type: 'string' as const, minLength: 1, maxLength: 100 },
-					age: { type: 'number' as const, minimum: 0, maximum: 150 },
+					age: { type: 'number' as const, minimum: 0, maximum: 150 }
 				},
-				required: ['name'],
+				required: ['name']
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.name.minLength).toBeUndefined();
@@ -880,11 +950,29 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				$schema: 'https://example.com/schema',
 				additionalProperties: true,
 				properties: {
-					stringValue: { type: 'string' as const, minLength: 1, maxLength: 100, format: 'email' },
-					numberValue: { type: 'number' as const, minimum: 0, maximum: 1000, exclusiveMinimum: 0, exclusiveMaximum: 1000, multipleOf: 0.5 },
-					arrayValue: { type: 'array' as const, minItems: 1, maxItems: 10, uniqueItems: true, items: { type: 'object' as const, additionalProperties: true } },
+					stringValue: {
+						type: 'string' as const,
+						minLength: 1,
+						maxLength: 100,
+						format: 'email'
+					},
+					numberValue: {
+						type: 'number' as const,
+						minimum: 0,
+						maximum: 1000,
+						exclusiveMinimum: 0,
+						exclusiveMaximum: 1000,
+						multipleOf: 0.5
+					},
+					arrayValue: {
+						type: 'array' as const,
+						minItems: 1,
+						maxItems: 10,
+						uniqueItems: true,
+						items: { type: 'object' as const, additionalProperties: true }
+					}
 				},
-				required: ['stringValue'],
+				required: ['stringValue']
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			const hasKeyword = (obj: any, keyword: string): boolean => {
@@ -892,51 +980,82 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				if (Object.prototype.hasOwnProperty.call(obj, keyword)) return true;
 				return Object.values(obj).some((value) => hasKeyword(value, keyword));
 			};
-			UNSUPPORTED_KEYWORDS.forEach((keyword) => expect(hasKeyword(cleaned, keyword)).toBe(false));
+			UNSUPPORTED_KEYWORDS.forEach((keyword) =>
+				expect(hasKeyword(cleaned, keyword)).toBe(false)
+			);
 			expect(cleaned.additionalProperties).toBe(false);
 		});
 
-		it.concurrent('should flatten anyOf with null to optional types', async () => {
-			const schema = {
-				type: 'object' as const,
-				properties: { optional: { anyOf: [{ type: 'string' as const }, { type: 'null' as const }] } },
-				additionalProperties: true,
-			};
-			const cleaned = removeUnsupportedFeatures(schema);
-			expect(cleaned.properties.optional.anyOf).toBeUndefined();
-			expect(cleaned.properties.optional.type).toBe('string');
-		});
+		it.concurrent(
+			'should flatten anyOf with null to optional types',
+			async () => {
+				const schema = {
+					type: 'object' as const,
+					properties: {
+						optional: {
+							anyOf: [{ type: 'string' as const }, { type: 'null' as const }]
+						}
+					},
+					additionalProperties: true
+				};
+				const cleaned = removeUnsupportedFeatures(schema);
+				expect(cleaned.properties.optional.anyOf).toBeUndefined();
+				expect(cleaned.properties.optional.type).toBe('string');
+			}
+		);
 	});
 
 	// ===== Model Utility Tests - All run in parallel =====
 
 	describe('Model Utilities', () => {
 		it.concurrent('should normalize model IDs correctly', async () => {
-			expect(ModelHelpers.normalizeModelId('cortex/claude-sonnet-4-5')).toBe('claude-sonnet-4-5');
-			expect(ModelHelpers.normalizeModelId('cortex/CLAUDE-HAIKU-4-5')).toBe('claude-haiku-4-5');
-			expect(ModelHelpers.normalizeModelId('CLAUDE-4-SONNET')).toBe('claude-4-sonnet');
+			expect(ModelHelpers.normalizeModelId('cortex/claude-sonnet-4-5')).toBe(
+				'claude-sonnet-4-5'
+			);
+			expect(ModelHelpers.normalizeModelId('cortex/CLAUDE-HAIKU-4-5')).toBe(
+				'claude-haiku-4-5'
+			);
+			expect(ModelHelpers.normalizeModelId('CLAUDE-4-SONNET')).toBe(
+				'claude-4-sonnet'
+			);
 		});
 
 		it.concurrent('should detect structured output support', async () => {
-			expect(ModelHelpers.supportsStructuredOutputs('cortex/claude-haiku-4-5')).toBe(true);
-			expect(ModelHelpers.supportsStructuredOutputs('claude-sonnet-4-5')).toBe(true);
+			expect(
+				ModelHelpers.supportsStructuredOutputs('cortex/claude-haiku-4-5')
+			).toBe(true);
+			expect(ModelHelpers.supportsStructuredOutputs('claude-sonnet-4-5')).toBe(
+				true
+			);
 			expect(ModelHelpers.supportsStructuredOutputs('openai-gpt-5')).toBe(true);
 			expect(ModelHelpers.supportsStructuredOutputs('llama3.1-8b')).toBe(false);
-			expect(ModelHelpers.supportsStructuredOutputs('mistral-large2')).toBe(false);
+			expect(ModelHelpers.supportsStructuredOutputs('mistral-large2')).toBe(
+				false
+			);
 		});
 
 		it.concurrent('should detect temperature support', async () => {
-			expect(ModelHelpers.supportsTemperature('claude-haiku-4-5', false)).toBe(true);
-			expect(ModelHelpers.supportsTemperature('claude-haiku-4-5', true)).toBe(true);
-			expect(ModelHelpers.supportsTemperature('openai-gpt-5', false)).toBe(true);
-			expect(ModelHelpers.supportsTemperature('openai-gpt-5', true)).toBe(false);
+			expect(ModelHelpers.supportsTemperature('claude-haiku-4-5', false)).toBe(
+				true
+			);
+			expect(ModelHelpers.supportsTemperature('claude-haiku-4-5', true)).toBe(
+				true
+			);
+			expect(ModelHelpers.supportsTemperature('openai-gpt-5', false)).toBe(
+				true
+			);
+			expect(ModelHelpers.supportsTemperature('openai-gpt-5', true)).toBe(
+				false
+			);
 		});
 
 		it.concurrent('should list available models', async () => {
 			const models = getAvailableModels();
 			expect(Array.isArray(models)).toBe(true);
 			expect(models.length).toBeGreaterThan(0);
-			expect(models.filter((m) => m.includes('claude')).length).toBeGreaterThan(0);
+			expect(models.filter((m) => m.includes('claude')).length).toBeGreaterThan(
+				0
+			);
 		});
 	});
 
@@ -945,7 +1064,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 	describe('Feature Detection (from Cortex Code)', () => {
 		it('should detect CLI features', () => {
 			const features = detectAvailableFeatures();
-			
+
 			expect(features).toBeDefined();
 			expect(typeof features.planningMode).toBe('boolean');
 			expect(typeof features.mcpControl).toBe('boolean');
@@ -979,14 +1098,14 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		it('should extract and parse JSON responses', () => {
 			const response = 'Here is the result: {"name": "John", "age": 30}';
 			const parsed = StructuredOutputGenerator.extractAndParse(response);
-			
+
 			expect(parsed).toEqual({ name: 'John', age: 30 });
 		});
 
 		it('should extract JSON from markdown code blocks', () => {
 			const response = '```json\n{"id": 1}\n```';
 			const parsed = StructuredOutputGenerator.extractAndParse(response);
-			
+
 			expect(parsed).toEqual({ id: 1 });
 		});
 	});
@@ -997,41 +1116,49 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 	describe('Temperature Handling (from Snowflake)', () => {
 		const restSettings: SnowflakeProviderSettings = { executionMode: 'rest' };
 
-		it.concurrent('should work with temperature for Claude models', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should work with temperature for Claude models',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "temperature test"',
-				maxTokens: 20,
-				temperature: 0.7,
-			});
-
-			expect(result.text).toBeDefined();
-		}, 60000);
-
-		it.concurrent('should work with OpenAI models', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider('cortex/openai-gpt-5');
-
-			try {
 				const result = await generateText({
 					model,
-					prompt: 'Say "openai test"',
+					prompt: 'Say "temperature test"',
 					maxTokens: 20,
+					temperature: 0.7
 				});
 
 				expect(result.text).toBeDefined();
-			} catch (error) {
-				// Skip if OpenAI model is not available (500 internal error = model unavailable)
-				if (error instanceof Error && error.message.includes('500')) {
-					console.log('Skipping: OpenAI model not available (500 error)');
-					return;
+			},
+			60000
+		);
+
+		it.concurrent(
+			'should work with OpenAI models',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider('cortex/openai-gpt-5');
+
+				try {
+					const result = await generateText({
+						model,
+						prompt: 'Say "openai test"',
+						maxTokens: 20
+					});
+
+					expect(result.text).toBeDefined();
+				} catch (error) {
+					// Skip if OpenAI model is not available (500 internal error = model unavailable)
+					if (error instanceof Error && error.message.includes('500')) {
+						console.log('Skipping: OpenAI model not available (500 error)');
+						return;
+					}
+					throw error;
 				}
-				throw error;
-			}
-		}, 60000);
+			},
+			60000
+		);
 	});
 
 	// ===== Provider Method Tests (from Cortex Code) =====
@@ -1063,7 +1190,11 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			['cortex/ prefix', 'cortex/claude-sonnet-4-5', 'claude-sonnet-4-5'],
 			['no prefix', 'llama3-70b', 'llama3-70b'],
 			['uppercase', 'CLAUDE-HAIKU-4-5', 'claude-haiku-4-5'],
-			['mixed case with prefix', 'cortex/CLAUDE-SONNET-4-5', 'claude-sonnet-4-5'],
+			[
+				'mixed case with prefix',
+				'cortex/CLAUDE-SONNET-4-5',
+				'claude-sonnet-4-5'
+			]
 		] as const)('normalizeModelId: %s', async (_label, input, expected) => {
 			expect(ModelHelpers.normalizeModelId(input as any)).toBe(expected);
 		});
@@ -1078,10 +1209,15 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			['openai-gpt-5', 'openai-gpt-5', true],
 			['llama3.1-8b', 'llama3.1-8b', false],
 			['llama3.1-70b', 'llama3.1-70b', false],
-			['mistral-large2', 'mistral-large2', false],
-		] as const)('supportsStructuredOutputs: %s -> %s', async (_label, input, expected) => {
-			expect(ModelHelpers.supportsStructuredOutputs(input as any)).toBe(expected);
-		});
+			['mistral-large2', 'mistral-large2', false]
+		] as const)(
+			'supportsStructuredOutputs: %s -> %s',
+			async (_label, input, expected) => {
+				expect(ModelHelpers.supportsStructuredOutputs(input as any)).toBe(
+					expected
+				);
+			}
+		);
 
 		// Use it.concurrent.each for parallel execution of supportsTemperature tests
 		it.concurrent.each([
@@ -1091,22 +1227,35 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			['openai, no structured', 'openai-gpt-5', false, true],
 			['openai, with structured', 'openai-gpt-5', true, false],
 			['llama, no structured', 'llama3.1-8b', false, true],
-			['llama, with structured', 'llama3.1-8b', true, true],
-		] as const)('supportsTemperature: %s -> %s', async (_label, model, structured, expected) => {
-			expect(ModelHelpers.supportsTemperature(model, structured)).toBe(expected);
-		});
+			['llama, with structured', 'llama3.1-8b', true, true]
+		] as const)(
+			'supportsTemperature: %s -> %s',
+			async (_label, model, structured, expected) => {
+				expect(ModelHelpers.supportsTemperature(model, structured)).toBe(
+					expected
+				);
+			}
+		);
 
 		// Parallel warning tests
-		it.concurrent('getUnsupportedStructuredOutputsWarning returns warning for unsupported', async () => {
-			const warning = ModelHelpers.getUnsupportedStructuredOutputsWarning('llama3.1-8b');
-			expect(warning).toContain('does not support');
-			expect(warning).toContain('llama3.1-8b');
-		});
+		it.concurrent(
+			'getUnsupportedStructuredOutputsWarning returns warning for unsupported',
+			async () => {
+				const warning =
+					ModelHelpers.getUnsupportedStructuredOutputsWarning('llama3.1-8b');
+				expect(warning).toContain('does not support');
+				expect(warning).toContain('llama3.1-8b');
+			}
+		);
 
-		it.concurrent('getUnsupportedStructuredOutputsWarning suggests alternatives', async () => {
-			const warning = ModelHelpers.getUnsupportedStructuredOutputsWarning('mistral-large2');
-			expect(warning).toContain('OpenAI or Claude');
-		});
+		it.concurrent(
+			'getUnsupportedStructuredOutputsWarning suggests alternatives',
+			async () => {
+				const warning =
+					ModelHelpers.getUnsupportedStructuredOutputsWarning('mistral-large2');
+				expect(warning).toContain('OpenAI or Claude');
+			}
+		);
 	});
 
 	// ===== Phase 2: Token Parameter Handling (from old-snowflake.test.js) =====
@@ -1119,13 +1268,16 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			['defaults to 8192 when zero', 0, 8192],
 			['preserves values above minimum', 16384, 16384],
 			['preserves large numbers', 200000, 200000],
-			['allows exact minimum', 8192, 8192],
-		] as const)('%s: input %d -> expected >= %d', async (_label, input, minExpected) => {
-			// Token handling is internal - test via API call behavior
-			// For now, verify the constraint logic
-			const effectiveTokens = input < 8192 ? 8192 : input;
-			expect(effectiveTokens).toBeGreaterThanOrEqual(minExpected);
-		});
+			['allows exact minimum', 8192, 8192]
+		] as const)(
+			'%s: input %d -> expected >= %d',
+			async (_label, input, minExpected) => {
+				// Token handling is internal - test via API call behavior
+				// For now, verify the constraint logic
+				const effectiveTokens = input < 8192 ? 8192 : input;
+				expect(effectiveTokens).toBeGreaterThanOrEqual(minExpected);
+			}
+		);
 	});
 
 	// ===== Phase 3: Provider Configuration Tests - All run in parallel =====
@@ -1147,14 +1299,17 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			expect(provider).toBeDefined();
 		});
 
-		it.concurrent('should create provider with explicit execution mode', async () => {
-			const restProvider = createSnowflake({ executionMode: 'rest' });
-			const cliProvider = createSnowflake({ executionMode: 'cli' });
-			const autoProvider = createSnowflake({ executionMode: 'auto' });
-			expect(restProvider).toBeDefined();
-			expect(cliProvider).toBeDefined();
-			expect(autoProvider).toBeDefined();
-		});
+		it.concurrent(
+			'should create provider with explicit execution mode',
+			async () => {
+				const restProvider = createSnowflake({ executionMode: 'rest' });
+				const cliProvider = createSnowflake({ executionMode: 'cli' });
+				const autoProvider = createSnowflake({ executionMode: 'auto' });
+				expect(restProvider).toBeDefined();
+				expect(cliProvider).toBeDefined();
+				expect(autoProvider).toBeDefined();
+			}
+		);
 
 		it.concurrent('should have languageModel method', async () => {
 			const provider = createSnowflake();
@@ -1162,11 +1317,14 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			expect(typeof provider.languageModel).toBe('function');
 		});
 
-		it.concurrent('should create model with provider name snowflake', async () => {
-			const provider = createSnowflake({ executionMode: 'rest' });
-			const model = provider(TEST_MODEL);
-			expect(model.provider).toBe('snowflake');
-		});
+		it.concurrent(
+			'should create model with provider name snowflake',
+			async () => {
+				const provider = createSnowflake({ executionMode: 'rest' });
+				const model = provider(TEST_MODEL);
+				expect(model.provider).toBe('snowflake');
+			}
+		);
 
 		it.concurrent('should preserve model ID in created model', async () => {
 			const provider = createSnowflake({ executionMode: 'rest' });
@@ -1179,17 +1337,20 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 	describe('Schema Application Tests', () => {
 		it.concurrent('should leave plain object schema type intact', async () => {
-			const schema = { type: 'object', properties: { name: { type: 'string' } } };
+			const schema = {
+				type: 'object',
+				properties: { name: { type: 'string' } }
+			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.type).toBe('object');
 			expect(cleaned.properties.name.type).toBe('string');
 		});
 
 		it.concurrent('should set additionalProperties to false', async () => {
-			const schema = { 
-				type: 'object', 
+			const schema = {
+				type: 'object',
 				properties: { name: { type: 'string' } },
-				additionalProperties: true 
+				additionalProperties: true
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.additionalProperties).toBe(false);
@@ -1203,9 +1364,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						type: 'string',
 						minLength: 1,
 						maxLength: 100,
-						format: 'email',
-					},
-				},
+						format: 'email'
+					}
+				}
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.text.minLength).toBeUndefined();
@@ -1223,9 +1384,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						maximum: 100,
 						exclusiveMinimum: 0,
 						exclusiveMaximum: 100,
-						multipleOf: 0.5,
-					},
-				},
+						multipleOf: 0.5
+					}
+				}
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.value.minimum).toBeUndefined();
@@ -1244,9 +1405,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						minItems: 1,
 						maxItems: 10,
 						uniqueItems: true,
-						items: { type: 'string' },
-					},
-				},
+						items: { type: 'string' }
+					}
+				}
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.items.minItems).toBeUndefined();
@@ -1260,8 +1421,8 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				type: 'object',
 				default: {},
 				properties: {
-					name: { type: 'string', default: '' },
-				},
+					name: { type: 'string', default: '' }
+				}
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.$schema).toBeUndefined();
@@ -1277,19 +1438,23 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						type: 'object',
 						additionalProperties: true,
 						properties: {
-							field: { 
-								type: 'string', 
+							field: {
+								type: 'string',
 								minLength: 5,
-								maxLength: 100 
-							},
-						},
-					},
-				},
+								maxLength: 100
+							}
+						}
+					}
+				}
 			};
 			const cleaned = removeUnsupportedFeatures(schema);
 			expect(cleaned.properties.nested.additionalProperties).toBe(false);
-			expect(cleaned.properties.nested.properties.field.minLength).toBeUndefined();
-			expect(cleaned.properties.nested.properties.field.maxLength).toBeUndefined();
+			expect(
+				cleaned.properties.nested.properties.field.minLength
+			).toBeUndefined();
+			expect(
+				cleaned.properties.nested.properties.field.maxLength
+			).toBeUndefined();
 		});
 	});
 
@@ -1297,18 +1462,21 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 
 	describe('Unsupported Model Warning Tests', () => {
 		it('should generate warning for Llama models', () => {
-			const warning = ModelHelpers.getUnsupportedStructuredOutputsWarning('llama3.1-8b');
+			const warning =
+				ModelHelpers.getUnsupportedStructuredOutputsWarning('llama3.1-8b');
 			expect(warning).toContain('llama3.1-8b');
 			expect(warning).toContain('does not support');
 		});
 
 		it('should generate warning for Mistral models', () => {
-			const warning = ModelHelpers.getUnsupportedStructuredOutputsWarning('mistral-large2');
+			const warning =
+				ModelHelpers.getUnsupportedStructuredOutputsWarning('mistral-large2');
 			expect(warning).toContain('mistral-large2');
 		});
 
 		it('should NOT need warning for Claude models (supported)', () => {
-			const supported = ModelHelpers.supportsStructuredOutputs('claude-haiku-4-5');
+			const supported =
+				ModelHelpers.supportsStructuredOutputs('claude-haiku-4-5');
 			expect(supported).toBe(true);
 		});
 
@@ -1318,7 +1486,8 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		});
 
 		it('should suggest OpenAI or Claude in warning message', () => {
-			const warning = ModelHelpers.getUnsupportedStructuredOutputsWarning('deepseek-v3');
+			const warning =
+				ModelHelpers.getUnsupportedStructuredOutputsWarning('deepseek-v3');
 			expect(warning).toContain('OpenAI or Claude');
 		});
 	});
@@ -1334,31 +1503,37 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 					generateText: mockGenerateText as any,
 					schema: null as any,
 					objectName: 'Test',
-					messages: [],
+					messages: []
 				})
 			).rejects.toThrow();
 		});
 
 		it('should handle empty messages in StructuredOutputGenerator', async () => {
 			const mockGenerateText = jest.fn();
-			const schema = { type: 'object', properties: { name: { type: 'string' } } };
+			const schema = {
+				type: 'object',
+				properties: { name: { type: 'string' } }
+			};
 
 			// Should not throw for empty messages - generator adds system message
 			const messages = StructuredOutputGenerator.prepareMessages({
 				schema: schema as any,
 				objectName: 'Test',
-				messages: [],
+				messages: []
 			});
 			expect(messages.length).toBeGreaterThan(0);
 		});
 
 		it('should handle malformed JSON in extractAndParse', () => {
 			const malformedResponse = 'This is not JSON at all';
-			expect(() => StructuredOutputGenerator.extractAndParse(malformedResponse)).toThrow();
+			expect(() =>
+				StructuredOutputGenerator.extractAndParse(malformedResponse)
+			).toThrow();
 		});
 
 		it('should extract JSON from text with surrounding content', () => {
-			const response = 'Here is the result: {"name": "test"} - that was the output';
+			const response =
+				'Here is the result: {"name": "test"} - that was the output';
 			const parsed = StructuredOutputGenerator.extractAndParse(response);
 			expect(parsed).toEqual({ name: 'test' });
 		});
@@ -1371,8 +1546,8 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const schema = {
 				type: 'object' as const,
 				properties: {
-					field: { type: 'string' as const },
-				},
+					field: { type: 'string' as const }
+				}
 			};
 
 			const start = performance.now();
@@ -1380,7 +1555,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				StructuredOutputGenerator.prepareMessages({
 					schema,
 					objectName: 'Test',
-					messages: [],
+					messages: []
 				});
 			}
 			const duration = performance.now() - start;
@@ -1413,8 +1588,8 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				type: 'object',
 				properties: {
 					name: { type: 'string', minLength: 1, maxLength: 100 },
-					age: { type: 'number', minimum: 0, maximum: 150 },
-				},
+					age: { type: 'number', minimum: 0, maximum: 150 }
+				}
 			};
 
 			const start = performance.now();
@@ -1435,10 +1610,13 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		describe('Claude Models - Structured Output Support', () => {
 			const claudeModels = allModels.filter((m) => m.includes('claude'));
 
-			it.each(claudeModels)('%s should support structured outputs', (modelId) => {
-				const normalized = ModelHelpers.normalizeModelId(modelId);
-				expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(true);
-			});
+			it.each(claudeModels)(
+				'%s should support structured outputs',
+				(modelId) => {
+					const normalized = ModelHelpers.normalizeModelId(modelId);
+					expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(true);
+				}
+			);
 
 			it.each(claudeModels)('%s should support temperature', (modelId) => {
 				const normalized = ModelHelpers.normalizeModelId(modelId);
@@ -1462,7 +1640,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				'%s should NOT support temperature with structured output',
 				(modelId) => {
 					const normalized = ModelHelpers.normalizeModelId(modelId);
-					expect(ModelHelpers.supportsTemperature(normalized, true)).toBe(false);
+					expect(ModelHelpers.supportsTemperature(normalized, true)).toBe(
+						false
+					);
 				}
 			);
 		});
@@ -1474,7 +1654,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				'%s should NOT support structured outputs',
 				(modelId) => {
 					const normalized = ModelHelpers.normalizeModelId(modelId);
-					expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(false);
+					expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(
+						false
+					);
 				}
 			);
 		});
@@ -1486,7 +1668,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				'%s should NOT support structured outputs',
 				(modelId) => {
 					const normalized = ModelHelpers.normalizeModelId(modelId);
-					expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(false);
+					expect(ModelHelpers.supportsStructuredOutputs(normalized)).toBe(
+						false
+					);
 				}
 			);
 		});
@@ -1505,11 +1689,11 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 							type: 'string',
 							minLength: 5,
 							maxLength: 100,
-							format: 'email',
-						},
-					},
+							format: 'email'
+						}
+					}
 				},
-				['minLength', 'maxLength', 'format'],
+				['minLength', 'maxLength', 'format']
 			],
 			[
 				'Number constraints',
@@ -1519,11 +1703,11 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 						value: {
 							type: 'number',
 							minimum: 0,
-							maximum: 100,
-						},
-					},
+							maximum: 100
+						}
+					}
 				},
-				['minimum', 'maximum'],
+				['minimum', 'maximum']
 			],
 			[
 				'Array constraints',
@@ -1535,11 +1719,11 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 							minItems: 1,
 							maxItems: 5,
 							uniqueItems: true,
-							items: { type: 'string' },
-						},
-					},
+							items: { type: 'string' }
+						}
+					}
 				},
-				['minItems', 'maxItems', 'uniqueItems'],
+				['minItems', 'maxItems', 'uniqueItems']
 			],
 			[
 				'Object constraints',
@@ -1550,12 +1734,12 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 							type: 'object',
 							minProperties: 1,
 							maxProperties: 10,
-							patternProperties: { '^x-': { type: 'string' } },
-						},
-					},
+							patternProperties: { '^x-': { type: 'string' } }
+						}
+					}
 				},
-				['minProperties', 'maxProperties', 'patternProperties'],
-			],
+				['minProperties', 'maxProperties', 'patternProperties']
+			]
 		] as const;
 
 		it.each(schemaTransformationMatrix)(
@@ -1583,13 +1767,13 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 								properties: {
 									level3: {
 										type: 'string',
-										minLength: 10,
-									},
-								},
-							},
-						},
-					},
-				},
+										minLength: 10
+									}
+								}
+							}
+						}
+					}
+				}
 			};
 
 			const cleaned = removeUnsupportedFeatures(deepSchema);
@@ -1603,9 +1787,9 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 				type: 'object',
 				properties: {
 					optional: {
-						anyOf: [{ type: 'string' }, { type: 'null' }],
-					},
-				},
+						anyOf: [{ type: 'string' }, { type: 'null' }]
+					}
+				}
 			};
 
 			const cleaned = removeUnsupportedFeatures(schema);
@@ -1629,7 +1813,8 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 		});
 
 		it('should handle URLs with existing path', () => {
-			const baseURL = 'https://org-account.snowflakecomputing.com/api/v2/cortex/v1';
+			const baseURL =
+				'https://org-account.snowflakecomputing.com/api/v2/cortex/v1';
 			expect(baseURL).toContain('/api/v2/cortex/v1');
 		});
 
@@ -1637,7 +1822,7 @@ skipIfNoCredentials('Snowflake Provider Integration Tests', () => {
 			const validURLs = [
 				'https://org-account.snowflakecomputing.com',
 				'https://myorg-myaccount.snowflakecomputing.com',
-				'https://MYORG-MYACCOUNT.snowflakecomputing.com',
+				'https://MYORG-MYACCOUNT.snowflakecomputing.com'
 			];
 
 			validURLs.forEach((url) => {

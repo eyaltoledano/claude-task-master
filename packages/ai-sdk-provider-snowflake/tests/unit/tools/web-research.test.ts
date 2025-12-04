@@ -2,7 +2,14 @@
  * Unit Tests for Web Research Tools
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import {
 	webSearchInputSchema,
 	fetchUrlInputSchema,
@@ -15,7 +22,9 @@ describe('Web Research Tools', () => {
 		describe('webSearchInputSchema', () => {
 			it('should require query', () => {
 				expect(() => webSearchInputSchema.parse({})).toThrow();
-				expect(() => webSearchInputSchema.parse({ query: 'test' })).not.toThrow();
+				expect(() =>
+					webSearchInputSchema.parse({ query: 'test' })
+				).not.toThrow();
 			});
 
 			it('should use default maxResults', () => {
@@ -25,7 +34,10 @@ describe('Web Research Tools', () => {
 			});
 
 			it('should accept custom maxResults', () => {
-				const result = webSearchInputSchema.parse({ query: 'test', maxResults: 5 });
+				const result = webSearchInputSchema.parse({
+					query: 'test',
+					maxResults: 5
+				});
 				expect(result.maxResults).toBe(5);
 			});
 		});
@@ -34,11 +46,15 @@ describe('Web Research Tools', () => {
 			it('should require valid URL', () => {
 				expect(() => fetchUrlInputSchema.parse({})).toThrow();
 				expect(() => fetchUrlInputSchema.parse({ url: 'invalid' })).toThrow();
-				expect(() => fetchUrlInputSchema.parse({ url: 'https://example.com' })).not.toThrow();
+				expect(() =>
+					fetchUrlInputSchema.parse({ url: 'https://example.com' })
+				).not.toThrow();
 			});
 
 			it('should use default values', () => {
-				const result = fetchUrlInputSchema.parse({ url: 'https://example.com' });
+				const result = fetchUrlInputSchema.parse({
+					url: 'https://example.com'
+				});
 				expect(result.url).toBe('https://example.com');
 				expect(result.selector).toBeUndefined();
 				expect(result.maxLength).toBe(10000);
@@ -58,20 +74,26 @@ describe('Web Research Tools', () => {
 			});
 
 			it('should only accept valid format values', () => {
-				expect(() => fetchUrlInputSchema.parse({ 
-					url: 'https://example.com', 
-					format: 'invalid' 
-				})).toThrow();
-				
-				expect(() => fetchUrlInputSchema.parse({ 
-					url: 'https://example.com', 
-					format: 'markdown' 
-				})).not.toThrow();
-				
-				expect(() => fetchUrlInputSchema.parse({ 
-					url: 'https://example.com', 
-					format: 'text' 
-				})).not.toThrow();
+				expect(() =>
+					fetchUrlInputSchema.parse({
+						url: 'https://example.com',
+						format: 'invalid'
+					})
+				).toThrow();
+
+				expect(() =>
+					fetchUrlInputSchema.parse({
+						url: 'https://example.com',
+						format: 'markdown'
+					})
+				).not.toThrow();
+
+				expect(() =>
+					fetchUrlInputSchema.parse({
+						url: 'https://example.com',
+						format: 'text'
+					})
+				).not.toThrow();
 			});
 		});
 	});
@@ -100,4 +122,3 @@ describe('Web Research Tools', () => {
 		});
 	});
 });
-

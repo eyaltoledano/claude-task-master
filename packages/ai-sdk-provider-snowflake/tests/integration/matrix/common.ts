@@ -13,15 +13,15 @@ import {
 	OPENAI_PREFIXED_MODEL_IDS,
 	LLAMA_PREFIXED_MODEL_IDS,
 	MISTRAL_PREFIXED_MODEL_IDS,
-	OTHER_PREFIXED_MODEL_IDS,
+	OTHER_PREFIXED_MODEL_IDS
 } from '../../../src/utils/models.js';
 
 // Load environment variables
 config({ path: resolve(process.cwd(), '../../.env') });
 
 // Re-export centralized test utilities
-export { 
-	hasCredentials, 
+export {
+	hasCredentials,
 	skipIfNoCredentials,
 	checkCliAvailability,
 	logTestEnvironment
@@ -35,7 +35,7 @@ export const OPENAI_MODELS = OPENAI_PREFIXED_MODEL_IDS;
 export const OTHER_MODELS = [
 	...LLAMA_PREFIXED_MODEL_IDS,
 	...MISTRAL_PREFIXED_MODEL_IDS,
-	...OTHER_PREFIXED_MODEL_IDS,
+	...OTHER_PREFIXED_MODEL_IDS
 ];
 
 // Model test result tracking
@@ -58,7 +58,7 @@ export const testResults: ModelTestResult[] = [];
 // - required array with all property names
 const TestResponseSchema = z.object({
 	response: z.string().describe('The response text'),
-	status: z.enum(['ok', 'error']).describe('Status of the response'),
+	status: z.enum(['ok', 'error']).describe('Status of the response')
 });
 
 // Helper to run a model test with detailed debugging
@@ -79,26 +79,28 @@ export async function testModelGeneration(
 
 	try {
 		const settings: SnowflakeProviderSettings = {
-			executionMode: mode,
+			executionMode: mode
 		};
-		
+
 		const provider = createSnowflake(settings);
 		const model = provider(modelId);
 
 		if (enableDebug) {
 			console.log(`\n[DEBUG] Testing ${modelId} via ${mode.toUpperCase()}`);
-			console.log(`[DEBUG] Model ID normalized: ${modelId.replace('cortex/', '')}`);
+			console.log(
+				`[DEBUG] Model ID normalized: ${modelId.replace('cortex/', '')}`
+			);
 		}
 
 		const response = await generateText({
 			model,
 			prompt: 'Say "ok" and nothing else.',
-			maxOutputTokens: 20,
+			maxOutputTokens: 20
 		});
 
 		result.success = true;
 		result.responseText = response.text;
-		
+
 		if (enableDebug) {
 			console.log(`[DEBUG] Success! Response: "${response.text}"`);
 			console.log(`[DEBUG] Usage: ${JSON.stringify(response.usage)}`);
@@ -106,7 +108,7 @@ export async function testModelGeneration(
 	} catch (error) {
 		result.success = false;
 		result.error = error instanceof Error ? error.message : String(error);
-		
+
 		if (enableDebug) {
 			console.log(`[DEBUG] FAILED: ${result.error}`);
 			// Log full error for debugging
@@ -140,15 +142,19 @@ export async function testModelStructuredOutput(
 
 	try {
 		const settings: SnowflakeProviderSettings = {
-			executionMode: mode,
+			executionMode: mode
 		};
-		
+
 		const provider = createSnowflake(settings);
 		const model = provider(modelId);
 
 		if (enableDebug) {
-			console.log(`\n[DEBUG] Testing ${modelId} via ${mode.toUpperCase()} with STRUCTURED OUTPUT`);
-			console.log(`[DEBUG] Model ID normalized: ${modelId.replace('cortex/', '')}`);
+			console.log(
+				`\n[DEBUG] Testing ${modelId} via ${mode.toUpperCase()} with STRUCTURED OUTPUT`
+			);
+			console.log(
+				`[DEBUG] Model ID normalized: ${modelId.replace('cortex/', '')}`
+			);
 		}
 
 		// Use generateObject with a schema - this is what OpenAI models need
@@ -156,20 +162,22 @@ export async function testModelStructuredOutput(
 		const response: any = await generateObject({
 			model,
 			schema: TestResponseSchema as any,
-			prompt: 'Respond with status "ok".',
+			prompt: 'Respond with status "ok".'
 		});
 
 		result.success = true;
 		result.responseText = JSON.stringify(response.object);
-		
+
 		if (enableDebug) {
-			console.log(`[DEBUG] Success! Response: ${JSON.stringify(response.object)}`);
+			console.log(
+				`[DEBUG] Success! Response: ${JSON.stringify(response.object)}`
+			);
 			console.log(`[DEBUG] Usage: ${JSON.stringify(response.usage)}`);
 		}
 	} catch (error) {
 		result.success = false;
 		result.error = error instanceof Error ? error.message : String(error);
-		
+
 		if (enableDebug) {
 			console.log(`[DEBUG] FAILED: ${result.error}`);
 			// Log full error for debugging

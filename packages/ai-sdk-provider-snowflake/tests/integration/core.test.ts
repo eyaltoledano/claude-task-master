@@ -19,17 +19,17 @@ import { generateText, generateObject, streamText } from 'ai';
 import { z } from 'zod';
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { 
-	createSnowflake, 
+import {
+	createSnowflake,
 	snowflake,
-	getAvailableModels,
+	getAvailableModels
 } from '../../src/index.js';
 import { authenticate, clearAuthCache } from '../../src/auth/index.js';
 import type { SnowflakeProviderSettings } from '../../src/types.js';
-import { 
-	skipIfNoCredentials, 
+import {
+	skipIfNoCredentials,
 	getCredentialInfo,
-	logTestEnvironment,
+	logTestEnvironment
 } from '../test-utils.js';
 
 // Load environment variables
@@ -90,55 +90,68 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	describe('REST API Mode', () => {
 		const restSettings: SnowflakeProviderSettings = { executionMode: 'rest' };
 
-		it.concurrent('should generate text using REST API', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate text using REST API',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "Hello from Snowflake Cortex" exactly',
-				maxTokens: 50,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "Hello from Snowflake Cortex" exactly',
+					maxTokens: 50
+				});
 
-			expect(result.text).toBeDefined();
-			expect(result.text.length).toBeGreaterThan(0);
-			expect(result.usage?.totalTokens).toBeGreaterThan(0);
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+				expect(result.text.length).toBeGreaterThan(0);
+				expect(result.usage?.totalTokens).toBeGreaterThan(0);
+			},
+			API_TIMEOUT
+		);
 
-		it.concurrent('should generate structured output', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should generate structured output',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const PersonSchema = z.object({
-				name: z.string().describe('The name'),
-				age: z.number().describe('The age'),
-			});
+				const PersonSchema = z.object({
+					name: z.string().describe('The name'),
+					age: z.number().describe('The age')
+				});
 
-			const result = await generateObject({
-				model,
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				schema: PersonSchema as any,
-				prompt: 'Generate: name="Alice", age=30',
-			});
+				const result = await generateObject({
+					model,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					schema: PersonSchema as any,
+					prompt: 'Generate: name="Alice", age=30'
+				});
 
-			expect(result.object).toBeDefined();
-			expect(result.object).toHaveProperty('name');
-			expect(result.object).toHaveProperty('age');
-		}, API_TIMEOUT);
+				expect(result.object).toBeDefined();
+				expect(result.object).toHaveProperty('name');
+				expect(result.object).toHaveProperty('age');
+			},
+			API_TIMEOUT
+		);
 
-		it.concurrent('should handle system messages', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should handle system messages',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				system: 'You are a helpful assistant. Always respond with exactly one word.',
-				prompt: 'What color is the sky?',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					system:
+						'You are a helpful assistant. Always respond with exactly one word.',
+					prompt: 'What color is the sky?',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -148,28 +161,32 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	describe('CLI Mode', () => {
 		const cliSettings: SnowflakeProviderSettings = { executionMode: 'cli' };
 
-		it('should fail gracefully if CLI not installed', async () => {
-			const provider = createSnowflake(cliSettings);
-			const model = provider(TEST_MODEL);
+		it(
+			'should fail gracefully if CLI not installed',
+			async () => {
+				const provider = createSnowflake(cliSettings);
+				const model = provider(TEST_MODEL);
 
-			try {
-				await generateText({
-					model,
-					prompt: 'Say hello',
-					maxTokens: 20,
-				});
-				// If we get here, CLI is installed and working
-				expect(true).toBe(true);
-			} catch (error: any) {
-				// Expected if CLI is not installed
-				expect(
-					error.message.includes('not installed') ||
-					error.message.includes('not found') ||
-					error.message.includes('CLI') ||
-					error.message.includes('ENOENT')
-				).toBe(true);
-			}
-		}, API_TIMEOUT);
+				try {
+					await generateText({
+						model,
+						prompt: 'Say hello',
+						maxTokens: 20
+					});
+					// If we get here, CLI is installed and working
+					expect(true).toBe(true);
+				} catch (error: any) {
+					// Expected if CLI is not installed
+					expect(
+						error.message.includes('not installed') ||
+							error.message.includes('not found') ||
+							error.message.includes('CLI') ||
+							error.message.includes('ENOENT')
+					).toBe(true);
+				}
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -177,18 +194,22 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	// ========================================================================
 
 	describe('Auto Mode', () => {
-		it.concurrent('should automatically select execution mode', async () => {
-			const provider = createSnowflake({ executionMode: 'auto' });
-			const model = provider(TEST_MODEL);
+		it.concurrent(
+			'should automatically select execution mode',
+			async () => {
+				const provider = createSnowflake({ executionMode: 'auto' });
+				const model = provider(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "auto mode works"',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "auto mode works"',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -196,17 +217,21 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	// ========================================================================
 
 	describe('Default Provider Instance', () => {
-		it.concurrent('should work with the default snowflake instance', async () => {
-			const model = snowflake(TEST_MODEL);
+		it.concurrent(
+			'should work with the default snowflake instance',
+			async () => {
+				const model = snowflake(TEST_MODEL);
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "default instance works"',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "default instance works"',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -216,31 +241,39 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	describe('Model ID Variations', () => {
 		const restSettings: SnowflakeProviderSettings = { executionMode: 'rest' };
 
-		it.concurrent('should handle model IDs with cortex/ prefix', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider('cortex/claude-haiku-4-5');
+		it.concurrent(
+			'should handle model IDs with cortex/ prefix',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider('cortex/claude-haiku-4-5');
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "prefix test"',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "prefix test"',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+			},
+			API_TIMEOUT
+		);
 
-		it.concurrent('should handle model IDs with uppercase', async () => {
-			const provider = createSnowflake(restSettings);
-			const model = provider('cortex/CLAUDE-HAIKU-4-5');
+		it.concurrent(
+			'should handle model IDs with uppercase',
+			async () => {
+				const provider = createSnowflake(restSettings);
+				const model = provider('cortex/CLAUDE-HAIKU-4-5');
 
-			const result = await generateText({
-				model,
-				prompt: 'Say "uppercase test"',
-				maxTokens: 20,
-			});
+				const result = await generateText({
+					model,
+					prompt: 'Say "uppercase test"',
+					maxTokens: 20
+				});
 
-			expect(result.text).toBeDefined();
-		}, API_TIMEOUT);
+				expect(result.text).toBeDefined();
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -258,7 +291,7 @@ skipIfNoCredentials('Core Integration Tests', () => {
 				generateText({
 					model,
 					prompt: `Say "${i}"`,
-					maxTokens: 10,
+					maxTokens: 10
 				})
 			);
 
@@ -275,23 +308,27 @@ skipIfNoCredentials('Core Integration Tests', () => {
 	// ========================================================================
 
 	describe('Error Handling', () => {
-		it('should handle invalid model ID gracefully', async () => {
-			const provider = createSnowflake({ executionMode: 'rest' });
-			const model = provider('cortex/non-existent-model-xyz-12345');
+		it(
+			'should handle invalid model ID gracefully',
+			async () => {
+				const provider = createSnowflake({ executionMode: 'rest' });
+				const model = provider('cortex/non-existent-model-xyz-12345');
 
-			try {
-				await generateText({
-					model,
-					prompt: 'This should fail',
-					maxTokens: 10,
-				});
-				// Should not reach here
-				expect(true).toBe(false);
-			} catch (error) {
-				// Expected: some form of error
-				expect(error).toBeDefined();
-			}
-		}, API_TIMEOUT);
+				try {
+					await generateText({
+						model,
+						prompt: 'This should fail',
+						maxTokens: 10
+					});
+					// Should not reach here
+					expect(true).toBe(false);
+				} catch (error) {
+					// Expected: some form of error
+					expect(error).toBeDefined();
+				}
+			},
+			API_TIMEOUT
+		);
 	});
 
 	// ========================================================================
@@ -326,11 +363,12 @@ skipIfNoCredentials('Core Integration Tests', () => {
 			const models = getAvailableModels();
 			expect(Array.isArray(models)).toBe(true);
 			expect(models.length).toBeGreaterThan(0);
-			expect(models.some(m => m.includes('claude'))).toBe(true);
-			expect(models.some(m => m.includes('openai') || m.includes('gpt'))).toBe(true);
+			expect(models.some((m) => m.includes('claude'))).toBe(true);
+			expect(
+				models.some((m) => m.includes('openai') || m.includes('gpt'))
+			).toBe(true);
 		});
 	});
 });
 
 export { TEST_MODEL };
-

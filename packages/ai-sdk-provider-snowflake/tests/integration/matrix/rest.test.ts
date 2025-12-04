@@ -1,9 +1,9 @@
 /**
  * Consolidated REST API Model Matrix Tests
- * 
+ *
  * Tests all model categories (Claude, OpenAI, Other) with parallel execution.
  * Uses parameterized tests for consistency and efficiency.
- * 
+ *
  * Features:
  * - Parallel execution with it.concurrent.each
  * - Single file for all REST model tests
@@ -19,14 +19,14 @@ import {
 	LLAMA_PREFIXED_MODEL_IDS,
 	MISTRAL_PREFIXED_MODEL_IDS,
 	OTHER_PREFIXED_MODEL_IDS,
-	supportsStructuredOutputs,
+	supportsStructuredOutputs
 } from '../../../src/utils/models.js';
 import {
 	skipIfNoCredentials,
 	testModelGeneration,
 	testModelStructuredOutput,
 	ModelTestResult,
-	testResults,
+	testResults
 } from './common.js';
 
 // ============================================================================
@@ -38,17 +38,17 @@ const OPENAI_MODELS = OPENAI_PREFIXED_MODEL_IDS;
 const OTHER_MODELS = [
 	...LLAMA_PREFIXED_MODEL_IDS,
 	...MISTRAL_PREFIXED_MODEL_IDS,
-	...OTHER_PREFIXED_MODEL_IDS,
+	...OTHER_PREFIXED_MODEL_IDS
 ];
 
 // Models that are known to be stable and available
-const STABLE_OPENAI_MODELS = OPENAI_MODELS.filter(id => 
-	id.includes('gpt-4.1') || id.includes('gpt-5-chat')
+const STABLE_OPENAI_MODELS = OPENAI_MODELS.filter(
+	(id) => id.includes('gpt-4.1') || id.includes('gpt-5-chat')
 );
 
 // Models that may be unavailable in some accounts (marked with * in docs)
-const POTENTIALLY_UNAVAILABLE_OPENAI_MODELS = OPENAI_MODELS.filter(id =>
-	id.includes('gpt-5') && !id.includes('gpt-5-chat')
+const POTENTIALLY_UNAVAILABLE_OPENAI_MODELS = OPENAI_MODELS.filter(
+	(id) => id.includes('gpt-5') && !id.includes('gpt-5-chat')
 );
 
 // All models for comprehensive matrix
@@ -73,15 +73,17 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 
 	afterAll(() => {
 		clearAuthCache();
-		
+
 		// Print summary
-		const passed = testResults.filter(r => r.success);
-		const failed = testResults.filter(r => !r.success);
+		const passed = testResults.filter((r) => r.success);
+		const failed = testResults.filter((r) => !r.success);
 		console.log('\n=== Test Summary ===');
 		console.log(`Passed: ${passed.length}/${testResults.length}`);
 		if (failed.length > 0) {
 			console.log('Failed:');
-			failed.forEach(r => console.log(`  - ${r.modelId}: ${r.error?.substring(0, 80)}`));
+			failed.forEach((r) =>
+				console.log(`  - ${r.modelId}: ${r.error?.substring(0, 80)}`)
+			);
 		}
 	});
 
@@ -94,7 +96,12 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 			it.concurrent.each([...CLAUDE_MODELS])(
 				'%s generates text',
 				async (modelId) => {
-					const result = await testModelGeneration(modelId, 'rest', 'claude', true);
+					const result = await testModelGeneration(
+						modelId,
+						'rest',
+						'claude',
+						true
+					);
 					expect(result.success).toBe(true);
 					expect(result.responseText).toBeDefined();
 					expect(result.responseText!.length).toBeGreaterThan(0);
@@ -107,10 +114,15 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 			it.concurrent.each([...CLAUDE_MODELS])(
 				'%s generates structured output',
 				async (modelId) => {
-					const result = await testModelStructuredOutput(modelId, 'rest', 'claude', true);
+					const result = await testModelStructuredOutput(
+						modelId,
+						'rest',
+						'claude',
+						true
+					);
 					expect(result.success).toBe(true);
 					expect(result.responseText).toBeDefined();
-					
+
 					// Verify valid JSON
 					const parsed = JSON.parse(result.responseText!);
 					expect(parsed).toHaveProperty('response');
@@ -130,10 +142,15 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 			it.concurrent.each([...STABLE_OPENAI_MODELS])(
 				'%s generates structured output',
 				async (modelId) => {
-					const result = await testModelStructuredOutput(modelId, 'rest', 'openai', true);
+					const result = await testModelStructuredOutput(
+						modelId,
+						'rest',
+						'openai',
+						true
+					);
 					expect(result.success).toBe(true);
 					expect(result.responseText).toBeDefined();
-					
+
 					const parsed = JSON.parse(result.responseText!);
 					expect(parsed).toHaveProperty('response');
 					expect(parsed).toHaveProperty('status');
@@ -146,12 +163,19 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 			it.concurrent.each([...POTENTIALLY_UNAVAILABLE_OPENAI_MODELS])(
 				'%s generates structured output (may be unavailable)',
 				async (modelId) => {
-					const result = await testModelStructuredOutput(modelId, 'rest', 'openai', true);
-					
+					const result = await testModelStructuredOutput(
+						modelId,
+						'rest',
+						'openai',
+						true
+					);
+
 					if (!result.success) {
 						// 500 errors indicate server-side model unavailability
 						if (result.error?.includes('500')) {
-							console.log(`[INFO] ${modelId} returned 500 - model may be unavailable in this account/region`);
+							console.log(
+								`[INFO] ${modelId} returned 500 - model may be unavailable in this account/region`
+							);
 							return; // Skip - known server-side issue
 						}
 						// Other errors should fail the test
@@ -177,7 +201,12 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 			it.concurrent.each([...OTHER_MODELS])(
 				'%s generates text',
 				async (modelId) => {
-					const result = await testModelGeneration(modelId, 'rest', 'other', true);
+					const result = await testModelGeneration(
+						modelId,
+						'rest',
+						'other',
+						true
+					);
 					expect(result.success).toBe(true);
 					expect(result.responseText).toBeDefined();
 					expect(result.responseText!.length).toBeGreaterThan(0);
@@ -189,7 +218,7 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 		// Note: Most "other" models don't support structured output
 		// Only test those that do
 		describe('Structured Output (Supported Models Only)', () => {
-			const otherModelsWithStructuredOutput = OTHER_MODELS.filter(id => 
+			const otherModelsWithStructuredOutput = OTHER_MODELS.filter((id) =>
 				supportsStructuredOutputs(id)
 			);
 
@@ -197,7 +226,12 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 				it.concurrent.each([...otherModelsWithStructuredOutput])(
 					'%s generates structured output',
 					async (modelId) => {
-						const result = await testModelStructuredOutput(modelId, 'rest', 'other', true);
+						const result = await testModelStructuredOutput(
+							modelId,
+							'rest',
+							'other',
+							true
+						);
 						if (result.success) {
 							const parsed = JSON.parse(result.responseText!);
 							expect(parsed).toHaveProperty('response');
@@ -216,13 +250,12 @@ skipIfNoCredentials('REST API Model Matrix Tests', () => {
 	describe('Model Capability Matrix', () => {
 		it('should have consistent structured output support flags', () => {
 			// Verify all Claude and OpenAI models report structured output support
-			CLAUDE_MODELS.forEach(id => {
+			CLAUDE_MODELS.forEach((id) => {
 				expect(supportsStructuredOutputs(id)).toBe(true);
 			});
-			OPENAI_MODELS.forEach(id => {
+			OPENAI_MODELS.forEach((id) => {
 				expect(supportsStructuredOutputs(id)).toBe(true);
 			});
 		});
 	});
 });
-

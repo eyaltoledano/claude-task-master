@@ -87,7 +87,7 @@ const PROVIDERS = {
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
 	'grok-cli': new GrokCliProvider(),
-	'snowflake': new SnowflakeProvider()
+	snowflake: new SnowflakeProvider()
 };
 
 function _getProvider(providerName) {
@@ -609,10 +609,10 @@ async function _unifiedServiceRunner(serviceType, params) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Ollama base URL: ${baseURL}`);
-            } else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
-                // For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
-                baseURL = getBedrockBaseURL(effectiveProjectRoot);
-                log('debug', `Using global Bedrock base URL: ${baseURL}`);
+			} else if (providerName?.toLowerCase() === 'bedrock' && !baseURL) {
+				// For Bedrock, use the global Bedrock base URL if role-specific URL is not configured
+				baseURL = getBedrockBaseURL(effectiveProjectRoot);
+				log('debug', `Using global Bedrock base URL: ${baseURL}`);
 			} else if (providerName?.toLowerCase() === 'snowflake' && !baseURL) {
 				// For Snowflake, use the global Snowflake base URL (config or env) if role-specific URL is not configured
 				baseURL = getSnowflakeBaseURL(effectiveProjectRoot);

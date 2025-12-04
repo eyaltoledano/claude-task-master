@@ -1,9 +1,9 @@
 /**
  * Shared schema transformation utilities for Snowflake Cortex providers
- * 
+ *
  * This module provides JSON Schema cleaning and transformation logic required
  * for compatibility with Snowflake Cortex's structured output constraints.
- * 
+ *
  * Reference: https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
  */
 
@@ -82,7 +82,7 @@ export const UNSUPPORTED_KEYWORDS = [
 	'minLength',
 	'maxLength',
 	'format',
-    'pattern',
+	'pattern',
 
 	// Array constraints
 	'uniqueItems',
@@ -103,7 +103,7 @@ export const UNSUPPORTED_KEYWORDS = [
  * Build description text from unsupported constraints
  * This converts removed constraint keywords into human-readable descriptions
  * that can be appended to the schema description.
- * 
+ *
  * @param schema - JSON Schema object
  * @returns Constraint description to append (e.g., " (3-10 characters, format: email)")
  */
@@ -168,9 +168,17 @@ export function buildConstraintDescription(schema: JSONSchema): string {
 	}
 
 	// Object constraints
-	if (schema.minProperties !== undefined || schema.maxProperties !== undefined) {
-		if (schema.minProperties !== undefined && schema.maxProperties !== undefined) {
-			constraints.push(`${schema.minProperties}-${schema.maxProperties} properties`);
+	if (
+		schema.minProperties !== undefined ||
+		schema.maxProperties !== undefined
+	) {
+		if (
+			schema.minProperties !== undefined &&
+			schema.maxProperties !== undefined
+		) {
+			constraints.push(
+				`${schema.minProperties}-${schema.maxProperties} properties`
+			);
 		} else if (schema.minProperties !== undefined) {
 			constraints.push(`minimum ${schema.minProperties} properties`);
 		} else if (schema.maxProperties !== undefined) {
@@ -184,7 +192,7 @@ export function buildConstraintDescription(schema: JSONSchema): string {
 /**
  * Recursively removes Snowflake-unsupported features from JSON Schema
  * and adds constraint information to descriptions.
- * 
+ *
  * This function performs several transformations:
  * 1. Removes unsupported constraint keywords
  * 2. Converts constraints to description text
@@ -193,10 +201,10 @@ export function buildConstraintDescription(schema: JSONSchema): string {
  * 5. Adds additionalProperties: false to all objects (required by Snowflake)
  * 6. Properly maintains required arrays, excluding optional fields
  * 7. Recursively processes nested schemas
- * 
+ *
  * @param schema - JSON Schema object to clean
  * @returns Cleaned schema compatible with Snowflake Cortex
- * 
+ *
  * @example
  * const schema = {
  *   type: 'object',
@@ -212,7 +220,7 @@ export function buildConstraintDescription(schema: JSONSchema): string {
  *     }
  *   }
  * };
- * 
+ *
  * const cleaned = removeUnsupportedFeatures(schema);
  * // Result:
  * // {
@@ -274,7 +282,9 @@ export function removeUnsupportedFeatures(schema: JSONSchema): JSONSchema {
 			// Mark as optional so parent object excludes it from required array
 			cleaned._isOptional = true;
 		} else if (nonNullTypes.length > 1) {
-			cleaned.anyOf = nonNullTypes.map((item) => removeUnsupportedFeatures(item));
+			cleaned.anyOf = nonNullTypes.map((item) =>
+				removeUnsupportedFeatures(item)
+			);
 		}
 	}
 
@@ -347,7 +357,9 @@ export function removeUnsupportedFeatures(schema: JSONSchema): JSONSchema {
 
 	// Handle oneOf
 	if (cleaned.oneOf) {
-		cleaned.oneOf = cleaned.oneOf.map((item) => removeUnsupportedFeatures(item));
+		cleaned.oneOf = cleaned.oneOf.map((item) =>
+			removeUnsupportedFeatures(item)
+		);
 	}
 
 	// Cache the result for future calls
@@ -370,7 +382,7 @@ export interface ModelInfo {
 
 /**
  * Get the maximum output tokens for a model from supported-models.json
- * 
+ *
  * @param modelId - The model ID (e.g., "claude-haiku-4-5" or "cortex/claude-haiku-4-5")
  * @param providerPrefix - The provider prefix (e.g., "snowflake" or "cortex")
  * @param supportedModels - The models array from supported-models.json for the provider
@@ -396,7 +408,7 @@ export function getModelMaxTokens(
 /**
  * Normalize token parameters for a request
  * Enforces minimum of 8192 tokens and caps at model maximum
- * 
+ *
  * @param params - Request parameters object (will be modified in place)
  * @param modelId - The model ID
  * @param providerPrefix - The provider prefix (e.g., "snowflake" or "cortex")
@@ -409,7 +421,11 @@ export function normalizeTokenParams(
 	providerPrefix: string,
 	supportedModels: ModelInfo[]
 ): any {
-	const modelMaxTokens = getModelMaxTokens(modelId, providerPrefix, supportedModels);
+	const modelMaxTokens = getModelMaxTokens(
+		modelId,
+		providerPrefix,
+		supportedModels
+	);
 	const MIN_TOKENS = 8192;
 
 	// Set maxTokens if not present
@@ -429,7 +445,7 @@ export function normalizeTokenParams(
 /**
  * Transform request body for Snowflake API
  * Handles token parameters and schema transformation
- * 
+ *
  * @param body - Request body object (will be modified in place)
  * @param modelId - The normalized model ID (without snowflake/ prefix)
  * @param supportedModels - The models array from supported-models.json for snowflake provider
@@ -443,7 +459,11 @@ export function transformSnowflakeRequestBody(
 	let modified = false;
 
 	// 1. Inject max_completion_tokens based on model from supported-models.json
-	const modelMaxTokens = getModelMaxTokens(modelId, 'snowflake', supportedModels);
+	const modelMaxTokens = getModelMaxTokens(
+		modelId,
+		'snowflake',
+		supportedModels
+	);
 
 	// Always set max_completion_tokens to the model's maximum capability
 	if (!body.max_completion_tokens) {
@@ -462,7 +482,10 @@ export function transformSnowflakeRequestBody(
 	}
 
 	// 2. Handle schema transformation for structured outputs
-	if (body.response_format?.type === 'json_schema' && body.response_format.json_schema?.schema) {
+	if (
+		body.response_format?.type === 'json_schema' &&
+		body.response_format.json_schema?.schema
+	) {
 		const originalSchema = body.response_format.json_schema.schema;
 		const cleanedSchema = removeUnsupportedFeatures(originalSchema);
 		body.response_format.json_schema.schema = cleanedSchema;
@@ -479,9 +502,9 @@ export function transformSnowflakeRequestBody(
 export interface CortexMessage {
 	role: string;
 	content?: string;
-	content_list?: Array<{ 
-		type: string; 
-		text?: string; 
+	content_list?: Array<{
+		type: string;
+		text?: string;
 		cache_control?: { type: string };
 		tool_use?: {
 			tool_use_id: string;
@@ -516,15 +539,15 @@ export function isClaudeModel(modelId: string | undefined): boolean {
 
 /**
  * Convert AI SDK prompt to Snowflake Cortex message format
- * 
+ *
  * This is the unified prompt conversion function used by both REST API and CLI.
- * 
+ *
  * Prompt Caching is enabled when:
  * - enableCaching=true AND model is Claude
- * 
+ *
  * Note: Not all Claude models support prompt caching (e.g., claude-4-opus doesn't).
  * The caller should only enable caching for models known to support it.
- * 
+ *
  * When caching is enabled, uses content_list format with cache_control:
  * {
  *   "role": "system",
@@ -532,10 +555,10 @@ export function isClaudeModel(modelId: string | undefined): boolean {
  *     { "type": "text", "text": "<long system message>", "cache_control": { "type": "ephemeral" } }
  *   ]
  * }
- * 
+ *
  * When caching is disabled, uses simple content format:
  * { "role": "system", "content": "<message text>" }
- * 
+ *
  * @param prompt - AI SDK LanguageModelV2Prompt (array of messages)
  * @param options - Conversion options (caching, modelId)
  * @returns Array of messages in Cortex format
@@ -546,32 +569,40 @@ export function convertPromptToMessages(
 ): CortexMessage[] {
 	const { enableCaching = false, modelId } = options;
 	const messages: CortexMessage[] = [];
-	
+
 	// Enable caching format when caching is requested AND it's a Claude model
 	// Note: Not all Claude models support caching - caller must verify model support
 	const useCachingFormat = enableCaching && isClaudeModel(modelId);
 
 	const promptArray = Array.isArray(prompt) ? prompt : [prompt];
-	
+
 	// Debug: log the raw prompt structure
 	if (process.env.DEBUG?.includes('snowflake:prompt')) {
-		console.log('[DEBUG snowflake:prompt] Raw prompt:', JSON.stringify(promptArray, null, 2));
+		console.log(
+			'[DEBUG snowflake:prompt] Raw prompt:',
+			JSON.stringify(promptArray, null, 2)
+		);
 	}
 
 	for (const msg of promptArray) {
 		switch (msg.role) {
 			case 'system': {
-				const systemContent = typeof msg.content === 'string' 
-					? msg.content 
-					: JSON.stringify(msg.content);
-				
+				const systemContent =
+					typeof msg.content === 'string'
+						? msg.content
+						: JSON.stringify(msg.content);
+
 				// For Claude models (REST with caching or CLI), use content_list with cache_control
 				// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#prompt-caching-example
 				if (useCachingFormat) {
 					messages.push({
 						role: 'system',
 						content_list: [
-							{ type: 'text', text: systemContent, cache_control: { type: 'ephemeral' } }
+							{
+								type: 'text',
+								text: systemContent,
+								cache_control: { type: 'ephemeral' }
+							}
 						]
 					});
 				} else {
@@ -585,18 +616,22 @@ export function convertPromptToMessages(
 				let userContent: string;
 				if (Array.isArray(msg.content)) {
 					const parts = msg.content as { type: string; text?: string }[];
-					const textParts = parts.filter(p => p.type === 'text');
-					userContent = textParts.map(p => p.text).join('');
+					const textParts = parts.filter((p) => p.type === 'text');
+					userContent = textParts.map((p) => p.text).join('');
 				} else {
 					userContent = msg.content as string;
 				}
-				
+
 				// For Claude models with caching, use content_list for user messages too
 				if (useCachingFormat) {
 					messages.push({
 						role: 'user',
 						content_list: [
-							{ type: 'text', text: userContent, cache_control: { type: 'ephemeral' } }
+							{
+								type: 'text',
+								text: userContent,
+								cache_control: { type: 'ephemeral' }
+							}
 						]
 					});
 				} else {
@@ -609,24 +644,24 @@ export function convertPromptToMessages(
 				// Handle assistant messages - may contain text and/or tool calls
 				// Cortex format: { role: 'assistant', content: '...', content_list: [{ type: 'tool_use', tool_use: {...} }] }
 				if (Array.isArray(msg.content)) {
-					const parts = msg.content as Array<{ 
-						type: string; 
+					const parts = msg.content as Array<{
+						type: string;
 						text?: string;
 						toolCallId?: string;
 						toolName?: string;
-						input?: unknown;  // AI SDK uses 'input' not 'args'
+						input?: unknown; // AI SDK uses 'input' not 'args'
 					}>;
-					
+
 					// Check if there are tool calls in the content
-					const toolCalls = parts.filter(p => p.type === 'tool-call');
-					const textParts = parts.filter(p => p.type === 'text');
-					const textContent = textParts.map(p => p.text || '').join('');
-					
+					const toolCalls = parts.filter((p) => p.type === 'tool-call');
+					const textParts = parts.filter((p) => p.type === 'text');
+					const textContent = textParts.map((p) => p.text || '').join('');
+
 					if (toolCalls.length > 0) {
 						// Format assistant message with tool calls for Cortex API
 						// Cortex expects BOTH content (text) AND content_list (tool_use)
 						const contentList: Array<{ type: string; tool_use: unknown }> = [];
-						
+
 						// Add tool calls to content_list
 						for (const tc of toolCalls) {
 							contentList.push({
@@ -634,15 +669,15 @@ export function convertPromptToMessages(
 								tool_use: {
 									tool_use_id: tc.toolCallId,
 									name: tc.toolName,
-									input: tc.input  // Already an object from AI SDK
+									input: tc.input // Already an object from AI SDK
 								}
 							});
 						}
-						
-						messages.push({ 
+
+						messages.push({
 							role: 'assistant',
-							content: textContent || '',  // Text goes in 'content'
-							content_list: contentList as CortexMessage['content_list']  // Tool calls go in 'content_list'
+							content: textContent || '', // Text goes in 'content'
+							content_list: contentList as CortexMessage['content_list'] // Tool calls go in 'content_list'
 						});
 					} else {
 						// No tool calls, just text
@@ -659,23 +694,23 @@ export function convertPromptToMessages(
 				// Handle tool results from AI SDK v5
 				// AI SDK sends: { type: 'tool-result', toolCallId, toolName, output: { type: 'json', value: ... } }
 				// Cortex format: { role: 'user', content_list: [{ type: 'tool_results', tool_results: { tool_use_id, name, content: [{type:'text',text:'...'}] } }] }
-				const toolResults = msg.content as Array<{ 
+				const toolResults = msg.content as Array<{
 					type: string;
 					toolCallId: string;
-					toolName: string; 
+					toolName: string;
 					output?: { type: string; value: unknown };
-					result?: unknown;  // Fallback for older format
+					result?: unknown; // Fallback for older format
 				}>;
-				
-				const toolResultsContentList: Array<{ 
-					type: string; 
+
+				const toolResultsContentList: Array<{
+					type: string;
 					tool_results: {
 						tool_use_id: string;
 						name: string;
 						content: Array<{ type: string; text: string }>;
 					};
 				}> = [];
-				
+
 				for (const toolResult of toolResults) {
 					if (toolResult.type === 'tool-result') {
 						// Extract the actual result value
@@ -687,25 +722,24 @@ export function convertPromptToMessages(
 						} else {
 							resultValue = toolResult.result;
 						}
-						
+
 						// Format tool result for Cortex API (nested structure with content array)
 						toolResultsContentList.push({
-							type: 'tool_results',  // Note: plural 'tool_results'
+							type: 'tool_results', // Note: plural 'tool_results'
 							tool_results: {
 								tool_use_id: toolResult.toolCallId,
 								name: toolResult.toolName,
-								content: [
-									{ type: 'text', text: JSON.stringify(resultValue) }
-								]
+								content: [{ type: 'text', text: JSON.stringify(resultValue) }]
 							}
 						});
 					}
 				}
-				
+
 				if (toolResultsContentList.length > 0) {
 					messages.push({
 						role: 'user',
-						content_list: toolResultsContentList as unknown as CortexMessage['content_list']
+						content_list:
+							toolResultsContentList as unknown as CortexMessage['content_list']
 					});
 				}
 				break;
@@ -715,4 +749,3 @@ export function convertPromptToMessages(
 
 	return messages;
 }
-

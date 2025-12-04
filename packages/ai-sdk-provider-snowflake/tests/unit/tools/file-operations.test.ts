@@ -2,7 +2,14 @@
  * Unit Tests for File Operations Tools
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import {
 	projectTreeInputSchema,
 	fileSearchInputSchema,
@@ -32,7 +39,15 @@ describe('File Operations Tools', () => {
 				expect(result.directory).toBe('.');
 				expect(result.maxDepth).toBe(3);
 				expect(result.includeFiles).toBe(true);
-				expect(result.ignore).toEqual(['node_modules', '.git', 'dist', 'coverage', '__pycache__', '.next', 'build']);
+				expect(result.ignore).toEqual([
+					'node_modules',
+					'.git',
+					'dist',
+					'coverage',
+					'__pycache__',
+					'.next',
+					'build'
+				]);
 			});
 
 			it('should accept custom values', () => {
@@ -52,7 +67,9 @@ describe('File Operations Tools', () => {
 		describe('fileSearchInputSchema', () => {
 			it('should require pattern', () => {
 				expect(() => fileSearchInputSchema.parse({})).toThrow();
-				expect(() => fileSearchInputSchema.parse({ pattern: '*.ts' })).not.toThrow();
+				expect(() =>
+					fileSearchInputSchema.parse({ pattern: '*.ts' })
+				).not.toThrow();
 			});
 
 			it('should use default values', () => {
@@ -66,7 +83,9 @@ describe('File Operations Tools', () => {
 		describe('fileReadInputSchema', () => {
 			it('should require path', () => {
 				expect(() => fileReadInputSchema.parse({})).toThrow();
-				expect(() => fileReadInputSchema.parse({ path: 'test.txt' })).not.toThrow();
+				expect(() =>
+					fileReadInputSchema.parse({ path: 'test.txt' })
+				).not.toThrow();
 			});
 
 			it('should accept optional line range', () => {
@@ -143,4 +162,3 @@ describe('File Operations Tools', () => {
 		});
 	});
 });
-

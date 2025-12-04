@@ -19,8 +19,12 @@ jest.mock('../src/config/index.js', () => ({
 	getExecutionMode: jest.fn()
 }));
 
-const mockIsCortexCliAvailable = isCortexCliAvailable as jest.MockedFunction<typeof isCortexCliAvailable>;
-const mockGetExecutionMode = getExecutionMode as jest.MockedFunction<typeof getExecutionMode>;
+const mockIsCortexCliAvailable = isCortexCliAvailable as jest.MockedFunction<
+	typeof isCortexCliAvailable
+>;
+const mockGetExecutionMode = getExecutionMode as jest.MockedFunction<
+	typeof getExecutionMode
+>;
 
 describe('SnowflakeProvider', () => {
 	const originalEnv = process.env;
@@ -38,10 +42,10 @@ describe('SnowflakeProvider', () => {
 		delete process.env.SNOWFLAKE_PRIVATE_KEY_FILE;
 		delete process.env.CORTEX_EXECUTION_MODE;
 		delete process.env.SNOWFLAKE_EXECUTION_MODE;
-		
+
 		// Mock CLI as unavailable by default (tests can override)
 		mockIsCortexCliAvailable.mockResolvedValue(false);
-		
+
 		// Mock config getExecutionMode to return undefined (no config override)
 		mockGetExecutionMode.mockReturnValue(undefined);
 	});
@@ -62,7 +66,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should create a language model from provider function with rest mode', () => {
 			mockIsCortexCliAvailable.mockResolvedValue(false);
-			
+
 			// Explicitly request rest mode
 			const provider = createSnowflake({ executionMode: 'rest' });
 			const model = provider('cortex/openai-gpt-4.1');
@@ -73,7 +77,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should create a language model from languageModel method with rest mode', () => {
 			mockIsCortexCliAvailable.mockResolvedValue(false);
-			
+
 			// Explicitly request rest mode
 			const provider = createSnowflake({ executionMode: 'rest' });
 			const model = provider.languageModel('cortex/openai-gpt-4.1');
@@ -103,9 +107,9 @@ describe('SnowflakeProvider', () => {
 			// Set REST credentials
 			process.env.SNOWFLAKE_API_KEY = 'test-api-key';
 			process.env.SNOWFLAKE_BASE_URL = 'https://test.snowflakecomputing.com';
-			
+
 			mockIsCortexCliAvailable.mockResolvedValue(true);
-			
+
 			const provider = createSnowflake({ executionMode: 'auto' });
 			const model = provider('cortex/claude-sonnet-4-5');
 
@@ -118,9 +122,9 @@ describe('SnowflakeProvider', () => {
 			// Set REST credentials
 			process.env.SNOWFLAKE_API_KEY = 'test-api-key';
 			process.env.SNOWFLAKE_BASE_URL = 'https://test.snowflakecomputing.com';
-			
+
 			mockIsCortexCliAvailable.mockResolvedValue(true);
-			
+
 			const provider = createSnowflake({ executionMode: 'auto' });
 			const model = provider('cortex/openai-gpt-4.1');
 
@@ -134,9 +138,9 @@ describe('SnowflakeProvider', () => {
 			process.env.SNOWFLAKE_ACCOUNT = 'test-account';
 			process.env.SNOWFLAKE_USER = 'test-user';
 			process.env.SNOWFLAKE_PRIVATE_KEY_PATH = '/path/to/key.p8';
-			
+
 			mockIsCortexCliAvailable.mockResolvedValue(true);
-			
+
 			const provider = createSnowflake({ executionMode: 'auto' });
 			const model = provider('cortex/claude-sonnet-4-5');
 
@@ -150,7 +154,7 @@ describe('SnowflakeProvider', () => {
 			process.env.SNOWFLAKE_ACCOUNT = 'test-account';
 			process.env.SNOWFLAKE_USER = 'test-user';
 			process.env.SNOWFLAKE_PRIVATE_KEY_FILE = '/path/to/key.p8';
-			
+
 			const provider = createSnowflake({ executionMode: 'auto' });
 			const model = provider('cortex/claude-sonnet-4-5');
 
@@ -163,7 +167,7 @@ describe('SnowflakeProvider', () => {
 			// No REST credentials set
 			// No CLI cache set (auto mode defaults to REST)
 			mockIsCortexCliAvailable.mockResolvedValue(true);
-			
+
 			const provider = createSnowflake({ executionMode: 'auto' });
 			const model = provider('cortex/claude-sonnet-4-5');
 
@@ -177,10 +181,10 @@ describe('SnowflakeProvider', () => {
 			// Set REST credentials
 			process.env.SNOWFLAKE_API_KEY = 'test-api-key';
 			process.env.SNOWFLAKE_BASE_URL = 'https://test.snowflakecomputing.com';
-			
+
 			// Even though CLI is available, REST endpoints should be preferred
 			mockIsCortexCliAvailable.mockResolvedValue(true);
-			
+
 			const provider = createSnowflake();
 			const model = provider('cortex/claude-sonnet-4-5');
 
@@ -244,7 +248,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should use model-specific execution mode if provided', () => {
 			const provider = createSnowflake({ executionMode: 'rest' });
-			
+
 			// Override at model level
 			const model = provider('cortex/claude-sonnet-4-5', {
 				executionMode: 'cli'
@@ -263,7 +267,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should create models from default provider', () => {
 			mockIsCortexCliAvailable.mockResolvedValue(false);
-			
+
 			// Force rest mode for predictable testing
 			const model = snowflake.languageModel('cortex/openai-gpt-4.1', {
 				executionMode: 'rest'
@@ -304,7 +308,7 @@ describe('SnowflakeProvider', () => {
 			expect(model.constructor.name).toBe('RestLanguageModel');
 			expect(model.provider).toBe('snowflake');
 			expect(model.modelId).toBe('cortex/openai-gpt-4.1');
-	});
+		});
 
 		it('should handle Claude models via REST', () => {
 			const provider = createSnowflake({
@@ -362,4 +366,3 @@ describe('LanguageModel properties', () => {
 		});
 	});
 });
-

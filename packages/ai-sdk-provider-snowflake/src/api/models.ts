@@ -1,10 +1,10 @@
 /**
  * Model Validation API for Snowflake Cortex
- * 
+ *
  * Uses the Cortex Inference REST API to dynamically validate model availability.
  * This helps provide accurate error messages when models are not available
  * in the user's account or region.
- * 
+ *
  * See: https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference
  */
 
@@ -47,7 +47,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Fetch available models from the Cortex Inference API
- * 
+ *
  * @param settings - Provider settings for authentication
  * @returns List of available models
  */
@@ -61,24 +61,26 @@ export async function fetchAvailableModels(
 
 	// Authenticate
 	const auth = await authenticate(settings);
-	
+
 	// Fetch models from Cortex Inference API
 	const url = `${auth.baseURL}/api/v2/cortex/inference/models`;
-	
+
 	const response = await fetch(url, {
 		method: 'GET',
 		headers: {
-			'Authorization': `Bearer ${auth.accessToken}`,
-			'Accept': 'application/json'
+			Authorization: `Bearer ${auth.accessToken}`,
+			Accept: 'application/json'
 		}
 	});
 
 	if (!response.ok) {
 		const errorBody = await response.text();
-		throw new Error(`Failed to fetch available models: ${response.status} - ${errorBody}`);
+		throw new Error(
+			`Failed to fetch available models: ${response.status} - ${errorBody}`
+		);
 	}
 
-	const result = await response.json() as {
+	const result = (await response.json()) as {
 		models?: CortexModelInfo[] | Array<{ name: string }>;
 	};
 
@@ -103,8 +105,13 @@ export async function fetchAvailableModels(
 
 	// Debug logging
 	if (process.env.DEBUG?.includes('snowflake:api')) {
-		console.log(`[DEBUG snowflake:api] Fetched ${models.length} available models`);
-		console.log(`[DEBUG snowflake:api] Models:`, models.map(m => m.name).join(', '));
+		console.log(
+			`[DEBUG snowflake:api] Fetched ${models.length} available models`
+		);
+		console.log(
+			`[DEBUG snowflake:api] Models:`,
+			models.map((m) => m.name).join(', ')
+		);
 	}
 
 	return models;
@@ -112,7 +119,7 @@ export async function fetchAvailableModels(
 
 /**
  * Check if a specific model is available
- * 
+ *
  * @param modelId - Model ID to check (with or without cortex/ prefix)
  * @param settings - Provider settings for authentication
  * @returns True if model is available
@@ -123,21 +130,25 @@ export async function isModelAvailable(
 ): Promise<boolean> {
 	try {
 		const models = await fetchAvailableModels(settings);
-		
+
 		// Normalize model ID - remove cortex/ prefix
 		const normalizedId = modelId.toLowerCase().replace(/^cortex\//, '');
-		
+
 		// Check if model exists in available models
-		return models.some(m => {
+		return models.some((m) => {
 			const modelName = m.name.toLowerCase();
-			return modelName === normalizedId || 
-			       modelName === `cortex/${normalizedId}` ||
-			       normalizedId === modelName.replace(/^cortex\//, '');
+			return (
+				modelName === normalizedId ||
+				modelName === `cortex/${normalizedId}` ||
+				normalizedId === modelName.replace(/^cortex\//, '')
+			);
 		});
 	} catch (error) {
 		// If we can't fetch models, assume it's available and let the actual request fail
 		if (process.env.DEBUG?.includes('snowflake:api')) {
-			console.log(`[DEBUG snowflake:api] Could not check model availability: ${error}`);
+			console.log(
+				`[DEBUG snowflake:api] Could not check model availability: ${error}`
+			);
 		}
 		return true;
 	}
@@ -145,7 +156,7 @@ export async function isModelAvailable(
 
 /**
  * Get available model names
- * 
+ *
  * @param settings - Provider settings for authentication
  * @returns List of available model names
  */
@@ -153,12 +164,12 @@ export async function getAvailableModelNames(
 	settings: SnowflakeProviderSettings = {}
 ): Promise<string[]> {
 	const models = await fetchAvailableModels(settings);
-	return models.map(m => m.name);
+	return models.map((m) => m.name);
 }
 
 /**
  * Validate model availability and throw helpful error if not available
- * 
+ *
  * @param modelId - Model ID to validate
  * @param settings - Provider settings for authentication
  * @throws Error with helpful message if model is not available
@@ -168,14 +179,14 @@ export async function validateModelAvailability(
 	settings: SnowflakeProviderSettings = {}
 ): Promise<void> {
 	const available = await isModelAvailable(modelId, settings);
-	
+
 	if (!available) {
 		const models = await fetchAvailableModels(settings);
-		const availableNames = models.map(m => m.name).join(', ');
-		
+		const availableNames = models.map((m) => m.name).join(', ');
+
 		throw new Error(
 			`Model '${modelId}' is not available in your Snowflake account or region. ` +
-			`Available models: ${availableNames || 'none'}`
+				`Available models: ${availableNames || 'none'}`
 		);
 	}
 }
@@ -190,7 +201,7 @@ export function clearModelCache(): void {
 
 /**
  * Get model info if available
- * 
+ *
  * @param modelId - Model ID to look up
  * @param settings - Provider settings for authentication
  * @returns Model info or undefined if not found
@@ -201,18 +212,20 @@ export async function getModelInfo(
 ): Promise<CortexModelInfo | undefined> {
 	const models = await fetchAvailableModels(settings);
 	const normalizedId = modelId.toLowerCase().replace(/^cortex\//, '');
-	
-	return models.find(m => {
+
+	return models.find((m) => {
 		const modelName = m.name.toLowerCase();
-		return modelName === normalizedId || 
-		       modelName === `cortex/${normalizedId}` ||
-		       normalizedId === modelName.replace(/^cortex\//, '');
+		return (
+			modelName === normalizedId ||
+			modelName === `cortex/${normalizedId}` ||
+			normalizedId === modelName.replace(/^cortex\//, '')
+		);
 	});
 }
 
 /**
  * Suggest alternative models when a model is not available
- * 
+ *
  * @param modelId - Model ID that was not available
  * @param settings - Provider settings for authentication
  * @returns List of suggested alternative models
@@ -223,21 +236,20 @@ export async function suggestAlternativeModels(
 ): Promise<string[]> {
 	const models = await fetchAvailableModels(settings);
 	const normalizedId = modelId.toLowerCase().replace(/^cortex\//, '');
-	
+
 	// Determine model type from name
 	const modelType = normalizedId.split('-')[0]; // e.g., 'claude', 'openai', 'llama'
-	
+
 	// Find models of the same type
 	const suggestions = models
-		.filter(m => m.name.toLowerCase().includes(modelType))
-		.map(m => m.name)
+		.filter((m) => m.name.toLowerCase().includes(modelType))
+		.map((m) => m.name)
 		.slice(0, 5); // Limit to 5 suggestions
-	
+
 	// If no suggestions of the same type, return any available models
 	if (suggestions.length === 0) {
-		return models.map(m => m.name).slice(0, 5);
+		return models.map((m) => m.name).slice(0, 5);
 	}
-	
+
 	return suggestions;
 }
-

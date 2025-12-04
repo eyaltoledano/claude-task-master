@@ -1,6 +1,6 @@
 /**
  * Model utilities and validation
- * 
+ *
  * This module provides helper functions for working with different Cortex models,
  * including capability detection and model ID normalization.
  */
@@ -11,14 +11,14 @@ import type { SnowflakeModelId, ModelCapabilities } from '../types.js';
  * ==================== PROMPT CACHING ====================
  * Snowflake Cortex supports prompt caching for OpenAI and Anthropic models.
  * See: https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference
- * 
+ *
  * OPENAI PROMPT CACHING:
  * - Prompt caching is implicit for OpenAI models; no need to modify requests to opt-in.
  * - Prompts with 1024 tokens or more will utilize caching, with cache hits occurring in 128-token increments.
  * - Messages, images, tool use and structured outputs can be cached.
  * - Cache writes: no cost.
  * - Cache reads: charged at 0.25x or 0.50x the price of the original input pricing.
- * 
+ *
  * ANTHROPIC PROMPT CACHING:
  * - You can enable prompt caching for Anthropic models by providing cache points in the request.
  * - Prompts with 1024 tokens or more can utilize caching.
@@ -32,11 +32,11 @@ import type { SnowflakeModelId, ModelCapabilities } from '../types.js';
 
 /**
  * Known Snowflake Cortex models with their capabilities
- * 
+ *
  * IMPORTANT: This is the SINGLE SOURCE OF TRUTH for model lists.
  * All other model lists should be derived from this.
  * Must match scripts/modules/supported-models.json (snowflake section)
- * 
+ *
  * Feature Configuration:
  * - preferredEndpoint: 'cortex' (default), 'anthropic' (Claude only), 'openai-compat' (OpenAI only)
  * - supportsStructuredOutput: true if model can generate JSON according to a schema
@@ -54,9 +54,9 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsStructuredOutput: true,
 		supportsPromptCaching: true,
 		supportsThinking: true,
-		thinkingBudgetTokens: 10000,  // Default budget for Claude thinking
+		thinkingBudgetTokens: 10000, // Default budget for Claude thinking
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',  // Default to cortex, can be 'anthropic'
+		preferredEndpoint: 'rest' // Default to cortex, can be 'anthropic'
 	},
 	'claude-haiku-4-5': {
 		maxTokens: 64000,
@@ -65,7 +65,7 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsThinking: true,
 		thinkingBudgetTokens: 10000,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'claude-4-sonnet': {
 		maxTokens: 32000,
@@ -74,18 +74,18 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsThinking: true,
 		thinkingBudgetTokens: 10000,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'claude-4-opus': {
 		maxTokens: 8192,
 		supportsStructuredOutput: true,
-		supportsPromptCaching: false,  // API returns: "unsupported model feature: prompt_caching"
+		supportsPromptCaching: false, // API returns: "unsupported model feature: prompt_caching"
 		supportsThinking: true,
 		thinkingBudgetTokens: 10000,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
-	
+
 	// ==================== OpenAI Models ====================
 	// OpenAI models support: structured output, prompt caching, reasoning_effort, streaming
 	// Note: gpt-5 variants marked with * in docs may have limited availability
@@ -95,7 +95,7 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsPromptCaching: true,
 		supportsReasoning: true,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',  // Default to cortex, can be 'openai-compat'
+		preferredEndpoint: 'rest' // Default to cortex, can be 'openai-compat'
 	},
 	'openai-gpt-5-mini': {
 		maxTokens: 8192,
@@ -103,7 +103,7 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsPromptCaching: true,
 		supportsReasoning: true,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'openai-gpt-5-nano': {
 		maxTokens: 8192,
@@ -111,7 +111,7 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsPromptCaching: true,
 		supportsReasoning: true,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'openai-gpt-4.1': {
 		maxTokens: 32000,
@@ -119,9 +119,9 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsPromptCaching: true,
 		supportsReasoning: true,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
-	
+
 	// ==================== Llama Models ====================
 	// Llama models: streaming supported, no structured output/caching/thinking
 	'llama4-maverick': {
@@ -129,37 +129,37 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'llama3.1-8b': {
 		maxTokens: 8192,
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'llama3.1-70b': {
 		maxTokens: 8192,
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'llama3.1-405b': {
 		maxTokens: 8192,
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'snowflake-llama-3.3-70b': {
 		maxTokens: 8192,
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
-	
+
 	// ==================== Other Models ====================
 	// Mistral and DeepSeek models: streaming supported, no structured output support
 	// Note: Per Snowflake docs, structured outputs only work with Claude and OpenAI models
@@ -169,22 +169,22 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 		supportsStructuredOutput: false,
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'mistral-7b': {
 		maxTokens: 8192,
-		supportsStructuredOutput: false,  // Not supported per Snowflake docs
+		supportsStructuredOutput: false, // Not supported per Snowflake docs
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
+		preferredEndpoint: 'rest'
 	},
 	'mistral-large2': {
 		maxTokens: 8192,
-		supportsStructuredOutput: false,  // Not supported per Snowflake docs
+		supportsStructuredOutput: false, // Not supported per Snowflake docs
 		supportsPromptCaching: false,
 		supportsStreaming: true,
-		preferredEndpoint: 'rest',
-	},
+		preferredEndpoint: 'rest'
+	}
 };
 
 // =============== Derived Model Lists ===============
@@ -194,56 +194,101 @@ export const KNOWN_MODELS: Record<string, ModelCapabilities> = {
 export const ALL_MODEL_IDS = Object.keys(KNOWN_MODELS);
 
 /** All model IDs with cortex/ prefix */
-export const ALL_PREFIXED_MODEL_IDS = ALL_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const ALL_PREFIXED_MODEL_IDS = ALL_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Claude models (support prompt caching and extended thinking) */
-export const CLAUDE_MODEL_IDS = ALL_MODEL_IDS.filter(id => id.startsWith('claude-'));
-export const CLAUDE_PREFIXED_MODEL_IDS = CLAUDE_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const CLAUDE_MODEL_IDS = ALL_MODEL_IDS.filter((id) =>
+	id.startsWith('claude-')
+);
+export const CLAUDE_PREFIXED_MODEL_IDS = CLAUDE_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** OpenAI models (support prompt caching and reasoning_effort) */
-export const OPENAI_MODEL_IDS = ALL_MODEL_IDS.filter(id => id.startsWith('openai-'));
-export const OPENAI_PREFIXED_MODEL_IDS = OPENAI_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const OPENAI_MODEL_IDS = ALL_MODEL_IDS.filter((id) =>
+	id.startsWith('openai-')
+);
+export const OPENAI_PREFIXED_MODEL_IDS = OPENAI_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Llama models */
-export const LLAMA_MODEL_IDS = ALL_MODEL_IDS.filter(id => id.includes('llama'));
-export const LLAMA_PREFIXED_MODEL_IDS = LLAMA_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const LLAMA_MODEL_IDS = ALL_MODEL_IDS.filter((id) =>
+	id.includes('llama')
+);
+export const LLAMA_PREFIXED_MODEL_IDS = LLAMA_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Mistral models */
-export const MISTRAL_MODEL_IDS = ALL_MODEL_IDS.filter(id => id.startsWith('mistral-'));
-export const MISTRAL_PREFIXED_MODEL_IDS = MISTRAL_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const MISTRAL_MODEL_IDS = ALL_MODEL_IDS.filter((id) =>
+	id.startsWith('mistral-')
+);
+export const MISTRAL_PREFIXED_MODEL_IDS = MISTRAL_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Other models (deepseek, etc.) */
-export const OTHER_MODEL_IDS = ALL_MODEL_IDS.filter(id => 
-	!id.startsWith('claude-') && 
-	!id.startsWith('openai-') && 
-	!id.includes('llama') && 
-	!id.startsWith('mistral-')
+export const OTHER_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) =>
+		!id.startsWith('claude-') &&
+		!id.startsWith('openai-') &&
+		!id.includes('llama') &&
+		!id.startsWith('mistral-')
 );
-export const OTHER_PREFIXED_MODEL_IDS = OTHER_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const OTHER_PREFIXED_MODEL_IDS = OTHER_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Models that support structured outputs */
-export const STRUCTURED_OUTPUT_MODEL_IDS = ALL_MODEL_IDS.filter(id => KNOWN_MODELS[id].supportsStructuredOutput);
-export const STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS = STRUCTURED_OUTPUT_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const STRUCTURED_OUTPUT_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => KNOWN_MODELS[id].supportsStructuredOutput
+);
+export const STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS =
+	STRUCTURED_OUTPUT_MODEL_IDS.map((id) => `cortex/${id}`) as readonly string[];
 
 /** Models that do NOT support structured outputs */
-export const NO_STRUCTURED_OUTPUT_MODEL_IDS = ALL_MODEL_IDS.filter(id => !KNOWN_MODELS[id].supportsStructuredOutput);
-export const NO_STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS = NO_STRUCTURED_OUTPUT_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const NO_STRUCTURED_OUTPUT_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => !KNOWN_MODELS[id].supportsStructuredOutput
+);
+export const NO_STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS =
+	NO_STRUCTURED_OUTPUT_MODEL_IDS.map(
+		(id) => `cortex/${id}`
+	) as readonly string[];
 
 /** Models that support prompt caching */
-export const PROMPT_CACHING_MODEL_IDS = ALL_MODEL_IDS.filter(id => KNOWN_MODELS[id].supportsPromptCaching);
-export const PROMPT_CACHING_PREFIXED_MODEL_IDS = PROMPT_CACHING_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const PROMPT_CACHING_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => KNOWN_MODELS[id].supportsPromptCaching
+);
+export const PROMPT_CACHING_PREFIXED_MODEL_IDS = PROMPT_CACHING_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Models that support Claude-style extended thinking */
-export const THINKING_MODEL_IDS = ALL_MODEL_IDS.filter(id => KNOWN_MODELS[id].supportsThinking === true);
-export const THINKING_PREFIXED_MODEL_IDS = THINKING_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const THINKING_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => KNOWN_MODELS[id].supportsThinking === true
+);
+export const THINKING_PREFIXED_MODEL_IDS = THINKING_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Models that support OpenAI-style reasoning_effort */
-export const REASONING_MODEL_IDS = ALL_MODEL_IDS.filter(id => KNOWN_MODELS[id].supportsReasoning === true);
-export const REASONING_PREFIXED_MODEL_IDS = REASONING_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const REASONING_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => KNOWN_MODELS[id].supportsReasoning === true
+);
+export const REASONING_PREFIXED_MODEL_IDS = REASONING_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /** Models that support streaming */
-export const STREAMING_MODEL_IDS = ALL_MODEL_IDS.filter(id => KNOWN_MODELS[id].supportsStreaming);
-export const STREAMING_PREFIXED_MODEL_IDS = STREAMING_MODEL_IDS.map(id => `cortex/${id}`) as readonly string[];
+export const STREAMING_MODEL_IDS = ALL_MODEL_IDS.filter(
+	(id) => KNOWN_MODELS[id].supportsStreaming
+);
+export const STREAMING_PREFIXED_MODEL_IDS = STREAMING_MODEL_IDS.map(
+	(id) => `cortex/${id}`
+) as readonly string[];
 
 /**
  * Normalize a model ID by removing the cortex/ prefix if present
@@ -272,27 +317,29 @@ const DEFAULT_MODEL_CAPABILITIES: ModelCapabilities = {
 	supportsStructuredOutput: false,
 	supportsPromptCaching: false,
 	supportsStreaming: true,
-	preferredEndpoint: 'rest',
+	preferredEndpoint: 'rest'
 };
 
 /**
  * Get model information including capabilities
  */
-export function getModelInfo(modelId: SnowflakeModelId): ModelCapabilities & { 
-	supportsStructuredOutputs: boolean;  // Alias for compatibility
+export function getModelInfo(modelId: SnowflakeModelId): ModelCapabilities & {
+	supportsStructuredOutputs: boolean; // Alias for compatibility
 } {
 	const normalized = normalizeModelId(modelId);
 	const info = KNOWN_MODELS[normalized] || DEFAULT_MODEL_CAPABILITIES;
 	return {
 		...info,
-		supportsStructuredOutputs: info.supportsStructuredOutput  // Alias
+		supportsStructuredOutputs: info.supportsStructuredOutput // Alias
 	};
 }
 
 /**
  * Get model capabilities for a specific model
  */
-export function getModelCapabilities(modelId: SnowflakeModelId): ModelCapabilities {
+export function getModelCapabilities(
+	modelId: SnowflakeModelId
+): ModelCapabilities {
 	const normalized = normalizeModelId(modelId);
 	return KNOWN_MODELS[normalized] || DEFAULT_MODEL_CAPABILITIES;
 }
@@ -360,30 +407,33 @@ export function getPreferredEndpoint(modelId: string): 'rest' {
 /**
  * Get the default thinking budget tokens for a Claude model
  */
-export function getThinkingBudgetTokens(modelId: string, level: 'low' | 'medium' | 'high' = 'medium'): number {
+export function getThinkingBudgetTokens(
+	modelId: string,
+	level: 'low' | 'medium' | 'high' = 'medium'
+): number {
 	const budgetMap = {
 		low: 4096,
 		medium: 10000,
-		high: 32000,
+		high: 32000
 	};
-	
+
 	const normalized = normalizeModelId(modelId);
 	const modelInfo = KNOWN_MODELS[normalized];
-	
+
 	// Use model-specific budget if available, otherwise use level-based default
 	if (modelInfo?.thinkingBudgetTokens && level === 'medium') {
 		return modelInfo.thinkingBudgetTokens;
 	}
-	
+
 	return budgetMap[level];
 }
 
 /**
  * Check if a model ID supports native structured outputs
- * 
+ *
  * Only OpenAI and Claude models in Snowflake Cortex support structured outputs.
  * Other models (Llama, Mistral, etc.) will fall back to JSON mode.
- * 
+ *
  * @param modelId - Model identifier (e.g., 'cortex/claude-sonnet-4-5', 'claude-haiku-4-5')
  * @returns True if model supports structured outputs
  */
@@ -393,12 +443,12 @@ export function supportsStructuredOutputs(modelId: string): boolean {
 	}
 
 	const normalized = normalizeModelId(modelId);
-	
+
 	// Check KNOWN_MODELS first
 	if (normalized in KNOWN_MODELS) {
 		return KNOWN_MODELS[normalized].supportsStructuredOutput;
 	}
-	
+
 	// Fallback: OpenAI and Claude models support structured outputs
 	return (
 		normalized.includes('openai') ||
@@ -409,10 +459,10 @@ export function supportsStructuredOutputs(modelId: string): boolean {
 
 /**
  * Check if a model ID supports temperature parameter
- * 
+ *
  * OpenAI models in Snowflake Cortex don't support the temperature parameter
  * when using structured outputs.
- * 
+ *
  * @param modelId - Model identifier
  * @param isStructuredOutput - Whether this is for structured output generation
  * @returns True if model supports temperature
@@ -428,7 +478,10 @@ export function supportsTemperature(
 	const normalized = normalizeModelId(modelId);
 
 	// OpenAI models don't support temperature with structured outputs
-	if ((normalized.includes('openai') || normalized.includes('gpt-')) && isStructuredOutput) {
+	if (
+		(normalized.includes('openai') || normalized.includes('gpt-')) &&
+		isStructuredOutput
+	) {
 		return false;
 	}
 
@@ -450,16 +503,18 @@ export function isValidModelId(modelId: string): boolean {
  * Get all available model IDs with cortex/ prefix
  */
 export function getAvailableModels(): SnowflakeModelId[] {
-	return Object.keys(KNOWN_MODELS).map(id => `cortex/${id}`);
+	return Object.keys(KNOWN_MODELS).map((id) => `cortex/${id}`);
 }
 
 /**
  * Get a warning message for unsupported structured outputs
- * 
+ *
  * @param modelId - Model identifier
  * @returns Warning message
  */
-export function getUnsupportedStructuredOutputsWarning(modelId: string): string {
+export function getUnsupportedStructuredOutputsWarning(
+	modelId: string
+): string {
 	return (
 		`Model '${modelId}' does not support structured outputs. ` +
 		`Attempting JSON mode fallback. For best results, use OpenAI or Claude models.`
@@ -469,7 +524,7 @@ export function getUnsupportedStructuredOutputsWarning(modelId: string): string 
 /**
  * Prepare token parameters for a model
  * Enforces minimum of 8192 tokens
- * 
+ *
  * @param modelId - Model identifier
  * @param maxTokens - Requested max tokens
  * @returns Object with normalized maxTokens
@@ -486,7 +541,8 @@ export function prepareTokenParam(
 	// Handle various input types
 	let tokens = MIN_TOKENS;
 	if (maxTokens !== undefined && maxTokens !== null) {
-		const parsed = typeof maxTokens === 'string' ? parseFloat(maxTokens) : maxTokens;
+		const parsed =
+			typeof maxTokens === 'string' ? parseFloat(maxTokens) : maxTokens;
 		if (!isNaN(parsed)) {
 			tokens = Math.floor(parsed);
 		}
@@ -519,6 +575,6 @@ export class ModelHelpers {
 	static getModelCapabilities = getModelCapabilities;
 	static getPreferredEndpoint = getPreferredEndpoint;
 	static getThinkingBudgetTokens = getThinkingBudgetTokens;
-	static getUnsupportedStructuredOutputsWarning = getUnsupportedStructuredOutputsWarning;
+	static getUnsupportedStructuredOutputsWarning =
+		getUnsupportedStructuredOutputsWarning;
 }
-

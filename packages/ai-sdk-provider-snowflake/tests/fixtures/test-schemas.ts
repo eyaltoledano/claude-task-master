@@ -1,6 +1,6 @@
 /**
  * Shared test schemas and fixtures for Snowflake provider tests
- * 
+ *
  * Model lists are imported from src/utils/models.ts - the SINGLE SOURCE OF TRUTH
  */
 
@@ -24,7 +24,7 @@ export {
 	STRUCTURED_OUTPUT_MODEL_IDS,
 	STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS,
 	NO_STRUCTURED_OUTPUT_MODEL_IDS,
-	NO_STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS,
+	NO_STRUCTURED_OUTPUT_PREFIXED_MODEL_IDS
 } from '../../src/utils/models.js';
 
 // =============== Test Constants ===============
@@ -43,19 +43,19 @@ export const TEST_MODEL_NON_CLAUDE = 'cortex/llama3.1-8b';
 
 export const PersonSchema = z.object({
 	name: z.string().describe('The name of the person'),
-	age: z.number().describe('The age of the person'),
+	age: z.number().describe('The age of the person')
 });
 
 export const TaskSchema = z.object({
 	id: z.number().describe('Task ID'),
 	title: z.string().describe('Task title'),
-	done: z.boolean().describe('Whether the task is complete'),
+	done: z.boolean().describe('Whether the task is complete')
 });
 
 export const UserProfileSchema = z.object({
 	username: z.string(),
 	score: z.number(),
-	active: z.boolean(),
+	active: z.boolean()
 });
 
 // =============== JSON Schema objects for schema transformation tests ===============
@@ -64,9 +64,9 @@ export const SIMPLE_OBJECT_SCHEMA = {
 	type: 'object' as const,
 	properties: {
 		name: { type: 'string' as const },
-		age: { type: 'number' as const },
+		age: { type: 'number' as const }
 	},
-	required: ['name', 'age'],
+	required: ['name', 'age']
 };
 
 export const SCHEMA_WITH_STRING_CONSTRAINTS = {
@@ -76,9 +76,9 @@ export const SCHEMA_WITH_STRING_CONSTRAINTS = {
 			type: 'string' as const,
 			minLength: 1,
 			maxLength: 100,
-			format: 'email',
-		},
-	},
+			format: 'email'
+		}
+	}
 };
 
 export const SCHEMA_WITH_NUMBER_CONSTRAINTS = {
@@ -90,9 +90,9 @@ export const SCHEMA_WITH_NUMBER_CONSTRAINTS = {
 			maximum: 100,
 			exclusiveMinimum: 0,
 			exclusiveMaximum: 100,
-			multipleOf: 0.5,
-		},
-	},
+			multipleOf: 0.5
+		}
+	}
 };
 
 export const SCHEMA_WITH_ARRAY_CONSTRAINTS = {
@@ -103,9 +103,9 @@ export const SCHEMA_WITH_ARRAY_CONSTRAINTS = {
 			minItems: 1,
 			maxItems: 10,
 			uniqueItems: true,
-			items: { type: 'string' as const },
-		},
-	},
+			items: { type: 'string' as const }
+		}
+	}
 };
 
 export const SCHEMA_WITH_OBJECT_CONSTRAINTS = {
@@ -115,9 +115,9 @@ export const SCHEMA_WITH_OBJECT_CONSTRAINTS = {
 			type: 'object' as const,
 			minProperties: 1,
 			maxProperties: 10,
-			patternProperties: { '^x-': { type: 'string' as const } },
-		},
-	},
+			patternProperties: { '^x-': { type: 'string' as const } }
+		}
+	}
 };
 
 export const SCHEMA_WITH_UNSUPPORTED_KEYWORDS = {
@@ -126,11 +126,29 @@ export const SCHEMA_WITH_UNSUPPORTED_KEYWORDS = {
 	$schema: 'https://json-schema.org/draft/2020-12/schema',
 	additionalProperties: true,
 	properties: {
-		stringValue: { type: 'string' as const, minLength: 1, maxLength: 100, format: 'email' },
-		numberValue: { type: 'number' as const, minimum: 0, maximum: 1000, exclusiveMinimum: 0, exclusiveMaximum: 1000, multipleOf: 0.5 },
-		arrayValue: { type: 'array' as const, minItems: 1, maxItems: 10, uniqueItems: true, items: { type: 'object' as const, additionalProperties: true } },
+		stringValue: {
+			type: 'string' as const,
+			minLength: 1,
+			maxLength: 100,
+			format: 'email'
+		},
+		numberValue: {
+			type: 'number' as const,
+			minimum: 0,
+			maximum: 1000,
+			exclusiveMinimum: 0,
+			exclusiveMaximum: 1000,
+			multipleOf: 0.5
+		},
+		arrayValue: {
+			type: 'array' as const,
+			minItems: 1,
+			maxItems: 10,
+			uniqueItems: true,
+			items: { type: 'object' as const, additionalProperties: true }
+		}
 	},
-	required: ['stringValue'],
+	required: ['stringValue']
 };
 
 export const DEEPLY_NESTED_SCHEMA = {
@@ -144,23 +162,23 @@ export const DEEPLY_NESTED_SCHEMA = {
 					properties: {
 						level3: {
 							type: 'string' as const,
-							minLength: 10,
-						},
-					},
-				},
-			},
-		},
-	},
+							minLength: 10
+						}
+					}
+				}
+			}
+		}
+	}
 };
 
 export const SCHEMA_WITH_ANYOF_NULL = {
 	type: 'object' as const,
 	properties: {
 		optional: {
-			anyOf: [{ type: 'string' as const }, { type: 'null' as const }],
-		},
+			anyOf: [{ type: 'string' as const }, { type: 'null' as const }]
+		}
 	},
-	additionalProperties: true,
+	additionalProperties: true
 };
 
 // =============== Test prompt matrices ===============
@@ -169,10 +187,12 @@ export const SCHEMA_WITH_ANYOF_NULL = {
  * Simple text generation test matrix
  * Each entry: [testName, prompt, expectedPattern]
  */
-export const TEXT_GENERATION_MATRIX: ReadonlyArray<readonly [string, string, RegExp]> = [
+export const TEXT_GENERATION_MATRIX: ReadonlyArray<
+	readonly [string, string, RegExp]
+> = [
 	['Simple greeting', 'Say "hello" and nothing else.', /hello/i],
 	['Math question', 'What is 2+2? Answer with just the number.', /4/],
-	['Single word', 'Say "test" only.', /test/i],
+	['Single word', 'Say "test" only.', /test/i]
 ];
 
 /**
@@ -191,19 +211,19 @@ export const CONVERSATION_MATRIX: ReadonlyArray<
 		[
 			{ role: 'user', content: 'What is 5+3?' },
 			{ role: 'assistant', content: '8' },
-			{ role: 'user', content: 'Add 2 to that.' },
+			{ role: 'user', content: 'Add 2 to that.' }
 		],
-		/10/,
+		/10/
 	],
 	[
 		'Subtraction',
 		[
 			{ role: 'user', content: 'What is 10-3?' },
 			{ role: 'assistant', content: '7' },
-			{ role: 'user', content: 'Subtract 2.' },
+			{ role: 'user', content: 'Subtract 2.' }
 		],
-		/5/,
-	],
+		/5/
+	]
 ];
 
 // =============== Test helper functions ===============
@@ -214,7 +234,9 @@ export const CONVERSATION_MATRIX: ReadonlyArray<
 export function hasKeyword(obj: unknown, keyword: string): boolean {
 	if (!obj || typeof obj !== 'object') return false;
 	if (Object.prototype.hasOwnProperty.call(obj, keyword)) return true;
-	return Object.values(obj as Record<string, unknown>).some((value) => hasKeyword(value, keyword));
+	return Object.values(obj as Record<string, unknown>).some((value) =>
+		hasKeyword(value, keyword)
+	);
 }
 
 /**
@@ -236,5 +258,5 @@ export const SCHEMA_UNSUPPORTED_KEYWORDS = [
 	'minProperties',
 	'maxProperties',
 	'patternProperties',
-	'format',
+	'format'
 ];

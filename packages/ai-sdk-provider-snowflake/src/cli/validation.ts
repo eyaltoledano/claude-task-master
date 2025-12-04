@@ -1,6 +1,6 @@
 /**
  * Validation utilities for Cortex Code CLI
- * 
+ *
  * Provides enhanced validation capabilities beyond the basic isCortexCliAvailable() check,
  * including version detection and rich validation results.
  */
@@ -21,9 +21,9 @@ export interface ValidationResult {
 
 /**
  * Get the installed Cortex CLI version
- * 
+ *
  * @returns The version string (e.g., "1.2.3") or null if CLI not available
- * 
+ *
  * @example
  * ```typescript
  * const version = await getCortexCliVersion();
@@ -77,14 +77,14 @@ export async function getCortexCliVersion(): Promise<string | null> {
 
 /**
  * Validate Cortex Code CLI with detailed results
- * 
+ *
  * This provides richer validation information than `isCortexCliAvailable()`,
  * including error messages and version detection.
- * 
+ *
  * @param params - Validation parameters
  * @param params.skipValidation - Skip validation (for test environments)
  * @returns Detailed validation result
- * 
+ *
  * @example
  * ```typescript
  * const result = await validateCortexCli();
@@ -116,8 +116,8 @@ export async function validateCortexCli(params?: {
 	} else {
 		return {
 			valid: false,
-			error: 'Cortex Code CLI not found. Please ensure it is installed and available in PATH.'
+			error:
+				'Cortex Code CLI not found. Please ensure it is installed and available in PATH.'
 		};
 	}
 }
-

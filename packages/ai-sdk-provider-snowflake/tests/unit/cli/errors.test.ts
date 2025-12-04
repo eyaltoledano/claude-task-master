@@ -91,32 +91,41 @@ describe('CLI Error Utilities', () => {
 			expect(error.isRetryable).toBe(false);
 		});
 
-		it.concurrent('should mark installation errors as not retryable', async () => {
-			const error = createAPICallError({
-				message: 'Not installed',
-				metadata: { code: 'INSTALLATION_ERROR' }
-			});
+		it.concurrent(
+			'should mark installation errors as not retryable',
+			async () => {
+				const error = createAPICallError({
+					message: 'Not installed',
+					metadata: { code: 'INSTALLATION_ERROR' }
+				});
 
-			expect(error.isRetryable).toBe(false);
-		});
+				expect(error.isRetryable).toBe(false);
+			}
+		);
 
-		it.concurrent('should mark exit code 124 (timeout) as retryable', async () => {
-			const error = createAPICallError({
-				message: 'Process timed out',
-				metadata: { exitCode: 124 }
-			});
+		it.concurrent(
+			'should mark exit code 124 (timeout) as retryable',
+			async () => {
+				const error = createAPICallError({
+					message: 'Process timed out',
+					metadata: { exitCode: 124 }
+				});
 
-			expect(error.isRetryable).toBe(true);
-		});
+				expect(error.isRetryable).toBe(true);
+			}
+		);
 
-		it.concurrent('should mark exit code 137 (SIGKILL) as retryable', async () => {
-			const error = createAPICallError({
-				message: 'Process killed',
-				metadata: { exitCode: 137 }
-			});
+		it.concurrent(
+			'should mark exit code 137 (SIGKILL) as retryable',
+			async () => {
+				const error = createAPICallError({
+					message: 'Process killed',
+					metadata: { exitCode: 137 }
+				});
 
-			expect(error.isRetryable).toBe(true);
-		});
+				expect(error.isRetryable).toBe(true);
+			}
+		);
 
 		it.concurrent('should mark other exit codes as not retryable', async () => {
 			const error = createAPICallError({
@@ -127,21 +136,29 @@ describe('CLI Error Utilities', () => {
 			expect(error.isRetryable).toBe(false);
 		});
 
-		it.concurrent('should mark errors without metadata as not retryable', async () => {
-			const error = createAPICallError({ message: 'No metadata' });
-			expect(error.isRetryable).toBe(false);
-		});
+		it.concurrent(
+			'should mark errors without metadata as not retryable',
+			async () => {
+				const error = createAPICallError({ message: 'No metadata' });
+				expect(error.isRetryable).toBe(false);
+			}
+		);
 	});
 
 	describe('createAuthenticationError', () => {
-		it.concurrent('should create error with AUTHENTICATION_ERROR code', async () => {
-			const error = createAuthenticationError({
-				message: 'Auth failed'
-			});
+		it.concurrent(
+			'should create error with AUTHENTICATION_ERROR code',
+			async () => {
+				const error = createAuthenticationError({
+					message: 'Auth failed'
+				});
 
-			expect(error).toBeInstanceOf(APICallError);
-			expect((error.data as CliErrorMetadata)?.code).toBe('AUTHENTICATION_ERROR');
-		});
+				expect(error).toBeInstanceOf(APICallError);
+				expect((error.data as CliErrorMetadata)?.code).toBe(
+					'AUTHENTICATION_ERROR'
+				);
+			}
+		);
 
 		it.concurrent('should include connection name in metadata', async () => {
 			const error = createAuthenticationError({
@@ -158,7 +175,9 @@ describe('CLI Error Utilities', () => {
 				stderr: 'Invalid credentials'
 			});
 
-			expect((error.data as CliErrorMetadata)?.stderr).toBe('Invalid credentials');
+			expect((error.data as CliErrorMetadata)?.stderr).toBe(
+				'Invalid credentials'
+			);
 		});
 
 		it.concurrent('should not be retryable', async () => {
@@ -193,7 +212,9 @@ describe('CLI Error Utilities', () => {
 				promptExcerpt: 'Explain quantum...'
 			});
 
-			expect((error.data as CliErrorMetadata)?.promptExcerpt).toBe('Explain quantum...');
+			expect((error.data as CliErrorMetadata)?.promptExcerpt).toBe(
+				'Explain quantum...'
+			);
 		});
 
 		it.concurrent('should be retryable', async () => {
@@ -207,13 +228,18 @@ describe('CLI Error Utilities', () => {
 	});
 
 	describe('createInstallationError', () => {
-		it.concurrent('should create error with INSTALLATION_ERROR code', async () => {
-			const error = createInstallationError({
-				message: 'Cortex Code not found'
-			});
+		it.concurrent(
+			'should create error with INSTALLATION_ERROR code',
+			async () => {
+				const error = createInstallationError({
+					message: 'Cortex Code not found'
+				});
 
-			expect((error.data as CliErrorMetadata)?.code).toBe('INSTALLATION_ERROR');
-		});
+				expect((error.data as CliErrorMetadata)?.code).toBe(
+					'INSTALLATION_ERROR'
+				);
+			}
+		);
 
 		it.concurrent('should include stderr in metadata', async () => {
 			const error = createInstallationError({
@@ -221,7 +247,9 @@ describe('CLI Error Utilities', () => {
 				stderr: 'command not found: cortex'
 			});
 
-			expect((error.data as CliErrorMetadata)?.stderr).toBe('command not found: cortex');
+			expect((error.data as CliErrorMetadata)?.stderr).toBe(
+				'command not found: cortex'
+			);
 		});
 
 		it.concurrent('should not be retryable', async () => {
@@ -231,13 +259,16 @@ describe('CLI Error Utilities', () => {
 	});
 
 	describe('createConnectionError', () => {
-		it.concurrent('should create error with CONNECTION_ERROR code', async () => {
-			const error = createConnectionError({
-				message: 'Could not connect'
-			});
+		it.concurrent(
+			'should create error with CONNECTION_ERROR code',
+			async () => {
+				const error = createConnectionError({
+					message: 'Could not connect'
+				});
 
-			expect((error.data as CliErrorMetadata)?.code).toBe('CONNECTION_ERROR');
-		});
+				expect((error.data as CliErrorMetadata)?.code).toBe('CONNECTION_ERROR');
+			}
+		);
 
 		it.concurrent('should include connection name in metadata', async () => {
 			const error = createConnectionError({
@@ -270,7 +301,10 @@ describe('CLI Error Utilities', () => {
 		});
 
 		it.concurrent('should return false for timeout errors', async () => {
-			const error = createTimeoutError({ message: 'Timeout', timeoutMs: 30000 });
+			const error = createTimeoutError({
+				message: 'Timeout',
+				timeoutMs: 30000
+			});
 			expect(isAuthenticationError(error)).toBe(false);
 		});
 
@@ -287,7 +321,10 @@ describe('CLI Error Utilities', () => {
 
 	describe('isTimeoutError', () => {
 		it.concurrent('should return true for timeout errors', async () => {
-			const error = createTimeoutError({ message: 'Timeout', timeoutMs: 30000 });
+			const error = createTimeoutError({
+				message: 'Timeout',
+				timeoutMs: 30000
+			});
 			expect(isTimeoutError(error)).toBe(true);
 		});
 
@@ -351,18 +388,21 @@ describe('CLI Error Utilities', () => {
 			expect(getErrorMetadata(undefined)).toBeNull();
 		});
 
-		it.concurrent('should return null for APICallError without data', async () => {
-			// Create a minimal APICallError without data
-			const error = new APICallError({
-				message: 'Test',
-				url: 'test://url',
-				requestBodyValues: {}
-			});
+		it.concurrent(
+			'should return null for APICallError without data',
+			async () => {
+				// Create a minimal APICallError without data
+				const error = new APICallError({
+					message: 'Test',
+					url: 'test://url',
+					requestBodyValues: {}
+				});
 
-			// Should return null when no metadata/data is present
-			const metadata = getErrorMetadata(error);
-			expect(metadata).toBeNull();
-		});
+				// Should return null when no metadata/data is present
+				const metadata = getErrorMetadata(error);
+				expect(metadata).toBeNull();
+			}
+		);
 	});
 
 	describe('parseErrorFromStderr', () => {
@@ -371,7 +411,7 @@ describe('CLI Error Utilities', () => {
 				['authentication failed', 'Authentication failed in the process'],
 				['invalid credentials', 'Error: Invalid credentials provided'],
 				['unauthorized', 'Access unauthorized'],
-				['401', 'HTTP 401 Unauthorized'],
+				['401', 'HTTP 401 Unauthorized']
 			])('should detect auth error from: %s', async (_, stderr) => {
 				const result = parseErrorFromStderr(stderr);
 				expect(result.type).toBe('authentication');
@@ -384,7 +424,7 @@ describe('CLI Error Utilities', () => {
 				['connection refused', 'Error: Connection refused'],
 				['could not connect', 'Could not connect to server'],
 				['network error', 'A network error occurred'],
-				['econnrefused', 'ECONNREFUSED localhost:443'],
+				['econnrefused', 'ECONNREFUSED localhost:443']
 			])('should detect connection error from: %s', async (_, stderr) => {
 				const result = parseErrorFromStderr(stderr);
 				expect(result.type).toBe('connection');
@@ -396,7 +436,7 @@ describe('CLI Error Utilities', () => {
 			it.concurrent.each([
 				['timeout', 'Operation timeout'],
 				['timed out', 'Request timed out'],
-				['deadline exceeded', 'gRPC deadline exceeded'],
+				['deadline exceeded', 'gRPC deadline exceeded']
 			])('should detect timeout error from: %s', async (_, stderr) => {
 				const result = parseErrorFromStderr(stderr);
 				expect(result.type).toBe('timeout');
@@ -405,11 +445,14 @@ describe('CLI Error Utilities', () => {
 		});
 
 		describe('unknown errors', () => {
-			it.concurrent('should return unknown type for unrecognized errors', async () => {
-				const result = parseErrorFromStderr('Some random error occurred');
-				expect(result.type).toBe('unknown');
-				expect(result.message).toBe('Some random error occurred');
-			});
+			it.concurrent(
+				'should return unknown type for unrecognized errors',
+				async () => {
+					const result = parseErrorFromStderr('Some random error occurred');
+					expect(result.type).toBe('unknown');
+					expect(result.message).toBe('Some random error occurred');
+				}
+			);
 
 			it.concurrent('should trim the message', async () => {
 				const result = parseErrorFromStderr('  Error with whitespace  \n');
@@ -424,4 +467,3 @@ describe('CLI Error Utilities', () => {
 		});
 	});
 });
-

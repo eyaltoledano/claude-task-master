@@ -1,6 +1,6 @@
 /**
  * Unit tests for TokenCache
- * 
+ *
  * Tests both the async persistent cache API and the sync in-memory API
  */
 
@@ -42,11 +42,11 @@ describe('TokenCache', () => {
 		it('should return undefined for expired token', async () => {
 			const token: CachedToken = {
 				accessToken: 'expired-token',
-				expiresAt: Date.now() + 10000, // 10 seconds from now
+				expiresAt: Date.now() + 10000 // 10 seconds from now
 			};
 
 			await cache.set('myaccount', 'myuser', token);
-			
+
 			// Advance time past expiry (including 30s buffer)
 			jest.advanceTimersByTime(15000);
 
@@ -57,11 +57,11 @@ describe('TokenCache', () => {
 		it('should return undefined when token is within expiry buffer', async () => {
 			const token: CachedToken = {
 				accessToken: 'soon-expired-token',
-				expiresAt: Date.now() + 20000, // 20 seconds from now
+				expiresAt: Date.now() + 20000 // 20 seconds from now
 			};
 
 			await cache.set('myaccount', 'myuser', token);
-			
+
 			// Token hasn't technically expired but is within 30s buffer
 			// 20s remaining < 30s buffer, so should be considered expired
 			const result = await cache.get('myaccount', 'myuser');
@@ -71,11 +71,11 @@ describe('TokenCache', () => {
 		it('should return token when well before expiry buffer', async () => {
 			const token: CachedToken = {
 				accessToken: 'valid-token',
-				expiresAt: Date.now() + 60000, // 60 seconds from now
+				expiresAt: Date.now() + 60000 // 60 seconds from now
 			};
 
 			await cache.set('myaccount', 'myuser', token);
-			
+
 			// Token is still valid (60s - 30s buffer = 30s remaining)
 			const result = await cache.get('myaccount', 'myuser');
 			expect(result).toEqual(token);
@@ -86,7 +86,7 @@ describe('TokenCache', () => {
 		it('should remove a token from cache', async () => {
 			const token: CachedToken = {
 				accessToken: 'test-token',
-				expiresAt: Date.now() + 3600000,
+				expiresAt: Date.now() + 3600000
 			};
 
 			await cache.set('myaccount', 'myuser', token);
@@ -107,7 +107,7 @@ describe('TokenCache', () => {
 		it('should store and retrieve a token synchronously', () => {
 			const token: CachedToken = {
 				accessToken: 'test-token',
-				expiresAt: Date.now() + 3600000,
+				expiresAt: Date.now() + 3600000
 			};
 
 			cache.setSync('account:user', token);
@@ -124,11 +124,11 @@ describe('TokenCache', () => {
 		it('should return undefined for expired token', () => {
 			const token: CachedToken = {
 				accessToken: 'expired-token',
-				expiresAt: Date.now() + 10000,
+				expiresAt: Date.now() + 10000
 			};
 
 			cache.setSync('account:user', token);
-			
+
 			// Advance time past expiry (including 30s buffer)
 			jest.advanceTimersByTime(15000);
 
@@ -139,7 +139,7 @@ describe('TokenCache', () => {
 		it('should remove expired token from cache on getSync', () => {
 			const token: CachedToken = {
 				accessToken: 'expired-token',
-				expiresAt: Date.now() + 5000, // 5 seconds (within buffer)
+				expiresAt: Date.now() + 5000 // 5 seconds (within buffer)
 			};
 
 			cache.setSync('account:user', token);
@@ -153,7 +153,7 @@ describe('TokenCache', () => {
 		it('should remove all tokens from in-memory cache', async () => {
 			const token: CachedToken = {
 				accessToken: 'test-token',
-				expiresAt: Date.now() + 3600000,
+				expiresAt: Date.now() + 3600000
 			};
 
 			await cache.set('account1', 'user1', token);
@@ -173,7 +173,7 @@ describe('TokenCache', () => {
 
 			const token: CachedToken = {
 				accessToken: 'test-token',
-				expiresAt: Date.now() + 3600000,
+				expiresAt: Date.now() + 3600000
 			};
 
 			await cache.set('account1', 'user1', token);
@@ -188,7 +188,7 @@ describe('TokenCache', () => {
 		it('should return true for existing key', () => {
 			const token: CachedToken = {
 				accessToken: 'test-token',
-				expiresAt: Date.now() + 3600000,
+				expiresAt: Date.now() + 3600000
 			};
 
 			cache.setSync('account:user', token);
@@ -202,7 +202,7 @@ describe('TokenCache', () => {
 		it('should return true for expired key (does not check expiry)', () => {
 			const token: CachedToken = {
 				accessToken: 'expired-token',
-				expiresAt: Date.now() - 1000, // Already expired
+				expiresAt: Date.now() - 1000 // Already expired
 			};
 
 			cache.setSync('account:user', token);
@@ -215,12 +215,12 @@ describe('TokenCache', () => {
 		it('should remove all expired tokens', () => {
 			const validToken: CachedToken = {
 				accessToken: 'valid-token',
-				expiresAt: Date.now() + 3600000, // 1 hour
+				expiresAt: Date.now() + 3600000 // 1 hour
 			};
 
 			const expiredToken: CachedToken = {
 				accessToken: 'expired-token',
-				expiresAt: Date.now() + 10000, // 10 seconds (within buffer)
+				expiresAt: Date.now() + 10000 // 10 seconds (within buffer)
 			};
 
 			cache.setSync('valid', validToken);

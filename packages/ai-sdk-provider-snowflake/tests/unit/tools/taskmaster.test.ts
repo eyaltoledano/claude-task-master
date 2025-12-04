@@ -2,7 +2,14 @@
  * Unit Tests for TaskMaster Integration Tools
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import {
 	listTasksInputSchema,
 	getTaskInputSchema,
@@ -35,14 +42,23 @@ describe('TaskMaster Integration Tools', () => {
 			});
 
 			it('should accept valid status values', () => {
-				const validStatuses = ['all', 'pending', 'in-progress', 'done', 'blocked', 'cancelled'];
+				const validStatuses = [
+					'all',
+					'pending',
+					'in-progress',
+					'done',
+					'blocked',
+					'cancelled'
+				];
 				for (const status of validStatuses) {
 					expect(() => listTasksInputSchema.parse({ status })).not.toThrow();
 				}
 			});
 
 			it('should reject invalid status values', () => {
-				expect(() => listTasksInputSchema.parse({ status: 'invalid' })).toThrow();
+				expect(() =>
+					listTasksInputSchema.parse({ status: 'invalid' })
+				).toThrow();
 			});
 
 			it('should accept custom values', () => {
@@ -143,4 +159,3 @@ describe('TaskMaster Integration Tools', () => {
 		});
 	});
 });
-

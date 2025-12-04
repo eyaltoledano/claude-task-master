@@ -14,12 +14,15 @@ import type { JSONSchema } from '../../../src/schema/transformer.js';
 
 describe('Structured Output Utilities', () => {
 	describe('extractJson', () => {
-		it.concurrent('should return null for null/undefined/non-string input', async () => {
-			expect(extractJson(null as any)).toBeNull();
-			expect(extractJson(undefined as any)).toBeNull();
-			expect(extractJson(123 as any)).toBeNull();
-			expect(extractJson({} as any)).toBeNull();
-		});
+		it.concurrent(
+			'should return null for null/undefined/non-string input',
+			async () => {
+				expect(extractJson(null as any)).toBeNull();
+				expect(extractJson(undefined as any)).toBeNull();
+				expect(extractJson(123 as any)).toBeNull();
+				expect(extractJson({} as any)).toBeNull();
+			}
+		);
 
 		it.concurrent('should return null for empty string', async () => {
 			expect(extractJson('')).toBeNull();
@@ -40,20 +43,30 @@ describe('Structured Output Utilities', () => {
 			expect(extractJson(text)).toEqual({ id: 1 });
 		});
 
-		it.concurrent('should extract JSON from code block without language tag', async () => {
-			const text = '```\n{"id": 2}\n```';
-			expect(extractJson(text)).toEqual({ id: 2 });
-		});
+		it.concurrent(
+			'should extract JSON from code block without language tag',
+			async () => {
+				const text = '```\n{"id": 2}\n```';
+				expect(extractJson(text)).toEqual({ id: 2 });
+			}
+		);
 
-		it.concurrent('should extract JSON object from surrounding text', async () => {
-			const text = 'Here is the result: {"name": "test"} - that was the output';
-			expect(extractJson(text)).toEqual({ name: 'test' });
-		});
+		it.concurrent(
+			'should extract JSON object from surrounding text',
+			async () => {
+				const text =
+					'Here is the result: {"name": "test"} - that was the output';
+				expect(extractJson(text)).toEqual({ name: 'test' });
+			}
+		);
 
-		it.concurrent('should extract JSON array from surrounding text', async () => {
-			const text = 'The results are: [1, 2, 3] and that is all.';
-			expect(extractJson(text)).toEqual([1, 2, 3]);
-		});
+		it.concurrent(
+			'should extract JSON array from surrounding text',
+			async () => {
+				const text = 'The results are: [1, 2, 3] and that is all.';
+				expect(extractJson(text)).toEqual([1, 2, 3]);
+			}
+		);
 
 		it.concurrent('should return null for invalid JSON', async () => {
 			expect(extractJson('not json at all')).toBeNull();
@@ -65,7 +78,10 @@ describe('Structured Output Utilities', () => {
 		});
 
 		it.concurrent('should support generic type parameter', async () => {
-			interface Person { name: string; age: number; }
+			interface Person {
+				name: string;
+				age: number;
+			}
 			const json = '{"name": "Alice", "age": 25}';
 			const result = extractJson<Person>(json);
 			expect(result?.name).toBe('Alice');
@@ -74,11 +90,14 @@ describe('Structured Output Utilities', () => {
 	});
 
 	describe('extractStreamJson', () => {
-		it.concurrent('should return empty array for null/undefined/non-string', async () => {
-			expect(extractStreamJson(null as any)).toEqual([]);
-			expect(extractStreamJson(undefined as any)).toEqual([]);
-			expect(extractStreamJson(123 as any)).toEqual([]);
-		});
+		it.concurrent(
+			'should return empty array for null/undefined/non-string',
+			async () => {
+				expect(extractStreamJson(null as any)).toEqual([]);
+				expect(extractStreamJson(undefined as any)).toEqual([]);
+				expect(extractStreamJson(123 as any)).toEqual([]);
+			}
+		);
 
 		it.concurrent('should return empty array for empty string', async () => {
 			expect(extractStreamJson('')).toEqual([]);
@@ -113,11 +132,14 @@ describe('Structured Output Utilities', () => {
 	});
 
 	describe('isValidJson', () => {
-		it.concurrent('should return false for null/undefined/non-string', async () => {
-			expect(isValidJson(null as any)).toBe(false);
-			expect(isValidJson(undefined as any)).toBe(false);
-			expect(isValidJson(123 as any)).toBe(false);
-		});
+		it.concurrent(
+			'should return false for null/undefined/non-string',
+			async () => {
+				expect(isValidJson(null as any)).toBe(false);
+				expect(isValidJson(undefined as any)).toBe(false);
+				expect(isValidJson(123 as any)).toBe(false);
+			}
+		);
 
 		it.concurrent('should return false for empty string', async () => {
 			expect(isValidJson('')).toBe(false);
@@ -146,11 +168,14 @@ describe('Structured Output Utilities', () => {
 	});
 
 	describe('cleanJsonText', () => {
-		it.concurrent('should return empty string for null/undefined/non-string', async () => {
-			expect(cleanJsonText(null as any)).toBe('');
-			expect(cleanJsonText(undefined as any)).toBe('');
-			expect(cleanJsonText(123 as any)).toBe('');
-		});
+		it.concurrent(
+			'should return empty string for null/undefined/non-string',
+			async () => {
+				expect(cleanJsonText(null as any)).toBe('');
+				expect(cleanJsonText(undefined as any)).toBe('');
+				expect(cleanJsonText(123 as any)).toBe('');
+			}
+		);
 
 		it.concurrent('should trim whitespace', async () => {
 			expect(cleanJsonText('  {"key": "value"}  ')).toBe('{"key": "value"}');
@@ -204,8 +229,11 @@ describe('Structured Output Utilities', () => {
 					type: 'object',
 					properties: { name: { type: 'string' } }
 				};
-				const prompt = StructuredOutputGenerator.buildSystemPrompt(schema, 'Person');
-				
+				const prompt = StructuredOutputGenerator.buildSystemPrompt(
+					schema,
+					'Person'
+				);
+
 				expect(prompt).toContain('Person');
 				expect(prompt).toContain('"type": "object"');
 				expect(prompt).toContain('valid JSON object');
@@ -213,8 +241,11 @@ describe('Structured Output Utilities', () => {
 
 			it.concurrent('should include formatting instructions', async () => {
 				const schema: JSONSchema = { type: 'object' };
-				const prompt = StructuredOutputGenerator.buildSystemPrompt(schema, 'Test');
-				
+				const prompt = StructuredOutputGenerator.buildSystemPrompt(
+					schema,
+					'Test'
+				);
+
 				expect(prompt).toContain('no code blocks');
 				expect(prompt).toContain('no markdown');
 				expect(prompt).toContain('raw JSON');
@@ -259,27 +290,37 @@ describe('Structured Output Utilities', () => {
 
 		describe('extractFirstJsonObject', () => {
 			it.concurrent('should return null if no opening brace', async () => {
-				expect(StructuredOutputGenerator.extractFirstJsonObject('no json here')).toBeNull();
+				expect(
+					StructuredOutputGenerator.extractFirstJsonObject('no json here')
+				).toBeNull();
 			});
 
 			it.concurrent('should extract simple object', async () => {
 				const text = 'Result: {"id": 1}';
-				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe('{"id": 1}');
+				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe(
+					'{"id": 1}'
+				);
 			});
 
 			it.concurrent('should handle nested objects', async () => {
 				const text = '{"outer": {"inner": 1}}';
-				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe('{"outer": {"inner": 1}}');
+				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe(
+					'{"outer": {"inner": 1}}'
+				);
 			});
 
 			it.concurrent('should handle braces inside strings', async () => {
 				const text = '{"text": "hello {world}"}';
-				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe('{"text": "hello {world}"}');
+				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe(
+					'{"text": "hello {world}"}'
+				);
 			});
 
 			it.concurrent('should handle escaped quotes', async () => {
 				const text = '{"text": "say \\"hello\\""}';
-				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe('{"text": "say \\"hello\\""}');
+				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBe(
+					'{"text": "say \\"hello\\""}'
+				);
 			});
 
 			it.concurrent('should handle escaped backslashes', async () => {
@@ -290,18 +331,22 @@ describe('Structured Output Utilities', () => {
 
 			it.concurrent('should return null for unmatched braces', async () => {
 				const text = '{"incomplete": true';
-				expect(StructuredOutputGenerator.extractFirstJsonObject(text)).toBeNull();
+				expect(
+					StructuredOutputGenerator.extractFirstJsonObject(text)
+				).toBeNull();
 			});
 		});
 
 		describe('parseWithFallback', () => {
 			it.concurrent('should parse valid JSON', async () => {
-				const result = StructuredOutputGenerator.parseWithFallback('{"key": "value"}');
+				const result =
+					StructuredOutputGenerator.parseWithFallback('{"key": "value"}');
 				expect(result).toEqual({ key: 'value' });
 			});
 
 			it.concurrent('should fix unquoted property names', async () => {
-				const result = StructuredOutputGenerator.parseWithFallback('{key: "value"}');
+				const result =
+					StructuredOutputGenerator.parseWithFallback('{key: "value"}');
 				expect(result).toEqual({ key: 'value' });
 			});
 
@@ -322,10 +367,14 @@ describe('Structured Output Utilities', () => {
 		});
 
 		describe('extractAndParse', () => {
-			it.concurrent('should extract and parse JSON from clean response', async () => {
-				const result = StructuredOutputGenerator.extractAndParse('{"name": "John"}');
-				expect(result).toEqual({ name: 'John' });
-			});
+			it.concurrent(
+				'should extract and parse JSON from clean response',
+				async () => {
+					const result =
+						StructuredOutputGenerator.extractAndParse('{"name": "John"}');
+					expect(result).toEqual({ name: 'John' });
+				}
+			);
 
 			it.concurrent('should extract from markdown code block', async () => {
 				const text = '```json\n{"id": 1}\n```';
@@ -386,50 +435,56 @@ describe('Structured Output Utilities', () => {
 				).rejects.toThrow('generateText function is required');
 			});
 
-			it.concurrent('should generate and parse object successfully', async () => {
-				const mockGenerateText = jest.fn().mockResolvedValue({
-					text: '{"name": "Alice", "age": 25}',
-					finishReason: 'stop',
-					usage: { promptTokens: 100, completionTokens: 50 }
-				});
+			it.concurrent(
+				'should generate and parse object successfully',
+				async () => {
+					const mockGenerateText = jest.fn().mockResolvedValue({
+						text: '{"name": "Alice", "age": 25}',
+						finishReason: 'stop',
+						usage: { promptTokens: 100, completionTokens: 50 }
+					});
 
-				const result = await StructuredOutputGenerator.generateObject({
-					generateText: mockGenerateText,
-					schema: {
-						type: 'object',
-						properties: {
-							name: { type: 'string' },
-							age: { type: 'number' }
-						}
-					},
-					objectName: 'Person',
-					messages: [{ role: 'user', content: 'Generate Alice, age 25' }]
-				});
+					const result = await StructuredOutputGenerator.generateObject({
+						generateText: mockGenerateText,
+						schema: {
+							type: 'object',
+							properties: {
+								name: { type: 'string' },
+								age: { type: 'number' }
+							}
+						},
+						objectName: 'Person',
+						messages: [{ role: 'user', content: 'Generate Alice, age 25' }]
+					});
 
-				expect(result.object).toEqual({ name: 'Alice', age: 25 });
-				expect(result.finishReason).toBe('stop');
-				expect(result.usage.promptTokens).toBe(100);
-				expect(result.usage.completionTokens).toBe(50);
-			});
+					expect(result.object).toEqual({ name: 'Alice', age: 25 });
+					expect(result.finishReason).toBe('stop');
+					expect(result.usage.promptTokens).toBe(100);
+					expect(result.usage.completionTokens).toBe(50);
+				}
+			);
 
-			it.concurrent('should call onWarning for unsupported models', async () => {
-				const mockGenerateText = jest.fn().mockResolvedValue({
-					text: '{"data": true}'
-				});
-				const mockOnWarning = jest.fn();
+			it.concurrent(
+				'should call onWarning for unsupported models',
+				async () => {
+					const mockGenerateText = jest.fn().mockResolvedValue({
+						text: '{"data": true}'
+					});
+					const mockOnWarning = jest.fn();
 
-				await StructuredOutputGenerator.generateObject({
-					generateText: mockGenerateText,
-					schema: { type: 'object' },
-					objectName: 'Test',
-					messages: [],
-					modelId: 'llama3.1-8b', // Unsupported for structured outputs
-					onWarning: mockOnWarning
-				});
+					await StructuredOutputGenerator.generateObject({
+						generateText: mockGenerateText,
+						schema: { type: 'object' },
+						objectName: 'Test',
+						messages: [],
+						modelId: 'llama3.1-8b', // Unsupported for structured outputs
+						onWarning: mockOnWarning
+					});
 
-				expect(mockOnWarning).toHaveBeenCalled();
-				expect(mockOnWarning.mock.calls[0][0]).toContain('does not support');
-			});
+					expect(mockOnWarning).toHaveBeenCalled();
+					expect(mockOnWarning.mock.calls[0][0]).toContain('does not support');
+				}
+			);
 
 			it.concurrent('should not warn for supported models', async () => {
 				const mockGenerateText = jest.fn().mockResolvedValue({
@@ -449,22 +504,25 @@ describe('Structured Output Utilities', () => {
 				expect(mockOnWarning).not.toHaveBeenCalled();
 			});
 
-			it.concurrent('should use default maxTokens if not provided', async () => {
-				const mockGenerateText = jest.fn().mockResolvedValue({
-					text: '{}'
-				});
+			it.concurrent(
+				'should use default maxTokens if not provided',
+				async () => {
+					const mockGenerateText = jest.fn().mockResolvedValue({
+						text: '{}'
+					});
 
-				await StructuredOutputGenerator.generateObject({
-					generateText: mockGenerateText,
-					schema: { type: 'object' },
-					objectName: 'Test',
-					messages: []
-				});
+					await StructuredOutputGenerator.generateObject({
+						generateText: mockGenerateText,
+						schema: { type: 'object' },
+						objectName: 'Test',
+						messages: []
+					});
 
-				expect(mockGenerateText).toHaveBeenCalledWith(
-					expect.objectContaining({ maxTokens: 2048 })
-				);
-			});
+					expect(mockGenerateText).toHaveBeenCalledWith(
+						expect.objectContaining({ maxTokens: 2048 })
+					);
+				}
+			);
 
 			it.concurrent('should use provided maxTokens', async () => {
 				const mockGenerateText = jest.fn().mockResolvedValue({
@@ -501,21 +559,24 @@ describe('Structured Output Utilities', () => {
 				expect(result.usage.completionTokens).toBe(0);
 			});
 
-			it.concurrent('should handle missing finishReason in response', async () => {
-				const mockGenerateText = jest.fn().mockResolvedValue({
-					text: '{"data": true}'
-					// No finishReason
-				});
+			it.concurrent(
+				'should handle missing finishReason in response',
+				async () => {
+					const mockGenerateText = jest.fn().mockResolvedValue({
+						text: '{"data": true}'
+						// No finishReason
+					});
 
-				const result = await StructuredOutputGenerator.generateObject({
-					generateText: mockGenerateText,
-					schema: { type: 'object' },
-					objectName: 'Test',
-					messages: []
-				});
+					const result = await StructuredOutputGenerator.generateObject({
+						generateText: mockGenerateText,
+						schema: { type: 'object' },
+						objectName: 'Test',
+						messages: []
+					});
 
-				expect(result.finishReason).toBe('stop');
-			});
+					expect(result.finishReason).toBe('stop');
+				}
+			);
 
 			it.concurrent('should include warnings from generateText', async () => {
 				const mockGenerateText = jest.fn().mockResolvedValue({
@@ -535,4 +596,3 @@ describe('Structured Output Utilities', () => {
 		});
 	});
 });
-

@@ -216,4 +216,3 @@ export interface CortexToolResult {
 	tool_use_id: string;
 	content: string;
 }
-

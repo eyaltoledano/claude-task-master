@@ -1,13 +1,13 @@
 /**
  * Cortex REST API Language Model implementation for Snowflake Cortex
- * 
+ *
  * Uses the Cortex REST API endpoint (/api/v2/cortex/inference:complete)
  * which provides access to the latest features and all model types.
- * 
+ *
  * This endpoint uses a different request format than the OpenAI-compatible endpoint:
  * - Structured outputs use type: 'json' with schema directly
  * - For OpenAI models: additionalProperties: false is required on all schema nodes
- * 
+ *
  * Feature Support:
  * - Prompt Caching:
  *   - OpenAI models: Implicit caching (no modification needed), 1024+ tokens, 128-token increments
@@ -15,7 +15,7 @@
  * - Claude Extended Thinking: thinking object with budget_tokens
  * - OpenAI Reasoning: reasoning_effort parameter
  * - Streaming: SSE format with delta updates
- * 
+ *
  * See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api
  * See: https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference
  * See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
@@ -34,10 +34,13 @@ import type {
 import { NoSuchModelError, APICallError } from '@ai-sdk/provider';
 
 import { authenticate } from '../auth/index.js';
-import { removeUnsupportedFeatures, convertPromptToMessages } from '../schema/index.js';
+import {
+	removeUnsupportedFeatures,
+	convertPromptToMessages
+} from '../schema/index.js';
 import type { CortexMessage } from '../schema/index.js';
 import { isFeatureEnabled, getThinkingLevel } from '../config/index.js';
-import { 
+import {
 	normalizeModelId,
 	supportsThinking,
 	supportsReasoning,
@@ -45,9 +48,17 @@ import {
 	supportsPromptCaching,
 	getThinkingBudgetTokens
 } from '../utils/models.js';
-import { convertToolsToSnowflakeFormat, parseToolCalls } from '../utils/tool-helpers.js';
+import {
+	convertToolsToSnowflakeFormat,
+	parseToolCalls
+} from '../utils/tool-helpers.js';
 import type { CortexToolSpec } from '../tools/types.js';
-import type { SnowflakeProviderSettings, SnowflakeModelId, AuthResult, ThinkingLevel } from '../types.js';
+import type {
+	SnowflakeProviderSettings,
+	SnowflakeModelId,
+	AuthResult,
+	ThinkingLevel
+} from '../types.js';
 
 /**
  * Options for creating a Rest Cortex language model
@@ -66,7 +77,7 @@ const DEFAULT_MAX_TOKENS = 8192;
 
 /**
  * Cortex REST API Language Model for Snowflake Cortex
- * 
+ *
  * This provider uses the Cortex REST API which has the latest features
  * and consistent model availability across all model types.
  */
@@ -105,10 +116,10 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 	/**
 	 * Convert AI SDK prompt to Cortex REST messages format
-	 * 
+	 *
 	 * Uses the shared convertPromptToMessages function from schema/transformer.ts.
 	 * See that function for prompt caching documentation.
-	 * 
+	 *
 	 * @param prompt - AI SDK prompt
 	 * @param enableCaching - Whether to enable prompt caching for Claude models
 	 * @returns Array of messages in Cortex format
@@ -122,7 +133,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 			{ enableCaching, modelId: this.modelId }
 		);
 	}
-	
+
 	/**
 	 * Check if this model is a Claude model (supports thinking)
 	 */
@@ -130,7 +141,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 		const normalized = normalizeModelId(this.modelId);
 		return normalized.startsWith('claude');
 	}
-	
+
 	/**
 	 * Check if this model is an OpenAI model (supports reasoning_effort)
 	 */
@@ -144,7 +155,10 @@ export class RestLanguageModel implements LanguageModelV2 {
 	 */
 	private async ensureAuth(): Promise<AuthResult> {
 		// Check if we have cached auth that hasn't expired
-		if (this.authResult && (!this.authResult.expiresAt || this.authResult.expiresAt > Date.now())) {
+		if (
+			this.authResult &&
+			(!this.authResult.expiresAt || this.authResult.expiresAt > Date.now())
+		) {
 			return this.authResult;
 		}
 
@@ -152,16 +166,16 @@ export class RestLanguageModel implements LanguageModelV2 {
 		this.authResult = await authenticate(this.settings);
 		return this.authResult;
 	}
-	
+
 	/**
 	 * Check if prompt caching should be enabled
 	 * Priority: settings override > user config > model capability
-	 * 
+	 *
 	 * Prompt caching for Cortex REST API:
 	 * - OpenAI models: Implicit caching (no modification needed)
 	 * - Claude models: Uses content_list with cache_control: { type: 'ephemeral' }
 	 * See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#prompt-caching-example
-	 * 
+	 *
 	 * Note: Not all Claude models support prompt caching (e.g., claude-4-opus doesn't)
 	 */
 	private shouldEnablePromptCaching(): boolean {
@@ -169,16 +183,16 @@ export class RestLanguageModel implements LanguageModelV2 {
 		if (!supportsPromptCaching(this.modelId)) {
 			return false;
 		}
-		
+
 		// Settings override takes highest priority
 		if (this.settings.enablePromptCaching !== undefined) {
 			return this.settings.enablePromptCaching;
 		}
-		
+
 		// Check user config
 		return isFeatureEnabled('promptCaching');
 	}
-	
+
 	/**
 	 * Check if thinking/reasoning should be enabled
 	 * Priority: settings override > user config > model capability
@@ -188,16 +202,16 @@ export class RestLanguageModel implements LanguageModelV2 {
 		if (this.settings.enableThinking !== undefined) {
 			return this.settings.enableThinking;
 		}
-		
+
 		// Check user config
 		if (!isFeatureEnabled('thinking')) {
 			return false;
 		}
-		
+
 		// Check model capability (either thinking or reasoning)
 		return supportsThinking(this.modelId) || supportsReasoning(this.modelId);
 	}
-	
+
 	/**
 	 * Check if structured outputs should be enabled
 	 * Priority: settings override > user config > model capability
@@ -207,11 +221,11 @@ export class RestLanguageModel implements LanguageModelV2 {
 		if (this.settings.enableStructuredOutputs !== undefined) {
 			return this.settings.enableStructuredOutputs;
 		}
-		
+
 		// Check user config
 		return isFeatureEnabled('structuredOutputs');
 	}
-	
+
 	/**
 	 * Check if streaming should be enabled
 	 * Priority: settings override > user config > model capability
@@ -221,16 +235,16 @@ export class RestLanguageModel implements LanguageModelV2 {
 		if (this.settings.enableStreaming !== undefined) {
 			return this.settings.enableStreaming;
 		}
-		
+
 		// Check user config
 		if (!isFeatureEnabled('streaming')) {
 			return false;
 		}
-		
+
 		// Check model capability
 		return supportsStreaming(this.modelId);
 	}
-	
+
 	/**
 	 * Get the effective thinking level
 	 * Priority: settings > user config defaults
@@ -240,12 +254,12 @@ export class RestLanguageModel implements LanguageModelV2 {
 		if (this.settings.thinkingLevel) {
 			return this.settings.thinkingLevel;
 		}
-		
+
 		// Legacy reasoning setting (backward compatibility)
 		if (this.settings.reasoning) {
 			return this.settings.reasoning;
 		}
-		
+
 		// Use user config default
 		return getThinkingLevel(false);
 	}
@@ -265,8 +279,8 @@ export class RestLanguageModel implements LanguageModelV2 {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${auth.accessToken}`,
-				'Accept': 'application/json'
+				Authorization: `Bearer ${auth.accessToken}`,
+				Accept: 'application/json'
 			},
 			body: JSON.stringify(body),
 			signal
@@ -278,9 +292,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 	/**
 	 * Main text generation method
 	 */
-	async doGenerate(
-		options: LanguageModelV2CallOptions
-	): Promise<{
+	async doGenerate(options: LanguageModelV2CallOptions): Promise<{
 		content: Array<LanguageModelV2Content>;
 		usage: {
 			inputTokens: number;
@@ -291,15 +303,18 @@ export class RestLanguageModel implements LanguageModelV2 {
 		warnings: LanguageModelV2CallWarning[];
 	}> {
 		const warnings: LanguageModelV2CallWarning[] = [];
-		
+
 		// Determine if features are enabled (user config overrides settings)
 		const promptCachingEnabled = this.shouldEnablePromptCaching();
 		const thinkingEnabled = this.shouldEnableThinking();
-		
+
 		// Convert messages to Cortex format with caching enabled if appropriate
 		// For Claude models, this will use content_list with cache_control
 		// For OpenAI models, caching is implicit (no format change needed)
-		const messages = this.convertPromptToMessages(options.prompt, promptCachingEnabled);
+		const messages = this.convertPromptToMessages(
+			options.prompt,
+			promptCachingEnabled
+		);
 
 		// Normalize model ID - strip cortex/ prefix if present
 		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
@@ -319,7 +334,11 @@ export class RestLanguageModel implements LanguageModelV2 {
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
 		// Important: For OpenAI models, additionalProperties: false must be set on all schema nodes
 		// The removeUnsupportedFeatures function already handles this requirement
-		if (this.shouldEnableStructuredOutputs() && options.responseFormat?.type === 'json' && options.responseFormat.schema) {
+		if (
+			this.shouldEnableStructuredOutputs() &&
+			options.responseFormat?.type === 'json' &&
+			options.responseFormat.schema
+		) {
 			const cleanedSchema = removeUnsupportedFeatures(
 				options.responseFormat.schema as Record<string, unknown>
 			);
@@ -328,7 +347,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 				schema: cleanedSchema
 			};
 		}
-		
+
 		// Handle tools - convert AI SDK tools to Cortex format
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#prompt-caching-example (tools array)
 		// Cortex REST API expects:
@@ -345,7 +364,10 @@ export class RestLanguageModel implements LanguageModelV2 {
 		let cortexTools: CortexToolSpec[] = [];
 		if (options.tools && options.tools.length > 0) {
 			// Convert array of tools to Record<string, Tool> format
-			const toolsRecord: Record<string, { description?: string; parameters?: Record<string, unknown> }> = {};
+			const toolsRecord: Record<
+				string,
+				{ description?: string; parameters?: Record<string, unknown> }
+			> = {};
 			for (const tool of options.tools) {
 				if (tool.type === 'function') {
 					toolsRecord[tool.name] = {
@@ -354,36 +376,51 @@ export class RestLanguageModel implements LanguageModelV2 {
 					};
 				}
 			}
-			cortexTools = convertToolsToSnowflakeFormat(toolsRecord, promptCachingEnabled && this.isClaudeModel());
+			cortexTools = convertToolsToSnowflakeFormat(
+				toolsRecord,
+				promptCachingEnabled && this.isClaudeModel()
+			);
 			body.tools = cortexTools;
-			
+
 			if (process.env.DEBUG?.includes('snowflake:rest')) {
-				console.log(`[DEBUG snowflake:rest] Tools included: ${cortexTools.map(t => t.tool_spec.name).join(', ')}`);
+				console.log(
+					`[DEBUG snowflake:rest] Tools included: ${cortexTools.map((t) => t.tool_spec.name).join(', ')}`
+				);
 			}
 		}
-		
+
 		// Add Claude extended thinking if enabled
 		// See: https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#thinking-and-reasoning-examples
-		if (thinkingEnabled && this.isClaudeModel() && supportsThinking(this.modelId)) {
+		if (
+			thinkingEnabled &&
+			this.isClaudeModel() &&
+			supportsThinking(this.modelId)
+		) {
 			const level = this.getEffectiveThinkingLevel();
 			const budgetTokens = getThinkingBudgetTokens(this.modelId, level);
 			body.thinking = {
 				type: 'enabled',
 				budget_tokens: budgetTokens
 			};
-			
+
 			if (process.env.DEBUG?.includes('snowflake:rest')) {
-				console.log(`[DEBUG snowflake:rest] Claude thinking enabled with budget_tokens: ${budgetTokens}`);
+				console.log(
+					`[DEBUG snowflake:rest] Claude thinking enabled with budget_tokens: ${budgetTokens}`
+				);
 			}
 		}
-		
+
 		// Add OpenAI reasoning_effort if enabled
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#thinking-and-reasoning-examples
-		if (thinkingEnabled && this.isOpenAIModel() && supportsReasoning(this.modelId)) {
+		if (
+			thinkingEnabled &&
+			this.isOpenAIModel() &&
+			supportsReasoning(this.modelId)
+		) {
 			const level = this.getEffectiveThinkingLevel();
 			body.reasoning_effort = level;
-			
+
 			if (process.env.DEBUG?.includes('snowflake:rest')) {
 				console.log(`[DEBUG snowflake:rest] OpenAI reasoning_effort: ${level}`);
 			}
@@ -402,7 +439,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 			normalizedModelId: modelId,
 			requestBody: body
 		};
-		
+
 		try {
 			const fs = await import('fs');
 			fs.appendFileSync(logFile, JSON.stringify(logEntry, null, 2) + '\n---\n');
@@ -434,10 +471,10 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 				if (!response.ok) {
 					const errorBody = await response.text();
-					
+
 					// Check if retryable
 					const isRetryable = response.status === 429 || response.status >= 500;
-					
+
 					if (!isRetryable || attempt === maxRetries) {
 						throw new APICallError({
 							message: `Snowflake Cortex REST API error (${response.status}): ${errorBody}`,
@@ -446,34 +483,44 @@ export class RestLanguageModel implements LanguageModelV2 {
 							isRetryable
 						});
 					}
-					
+
 					throw new Error(`API error: ${response.status}`);
 				}
 
-			// Debug logging for response
-			if (process.env.DEBUG?.includes('snowflake:rest')) {
-				console.log(`[DEBUG snowflake:rest] Response received - status: ${response.status}`);
-				console.log(`[DEBUG snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`);
-			}
-			
-			// Handle response - may be JSON or SSE format
-			const responseText = await response.text();
-			
-			// Debug logging for response text
-			if (process.env.DEBUG?.includes('snowflake:rest')) {
-				console.log(`[DEBUG snowflake:rest] Response text length: ${responseText.length}`);
-				console.log(`[DEBUG snowflake:rest] Response text (first 500 chars): ${responseText.substring(0, 500)}`);
-				console.log(`[DEBUG snowflake:rest] Response text (last 100 chars): ${responseText.substring(Math.max(0, responseText.length - 100))}`);
-			}
-			
-			// Define response type
-			interface RestCortexResponse {
+				// Debug logging for response
+				if (process.env.DEBUG?.includes('snowflake:rest')) {
+					console.log(
+						`[DEBUG snowflake:rest] Response received - status: ${response.status}`
+					);
+					console.log(
+						`[DEBUG snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`
+					);
+				}
+
+				// Handle response - may be JSON or SSE format
+				const responseText = await response.text();
+
+				// Debug logging for response text
+				if (process.env.DEBUG?.includes('snowflake:rest')) {
+					console.log(
+						`[DEBUG snowflake:rest] Response text length: ${responseText.length}`
+					);
+					console.log(
+						`[DEBUG snowflake:rest] Response text (first 500 chars): ${responseText.substring(0, 500)}`
+					);
+					console.log(
+						`[DEBUG snowflake:rest] Response text (last 100 chars): ${responseText.substring(Math.max(0, responseText.length - 100))}`
+					);
+				}
+
+				// Define response type
+				interface RestCortexResponse {
 					// Cortex REST API response format
 					// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/complete-structured-outputs
 					// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#thinking-and-reasoning-examples
 					created?: number;
 					model?: string;
-					thinking?: string;  // Claude extended thinking content
+					thinking?: string; // Claude extended thinking content
 					structured_output?: Array<{
 						raw_message?: Record<string, unknown>;
 						type?: string;
@@ -491,28 +538,32 @@ export class RestLanguageModel implements LanguageModelV2 {
 						cache_read_input_tokens?: number;
 					};
 				}
-				
+
 				let result: RestCortexResponse;
-				
+
 				// Check if response is SSE format (starts with "data:")
 				if (responseText.startsWith('data:')) {
 					// Parse SSE response - may have multiple events
-					const events = responseText.split('\n').filter(line => line.startsWith('data:'));
-					
+					const events = responseText
+						.split('\n')
+						.filter((line) => line.startsWith('data:'));
+
 					// Collect all message content from SSE events
 					let collectedContent = '';
 					let lastEvent: RestCortexResponse | null = null;
-					
+
 					for (const event of events) {
 						const data = event.replace(/^data:\s*/, '');
 						if (data === '[DONE]') continue;
-						
+
 						try {
 							const parsed = JSON.parse(data) as RestCortexResponse;
 							lastEvent = parsed;
-							
+
 							// Extract delta content if present (streaming format)
-							const delta = parsed.choices?.[0] as { delta?: { content?: string } } | undefined;
+							const delta = parsed.choices?.[0] as
+								| { delta?: { content?: string } }
+								| undefined;
 							if (delta?.delta?.content) {
 								collectedContent += delta.delta.content;
 							} else if (parsed.choices?.[0]?.message?.content) {
@@ -522,50 +573,65 @@ export class RestLanguageModel implements LanguageModelV2 {
 							// Skip malformed events
 						}
 					}
-					
+
 					// Build result from collected content
 					result = {
-						choices: [{
-							message: { content: collectedContent },
-							finish_reason: lastEvent?.choices?.[0]?.finish_reason || 'stop'
-						}],
+						choices: [
+							{
+								message: { content: collectedContent },
+								finish_reason: lastEvent?.choices?.[0]?.finish_reason || 'stop'
+							}
+						],
 						usage: lastEvent?.usage
 					};
-			} else {
-				// Parse as regular JSON
-				try {
-					result = JSON.parse(responseText) as RestCortexResponse;
-				} catch (parseError) {
-					console.error(`[ERROR snowflake:rest] Failed to parse response as JSON`);
-					console.error(`[ERROR snowflake:rest] Response status: ${response.status}`);
-					console.error(`[ERROR snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`);
-					console.error(`[ERROR snowflake:rest] Response text (first 1000 chars): ${responseText.substring(0, 1000)}`);
-					console.error(`[ERROR snowflake:rest] Parse error:`, parseError);
-					throw parseError;
+				} else {
+					// Parse as regular JSON
+					try {
+						result = JSON.parse(responseText) as RestCortexResponse;
+					} catch (parseError) {
+						console.error(
+							`[ERROR snowflake:rest] Failed to parse response as JSON`
+						);
+						console.error(
+							`[ERROR snowflake:rest] Response status: ${response.status}`
+						);
+						console.error(
+							`[ERROR snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`
+						);
+						console.error(
+							`[ERROR snowflake:rest] Response text (first 1000 chars): ${responseText.substring(0, 1000)}`
+						);
+						console.error(`[ERROR snowflake:rest] Parse error:`, parseError);
+						throw parseError;
+					}
 				}
-			}
 
 				// Extract content - handle regular, structured output, and tool call responses
 				const content: Array<LanguageModelV2Content> = [];
 				let hasToolCalls = false;
 				let text = '';
-				
+
 				// Check for structured_output format (used when response_format is specified)
 				if (result.structured_output?.[0]?.raw_message) {
 					text = JSON.stringify(result.structured_output[0].raw_message);
 				} else {
 					// Fall back to regular choices format
 					// Type assertion: Cortex API can return content_list for Claude models
-					const choice = result.choices?.[0] as {
-						message?: { 
-							content?: string; 
-							content_list?: Array<{ type: string; text?: string }>;
-						};
-						finish_reason?: string;
-					} | undefined;
-					
+					const choice = result.choices?.[0] as
+						| {
+								message?: {
+									content?: string;
+									content_list?: Array<{ type: string; text?: string }>;
+								};
+								finish_reason?: string;
+						  }
+						| undefined;
+
 					// Handle content_list format (Claude via Cortex)
-					if (choice?.message?.content_list && Array.isArray(choice.message.content_list)) {
+					if (
+						choice?.message?.content_list &&
+						Array.isArray(choice.message.content_list)
+					) {
 						// Extract text from content_list array
 						for (const item of choice.message.content_list) {
 							if (item.type === 'text' && item.text) {
@@ -577,7 +643,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 						text = choice?.message?.content || '';
 					}
 				}
-				
+
 				// Handle thinking content from Claude models
 				// See: https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 				if (result.thinking) {
@@ -588,11 +654,13 @@ export class RestLanguageModel implements LanguageModelV2 {
 						text: `<thinking>\n${result.thinking}\n</thinking>\n\n`
 					});
 				}
-				
+
 				// Parse tool calls from response
 				// The API returns tool calls in the message content array:
 				// { "type": "tool_use", "id": "...", "name": "...", "input": {...} }
-				const parsedToolCalls = parseToolCalls(result as unknown as Record<string, unknown>);
+				const parsedToolCalls = parseToolCalls(
+					result as unknown as Record<string, unknown>
+				);
 				if (parsedToolCalls.length > 0) {
 					hasToolCalls = true;
 					for (const tc of parsedToolCalls) {
@@ -609,12 +677,14 @@ export class RestLanguageModel implements LanguageModelV2 {
 						};
 						content.push(toolCall);
 					}
-					
+
 					if (process.env.DEBUG?.includes('snowflake:rest')) {
-						console.log(`[DEBUG snowflake:rest] Tool calls: ${parsedToolCalls.map(t => t.name).join(', ')}`);
+						console.log(
+							`[DEBUG snowflake:rest] Tool calls: ${parsedToolCalls.map((t) => t.name).join(', ')}`
+						);
 					}
 				}
-				
+
 				// Add main text content (if any)
 				if (text) {
 					content.push({ type: 'text' as const, text });
@@ -630,15 +700,24 @@ export class RestLanguageModel implements LanguageModelV2 {
 					finishReason = 'length';
 				} else if (choice?.finish_reason === 'content_filter') {
 					finishReason = 'content-filter';
-				} else if (choice?.finish_reason === 'tool_calls' || choice?.finish_reason === 'tool_use') {
+				} else if (
+					choice?.finish_reason === 'tool_calls' ||
+					choice?.finish_reason === 'tool_use'
+				) {
 					finishReason = 'tool-calls';
 				}
-				
+
 				if (process.env.DEBUG?.includes('snowflake:rest')) {
-					console.log(`[DEBUG snowflake:rest] Finish reason: ${finishReason}, hasToolCalls: ${hasToolCalls}, text length: ${text.length}`);
-					console.log(`[DEBUG snowflake:rest] Content array: ${JSON.stringify(content.map(c => c.type))}`);
+					console.log(
+						`[DEBUG snowflake:rest] Finish reason: ${finishReason}, hasToolCalls: ${hasToolCalls}, text length: ${text.length}`
+					);
+					console.log(
+						`[DEBUG snowflake:rest] Content array: ${JSON.stringify(content.map((c) => c.type))}`
+					);
 					if (hasToolCalls) {
-						console.log(`[DEBUG snowflake:rest] Tool calls in content: ${JSON.stringify(content.filter(c => c.type === 'tool-call'))}`);
+						console.log(
+							`[DEBUG snowflake:rest] Tool calls in content: ${JSON.stringify(content.filter((c) => c.type === 'tool-call'))}`
+						);
 					}
 				}
 
@@ -677,13 +756,11 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 	/**
 	 * Streaming support for Cortex REST API
-	 * 
+	 *
 	 * Uses Server-Sent Events (SSE) format for streaming responses.
 	 * See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api
 	 */
-	async doStream(
-		options: LanguageModelV2CallOptions
-	): Promise<{
+	async doStream(options: LanguageModelV2CallOptions): Promise<{
 		stream: ReadableStream<LanguageModelV2StreamPart>;
 		warnings: LanguageModelV2CallWarning[];
 	}> {
@@ -696,15 +773,18 @@ export class RestLanguageModel implements LanguageModelV2 {
 				isRetryable: false
 			});
 		}
-		
+
 		const warnings: LanguageModelV2CallWarning[] = [];
-		
+
 		// Determine if features are enabled
 		const promptCachingEnabled = this.shouldEnablePromptCaching();
 		const thinkingEnabled = this.shouldEnableThinking();
-		
+
 		// Convert messages to Cortex format with caching enabled if appropriate
-		const messages = this.convertPromptToMessages(options.prompt, promptCachingEnabled);
+		const messages = this.convertPromptToMessages(
+			options.prompt,
+			promptCachingEnabled
+		);
 
 		// Normalize model ID - strip cortex/ prefix if present
 		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
@@ -715,11 +795,15 @@ export class RestLanguageModel implements LanguageModelV2 {
 			messages,
 			max_tokens: options.maxOutputTokens ?? DEFAULT_MAX_TOKENS,
 			temperature: options.temperature ?? 0.7,
-			stream: true  // Enable streaming
+			stream: true // Enable streaming
 		};
 
 		// Handle structured output
-		if (this.shouldEnableStructuredOutputs() && options.responseFormat?.type === 'json' && options.responseFormat.schema) {
+		if (
+			this.shouldEnableStructuredOutputs() &&
+			options.responseFormat?.type === 'json' &&
+			options.responseFormat.schema
+		) {
 			const cleanedSchema = removeUnsupportedFeatures(
 				options.responseFormat.schema as Record<string, unknown>
 			);
@@ -728,10 +812,13 @@ export class RestLanguageModel implements LanguageModelV2 {
 				schema: cleanedSchema
 			};
 		}
-		
+
 		// Handle tools for streaming
 		if (options.tools && options.tools.length > 0) {
-			const toolsRecord: Record<string, { description?: string; parameters?: Record<string, unknown> }> = {};
+			const toolsRecord: Record<
+				string,
+				{ description?: string; parameters?: Record<string, unknown> }
+			> = {};
 			for (const tool of options.tools) {
 				if (tool.type === 'function') {
 					toolsRecord[tool.name] = {
@@ -741,12 +828,19 @@ export class RestLanguageModel implements LanguageModelV2 {
 					};
 				}
 			}
-			const cortexTools = convertToolsToSnowflakeFormat(toolsRecord, promptCachingEnabled && this.isClaudeModel());
+			const cortexTools = convertToolsToSnowflakeFormat(
+				toolsRecord,
+				promptCachingEnabled && this.isClaudeModel()
+			);
 			body.tools = cortexTools;
 		}
-		
+
 		// Add Claude thinking if enabled
-		if (thinkingEnabled && this.isClaudeModel() && supportsThinking(this.modelId)) {
+		if (
+			thinkingEnabled &&
+			this.isClaudeModel() &&
+			supportsThinking(this.modelId)
+		) {
 			const level = this.getEffectiveThinkingLevel();
 			const budgetTokens = getThinkingBudgetTokens(this.modelId, level);
 			body.thinking = {
@@ -754,9 +848,13 @@ export class RestLanguageModel implements LanguageModelV2 {
 				budget_tokens: budgetTokens
 			};
 		}
-		
+
 		// Add OpenAI reasoning if enabled
-		if (thinkingEnabled && this.isOpenAIModel() && supportsReasoning(this.modelId)) {
+		if (
+			thinkingEnabled &&
+			this.isOpenAIModel() &&
+			supportsReasoning(this.modelId)
+		) {
 			const level = this.getEffectiveThinkingLevel();
 			body.reasoning_effort = level;
 		}
@@ -783,8 +881,8 @@ export class RestLanguageModel implements LanguageModelV2 {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
-							'Authorization': `Bearer ${auth.accessToken}`,
-							'Accept': 'text/event-stream'
+							Authorization: `Bearer ${auth.accessToken}`,
+							Accept: 'text/event-stream'
 						},
 						body: JSON.stringify(body),
 						signal: options.abortSignal
@@ -792,12 +890,14 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 					if (!response.ok) {
 						const errorBody = await response.text();
-						controller.error(new APICallError({
-							message: `Snowflake Cortex REST API streaming error (${response.status}): ${errorBody}`,
-							url: response.url,
-							requestBodyValues: body,
-							isRetryable: response.status === 429 || response.status >= 500
-						}));
+						controller.error(
+							new APICallError({
+								message: `Snowflake Cortex REST API streaming error (${response.status}): ${errorBody}`,
+								url: response.url,
+								requestBodyValues: body,
+								isRetryable: response.status === 429 || response.status >= 500
+							})
+						);
 						return;
 					}
 
@@ -814,7 +914,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 
 					while (true) {
 						const { done, value } = await reader.read();
-						
+
 						if (done) {
 							// Send finish event
 							controller.enqueue({
@@ -831,22 +931,22 @@ export class RestLanguageModel implements LanguageModelV2 {
 						}
 
 						buffer += decoder.decode(value, { stream: true });
-						
+
 						// Process complete SSE events
 						const lines = buffer.split('\n');
 						buffer = lines.pop() || ''; // Keep incomplete line in buffer
-						
+
 						for (const line of lines) {
 							if (!line.startsWith('data:')) continue;
-							
+
 							const data = line.slice(5).trim();
 							if (data === '[DONE]') {
 								continue;
 							}
-							
+
 							try {
 								const parsed = JSON.parse(data);
-								
+
 								// Handle thinking delta (Claude)
 								if (parsed.thinking_delta) {
 									const textDeltaPart = {
@@ -854,9 +954,11 @@ export class RestLanguageModel implements LanguageModelV2 {
 										id: `${sessionId}-${eventIndex++}`,
 										delta: `<thinking_delta>${parsed.thinking_delta}</thinking_delta>`
 									};
-									controller.enqueue(textDeltaPart as unknown as LanguageModelV2StreamPart);
+									controller.enqueue(
+										textDeltaPart as unknown as LanguageModelV2StreamPart
+									);
 								}
-								
+
 								// Handle content delta
 								if (parsed.choices?.[0]?.delta?.content) {
 									const textDeltaPart = {
@@ -864,9 +966,11 @@ export class RestLanguageModel implements LanguageModelV2 {
 										id: `${sessionId}-${eventIndex++}`,
 										delta: parsed.choices[0].delta.content
 									};
-									controller.enqueue(textDeltaPart as unknown as LanguageModelV2StreamPart);
+									controller.enqueue(
+										textDeltaPart as unknown as LanguageModelV2StreamPart
+									);
 								}
-								
+
 								// Handle tool call deltas
 								// Tool calls in streaming come as: { "type": "tool_use", "id": "...", "name": "...", "input": {...} }
 								if (parsed.choices?.[0]?.delta?.tool_calls) {
@@ -876,13 +980,17 @@ export class RestLanguageModel implements LanguageModelV2 {
 												type: 'tool-call' as const,
 												toolCallId: tc.id,
 												toolName: tc.function.name,
-												args: tc.function.arguments ? JSON.parse(tc.function.arguments) : {}
+												args: tc.function.arguments
+													? JSON.parse(tc.function.arguments)
+													: {}
 											};
-											controller.enqueue(toolCallPart as unknown as LanguageModelV2StreamPart);
+											controller.enqueue(
+												toolCallPart as unknown as LanguageModelV2StreamPart
+											);
 										}
 									}
 								}
-								
+
 								// Handle Anthropic-style tool_use content blocks
 								if (Array.isArray(parsed.choices?.[0]?.delta?.content)) {
 									for (const block of parsed.choices[0].delta.content) {
@@ -893,17 +1001,19 @@ export class RestLanguageModel implements LanguageModelV2 {
 												toolName: block.name,
 												args: block.input || {}
 											};
-											controller.enqueue(toolCallPart as unknown as LanguageModelV2StreamPart);
+											controller.enqueue(
+												toolCallPart as unknown as LanguageModelV2StreamPart
+											);
 										}
 									}
 								}
-								
+
 								// Update usage if present
 								if (parsed.usage) {
 									inputTokens = parsed.usage.prompt_tokens ?? inputTokens;
 									outputTokens = parsed.usage.completion_tokens ?? outputTokens;
 								}
-								
+
 								// Check for finish reason
 								if (parsed.choices?.[0]?.finish_reason) {
 									let finishReason: LanguageModelV2FinishReason = 'stop';
@@ -915,7 +1025,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 									} else if (fr === 'tool_calls' || fr === 'tool_use') {
 										finishReason = 'tool-calls';
 									}
-									
+
 									controller.enqueue({
 										type: 'finish',
 										finishReason,
@@ -925,13 +1035,15 @@ export class RestLanguageModel implements LanguageModelV2 {
 											totalTokens: inputTokens + outputTokens
 										}
 									} as unknown as LanguageModelV2StreamPart);
+								}
+							} catch (parseError) {
+								// Skip malformed events
+								if (process.env.DEBUG?.includes('snowflake:rest')) {
+									console.warn(
+										`[DEBUG snowflake:rest] Failed to parse SSE event: ${data}`
+									);
+								}
 							}
-						} catch (parseError) {
-							// Skip malformed events
-							if (process.env.DEBUG?.includes('snowflake:rest')) {
-								console.warn(`[DEBUG snowflake:rest] Failed to parse SSE event: ${data}`);
-							}
-						}
 						}
 					}
 				} catch (error) {
@@ -943,4 +1055,3 @@ export class RestLanguageModel implements LanguageModelV2 {
 		return { stream, warnings };
 	}
 }
-

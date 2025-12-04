@@ -1,9 +1,9 @@
 /**
  * MCP Bridge - Optional MCP Server Integration
- * 
+ *
  * Provides a bridge to connect to MCP (Model Context Protocol) servers
  * for extended tool capabilities beyond the built-in tools.
- * 
+ *
  * This is optional and requires the @ai-sdk/mcp package.
  */
 
@@ -60,44 +60,46 @@ export async function isMcpAvailable(): Promise<boolean> {
 
 /**
  * Create MCP tools from a server configuration
- * 
+ *
  * @param config - MCP server configuration
  * @returns Object containing AI SDK compatible tools
  */
-export async function createMcpTools(config: McpServerConfig): Promise<Record<string, unknown>> {
+export async function createMcpTools(
+	config: McpServerConfig
+): Promise<Record<string, unknown>> {
 	try {
 		// Dynamic import - this package is optional
 		// @ts-expect-error - @ai-sdk/mcp is an optional dependency
 		const mcpModule = await import('@ai-sdk/mcp');
 		const createMcpClient = mcpModule.experimental_createMCPClient;
-		
+
 		if (!createMcpClient) {
 			console.warn('MCP client creator not found in @ai-sdk/mcp');
 			return {};
 		}
-		
+
 		let client: McpClient;
-		
+
 		if (config.transport === 'stdio' && config.command) {
-			client = await createMcpClient({
+			client = (await createMcpClient({
 				transport: {
 					type: 'stdio',
 					command: config.command,
 					args: config.args || [],
 					env: config.env
 				}
-			}) as McpClient;
+			})) as McpClient;
 		} else if (config.transport === 'http' && config.url) {
-			client = await createMcpClient({
+			client = (await createMcpClient({
 				transport: {
 					type: 'sse',
 					url: config.url
 				}
-			}) as McpClient;
+			})) as McpClient;
 		} else {
 			throw new Error(`Invalid MCP transport configuration for ${config.name}`);
 		}
-		
+
 		return client.tools;
 	} catch (error) {
 		console.warn(`Failed to create MCP client for ${config.name}:`, error);
@@ -108,7 +110,9 @@ export async function createMcpTools(config: McpServerConfig): Promise<Record<st
 /**
  * Convert MCP tools to Cortex REST API format
  */
-export function convertMcpToolsToCortexFormat(mcpTools: Record<string, McpTool>): CortexToolSpec[] {
+export function convertMcpToolsToCortexFormat(
+	mcpTools: Record<string, McpTool>
+): CortexToolSpec[] {
 	return Object.entries(mcpTools).map(([name, tool]) => ({
 		tool_spec: {
 			type: 'generic' as const,
@@ -130,28 +134,28 @@ export async function createSnowflakeMcpTools(
 	if (!mcpAvailable) {
 		return {};
 	}
-	
+
 	const mcpUrl = `https://${accountIdentifier}.snowflakecomputing.com/api/v2/cortex/mcp`;
-	
+
 	try {
 		// @ts-expect-error - @ai-sdk/mcp is an optional dependency
 		const mcpModule = await import('@ai-sdk/mcp');
 		const createMcpClient = mcpModule.experimental_createMCPClient;
-		
+
 		if (!createMcpClient) {
 			return {};
 		}
-		
-		const client = await createMcpClient({
+
+		const client = (await createMcpClient({
 			transport: {
 				type: 'sse',
 				url: mcpUrl,
 				headers: {
-					'Authorization': `Bearer ${accessToken}`
+					Authorization: `Bearer ${accessToken}`
 				}
 			}
-		}) as McpClient;
-		
+		})) as McpClient;
+
 		return client.tools;
 	} catch (error) {
 		console.warn('Snowflake MCP server not available:', error);

@@ -21,9 +21,9 @@ describe('CLI Message Converter', () => {
 			const prompt: LanguageModelV2Prompt = [
 				{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(1);
 			expect(result[0].role).toBe('user');
 			expect(result[0].content).toBe('Hello');
@@ -33,9 +33,9 @@ describe('CLI Message Converter', () => {
 			const prompt: LanguageModelV2Prompt = [
 				{ role: 'system', content: 'You are helpful' }
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(1);
 			expect(result[0].role).toBe('system');
 			expect(result[0].content).toBe('You are helpful');
@@ -48,9 +48,9 @@ describe('CLI Message Converter', () => {
 					content: [{ type: 'text', text: 'How can I help?' }]
 				}
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(1);
 			expect(result[0].role).toBe('assistant');
 			expect(result[0].content).toBe('How can I help?');
@@ -67,9 +67,9 @@ describe('CLI Message Converter', () => {
 					]
 				}
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(1);
 			expect(result[0].content).toContain('Part 1');
 			expect(result[0].content).toContain('Part 2');
@@ -86,9 +86,9 @@ describe('CLI Message Converter', () => {
 				},
 				{ role: 'user', content: [{ type: 'text', text: 'Thanks' }] }
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(4);
 			expect(result[0].role).toBe('system');
 			expect(result[1].role).toBe('user');
@@ -98,9 +98,9 @@ describe('CLI Message Converter', () => {
 
 		it.concurrent('should handle empty prompt', async () => {
 			const prompt: LanguageModelV2Prompt = [];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(0);
 		});
 
@@ -115,9 +115,9 @@ describe('CLI Message Converter', () => {
 					]
 				}
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			expect(result).toHaveLength(1);
 			expect(result[0].content).toContain('Text content');
 			expect(result[0].content).toContain('More text');
@@ -137,9 +137,9 @@ describe('CLI Message Converter', () => {
 					]
 				}
 			];
-			
+
 			const result = convertToCliMessages(prompt);
-			
+
 			// Tool results may be converted to a specific format
 			expect(result).toBeDefined();
 		});
@@ -151,9 +151,9 @@ describe('CLI Message Converter', () => {
 				role: 'assistant',
 				content: 'Hello from CLI'
 			};
-			
+
 			const result = convertFromCliResponse(response);
-			
+
 			expect(result.text).toBe('Hello from CLI');
 		});
 
@@ -166,9 +166,9 @@ describe('CLI Message Converter', () => {
 					completion_tokens: 50
 				} as any // CLI returns snake_case
 			};
-			
+
 			const result = convertFromCliResponse(response);
-			
+
 			expect(result.text).toBe('Test response');
 			expect(result.usage?.promptTokens).toBe(100);
 			expect(result.usage?.completionTokens).toBe(50);
@@ -179,9 +179,9 @@ describe('CLI Message Converter', () => {
 				role: 'assistant',
 				content: 'No usage info'
 			};
-			
+
 			const result = convertFromCliResponse(response);
-			
+
 			expect(result.text).toBe('No usage info');
 			expect(result.usage).toBeUndefined();
 		});
@@ -191,32 +191,35 @@ describe('CLI Message Converter', () => {
 				role: 'assistant',
 				content: ''
 			};
-			
+
 			const result = convertFromCliResponse(response);
-			
+
 			expect(result.text).toBe('');
 		});
 	});
 
 	describe('createPromptFromMessages', () => {
-		it.concurrent('should create simple prompt from single message', async () => {
-			const prompt: LanguageModelV2Prompt = [
-				{ role: 'user', content: [{ type: 'text', text: 'Hello world' }] }
-			];
-			
-			const result = createPromptFromMessages(prompt);
-			
-			expect(result).toContain('Hello world');
-		});
+		it.concurrent(
+			'should create simple prompt from single message',
+			async () => {
+				const prompt: LanguageModelV2Prompt = [
+					{ role: 'user', content: [{ type: 'text', text: 'Hello world' }] }
+				];
+
+				const result = createPromptFromMessages(prompt);
+
+				expect(result).toContain('Hello world');
+			}
+		);
 
 		it.concurrent('should include system message in prompt', async () => {
 			const prompt: LanguageModelV2Prompt = [
 				{ role: 'system', content: 'You are helpful' },
 				{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }
 			];
-			
+
 			const result = createPromptFromMessages(prompt);
-			
+
 			expect(result).toContain('You are helpful');
 			expect(result).toContain('Hi');
 		});
@@ -230,9 +233,9 @@ describe('CLI Message Converter', () => {
 				},
 				{ role: 'user', content: [{ type: 'text', text: 'Question 2' }] }
 			];
-			
+
 			const result = createPromptFromMessages(prompt);
-			
+
 			expect(result).toContain('Question 1');
 			expect(result).toContain('Answer 1');
 			expect(result).toContain('Question 2');
@@ -240,9 +243,9 @@ describe('CLI Message Converter', () => {
 
 		it.concurrent('should handle empty prompt', async () => {
 			const prompt: LanguageModelV2Prompt = [];
-			
+
 			const result = createPromptFromMessages(prompt);
-			
+
 			expect(result).toBe('');
 		});
 	});
@@ -271,7 +274,7 @@ describe('CLI Message Converter', () => {
 		it.concurrent('should handle spaces', async () => {
 			const result = escapeShellArg('hello world');
 			// Should be properly quoted
-			expect(result.startsWith("'") || result.includes("hello")).toBe(true);
+			expect(result.startsWith("'") || result.includes('hello')).toBe(true);
 		});
 
 		it.concurrent('should handle special characters', async () => {
@@ -301,9 +304,9 @@ describe('CLI Message Converter', () => {
 			const prompt: LanguageModelV2Prompt = [
 				{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
 			];
-			
+
 			const args = buildCliArgs(prompt);
-			
+
 			expect(Array.isArray(args)).toBe(true);
 			expect(args.length).toBeGreaterThan(0);
 		});
@@ -313,18 +316,18 @@ describe('CLI Message Converter', () => {
 				{ role: 'system', content: 'Be helpful' },
 				{ role: 'user', content: [{ type: 'text', text: 'Hi' }] }
 			];
-			
+
 			const args = buildCliArgs(prompt);
-			
+
 			const argsStr = args.join(' ');
 			expect(argsStr).toContain('Be helpful');
 		});
 
 		it.concurrent('should handle empty prompt', async () => {
 			const prompt: LanguageModelV2Prompt = [];
-			
+
 			const args = buildCliArgs(prompt);
-			
+
 			expect(Array.isArray(args)).toBe(true);
 		});
 
@@ -332,10 +335,10 @@ describe('CLI Message Converter', () => {
 			const prompt: LanguageModelV2Prompt = [
 				{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
 			];
-			
+
 			const args = buildCliArgs(prompt);
-			
-			args.forEach(arg => {
+
+			args.forEach((arg) => {
 				expect(typeof arg).toBe('string');
 			});
 		});
@@ -347,9 +350,9 @@ describe('CLI Message Converter', () => {
 				{ role: 'user', content: 'Hello' },
 				{ role: 'assistant', content: 'Hi there!' }
 			];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			expect(result).toContain('Hello');
 			expect(result).toContain('Hi there!');
 		});
@@ -359,9 +362,9 @@ describe('CLI Message Converter', () => {
 				{ role: 'user', content: 'Question' },
 				{ role: 'assistant', content: 'Answer' }
 			];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			// Should have some indication of role
 			expect(result).toContain('Question');
 			expect(result).toContain('Answer');
@@ -372,18 +375,18 @@ describe('CLI Message Converter', () => {
 				{ role: 'system', content: 'System instruction' },
 				{ role: 'user', content: 'User message' }
 			];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			expect(result).toContain('System instruction');
 			expect(result).toContain('User message');
 		});
 
 		it.concurrent('should handle empty messages array', async () => {
 			const messages: CliMessage[] = [];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			expect(result).toBe('');
 		});
 
@@ -391,9 +394,9 @@ describe('CLI Message Converter', () => {
 			const messages: CliMessage[] = [
 				{ role: 'user', content: 'Single message' }
 			];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			expect(result).toContain('Single message');
 		});
 
@@ -403,16 +406,15 @@ describe('CLI Message Converter', () => {
 				{ role: 'assistant', content: 'Second' },
 				{ role: 'user', content: 'Third' }
 			];
-			
+
 			const result = formatConversationContext(messages);
-			
+
 			const firstIndex = result.indexOf('First');
 			const secondIndex = result.indexOf('Second');
 			const thirdIndex = result.indexOf('Third');
-			
+
 			expect(firstIndex).toBeLessThan(secondIndex);
 			expect(secondIndex).toBeLessThan(thirdIndex);
 		});
 	});
 });
-

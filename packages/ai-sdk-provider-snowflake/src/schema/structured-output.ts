@@ -1,10 +1,10 @@
 /**
  * Unified Structured Output Generator for Cortex Code CLI
- * 
+ *
  * This module provides utilities for generating structured JSON outputs using
  * prompt engineering and JSON extraction when native structured output support
  * is not available or reliable.
- * 
+ *
  * Combines functionality from:
  * - Prompt engineering and message preparation
  * - JSON extraction and parsing (merged from json-parser.ts)
@@ -19,10 +19,10 @@ import { ModelHelpers } from '../utils/models.js';
 
 /**
  * Extract JSON from text that may contain non-JSON content
- * 
+ *
  * This function attempts to find and parse JSON content from text that may
  * include markdown code blocks, additional text, or other formatting.
- * 
+ *
  * @param text - The text to extract JSON from
  * @returns The parsed JSON object, or null if no valid JSON is found
  */
@@ -73,7 +73,7 @@ export function extractJson<T = unknown>(text: string): T | null {
 /**
  * Extract multiple JSON objects from newline-delimited JSON (NDJSON) text
  * This is specifically for Cortex Code's --output-format stream-json
- * 
+ *
  * @param text - The NDJSON text to parse
  * @returns Array of parsed JSON objects
  */
@@ -103,7 +103,7 @@ export function extractStreamJson<T = unknown>(text: string): T[] {
 
 /**
  * Validate if a string contains valid JSON
- * 
+ *
  * @param text - The text to validate
  * @returns True if the text is valid JSON
  */
@@ -123,7 +123,7 @@ export function isValidJson(text: string): boolean {
 /**
  * Clean and normalize JSON text before parsing
  * Removes common issues like trailing commas, comments, etc.
- * 
+ *
  * @param text - The text to clean
  * @returns Cleaned JSON text
  */
@@ -230,7 +230,7 @@ export class StructuredOutputGenerator {
 
 	/**
 	 * Build system prompt for structured output generation
-	 * 
+	 *
 	 * @param schema - The JSON schema to enforce
 	 * @param objectName - Name of the object being generated
 	 * @returns System prompt string
@@ -257,7 +257,7 @@ Just return the raw JSON object.`;
 	/**
 	 * Prepare messages for structured output generation
 	 * Cleans the schema and adds system prompt
-	 * 
+	 *
 	 * @param params - Structured output parameters
 	 * @returns Modified messages array with system prompt
 	 */
@@ -282,7 +282,7 @@ Just return the raw JSON object.`;
 	/**
 	 * Extract the first complete JSON object from text
 	 * Handles nested braces and string escaping
-	 * 
+	 *
 	 * @param text - Text potentially containing JSON
 	 * @returns Extracted JSON string or null if not found
 	 */
@@ -332,7 +332,7 @@ Just return the raw JSON object.`;
 	/**
 	 * Parse JSON with fallback for JavaScript object syntax
 	 * Attempts to fix common issues like unquoted property names
-	 * 
+	 *
 	 * @param jsonText - Text to parse as JSON
 	 * @returns Parsed object
 	 * @throws Error if parsing fails
@@ -359,7 +359,7 @@ Just return the raw JSON object.`;
 	/**
 	 * Extract and parse JSON object from model response text
 	 * Handles various formats including markdown code blocks and JavaScript syntax
-	 * 
+	 *
 	 * @param responseText - Raw response text from the model
 	 * @returns Parsed JSON object
 	 * @throws Error if no valid JSON can be extracted
@@ -372,7 +372,9 @@ Just return the raw JSON object.`;
 
 		if (!jsonText) {
 			// Fallback: try to find JSON in markdown code blocks
-			const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+			const codeBlockMatch = trimmed.match(
+				/```(?:json)?\s*\n?([\s\S]*?)\n?```/
+			);
 			if (codeBlockMatch) {
 				jsonText = this.extractFirstJsonObject(codeBlockMatch[1]);
 			}
@@ -394,19 +396,19 @@ Just return the raw JSON object.`;
 
 	/**
 	 * Generate a structured object using prompt engineering
-	 * 
+	 *
 	 * This function implements structured output generation for models that don't
 	 * have native support. It uses prompt engineering to enforce the schema and
 	 * extracts the JSON object from the model's response.
-	 * 
+	 *
 	 * @param params - Generation parameters
 	 * @returns Parsed object with metadata
 	 * @throws Error if schema/objectName is missing or JSON parsing fails
-	 * 
+	 *
 	 * @example
 	 * ```typescript
 	 * import { StructuredOutputGenerator } from '@tm/ai-sdk-provider-snowflake';
-	 * 
+	 *
 	 * const result = await StructuredOutputGenerator.generateObject({
 	 *   generateText: async (params) => {
 	 *     // Your text generation logic
@@ -422,7 +424,7 @@ Just return the raw JSON object.`;
 	 *   objectName: 'Person',
 	 *   messages: [{ role: 'user', content: 'Generate a person' }]
 	 * });
-	 * 
+	 *
 	 * console.log(result.object); // { name: "John", age: 30 }
 	 * ```
 	 */
@@ -445,7 +447,9 @@ Just return the raw JSON object.`;
 			const normalizedModelId = ModelHelpers.normalizeModelId(params.modelId);
 			if (!ModelHelpers.supportsStructuredOutputs(normalizedModelId)) {
 				const warning =
-					ModelHelpers.getUnsupportedStructuredOutputsWarning(normalizedModelId);
+					ModelHelpers.getUnsupportedStructuredOutputsWarning(
+						normalizedModelId
+					);
 				if (params.onWarning) {
 					params.onWarning(warning);
 				}
@@ -481,4 +485,3 @@ Just return the raw JSON object.`;
 		};
 	}
 }
-

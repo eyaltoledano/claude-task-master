@@ -11,4 +11,3 @@ const rootEnvPath = resolve(__dirname, '../../../.env');
 config({ path: rootEnvPath });
 
 console.log('🔧 Test setup complete - loaded .env from:', rootEnvPath);
-

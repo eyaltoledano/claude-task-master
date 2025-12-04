@@ -97,7 +97,7 @@ describe('SnowflakeProvider', () => {
 	describe('getRequiredApiKeyName', () => {
 		it('should return SNOWFLAKE_API_KEY', () => {
 			expect(provider.getRequiredApiKeyName()).toBe('SNOWFLAKE_API_KEY');
-    });
+		});
 	});
 
 	describe('isRequiredApiKey', () => {
@@ -124,8 +124,8 @@ describe('SnowflakeProvider', () => {
 				connection: 'prod',
 				apiKey: 'key',
 				baseURL: undefined
+			});
 		});
-	});
 
 		it('should pass baseURL to validateCredentials', async () => {
 			await provider.validateAuth({
@@ -153,7 +153,7 @@ describe('SnowflakeProvider', () => {
 				'debug',
 				'REST API auth not available, will use Cortex Code CLI'
 			);
-	});
+		});
 
 		it('should not log when REST is available', async () => {
 			const { log } = await import('../../../scripts/modules/utils.js');
@@ -178,7 +178,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should pass executionMode option', () => {
 			provider.getClient({ executionMode: 'cli' });
-			
+
 			expect(mockCreateSnowflake).toHaveBeenCalledWith(
 				expect.objectContaining({ executionMode: 'cli' })
 			);
@@ -186,7 +186,7 @@ describe('SnowflakeProvider', () => {
 
 		it('should default to auto executionMode', () => {
 			provider.getClient({});
-			
+
 			expect(mockCreateSnowflake).toHaveBeenCalledWith(
 				expect.objectContaining({ executionMode: 'auto' })
 			);
@@ -280,7 +280,7 @@ describe('SnowflakeProvider', () => {
 			expect(mockNormalizeModelId).toHaveBeenCalled();
 		});
 	});
-		});
+});
 
 describe('Snowflake Provider - Export', () => {
 	it('should export createSnowflake for external use', async () => {
@@ -288,6 +288,5 @@ describe('Snowflake Provider - Export', () => {
 			'../../../src/ai-providers/snowflake.js'
 		);
 		expect(createSnowflake).toBeDefined();
+	});
 });
-});
-

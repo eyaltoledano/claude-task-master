@@ -18,9 +18,15 @@ import { log } from '../../scripts/modules/utils.js';
  */
 function onAddRulesProfile(targetDir, assetsDir) {
 	log('info', '[Cortex] Task Master skills installed!');
-	log('info', '[Cortex] To add MCP server, run:\n'
-		+ '  cortex mcp add task-master-ai npx --args="-y,task-master-ai" --env="CORTEX_EXECUTION_MODE=cli,CORTEX_CONNECTION_NAME=your_connection_name"');
-	log('info', '[Cortex] Verify with /mcp-status during a Cortex Code CLI session.');
+	log(
+		'info',
+		'[Cortex] To add MCP server, run:\n' +
+			'  cortex mcp add task-master-ai npx --args="-y,task-master-ai" --env="CORTEX_EXECUTION_MODE=cli,CORTEX_CONNECTION_NAME=your_connection_name"'
+	);
+	log(
+		'info',
+		'[Cortex] Verify with /mcp-status during a Cortex Code CLI session.'
+	);
 }
 
 export const cortexProfile = createProfile({
@@ -35,10 +41,11 @@ export const cortexProfile = createProfile({
 	includeDefaultRules: false, // Use custom fileMap for skills only
 	fileMap: {
 		// Two consolidated skills for Cortex Code
-		'cortex-skills/taskmaster-workflow/SKILL.md': 'taskmaster-workflow/SKILL.md',
+		'cortex-skills/taskmaster-workflow/SKILL.md':
+			'taskmaster-workflow/SKILL.md',
 		'cortex-skills/taskmaster-commands/SKILL.md': 'taskmaster-commands/SKILL.md'
 	},
 	onAdd: onAddRulesProfile
 });
 
-export { onAddRulesProfile }
+export { onAddRulesProfile };

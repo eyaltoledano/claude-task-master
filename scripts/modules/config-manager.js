@@ -919,15 +919,22 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 		);
 		return false; // Cannot check without root
 	}
-	
+
 	// Check both project-level and user-level mcp.json
 	const projectMcpPath = path.join(rootDir, '.cursor', 'mcp.json');
-	const userMcpPath = path.join(process.env.HOME || process.env.USERPROFILE || '', '.cursor', 'mcp.json');
-	
+	const userMcpPath = path.join(
+		process.env.HOME || process.env.USERPROFILE || '',
+		'.cursor',
+		'mcp.json'
+	);
+
 	// Try project-level first, then user-level
-	const mcpConfigPath = fs.existsSync(projectMcpPath) ? projectMcpPath : 
-	                      (fs.existsSync(userMcpPath) ? userMcpPath : null);
-	
+	const mcpConfigPath = fs.existsSync(projectMcpPath)
+		? projectMcpPath
+		: fs.existsSync(userMcpPath)
+			? userMcpPath
+			: null;
+
 	if (!mcpConfigPath) {
 		return false; // Neither file exists
 	}
@@ -1004,8 +1011,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				break;
 			case 'snowflake':
 				return true; // No key strictly required - supports Cortex Code CLI fallback
-		default:
-			return false; // Unknown provider
+			default:
+				return false; // Unknown provider
 		}
 
 		return !!apiKeyToCheck && !/(KEY|PAT)_HERE$/.test(apiKeyToCheck);

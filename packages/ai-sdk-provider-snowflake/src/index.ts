@@ -1,30 +1,33 @@
 /**
  * Unified Snowflake AI SDK Provider
- * 
+ *
  * This package provides a unified interface for Snowflake Cortex,
  * supporting multiple backends:
  * - Cortex REST API (/api/v2/cortex/inference:complete) - DEFAULT
  * - Cortex Code CLI
- * 
+ *
  * @example
  * ```typescript
  * import { createSnowflake, snowflake } from '@tm/ai-sdk-provider-snowflake';
- * 
+ *
  * // Use default provider with auto-detection
  * const model = snowflake('cortex/claude-sonnet-4-5');
- * 
+ *
  * // Force specific execution mode
  * const provider = createSnowflake({
  *   executionMode: 'rest'  // 'auto' | 'rest' | 'cli'
  * });
- * 
+ *
  * const model = provider('cortex/claude-sonnet-4-5');
  * ```
  */
 
 // Main provider exports
 export { createSnowflake, snowflake } from './provider.js';
-export type { SnowflakeProvider, SnowflakeProviderOptions } from './provider.js';
+export type {
+	SnowflakeProvider,
+	SnowflakeProviderOptions
+} from './provider.js';
 
 // Types
 export type {
@@ -91,13 +94,13 @@ export {
 	createPromptFromMessages,
 	detectAvailableFeatures
 } from './cli/index.js';
-export type { 
-	CliLanguageModelOptions, 
-	CliErrorMetadata, 
-	CliMessage, 
-	CliResponse, 
+export type {
+	CliLanguageModelOptions,
+	CliErrorMetadata,
+	CliMessage,
+	CliResponse,
 	CortexCodeFeatures,
-	ValidationResult 
+	ValidationResult
 } from './cli/index.js';
 
 // REST API module - Cortex REST API (/api/v2/cortex/inference:complete)
@@ -137,9 +140,9 @@ export {
 	isValidJson,
 	cleanJsonText
 } from './schema/index.js';
-export type { 
-	JSONSchema, 
-	JSONSchemaType, 
+export type {
+	JSONSchema,
+	JSONSchemaType,
 	ModelInfo,
 	StructuredOutputMessage,
 	StructuredOutputParams,

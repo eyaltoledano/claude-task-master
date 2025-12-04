@@ -146,7 +146,7 @@ export interface SnowflakeProviderSettings {
 	noMcp?: boolean;
 	/** Path to custom skills.json file for CLI */
 	skillsFile?: string;
-	/** 
+	/**
 	 * [DANGEROUS] Allow all bash and SQL commands without permission prompts.
 	 * This disables all safety checks in Cortex Code CLI.
 	 * Only use in trusted, automated environments.
@@ -158,35 +158,35 @@ export interface SnowflakeProviderSettings {
 	apiKey?: string;
 	/** Base URL for REST API */
 	baseURL?: string;
-	
+
 	// Feature toggles (override model defaults)
-	
+
 	/**
 	 * Enable/disable structured outputs
 	 * When disabled, falls back to regular text generation
 	 */
 	enableStructuredOutputs?: boolean;
-	
+
 	/**
 	 * Enable prompt caching for system messages
-	 * 
+	 *
 	 * Behavior varies by model type:
 	 * - OpenAI models: Caching is implicit (no modification needed), 1024+ tokens required
 	 * - Claude models: Adds cache_control: { type: 'ephemeral' } to system prompts
 	 *   - Max 4 cache points per request
 	 *   - 1024+ tokens required for effective caching
-	 * 
+	 *
 	 * See: https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference
 	 */
 	enablePromptCaching?: boolean;
-	
+
 	/**
 	 * Enable thinking/reasoning for models that support it
 	 * - Claude models: Uses extended thinking with budget_tokens
 	 * - OpenAI models: Uses reasoning_effort parameter
 	 */
 	enableThinking?: boolean;
-	
+
 	/**
 	 * Thinking level for requests
 	 * Maps to:
@@ -195,15 +195,15 @@ export interface SnowflakeProviderSettings {
 	 * Default: 'medium'
 	 */
 	thinkingLevel?: ThinkingLevel;
-	
+
 	/**
 	 * Enable streaming responses
 	 * When enabled, responses are streamed as they're generated
 	 */
 	enableStreaming?: boolean;
-	
+
 	// Legacy options (kept for backward compatibility)
-	
+
 	/**
 	 * @deprecated Use thinkingLevel instead
 	 */
@@ -213,7 +213,7 @@ export interface SnowflakeProviderSettings {
 /**
  * Model identifiers supported by the unified Snowflake provider
  * Uses cortex/ prefix for all models
- * 
+ *
  * NOTE: For the full list of supported models, see KNOWN_MODELS in src/utils/models.ts
  * This type allows any string for flexibility, but the known models are listed for IDE autocomplete.
  */
@@ -276,4 +276,3 @@ export interface AuthResult {
 	/** Token expiry time */
 	expiresAt?: number;
 }
-

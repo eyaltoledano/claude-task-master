@@ -1,4 +1,11 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import {
 	getCortexCliVersion,
 	validateCortexCli,
@@ -37,7 +44,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const version = await getCortexCliVersion();
-			
+
 			expect(version).toBe('1.2.3');
 			expect(mockSpawn).toHaveBeenCalledWith(
 				'cortex',
@@ -59,7 +66,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const version = await getCortexCliVersion();
-			
+
 			expect(version).toBeNull();
 		});
 
@@ -73,7 +80,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const version = await getCortexCliVersion();
-			
+
 			expect(version).toBeNull();
 		});
 
@@ -88,7 +95,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const version = await getCortexCliVersion();
-			
+
 			expect(version).toBeNull();
 		});
 
@@ -96,7 +103,7 @@ describe('CLI Validation Utilities', () => {
 			process.env.SKIP_CLI_VALIDATION = 'true';
 
 			const version = await getCortexCliVersion();
-			
+
 			expect(version).toBeNull();
 			expect(mockSpawn).not.toHaveBeenCalled();
 		});
@@ -111,7 +118,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			await getCortexCliVersion();
-			
+
 			expect(mockChild.stdout.destroy).toHaveBeenCalled();
 			expect(mockChild.stderr.destroy).toHaveBeenCalled();
 			expect(mockChild.unref).toHaveBeenCalled();
@@ -129,7 +136,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const result = await validateCortexCli();
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.cliVersion).toBe('2.0.5');
 			expect(result.error).toBeUndefined();
@@ -144,7 +151,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const result = await validateCortexCli();
-			
+
 			expect(result.valid).toBe(false);
 			expect(result.error).toContain('Cortex Code CLI not found');
 			expect(result.error).toContain('PATH');
@@ -153,7 +160,7 @@ describe('CLI Validation Utilities', () => {
 
 		it('should skip validation when skipValidation is true', async () => {
 			const result = await validateCortexCli({ skipValidation: true });
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.cliVersion).toBe('test-mode');
 			expect(mockSpawn).not.toHaveBeenCalled();
@@ -163,7 +170,7 @@ describe('CLI Validation Utilities', () => {
 			process.env.SKIP_CLI_VALIDATION = 'true';
 
 			const result = await validateCortexCli();
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.cliVersion).toBe('test-mode');
 			expect(mockSpawn).not.toHaveBeenCalled();
@@ -179,7 +186,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const result: ValidationResult = await validateCortexCli();
-			
+
 			// TypeScript compile-time check
 			expect(typeof result.valid).toBe('boolean');
 			if (result.error) {
@@ -200,7 +207,7 @@ describe('CLI Validation Utilities', () => {
 			}, 10);
 
 			const result = await validateCortexCli();
-			
+
 			expect(result.valid).toBe(true);
 			expect(result.cliVersion).toBe('1.0.0');
 		});
@@ -239,4 +246,3 @@ function createMockChildProcess() {
 	mockChild.unref = jest.fn();
 	return mockChild;
 }
-

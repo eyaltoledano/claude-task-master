@@ -63,15 +63,28 @@ describe('Tool Helpers', () => {
 
 		it('should convert multiple tools', () => {
 			const tools = {
-				tool1: { description: 'Tool 1', parameters: { type: 'object', properties: {} } },
-				tool2: { description: 'Tool 2', parameters: { type: 'object', properties: {} } },
-				tool3: { description: 'Tool 3', parameters: { type: 'object', properties: {} } }
+				tool1: {
+					description: 'Tool 1',
+					parameters: { type: 'object', properties: {} }
+				},
+				tool2: {
+					description: 'Tool 2',
+					parameters: { type: 'object', properties: {} }
+				},
+				tool3: {
+					description: 'Tool 3',
+					parameters: { type: 'object', properties: {} }
+				}
 			};
 
 			const result = convertToolsToSnowflakeFormat(tools);
 
 			expect(result).toHaveLength(3);
-			expect(result.map(r => r.tool_spec.name)).toEqual(['tool1', 'tool2', 'tool3']);
+			expect(result.map((r) => r.tool_spec.name)).toEqual([
+				'tool1',
+				'tool2',
+				'tool3'
+			]);
 		});
 
 		it('should use default description if not provided', () => {
@@ -90,18 +103,20 @@ describe('Tool Helpers', () => {
 	describe('parseToolCalls', () => {
 		it('should parse tool calls from choices format', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [
-							{
-								type: 'tool_use',
-								id: 'call_123',
-								name: 'web_search',
-								input: { query: 'test query' }
-							}
-						]
+				choices: [
+					{
+						message: {
+							content: [
+								{
+									type: 'tool_use',
+									id: 'call_123',
+									name: 'web_search',
+									input: { query: 'test query' }
+								}
+							]
+						}
 					}
-				}]
+				]
 			};
 
 			const result = parseToolCalls(response);
@@ -115,31 +130,35 @@ describe('Tool Helpers', () => {
 
 		it('should parse multiple tool calls', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [
-							{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} },
-							{ type: 'tool_use', id: 'call_2', name: 'tool2', input: {} },
-							{ type: 'text', text: 'some text' }, // Should be ignored
-							{ type: 'tool_use', id: 'call_3', name: 'tool3', input: {} }
-						]
+				choices: [
+					{
+						message: {
+							content: [
+								{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} },
+								{ type: 'tool_use', id: 'call_2', name: 'tool2', input: {} },
+								{ type: 'text', text: 'some text' }, // Should be ignored
+								{ type: 'tool_use', id: 'call_3', name: 'tool3', input: {} }
+							]
+						}
 					}
-				}]
+				]
 			};
 
 			const result = parseToolCalls(response);
 
 			expect(result).toHaveLength(3);
-			expect(result.map(r => r.name)).toEqual(['tool1', 'tool2', 'tool3']);
+			expect(result.map((r) => r.name)).toEqual(['tool1', 'tool2', 'tool3']);
 		});
 
 		it('should return empty array for no tool calls', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [{ type: 'text', text: 'No tools used' }]
+				choices: [
+					{
+						message: {
+							content: [{ type: 'text', text: 'No tools used' }]
+						}
 					}
-				}]
+				]
 			};
 
 			const result = parseToolCalls(response);
@@ -172,11 +191,16 @@ describe('Tool Helpers', () => {
 		});
 
 		it('should stringify object results', () => {
-			const result = createToolResult('call_456', { answer: 42, data: [1, 2, 3] });
+			const result = createToolResult('call_456', {
+				answer: 42,
+				data: [1, 2, 3]
+			});
 
 			expect(result.type).toBe('tool_result');
 			expect(result.tool_use_id).toBe('call_456');
-			expect(result.content).toBe(JSON.stringify({ answer: 42, data: [1, 2, 3] }));
+			expect(result.content).toBe(
+				JSON.stringify({ answer: 42, data: [1, 2, 3] })
+			);
 		});
 
 		it('should handle null result', () => {
@@ -189,11 +213,15 @@ describe('Tool Helpers', () => {
 	describe('hasToolCalls', () => {
 		it('should return true when tool calls exist', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} }]
+				choices: [
+					{
+						message: {
+							content: [
+								{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} }
+							]
+						}
 					}
-				}]
+				]
 			};
 
 			expect(hasToolCalls(response)).toBe(true);
@@ -201,11 +229,13 @@ describe('Tool Helpers', () => {
 
 		it('should return false when no tool calls', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [{ type: 'text', text: 'Hello' }]
+				choices: [
+					{
+						message: {
+							content: [{ type: 'text', text: 'Hello' }]
+						}
 					}
-				}]
+				]
 			};
 
 			expect(hasToolCalls(response)).toBe(false);
@@ -223,11 +253,15 @@ describe('Tool Helpers', () => {
 
 		it('should return tool_calls when tool calls present', () => {
 			const response = {
-				choices: [{
-					message: {
-						content: [{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} }]
+				choices: [
+					{
+						message: {
+							content: [
+								{ type: 'tool_use', id: 'call_1', name: 'tool1', input: {} }
+							]
+						}
 					}
-				}]
+				]
 			};
 
 			expect(getFinishReason(response)).toBe('tool_calls');
@@ -246,4 +280,3 @@ describe('Tool Helpers', () => {
 		});
 	});
 });
-

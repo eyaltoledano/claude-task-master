@@ -28,11 +28,11 @@
 			"@tm/ai-sdk-provider-grok-cli/*": [
 				"./packages/ai-sdk-provider-grok-cli/src/*"
 			],
-		"@tm/ai-sdk-provider-snowflake": [
-			"./packages/ai-sdk-provider-snowflake/src/index.ts"
-		],
-		"@tm/ai-sdk-provider-snowflake/*": [
-			"./packages/ai-sdk-provider-snowflake/src/*"
+			"@tm/ai-sdk-provider-snowflake": [
+				"./packages/ai-sdk-provider-snowflake/src/index.ts"
+			],
+			"@tm/ai-sdk-provider-snowflake/*": [
+				"./packages/ai-sdk-provider-snowflake/src/*"
 			],
 			"@tm/bridge": ["./packages/tm-bridge/src/index.ts"],
 			"@tm/bridge/*": ["./packages/tm-bridge/src/*"]

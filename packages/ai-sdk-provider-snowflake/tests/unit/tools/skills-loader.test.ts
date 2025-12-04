@@ -1,11 +1,20 @@
 /**
  * Unit Tests for Skills Loader Tool
- * 
+ *
  * Tests both unit functionality and integration with the filesystem
  * to ensure skills can be found in .claude/skills and .cortex/skills directories.
  */
 
-import { describe, it, expect, jest, beforeEach, afterEach, beforeAll, afterAll } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach,
+	beforeAll,
+	afterAll
+} from '@jest/globals';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -29,7 +38,11 @@ describe('Skills Loader Tool', () => {
 	describe('listSkillsInputSchema', () => {
 		it('should use default directories when not provided', () => {
 			const result = listSkillsInputSchema.parse({});
-			expect(result.directories).toEqual(['.claude/skills', '.cortex/skills', 'assets/cortex-skills']);
+			expect(result.directories).toEqual([
+				'.claude/skills',
+				'.cortex/skills',
+				'assets/cortex-skills'
+			]);
 			expect(result.skillName).toBeUndefined();
 		});
 
@@ -130,7 +143,7 @@ description: ""
 
 /**
  * Integration Tests for Skills Loader
- * 
+ *
  * These tests create actual skill directories in both .claude/skills and .cortex/skills
  * to verify the loader can find and parse skills from both locations.
  */
@@ -179,27 +192,53 @@ This skill includes scripts for common automation tasks.
 	beforeAll(async () => {
 		// Create a temporary directory for test fixtures
 		testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skills-test-'));
-		
+
 		// Create .claude/skills directory with a skill
-		const claudeSkillsDir = path.join(testDir, '.claude', 'skills', 'code-review');
+		const claudeSkillsDir = path.join(
+			testDir,
+			'.claude',
+			'skills',
+			'code-review'
+		);
 		await fs.mkdir(claudeSkillsDir, { recursive: true });
-		await fs.writeFile(path.join(claudeSkillsDir, 'SKILL.md'), claudeSkillContent);
-		await fs.mkdir(path.join(claudeSkillsDir, 'references'), { recursive: true });
+		await fs.writeFile(
+			path.join(claudeSkillsDir, 'SKILL.md'),
+			claudeSkillContent
+		);
+		await fs.mkdir(path.join(claudeSkillsDir, 'references'), {
+			recursive: true
+		});
 		await fs.writeFile(
 			path.join(claudeSkillsDir, 'references', 'style-guide.md'),
 			'# Style Guide\n\nCode style guidelines...'
 		);
 
 		// Create .cortex/skills directory with skills
-		const cortexSkillsDir1 = path.join(testDir, '.cortex', 'skills', 'data-analysis');
+		const cortexSkillsDir1 = path.join(
+			testDir,
+			'.cortex',
+			'skills',
+			'data-analysis'
+		);
 		await fs.mkdir(cortexSkillsDir1, { recursive: true });
-		await fs.writeFile(path.join(cortexSkillsDir1, 'SKILL.md'), cortexSkillContent);
+		await fs.writeFile(
+			path.join(cortexSkillsDir1, 'SKILL.md'),
+			cortexSkillContent
+		);
 
 		// Create another cortex skill with scripts and assets
-		const cortexSkillsDir2 = path.join(testDir, '.cortex', 'skills', 'automation');
+		const cortexSkillsDir2 = path.join(
+			testDir,
+			'.cortex',
+			'skills',
+			'automation'
+		);
 		await fs.mkdir(cortexSkillsDir2, { recursive: true });
-		await fs.writeFile(path.join(cortexSkillsDir2, 'SKILL.md'), cortexSkillWithScripts);
-		
+		await fs.writeFile(
+			path.join(cortexSkillsDir2, 'SKILL.md'),
+			cortexSkillWithScripts
+		);
+
 		// Add scripts subdirectory
 		await fs.mkdir(path.join(cortexSkillsDir2, 'scripts'), { recursive: true });
 		await fs.writeFile(
@@ -243,10 +282,14 @@ This skill includes scripts for common automation tasks.
 
 			expect(result.totalSkills).toBe(1);
 			expect(result.searchedDirectories).toEqual(['.claude/skills']);
-			
-			const claudeSkill = result.skills.find(s => s.name === 'claude-code-review');
+
+			const claudeSkill = result.skills.find(
+				(s) => s.name === 'claude-code-review'
+			);
 			expect(claudeSkill).toBeDefined();
-			expect(claudeSkill?.description).toBe('A skill for reviewing code quality and best practices');
+			expect(claudeSkill?.description).toBe(
+				'A skill for reviewing code quality and best practices'
+			);
 			expect(claudeSkill?.path).toContain('.claude/skills/code-review');
 		});
 
@@ -255,17 +298,23 @@ This skill includes scripts for common automation tasks.
 				directories: ['.claude/skills']
 			});
 
-			const claudeSkill = result.skills.find(s => s.name === 'claude-code-review');
+			const claudeSkill = result.skills.find(
+				(s) => s.name === 'claude-code-review'
+			);
 			expect(claudeSkill?.files).toBeDefined();
 			expect(claudeSkill?.files.length).toBeGreaterThanOrEqual(2);
-			
+
 			// Should include SKILL.md
-			const skillMd = claudeSkill?.files.find(f => f.path.endsWith('SKILL.md'));
+			const skillMd = claudeSkill?.files.find((f) =>
+				f.path.endsWith('SKILL.md')
+			);
 			expect(skillMd).toBeDefined();
 			expect(skillMd?.type).toBe('markdown');
-			
+
 			// Should include reference file
-			const refFile = claudeSkill?.files.find(f => f.path.includes('style-guide.md'));
+			const refFile = claudeSkill?.files.find((f) =>
+				f.path.includes('style-guide.md')
+			);
 			expect(refFile).toBeDefined();
 		});
 	});
@@ -278,14 +327,22 @@ This skill includes scripts for common automation tasks.
 
 			expect(result.totalSkills).toBe(2);
 			expect(result.searchedDirectories).toEqual(['.cortex/skills']);
-			
-			const dataSkill = result.skills.find(s => s.name === 'cortex-data-analysis');
+
+			const dataSkill = result.skills.find(
+				(s) => s.name === 'cortex-data-analysis'
+			);
 			expect(dataSkill).toBeDefined();
-			expect(dataSkill?.description).toBe('A skill for analyzing data and generating insights');
-			
-			const autoSkill = result.skills.find(s => s.name === 'cortex-automation');
+			expect(dataSkill?.description).toBe(
+				'A skill for analyzing data and generating insights'
+			);
+
+			const autoSkill = result.skills.find(
+				(s) => s.name === 'cortex-automation'
+			);
 			expect(autoSkill).toBeDefined();
-			expect(autoSkill?.description).toBe('A skill with executable scripts for automation tasks');
+			expect(autoSkill?.description).toBe(
+				'A skill with executable scripts for automation tasks'
+			);
 		});
 
 		it('should include scripts and assets in file inventory', async () => {
@@ -293,21 +350,29 @@ This skill includes scripts for common automation tasks.
 				directories: ['.cortex/skills']
 			});
 
-			const autoSkill = result.skills.find(s => s.name === 'cortex-automation');
+			const autoSkill = result.skills.find(
+				(s) => s.name === 'cortex-automation'
+			);
 			expect(autoSkill?.files).toBeDefined();
-			
+
 			// Should include shell script (.sh maps to 'shell')
-			const shellScript = autoSkill?.files.find(f => f.path.includes('deploy.sh'));
+			const shellScript = autoSkill?.files.find((f) =>
+				f.path.includes('deploy.sh')
+			);
 			expect(shellScript).toBeDefined();
 			expect(shellScript?.type).toBe('shell');
-			
+
 			// Should include python script
-			const pythonScript = autoSkill?.files.find(f => f.path.includes('cleanup.py'));
+			const pythonScript = autoSkill?.files.find((f) =>
+				f.path.includes('cleanup.py')
+			);
 			expect(pythonScript).toBeDefined();
 			expect(pythonScript?.type).toBe('python');
-			
+
 			// Should include JSON asset
-			const jsonAsset = autoSkill?.files.find(f => f.path.includes('template.json'));
+			const jsonAsset = autoSkill?.files.find((f) =>
+				f.path.includes('template.json')
+			);
 			expect(jsonAsset).toBeDefined();
 			expect(jsonAsset?.type).toBe('json');
 		});
@@ -320,14 +385,23 @@ This skill includes scripts for common automation tasks.
 			});
 
 			expect(result.totalSkills).toBe(3);
-			expect(result.searchedDirectories).toEqual(['.claude/skills', '.cortex/skills']);
-			
+			expect(result.searchedDirectories).toEqual([
+				'.claude/skills',
+				'.cortex/skills'
+			]);
+
 			// Should find claude skill
-			expect(result.skills.some(s => s.name === 'claude-code-review')).toBe(true);
-			
+			expect(result.skills.some((s) => s.name === 'claude-code-review')).toBe(
+				true
+			);
+
 			// Should find cortex skills
-			expect(result.skills.some(s => s.name === 'cortex-data-analysis')).toBe(true);
-			expect(result.skills.some(s => s.name === 'cortex-automation')).toBe(true);
+			expect(result.skills.some((s) => s.name === 'cortex-data-analysis')).toBe(
+				true
+			);
+			expect(result.skills.some((s) => s.name === 'cortex-automation')).toBe(
+				true
+			);
 		});
 
 		it('should find skills using default directories', async () => {
@@ -356,7 +430,9 @@ This skill includes scripts for common automation tasks.
 			});
 
 			expect(result.totalSkills).toBe(2);
-			expect(result.skills.every(s => s.name.toLowerCase().includes('cortex'))).toBe(true);
+			expect(
+				result.skills.every((s) => s.name.toLowerCase().includes('cortex'))
+			).toBe(true);
 		});
 
 		it('should return empty results for non-existent skill name', async () => {
@@ -399,13 +475,13 @@ This skill includes scripts for common automation tasks.
 				expect(skill.name).toBeDefined();
 				expect(typeof skill.name).toBe('string');
 				expect(skill.name.length).toBeGreaterThan(0);
-				
+
 				expect(skill.description).toBeDefined();
 				expect(typeof skill.description).toBe('string');
-				
+
 				expect(skill.path).toBeDefined();
 				expect(typeof skill.path).toBe('string');
-				
+
 				expect(skill.files).toBeDefined();
 				expect(Array.isArray(skill.files)).toBe(true);
 			}
@@ -419,7 +495,7 @@ This skill includes scripts for common automation tasks.
 
 			const skill = result.skills[0];
 			expect(skill).toBeDefined();
-			
+
 			// Each file should have the required metadata (FileInfo: path, size, type)
 			for (const file of skill.files) {
 				expect(file.path).toBeDefined();
@@ -428,7 +504,7 @@ This skill includes scripts for common automation tasks.
 				expect(typeof file.type).toBe('string');
 				expect(file.size).toBeDefined();
 				expect(typeof file.size).toBe('number');
-				
+
 				// Path should be relative and usable with file_read
 				// Note: In tests, paths may start with temp dir path
 				expect(file.path.length).toBeGreaterThan(0);
@@ -436,4 +512,3 @@ This skill includes scripts for common automation tasks.
 		});
 	});
 });
-

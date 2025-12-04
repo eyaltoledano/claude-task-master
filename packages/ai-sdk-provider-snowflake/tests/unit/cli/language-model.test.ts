@@ -1,4 +1,11 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+	describe,
+	it,
+	expect,
+	jest,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import { CliLanguageModel } from '../../../src/cli/language-model.js';
 import type { LanguageModelV2CallOptions } from '@ai-sdk/provider';
 import { spawn, type ChildProcess } from 'child_process';
@@ -10,7 +17,7 @@ const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
 describe('CliLanguageModel', () => {
 	let model: CliLanguageModel;
-	
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		model = new CliLanguageModel({
@@ -107,13 +114,11 @@ describe('CliLanguageModel', () => {
 	describe('CLI Argument Building', () => {
 		it('should build basic arguments', async () => {
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
 			const args = await (model as any).buildCliArguments(options);
-			
+
 			expect(args).toContain('--output-format');
 			expect(args).toContain('stream-json');
 			expect(args).toContain('--model');
@@ -121,21 +126,19 @@ describe('CliLanguageModel', () => {
 			expect(args).toContain('auto');
 			expect(args).toContain('--print');
 		});
-		
+
 		it('should use Claude model directly when specified', async () => {
 			const claudeModel = new CliLanguageModel({
 				id: 'claude-sonnet-4-5',
 				settings: {}
 			});
-			
+
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
 			const args = await (claudeModel as any).buildCliArguments(options);
-			
+
 			expect(args).toContain('--model');
 			expect(args).toContain('claude-sonnet-4-5');
 		});
@@ -147,13 +150,13 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
-			const args = await (modelWithConnection as any).buildCliArguments(options);
-			
+			const args = await (modelWithConnection as any).buildCliArguments(
+				options
+			);
+
 			expect(args).toContain('-c');
 			expect(args).toContain('my-connection');
 		});
@@ -165,13 +168,11 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
 			const args = await (modelWithFlag as any).buildCliArguments(options);
-			
+
 			expect(args).toContain('--dangerously-allow-all-tool-calls');
 		});
 
@@ -182,13 +183,11 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
 			const args = await (modelWithFlag as any).buildCliArguments(options);
-			
+
 			expect(args).toContain('--no-mcp');
 		});
 
@@ -199,13 +198,11 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Hello' }] }]
 			};
 
 			const args = await (modelWithFlag as any).buildCliArguments(options);
-			
+
 			expect(args).not.toContain('--no-mcp');
 		});
 	});
@@ -220,7 +217,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('Hello, world!');
 			expect(result.finishReason).toBe('stop');
 		});
@@ -238,7 +235,7 @@ describe('CliLanguageModel', () => {
 			].join('\n');
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('{"key": "value"}');
 		});
 
@@ -249,7 +246,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('{"key": "value"}');
 		});
 
@@ -260,7 +257,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('{"key": "value"}');
 		});
 
@@ -271,7 +268,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('{"key": "value"}');
 		});
 
@@ -288,7 +285,7 @@ describe('CliLanguageModel', () => {
 			].join('\n');
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.usage).toEqual({
 				promptTokens: 10,
 				completionTokens: 20
@@ -302,7 +299,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.finishReason).toBe('error');
 		});
 
@@ -317,7 +314,7 @@ describe('CliLanguageModel', () => {
 			].join('\n');
 
 			const result = (model as any).parseStreamJsonOutput(stdout);
-			
+
 			expect(result.text).toBe('Valid response');
 		});
 	});
@@ -395,13 +392,13 @@ describe('CliLanguageModel', () => {
 				expect(result).toBe('{"key": "value"}');
 			});
 
-		it('should extract first object from array responses', () => {
-			const text = '[{"id": 1}, {"id": 2}]';
-			const result = (model as any).extractJsonFromResponse(text);
-			// extractJsonFromResponse is designed to extract the first JSON object
-			// For arrays, it extracts the first element's object
-			expect(result).toBe('{"id": 1}');
-		});
+			it('should extract first object from array responses', () => {
+				const text = '[{"id": 1}, {"id": 2}]';
+				const result = (model as any).extractJsonFromResponse(text);
+				// extractJsonFromResponse is designed to extract the first JSON object
+				// For arrays, it extracts the first element's object
+				expect(result).toBe('{"id": 1}');
+			});
 		});
 	});
 
@@ -409,12 +406,12 @@ describe('CliLanguageModel', () => {
 		// NOTE: The CLI now uses JSON request body format (same as REST API)
 		// instead of building prompt instructions. The buildSchemaInstruction
 		// method has been removed in favor of the unified approach.
-		
+
 		it('should include response_format in JSON request for structured outputs', async () => {
 			// This is implicitly tested through buildCliArguments
 			// The JSON request body should include response_format with schema
 			// when responseFormat.type === 'json'
-			
+
 			// We test this indirectly by checking the buildCliArguments method
 			const args = await (model as any).buildCliArguments({
 				prompt: [{ role: 'user', content: [{ type: 'text', text: 'test' }] }],
@@ -429,7 +426,7 @@ describe('CliLanguageModel', () => {
 					}
 				}
 			});
-			
+
 			// The --print argument should contain a JSON string with response_format
 			const printArg = args[args.length - 1];
 			expect(printArg).toContain('response_format');
@@ -443,7 +440,7 @@ describe('CliLanguageModel', () => {
 					type: 'text'
 				}
 			});
-			
+
 			// The --print argument should NOT contain response_format
 			const printArg = args[args.length - 1];
 			expect(printArg).not.toContain('response_format');
@@ -488,9 +485,7 @@ describe('CliLanguageModel', () => {
 			}, 10);
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }]
 			};
 
 			await expect(model.doGenerate(options)).rejects.toThrow(
@@ -536,9 +531,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }]
 			};
 
 			const args = await (modelWithPlan as any).buildCliArguments(options);
@@ -552,9 +545,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }]
 			};
 
 			const args = await (modelWithSkills as any).buildCliArguments(options);
@@ -569,9 +560,7 @@ describe('CliLanguageModel', () => {
 			});
 
 			const options: LanguageModelV2CallOptions = {
-				prompt: [
-					{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
-				]
+				prompt: [{ role: 'user', content: [{ type: 'text', text: 'Test' }] }]
 			};
 
 			const args = await (modelWithPrefix as any).buildCliArguments(options);

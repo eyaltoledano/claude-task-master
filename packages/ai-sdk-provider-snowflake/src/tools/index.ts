@@ -1,13 +1,13 @@
 /**
  * Snowflake Cortex Built-in Tools
- * 
+ *
  * Provides Cortex Code CLI-like capabilities for the Native Cortex REST provider:
  * - Skills loading with progressive context
  * - Web research (no API key required)
  * - File operations (search, read, grep, tree)
  * - TaskMaster integration
  * - Optional MCP server bridge
- * 
+ *
  * All tools are designed to work without additional API keys.
  */
 
@@ -17,8 +17,18 @@ export * from './types.js';
 // Export individual tools
 export { listSkillsTool } from './skills-loader.js';
 export { webSearchTool, fetchUrlTool } from './web-research.js';
-export { projectTreeTool, fileSearchTool, fileReadTool, grepTool } from './file-operations.js';
-export { listTasksTool, getTaskTool, getNextTaskTool, getCurrentContextTool } from './taskmaster.js';
+export {
+	projectTreeTool,
+	fileSearchTool,
+	fileReadTool,
+	grepTool
+} from './file-operations.js';
+export {
+	listTasksTool,
+	getTaskTool,
+	getNextTaskTool,
+	getCurrentContextTool
+} from './taskmaster.js';
 
 // Export MCP bridge
 export {
@@ -34,12 +44,22 @@ export {
 // Import for convenience sets
 import { listSkillsTool } from './skills-loader.js';
 import { webSearchTool, fetchUrlTool } from './web-research.js';
-import { projectTreeTool, fileSearchTool, fileReadTool, grepTool } from './file-operations.js';
-import { listTasksTool, getTaskTool, getNextTaskTool, getCurrentContextTool } from './taskmaster.js';
+import {
+	projectTreeTool,
+	fileSearchTool,
+	fileReadTool,
+	grepTool
+} from './file-operations.js';
+import {
+	listTasksTool,
+	getTaskTool,
+	getNextTaskTool,
+	getCurrentContextTool
+} from './taskmaster.js';
 
 /**
  * Full research tool set - all built-in tools
- * 
+ *
  * Includes:
  * - listSkills: List available skills with metadata and file inventory
  * - webSearch: Search the web using DuckDuckGo
@@ -69,7 +89,7 @@ export const snowflakeResearchTools = {
 
 /**
  * Minimal tool set for simple research tasks
- * 
+ *
  * Includes only the most essential tools:
  * - webSearch: Search the web
  * - fetchUrl: Fetch and extract URL content
@@ -83,7 +103,7 @@ export const snowflakeMinimalTools = {
 
 /**
  * File-focused tool set for codebase exploration
- * 
+ *
  * Includes:
  * - projectTree: Generate project structure tree
  * - fileSearch: Search for files by pattern
@@ -99,7 +119,7 @@ export const snowflakeFileTools = {
 
 /**
  * TaskMaster-focused tool set
- * 
+ *
  * Includes:
  * - listTasks: List TaskMaster tasks
  * - getTask: Get detailed task information
@@ -115,7 +135,7 @@ export const snowflakeTaskTools = {
 
 /**
  * Web research tool set
- * 
+ *
  * Includes:
  * - webSearch: Search the web using DuckDuckGo
  * - fetchUrl: Fetch URL content and convert to markdown
@@ -131,13 +151,13 @@ export const snowflakeWebTools = {
 export default {
 	// Full tool set
 	research: snowflakeResearchTools,
-	
+
 	// Focused tool sets
 	minimal: snowflakeMinimalTools,
 	file: snowflakeFileTools,
 	task: snowflakeTaskTools,
 	web: snowflakeWebTools,
-	
+
 	// Individual tools
 	tools: {
 		listSkills: listSkillsTool,
@@ -153,6 +173,3 @@ export default {
 		getCurrentContext: getCurrentContextTool
 	}
 };
-
-
-

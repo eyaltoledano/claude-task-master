@@ -1,14 +1,14 @@
 /**
  * Token cache with support for persistent storage via Snowflake's credential manager
- * 
+ *
  * Uses the JsonCredentialManager from snowflake-sdk for persistent file-based caching
  * with fallback to in-memory caching if unavailable.
- * 
+ *
  * Cache locations (platform-specific):
  * - Windows: %LOCALAPPDATA%\Snowflake\Caches\credential_cache_v1.json
- * - macOS: ~/Library/Caches/Snowflake/credential_cache_v1.json  
+ * - macOS: ~/Library/Caches/Snowflake/credential_cache_v1.json
  * - Linux: ~/.cache/snowflake/credential_cache_v1.json
- * 
+ *
  * Uses the same key format as other Snowflake tools for compatibility.
  * See: https://github.com/snowflakedb/snowflake-connector-nodejs/blob/master/lib/authentication/authentication_util.js
  */
@@ -41,12 +41,21 @@ interface JsonCredentialManager {
  * Function to build cache keys in Snowflake-compatible format
  * Format: {HOST}:{USER}:{TOKEN_TYPE}
  */
-type BuildCredentialCacheKey = (host: string, user: string, tokenType: string) => string;
+type BuildCredentialCacheKey = (
+	host: string,
+	user: string,
+	tokenType: string
+) => string;
 
 /**
  * Try to import utilities from snowflake-sdk
  */
-let SnowflakeCredentialManager: (new (credentialCacheDir?: string, timeoutMs?: number) => JsonCredentialManager) | null = null;
+let SnowflakeCredentialManager:
+	| (new (
+			credentialCacheDir?: string,
+			timeoutMs?: number
+	  ) => JsonCredentialManager)
+	| null = null;
 let buildCredentialCacheKey: BuildCredentialCacheKey | null = null;
 
 try {
@@ -84,7 +93,9 @@ export class TokenCache {
 
 		if (enablePersistence && SnowflakeCredentialManager) {
 			try {
-				this.credentialManager = new SnowflakeCredentialManager(credentialCacheDir);
+				this.credentialManager = new SnowflakeCredentialManager(
+					credentialCacheDir
+				);
 			} catch {
 				// Failed to initialize credential manager, use in-memory only
 				this.credentialManager = null;
@@ -96,7 +107,7 @@ export class TokenCache {
 	 * Generate a cache key for a token
 	 * Uses Snowflake SDK's key format if available for compatibility with other tools
 	 * Format: {ACCOUNT}:{USER}:{TOKEN_TYPE}
-	 * 
+	 *
 	 * @param account Snowflake account identifier
 	 * @param user Username
 	 */
@@ -104,7 +115,9 @@ export class TokenCache {
 		if (buildCredentialCacheKey) {
 			// Use Snowflake SDK's key format for compatibility
 			// This creates keys like: {MYACCOUNT.SNOWFLAKECOMPUTING.COM}:{MYUSER}:{TM_AI_SDK_ACCESS_TOKEN}
-			const host = account.includes('.') ? account : `${account}.snowflakecomputing.com`;
+			const host = account.includes('.')
+				? account
+				: `${account}.snowflakecomputing.com`;
 			return buildCredentialCacheKey(host, user, TOKEN_TYPE);
 		}
 		// Fallback to simple format if SDK utility not available
@@ -156,7 +169,7 @@ export class TokenCache {
 	 */
 	async get(account: string, user: string): Promise<CachedToken | undefined> {
 		const key = this.getCacheKey(account, user);
-		
+
 		// First check in-memory cache
 		const memCached = this.inMemoryCache.get(key);
 		if (memCached && !this.isExpired(memCached)) {
@@ -199,7 +212,7 @@ export class TokenCache {
 	 */
 	async set(account: string, user: string, token: CachedToken): Promise<void> {
 		const key = this.getCacheKey(account, user);
-		
+
 		// Store in memory
 		this.inMemoryCache.set(key, token);
 
@@ -220,7 +233,7 @@ export class TokenCache {
 	 */
 	async delete(account: string, user: string): Promise<void> {
 		const key = this.getCacheKey(account, user);
-		
+
 		// Remove from memory
 		this.inMemoryCache.delete(key);
 
@@ -262,7 +275,7 @@ export class TokenCache {
 	 */
 	getSync(key: string): CachedToken | undefined {
 		const cached = this.inMemoryCache.get(key);
-		
+
 		if (!cached) {
 			return undefined;
 		}

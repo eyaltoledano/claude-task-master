@@ -1,17 +1,17 @@
 /**
  * Integration tests for prompt caching feature
- * 
+ *
  * NOTE: Prompt caching is REST API ONLY. CLI mode does not support prompt caching.
- * 
+ *
  * Prompt Caching Behavior:
- * 
+ *
  * OpenAI Models:
  * - Prompt caching is implicit; no need to modify requests to opt-in.
  * - Prompts with 1024 tokens or more will utilize caching, with cache hits occurring in 128-token increments.
  * - Messages, images, tool use and structured outputs can be cached.
  * - Cache writes: no cost.
  * - Cache reads: charged at 0.25x or 0.50x the price of the original input pricing.
- * 
+ *
  * Anthropic/Claude Models:
  * - Enable prompt caching by providing cache points using cache_control: { type: 'ephemeral' }
  * - Prompts with 1024 tokens or more can utilize caching.
@@ -20,7 +20,7 @@
  * - Only cache control type 'ephemeral' is supported.
  * - Cache writes: charged at 1.25x the price of the original input pricing.
  * - Cache reads: charged at 0.1x the price of the original input pricing.
- * 
+ *
  * See: https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference
  */
 
@@ -62,7 +62,9 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 	beforeAll(async () => {
 		clearAuthCache();
 		logTestEnvironment('Prompt Caching Tests');
-		console.log(`Models supporting prompt caching: ${PROMPT_CACHING_MODEL_IDS.length}`);
+		console.log(
+			`Models supporting prompt caching: ${PROMPT_CACHING_MODEL_IDS.length}`
+		);
 	}, 15000);
 
 	afterAll(() => {
@@ -70,7 +72,9 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 	});
 
 	describe('Claude Models - Prompt Caching', () => {
-		const claudeModels = PROMPT_CACHING_MODEL_IDS.filter(id => id.startsWith('claude'));
+		const claudeModels = PROMPT_CACHING_MODEL_IDS.filter((id) =>
+			id.startsWith('claude')
+		);
 
 		it.each(claudeModels)(
 			'%s should show reduced tokens with caching enabled',
@@ -79,7 +83,7 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 					executionMode: 'rest',
 					enablePromptCaching: false
 				});
-				
+
 				const providerWithCaching = createSnowflake({
 					executionMode: 'rest',
 					enablePromptCaching: true
@@ -95,29 +99,35 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 					const resultWithoutCaching = await generateText({
 						model: modelWithoutCaching,
 						system: LONG_SYSTEM_PROMPT,
-						prompt: userPrompt,
+						prompt: userPrompt
 					});
 
 					// Small delay to ensure caching takes effect
-					await new Promise(resolve => setTimeout(resolve, 1000));
+					await new Promise((resolve) => setTimeout(resolve, 1000));
 
 					// Second request WITH caching (same system prompt)
 					const resultWithCaching = await generateText({
 						model: modelWithCaching,
 						system: LONG_SYSTEM_PROMPT,
-						prompt: userPrompt,
+						prompt: userPrompt
 					});
 
 					// Third request WITH caching (same system prompt) to verify cache hit
 					const resultWithCaching2 = await generateText({
 						model: modelWithCaching,
 						system: LONG_SYSTEM_PROMPT,
-						prompt: userPrompt,
+						prompt: userPrompt
 					});
 
-					console.log(`[${modelId}] Without caching - tokens: ${JSON.stringify(resultWithoutCaching.usage)}`);
-					console.log(`[${modelId}] With caching (1) - tokens: ${JSON.stringify(resultWithCaching.usage)}`);
-					console.log(`[${modelId}] With caching (2) - tokens: ${JSON.stringify(resultWithCaching2.usage)}`);
+					console.log(
+						`[${modelId}] Without caching - tokens: ${JSON.stringify(resultWithoutCaching.usage)}`
+					);
+					console.log(
+						`[${modelId}] With caching (1) - tokens: ${JSON.stringify(resultWithCaching.usage)}`
+					);
+					console.log(
+						`[${modelId}] With caching (2) - tokens: ${JSON.stringify(resultWithCaching2.usage)}`
+					);
 
 					// Both requests should complete successfully
 					expect(resultWithoutCaching.text).toBeTruthy();
@@ -127,11 +137,18 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 					// Note: We can't strictly assert token reduction as it depends on
 					// server-side caching behavior. The test verifies that the feature
 					// doesn't break functionality.
-					console.log(`[PASS] ${modelId}: Prompt caching requests completed successfully`);
+					console.log(
+						`[PASS] ${modelId}: Prompt caching requests completed successfully`
+					);
 				} catch (error) {
 					const err = error as Error;
-					if (err.message.includes('500') || err.message.includes('unavailable')) {
-						console.log(`[INFO] ${modelId}: Server unavailable - ${err.message}`);
+					if (
+						err.message.includes('500') ||
+						err.message.includes('unavailable')
+					) {
+						console.log(
+							`[INFO] ${modelId}: Server unavailable - ${err.message}`
+						);
 						return;
 					}
 					throw error;
@@ -142,7 +159,9 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 	});
 
 	describe('OpenAI Models - Prompt Caching', () => {
-		const openaiModels = PROMPT_CACHING_MODEL_IDS.filter(id => id.startsWith('openai'));
+		const openaiModels = PROMPT_CACHING_MODEL_IDS.filter((id) =>
+			id.startsWith('openai')
+		);
 
 		it.each(openaiModels)(
 			'%s should work with caching enabled',
@@ -158,15 +177,22 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 					const result = await generateText({
 						model,
 						system: LONG_SYSTEM_PROMPT,
-						prompt: 'What is 2 + 2?',
+						prompt: 'What is 2 + 2?'
 					});
 
 					expect(result.text).toBeTruthy();
-					console.log(`[PASS] ${modelId}: Prompt caching request completed (tokens: ${JSON.stringify(result.usage)})`);
+					console.log(
+						`[PASS] ${modelId}: Prompt caching request completed (tokens: ${JSON.stringify(result.usage)})`
+					);
 				} catch (error) {
 					const err = error as Error;
-					if (err.message.includes('500') || err.message.includes('unavailable')) {
-						console.log(`[INFO] ${modelId}: Server unavailable - ${err.message}`);
+					if (
+						err.message.includes('500') ||
+						err.message.includes('unavailable')
+					) {
+						console.log(
+							`[INFO] ${modelId}: Server unavailable - ${err.message}`
+						);
 						return;
 					}
 					throw error;
@@ -176,4 +202,3 @@ skipIfNoCredentials('Prompt Caching Integration Tests', () => {
 		);
 	});
 });
-

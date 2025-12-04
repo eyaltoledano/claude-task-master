@@ -237,7 +237,8 @@ export function parseErrorFromStderr(stderr: string): {
 	) {
 		return {
 			type: 'authentication',
-			message: 'Authentication failed. Check your Snowflake connection credentials.'
+			message:
+				'Authentication failed. Check your Snowflake connection credentials.'
 		};
 	}
 
@@ -250,7 +251,8 @@ export function parseErrorFromStderr(stderr: string): {
 	) {
 		return {
 			type: 'connection',
-			message: 'Could not connect to Snowflake. Check your network and connection settings.'
+			message:
+				'Could not connect to Snowflake. Check your network and connection settings.'
 		};
 	}
 
@@ -271,4 +273,3 @@ export function parseErrorFromStderr(stderr: string): {
 		message: stderr.trim()
 	};
 }
-

@@ -8,4 +8,3 @@ export {
 	getSnowflakeBaseURL,
 	authenticate
 } from './fetch-wrapper.js';
-

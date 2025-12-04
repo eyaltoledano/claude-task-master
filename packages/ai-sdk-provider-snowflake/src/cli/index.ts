@@ -13,9 +13,8 @@ export { detectAvailableFeatures } from './feature-detector.js';
 export type { CortexCodeFeatures } from './feature-detector.js';
 
 // Validation utilities
-export { 
-	getCortexCliVersion, 
-	validateCortexCli 
+export {
+	getCortexCliVersion,
+	validateCortexCli
 } from './validation.js';
 export type { ValidationResult } from './validation.js';
-

@@ -228,7 +228,9 @@ describe('SnowflakeAuth', () => {
 			mockFs.existsSync.mockReturnValue(false);
 			process.env.SNOWFLAKE_ACCOUNT = 'test-account';
 
-			const result = await resolveConnectionConfig({ apiKey: 'explicit-api-key' });
+			const result = await resolveConnectionConfig({
+				apiKey: 'explicit-api-key'
+			});
 
 			expect(result?.token).toBe('explicit-api-key');
 		});
@@ -250,11 +252,15 @@ describe('SnowflakeAuth', () => {
 		});
 
 		it('should generate a valid JWT token', () => {
-			const token = generateJwtToken(testPrivateKey, 'test-account', 'test-user');
+			const token = generateJwtToken(
+				testPrivateKey,
+				'test-account',
+				'test-user'
+			);
 
 			expect(token).toBeDefined();
 			expect(typeof token).toBe('string');
-			
+
 			// JWT should have 3 parts separated by dots
 			const parts = token.split('.');
 			expect(parts.length).toBe(3);
@@ -262,7 +268,11 @@ describe('SnowflakeAuth', () => {
 
 		it('should include correct issuer and subject in JWT', () => {
 			const jwt = require('jsonwebtoken');
-			const token = generateJwtToken(testPrivateKey, 'test-account', 'test-user');
+			const token = generateJwtToken(
+				testPrivateKey,
+				'test-account',
+				'test-user'
+			);
 
 			// Decode without verification to check claims
 			const decoded = jwt.decode(token) as { iss: string; sub: string };
@@ -275,9 +285,13 @@ describe('SnowflakeAuth', () => {
 		it('should set correct expiration time', () => {
 			const jwt = require('jsonwebtoken');
 			const beforeTime = Math.floor(Date.now() / 1000);
-			
-			const token = generateJwtToken(testPrivateKey, 'test-account', 'test-user');
-			
+
+			const token = generateJwtToken(
+				testPrivateKey,
+				'test-account',
+				'test-user'
+			);
+
 			const afterTime = Math.floor(Date.now() / 1000);
 			const decoded = jwt.decode(token) as { iat: number; exp: number };
 
@@ -343,7 +357,7 @@ describe('SnowflakeAuth', () => {
 				}
 			};
 
-			mockFs.existsSync.mockImplementation((p) => 
+			mockFs.existsSync.mockImplementation((p) =>
 				(p as string).endsWith('connections.toml')
 			);
 			mockFs.readFileSync.mockReturnValue('toml content');
@@ -352,7 +366,9 @@ describe('SnowflakeAuth', () => {
 			const result = await authenticate();
 
 			expect(result.accessToken).toBe('toml-token');
-			expect(result.baseURL).toBe('https://test-account.snowflakecomputing.com');
+			expect(result.baseURL).toBe(
+				'https://test-account.snowflakecomputing.com'
+			);
 		});
 
 		it('should throw when key pair auth is configured but username is missing', async () => {
@@ -386,4 +402,3 @@ describe('SnowflakeAuth', () => {
 		});
 	});
 });
-

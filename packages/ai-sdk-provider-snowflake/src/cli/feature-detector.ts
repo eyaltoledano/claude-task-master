@@ -1,6 +1,6 @@
 /**
  * Cortex Code CLI feature detection utilities
- * 
+ *
  * Minimal feature detection for integration testing.
  */
 
@@ -29,7 +29,7 @@ let _detectedFeatures: CortexCodeFeatures | null = null;
 /**
  * Detect which advanced features are available in the installed CLI
  * Results are cached after first detection.
- * 
+ *
  * @returns Available features with boolean flags
  */
 export function detectAvailableFeatures(): CortexCodeFeatures {
@@ -98,4 +98,3 @@ export function detectAvailableFeatures(): CortexCodeFeatures {
 		};
 	}
 }
-

@@ -24,7 +24,11 @@ import {
 	createTimeoutError,
 	parseErrorFromStderr
 } from './errors.js';
-import { removeUnsupportedFeatures, convertPromptToMessages, isClaudeModel } from '../schema/index.js';
+import {
+	removeUnsupportedFeatures,
+	convertPromptToMessages,
+	isClaudeModel
+} from '../schema/index.js';
 import type { CortexMessage } from '../schema/index.js';
 import type { SnowflakeProviderSettings, SnowflakeModelId } from '../types.js';
 
@@ -238,19 +242,19 @@ export class CliLanguageModel implements LanguageModelV2 {
 		// Remove ANSI escape codes (colors, cursor movement, etc.)
 		// Also removes OSC (Operating System Command) sequences like ]0;title
 		return str
-			.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')  // ANSI CSI sequences
-			.replace(/\x1b\][^\x07]*\x07/g, '')      // OSC sequences ending with BEL
+			.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '') // ANSI CSI sequences
+			.replace(/\x1b\][^\x07]*\x07/g, '') // OSC sequences ending with BEL
 			.replace(/\x1b\][^\x1b]*(?:\x1b\\)?/g, '') // OSC sequences ending with ST
-			.replace(/\]0;[^\n\x07]*/g, '');         // Bare OSC title sequences
+			.replace(/\]0;[^\n\x07]*/g, ''); // Bare OSC title sequences
 	}
 
 	/**
 	 * Extract the first complete JSON object from text
 	 * Handles nested braces and string escaping properly
-	 * 
+	 *
 	 * Ported from the original ai-sdk-provider-cortex-code package
 	 * which had more robust JSON extraction logic.
-	 * 
+	 *
 	 * @param text - Text potentially containing JSON
 	 * @returns Extracted JSON string or null if not found
 	 */
@@ -301,10 +305,10 @@ export class CliLanguageModel implements LanguageModelV2 {
 	/**
 	 * Parse JSON with fallback for JavaScript object syntax
 	 * Attempts to fix common issues like unquoted property names
-	 * 
+	 *
 	 * Ported from the original ai-sdk-provider-cortex-code package
 	 * which handled JavaScript-style object syntax like {name: "value"}
-	 * 
+	 *
 	 * @param jsonText - Text to parse as JSON
 	 * @returns Parsed object
 	 * @throws Error if parsing fails
@@ -322,8 +326,8 @@ export class CliLanguageModel implements LanguageModelV2 {
 			} catch {
 				throw new Error(
 					`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : String(parseError)}.\n` +
-					`Tried to fix JavaScript object syntax but still failed.\n` +
-					`Text (first 300 chars): ${jsonText ? jsonText.substring(0, 300) : 'null'}`
+						`Tried to fix JavaScript object syntax but still failed.\n` +
+						`Text (first 300 chars): ${jsonText ? jsonText.substring(0, 300) : 'null'}`
 				);
 			}
 		}
@@ -332,9 +336,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 	/**
 	 * Extract and parse JSON from model response text
 	 * Handles various formats including markdown code blocks and JavaScript syntax
-	 * 
+	 *
 	 * Ported from the original ai-sdk-provider-cortex-code package
-	 * 
+	 *
 	 * @param responseText - Raw response text from the model
 	 * @returns Extracted JSON string (not parsed - caller handles that)
 	 */
@@ -346,7 +350,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 		// Strategy 2: Try markdown code blocks
 		if (!jsonText) {
-			const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+			const codeBlockMatch = trimmed.match(
+				/```(?:json)?\s*\n?([\s\S]*?)\n?```/
+			);
 			if (codeBlockMatch) {
 				jsonText = this.extractFirstJsonObject(codeBlockMatch[1]);
 			}
@@ -363,9 +369,18 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 				for (let i = arrayStart; i < trimmed.length; i++) {
 					const char = trimmed[i];
-					if (escapeNext) { escapeNext = false; continue; }
-					if (char === '\\') { escapeNext = true; continue; }
-					if (char === '"') { inString = !inString; continue; }
+					if (escapeNext) {
+						escapeNext = false;
+						continue;
+					}
+					if (char === '\\') {
+						escapeNext = true;
+						continue;
+					}
+					if (char === '"') {
+						inString = !inString;
+						continue;
+					}
 					if (inString) continue;
 					if (char === '[') bracketCount++;
 					if (char === ']') {
@@ -385,7 +400,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 	/**
 	 * Parse stream-json output from Cortex Code
-	 * 
+	 *
 	 * Priority:
 	 * 1. "result" type messages - contains the final, clean response
 	 * 2. "assistant" type messages with text content - fallback for intermediate responses
@@ -400,22 +415,23 @@ export class CliLanguageModel implements LanguageModelV2 {
 	} {
 		let resultText = ''; // Text from "result" type (preferred)
 		let assistantText = ''; // Text from "assistant" type (fallback)
-		let usage: { promptTokens: number; completionTokens: number } | undefined = undefined;
+		let usage: { promptTokens: number; completionTokens: number } | undefined =
+			undefined;
 		let finishReason: LanguageModelV2FinishReason = 'stop';
 
 		// Strip terminal escape codes before parsing
 		const cleanedOutput = this.stripEscapeCodes(stdout);
-		
+
 		// Parse newline-separated JSON from Cortex Code CLI
 		const lines = cleanedOutput.trim().split('\n');
 
 		for (const line of lines) {
 			if (!line.trim()) continue;
-			
+
 			// Find the start of JSON object in the line
 			const jsonStart = line.indexOf('{');
 			if (jsonStart === -1) continue;
-			
+
 			const jsonLine = line.substring(jsonStart);
 
 			try {
@@ -460,14 +476,17 @@ export class CliLanguageModel implements LanguageModelV2 {
 			} catch {
 				// Skip malformed JSON lines - only warn if there was actual JSON-like content
 				if (jsonLine.includes('{')) {
-					console.warn('[Cortex Code] Failed to parse JSON:', jsonLine.substring(0, 100));
+					console.warn(
+						'[Cortex Code] Failed to parse JSON:',
+						jsonLine.substring(0, 100)
+					);
 				}
 			}
 		}
 
 		// Prefer result text over assistant text
 		let text = resultText || assistantText;
-		
+
 		// Extract JSON from response (handles markdown fences, nested braces, etc.)
 		text = this.extractJsonFromResponse(text);
 
@@ -476,7 +495,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 	/**
 	 * Convert AI SDK prompt to messages array (same format as REST API)
-	 * 
+	 *
 	 * Uses the shared convertPromptToMessages function from schema/transformer.ts.
 	 * CLI doesn't enable caching format by default since not all Claude models support it.
 	 */
@@ -487,7 +506,6 @@ export class CliLanguageModel implements LanguageModelV2 {
 			{ enableCaching: false }
 		);
 	}
-
 
 	/**
 	 * Build CLI arguments for doGenerate
@@ -502,18 +520,22 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 		// Add model - strip cortex/ prefix if present
 		const modelId = this.modelId.replace(/^cortex\//, '');
-		
+
 		// Cortex Code CLI only supports Claude/Anthropic models directly
 		// For non-Claude models (OpenAI, etc.), use "auto" and let CLI decide
 		const isClaude = isClaudeModel(modelId);
 		const cliModelId = isClaude ? modelId : 'auto';
-		
+
 		args.push('--model', cliModelId);
 
 		if (process.env.DEBUG?.includes('snowflake:cli')) {
-			console.log(`[DEBUG snowflake:cli] Building CLI arguments for model: ${modelId}`);
+			console.log(
+				`[DEBUG snowflake:cli] Building CLI arguments for model: ${modelId}`
+			);
 			if (!isClaude) {
-				console.log(`[DEBUG snowflake:cli] ⚠️ Non-Claude model detected, using "auto" for CLI (requested: ${modelId})`);
+				console.log(
+					`[DEBUG snowflake:cli] ⚠️ Non-Claude model detected, using "auto" for CLI (requested: ${modelId})`
+				);
 			}
 		}
 
@@ -546,7 +568,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 		if (this.settings.skillsFile) {
 			args.push('--skills-file', this.settings.skillsFile);
 			if (process.env.DEBUG?.includes('snowflake:cli')) {
-				console.log(`[DEBUG snowflake:cli] Skills file: ${this.settings.skillsFile}`);
+				console.log(
+					`[DEBUG snowflake:cli] Skills file: ${this.settings.skillsFile}`
+				);
 			}
 		}
 
@@ -561,37 +585,46 @@ export class CliLanguageModel implements LanguageModelV2 {
 		// Build JSON request body (same format as REST API)
 		// The CLI accepts JSON input via --print, just like the REST API body
 		const messages = this.convertPrompt(options.prompt);
-		
+
 		// Build request object matching REST API format
 		// Use the same model ID as CLI args (auto for non-Claude models)
 		const requestBody: Record<string, unknown> = {
 			model: cliModelId,
 			messages
 		};
-		
+
 		// Add response_format for structured outputs (same as REST API)
 		// Use removeUnsupportedFeatures to ensure:
 		// 1. additionalProperties: false is set on ALL object nodes (required for OpenAI)
 		// 2. required array includes ALL properties (required for OpenAI)
 		// 3. Unsupported keywords are removed or converted to descriptions
-		if (options.responseFormat?.type === 'json' && options.responseFormat.schema) {
+		if (
+			options.responseFormat?.type === 'json' &&
+			options.responseFormat.schema
+		) {
 			const cleanedSchema = removeUnsupportedFeatures(
 				options.responseFormat.schema as Record<string, unknown>
 			);
-			
+
 			requestBody.response_format = {
 				type: 'json',
 				schema: cleanedSchema
 			};
-			
+
 			if (process.env.DEBUG?.includes('snowflake:cli')) {
 				console.log(`[DEBUG snowflake:cli] 🎯 STRUCTURED OUTPUT REQUESTED`);
-				console.log(`[DEBUG snowflake:cli] Schema name: ${options.responseFormat.name || 'unnamed'}`);
-				console.log(`[DEBUG snowflake:cli] Original schema: ${JSON.stringify(options.responseFormat.schema, null, 2)}`);
-				console.log(`[DEBUG snowflake:cli] Cleaned schema: ${JSON.stringify(cleanedSchema, null, 2)}`);
+				console.log(
+					`[DEBUG snowflake:cli] Schema name: ${options.responseFormat.name || 'unnamed'}`
+				);
+				console.log(
+					`[DEBUG snowflake:cli] Original schema: ${JSON.stringify(options.responseFormat.schema, null, 2)}`
+				);
+				console.log(
+					`[DEBUG snowflake:cli] Cleaned schema: ${JSON.stringify(cleanedSchema, null, 2)}`
+				);
 			}
 		}
-		
+
 		// Convert to JSON string for --print flag
 		const promptJson = JSON.stringify(requestBody);
 
@@ -599,7 +632,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 		args.push('--print', promptJson);
 
 		if (process.env.DEBUG?.includes('snowflake:cli')) {
-			console.log(`[DEBUG snowflake:cli] Final CLI command: cortex ${args.slice(0, args.length - 1).join(' ')} --print="<JSON ${promptJson.length} chars>"`);
+			console.log(
+				`[DEBUG snowflake:cli] Final CLI command: cortex ${args.slice(0, args.length - 1).join(' ')} --print="<JSON ${promptJson.length} chars>"`
+			);
 			console.log(`[DEBUG snowflake:cli] JSON Request Body:`);
 			console.log(JSON.stringify(requestBody, null, 2));
 		}
@@ -610,9 +645,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 	/**
 	 * Main text generation method
 	 */
-	async doGenerate(
-		options: LanguageModelV2CallOptions
-	): Promise<{
+	async doGenerate(options: LanguageModelV2CallOptions): Promise<{
 		content: Array<LanguageModelV2Content>;
 		usage: {
 			inputTokens: number;
@@ -623,9 +656,15 @@ export class CliLanguageModel implements LanguageModelV2 {
 		warnings: LanguageModelV2CallWarning[];
 	}> {
 		if (process.env.DEBUG?.includes('snowflake:cli')) {
-			console.log(`[DEBUG snowflake:cli] ========================================`);
-			console.log(`[DEBUG snowflake:cli] Starting CLI generation for model: ${this.modelId}`);
-			console.log(`[DEBUG snowflake:cli] Structured output: ${options.responseFormat?.type === 'json' ? 'YES' : 'NO'}`);
+			console.log(
+				`[DEBUG snowflake:cli] ========================================`
+			);
+			console.log(
+				`[DEBUG snowflake:cli] Starting CLI generation for model: ${this.modelId}`
+			);
+			console.log(
+				`[DEBUG snowflake:cli] Structured output: ${options.responseFormat?.type === 'json' ? 'YES' : 'NO'}`
+			);
 		}
 
 		// Check if CLI is installed
@@ -639,7 +678,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 		}
 
 		if (process.env.DEBUG?.includes('snowflake:cli')) {
-			console.log(`[DEBUG snowflake:cli] ✅ CLI available, version: ${installation.version || 'unknown'}`);
+			console.log(
+				`[DEBUG snowflake:cli] ✅ CLI available, version: ${installation.version || 'unknown'}`
+			);
 		}
 
 		// Build CLI arguments
@@ -653,13 +694,23 @@ export class CliLanguageModel implements LanguageModelV2 {
 		const fullPromptForErrors = promptArg;
 
 		if (process.env.DEBUG?.includes('snowflake:cli')) {
-			console.log(`[DEBUG snowflake:cli] ========================================`);
+			console.log(
+				`[DEBUG snowflake:cli] ========================================`
+			);
 			console.log(`[DEBUG snowflake:cli] EXACT COMMAND TO BE EXECUTED:`);
-			console.log(`[DEBUG snowflake:cli] cortex ${args.slice(0, -1).join(' ')} --print "<PROMPT>"`);
-			console.log(`[DEBUG snowflake:cli] ========================================`);
-			console.log(`[DEBUG snowflake:cli] FULL PROMPT (${promptArg.length} chars):`);
+			console.log(
+				`[DEBUG snowflake:cli] cortex ${args.slice(0, -1).join(' ')} --print "<PROMPT>"`
+			);
+			console.log(
+				`[DEBUG snowflake:cli] ========================================`
+			);
+			console.log(
+				`[DEBUG snowflake:cli] FULL PROMPT (${promptArg.length} chars):`
+			);
 			console.log(`[DEBUG snowflake:cli] ${promptArg}`);
-			console.log(`[DEBUG snowflake:cli] ========================================`);
+			console.log(
+				`[DEBUG snowflake:cli] ========================================`
+			);
 		}
 
 		// Execute CLI command with retries
@@ -669,7 +720,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
 			try {
 				if (process.env.DEBUG?.includes('snowflake:cli')) {
-					console.log(`[DEBUG snowflake:cli] 🚀 Executing CLI (attempt ${attempt + 1}/${maxRetries + 1})...`);
+					console.log(
+						`[DEBUG snowflake:cli] 🚀 Executing CLI (attempt ${attempt + 1}/${maxRetries + 1})...`
+					);
 				}
 
 				const cliResult = await this.executeCortexCli(args, {
@@ -679,12 +732,20 @@ export class CliLanguageModel implements LanguageModelV2 {
 				if (process.env.DEBUG?.includes('snowflake:cli')) {
 					console.log(`[DEBUG snowflake:cli] ✅ CLI execution complete`);
 					console.log(`[DEBUG snowflake:cli] Exit code: ${cliResult.exitCode}`);
-					console.log(`[DEBUG snowflake:cli] Stdout length: ${cliResult.stdout.length} chars`);
-					console.log(`[DEBUG snowflake:cli] Stderr length: ${cliResult.stderr.length} chars`);
+					console.log(
+						`[DEBUG snowflake:cli] Stdout length: ${cliResult.stdout.length} chars`
+					);
+					console.log(
+						`[DEBUG snowflake:cli] Stderr length: ${cliResult.stderr.length} chars`
+					);
 					if (cliResult.stdout.length < 500) {
-						console.log(`[DEBUG snowflake:cli] Full stdout: ${cliResult.stdout}`);
+						console.log(
+							`[DEBUG snowflake:cli] Full stdout: ${cliResult.stdout}`
+						);
 					} else {
-						console.log(`[DEBUG snowflake:cli] Stdout preview: ${cliResult.stdout.substring(0, 500)}...`);
+						console.log(
+							`[DEBUG snowflake:cli] Stdout preview: ${cliResult.stdout.substring(0, 500)}...`
+						);
 					}
 				}
 
@@ -723,13 +784,21 @@ export class CliLanguageModel implements LanguageModelV2 {
 
 				if (process.env.DEBUG?.includes('snowflake:cli')) {
 					console.log(`[DEBUG snowflake:cli] 📝 Parsed response`);
-					console.log(`[DEBUG snowflake:cli] Text length: ${parsed.text.length} chars`);
-					console.log(`[DEBUG snowflake:cli] Usage: ${JSON.stringify(parsed.usage)}`);
-					console.log(`[DEBUG snowflake:cli] Finish reason: ${parsed.finishReason}`);
+					console.log(
+						`[DEBUG snowflake:cli] Text length: ${parsed.text.length} chars`
+					);
+					console.log(
+						`[DEBUG snowflake:cli] Usage: ${JSON.stringify(parsed.usage)}`
+					);
+					console.log(
+						`[DEBUG snowflake:cli] Finish reason: ${parsed.finishReason}`
+					);
 					if (parsed.text.length < 200) {
 						console.log(`[DEBUG snowflake:cli] Full text: ${parsed.text}`);
 					} else {
-						console.log(`[DEBUG snowflake:cli] Text preview: ${parsed.text.substring(0, 200)}...`);
+						console.log(
+							`[DEBUG snowflake:cli] Text preview: ${parsed.text.substring(0, 200)}...`
+						);
 					}
 				}
 
@@ -768,7 +837,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 				let finalText = parsed.text;
 				if (options.responseFormat?.type === 'json') {
 					if (process.env.DEBUG?.includes('snowflake:cli')) {
-						console.log(`[DEBUG snowflake:cli] 🎯 Validating structured output JSON...`);
+						console.log(
+							`[DEBUG snowflake:cli] 🎯 Validating structured output JSON...`
+						);
 					}
 
 					try {
@@ -777,8 +848,12 @@ export class CliLanguageModel implements LanguageModelV2 {
 						finalText = JSON.stringify(parsedObj);
 
 						if (process.env.DEBUG?.includes('snowflake:cli')) {
-							console.log(`[DEBUG snowflake:cli] ✅ JSON validation successful`);
-							console.log(`[DEBUG snowflake:cli] Validated object: ${JSON.stringify(parsedObj, null, 2)}`);
+							console.log(
+								`[DEBUG snowflake:cli] ✅ JSON validation successful`
+							);
+							console.log(
+								`[DEBUG snowflake:cli] Validated object: ${JSON.stringify(parsedObj, null, 2)}`
+							);
 						}
 					} catch (parseError) {
 						// If parsing fails, return the original text and let the AI SDK handle the error
@@ -786,8 +861,12 @@ export class CliLanguageModel implements LanguageModelV2 {
 						finalText = parsed.text;
 
 						if (process.env.DEBUG?.includes('snowflake:cli')) {
-							console.log(`[DEBUG snowflake:cli] ⚠️ JSON validation failed: ${parseError}`);
-							console.log(`[DEBUG snowflake:cli] Returning original text for AI SDK to handle`);
+							console.log(
+								`[DEBUG snowflake:cli] ⚠️ JSON validation failed: ${parseError}`
+							);
+							console.log(
+								`[DEBUG snowflake:cli] Returning original text for AI SDK to handle`
+							);
 						}
 					}
 				}
@@ -797,7 +876,9 @@ export class CliLanguageModel implements LanguageModelV2 {
 					usage: {
 						inputTokens: parsed.usage?.promptTokens ?? 0,
 						outputTokens: parsed.usage?.completionTokens ?? 0,
-						totalTokens: (parsed.usage?.promptTokens ?? 0) + (parsed.usage?.completionTokens ?? 0)
+						totalTokens:
+							(parsed.usage?.promptTokens ?? 0) +
+							(parsed.usage?.completionTokens ?? 0)
 					},
 					finishReason: parsed.finishReason,
 					warnings: [] as LanguageModelV2CallWarning[]
@@ -864,4 +945,3 @@ export async function isCortexCliAvailable(): Promise<boolean> {
 		});
 	});
 }
-
