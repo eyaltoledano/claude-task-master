@@ -9,9 +9,17 @@
 	"engines": {
 		"vscode": "^1.93.0"
 	},
-	"categories": ["AI", "Visualization", "Education", "Other"],
+	"categories": [
+		"AI",
+		"Visualization",
+		"Education",
+		"Other"
+	],
 	"main": "./dist/extension.js",
-	"activationEvents": ["onStartupFinished", "workspaceContains:.taskmaster/**"],
+	"activationEvents": [
+		"onStartupFinished",
+		"workspaceContains:.taskmaster/**"
+	],
 	"contributes": {
 		"viewsContainers": {
 			"activitybar": [
@@ -139,7 +147,11 @@
 				},
 				"taskmaster.ui.theme": {
 					"type": "string",
-					"enum": ["auto", "light", "dark"],
+					"enum": [
+						"auto",
+						"light",
+						"dark"
+					],
 					"default": "auto",
 					"description": "UI theme preference"
 				},
@@ -200,7 +212,12 @@
 				},
 				"taskmaster.debug.logLevel": {
 					"type": "string",
-					"enum": ["error", "warn", "info", "debug"],
+					"enum": [
+						"error",
+						"warn",
+						"info",
+						"debug"
+					],
 					"default": "info",
 					"description": "Logging level"
 				},
@@ -275,7 +292,7 @@
 		"tailwindcss": "4.1.11",
 		"typescript": "^5.9.2",
 		"@tm/core": "*",
-		"task-master-ai": "0.37.1-rc.0"
+		"task-master-ai": "0.37.1"
 	},
 	"overrides": {
 		"glob@<8": "^10.4.5",

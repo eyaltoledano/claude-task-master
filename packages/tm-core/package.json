@@ -46,8 +46,18 @@
 		"typescript": "^5.9.2",
 		"vitest": "^4.0.10"
 	},
-	"files": ["src", "README.md", "CHANGELOG.md"],
-	"keywords": ["task-management", "typescript", "ai", "prd", "parser"],
+	"files": [
+		"src",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"keywords": [
+		"task-management",
+		"typescript",
+		"ai",
+		"prd",
+		"parser"
+	],
 	"author": "Task Master AI",
-	"version": ""
+	"version": null
 }
