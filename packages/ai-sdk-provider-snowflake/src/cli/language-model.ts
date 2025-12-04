@@ -474,8 +474,11 @@ export class CliLanguageModel implements LanguageModelV2 {
 					finishReason = 'error';
 				}
 			} catch {
-				// Skip malformed JSON lines - only warn if there was actual JSON-like content
-				if (jsonLine.includes('{')) {
+				// Skip malformed JSON lines - only warn in debug mode if there was actual JSON-like content
+				if (
+					jsonLine.includes('{') &&
+					process.env.DEBUG?.includes('snowflake:cli')
+				) {
 					console.warn(
 						'[Cortex Code] Failed to parse JSON:',
 						jsonLine.substring(0, 100)

@@ -317,7 +317,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 		);
 
 		// Normalize model ID - strip cortex/ prefix if present
-		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
+		const modelId = normalizeModelId(this.modelId);
 
 		// Build request body for Cortex REST API
 		// See: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api
@@ -588,19 +588,21 @@ export class RestLanguageModel implements LanguageModelV2 {
 					try {
 						result = JSON.parse(responseText) as RestCortexResponse;
 					} catch (parseError) {
-						console.error(
-							`[ERROR snowflake:rest] Failed to parse response as JSON`
-						);
-						console.error(
-							`[ERROR snowflake:rest] Response status: ${response.status}`
-						);
-						console.error(
-							`[ERROR snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`
-						);
-						console.error(
-							`[ERROR snowflake:rest] Response text (first 1000 chars): ${responseText.substring(0, 1000)}`
-						);
-						console.error(`[ERROR snowflake:rest] Parse error:`, parseError);
+						if (process.env.DEBUG?.includes('snowflake:rest')) {
+							console.error(
+								`[ERROR snowflake:rest] Failed to parse response as JSON`
+							);
+							console.error(
+								`[ERROR snowflake:rest] Response status: ${response.status}`
+							);
+							console.error(
+								`[ERROR snowflake:rest] Response Content-Type: ${response.headers.get('content-type')}`
+							);
+							console.error(
+								`[ERROR snowflake:rest] Response text (first 1000 chars): ${responseText.substring(0, 1000)}`
+							);
+							console.error(`[ERROR snowflake:rest] Parse error:`, parseError);
+						}
 						throw parseError;
 					}
 				}
@@ -786,7 +788,7 @@ export class RestLanguageModel implements LanguageModelV2 {
 		);
 
 		// Normalize model ID - strip cortex/ prefix if present
-		const modelId = this.modelId.replace(/^cortex\//, '').toLowerCase();
+		const modelId = normalizeModelId(this.modelId);
 
 		// Build request body for streaming
 		const body: Record<string, unknown> = {
