@@ -5,7 +5,7 @@
  *
  * Execution modes:
  * - 'auto': Auto-detect based on available credentials (prefers REST if credentials exist,
- *           otherwise awaits CLI availability check if needed before choosing mode)
+ *           falls back to CLI if no REST credentials - CLI availability is checked at generation time)
  * - 'rest': Use Cortex REST API (/api/v2/cortex/inference:complete) - DEFAULT
  * - 'cli': Use Cortex Code CLI
  */
@@ -44,21 +44,21 @@ export interface SnowflakeProvider {
 	 * Create a language model
 	 * @param modelId - Model ID (e.g., 'claude-sonnet-4-5' or 'cortex/claude-sonnet-4-5')
 	 * @param settings - Optional per-model settings
-	 * @returns Language model instance (may be async in auto mode when awaiting CLI availability check)
+	 * @returns Language model instance (always synchronous per AI SDK pattern)
 	 */
 	languageModel(
 		modelId: SnowflakeModelId,
 		settings?: SnowflakeProviderSettings
-	): LanguageModelV2 | Promise<LanguageModelV2>;
+	): LanguageModelV2;
 
 	/**
 	 * Shorthand for creating a language model
-	 * @returns Language model instance (may be async in auto mode when awaiting CLI availability check)
+	 * @returns Language model instance (always synchronous per AI SDK pattern)
 	 */
 	(
 		modelId: SnowflakeModelId,
 		settings?: SnowflakeProviderSettings
-	): LanguageModelV2 | Promise<LanguageModelV2>;
+	): LanguageModelV2;
 
 	/**
 	 * Provider name
@@ -229,7 +229,7 @@ export function createSnowflake(
 	const createModel = (
 		modelId: SnowflakeModelId,
 		modelSettings?: SnowflakeProviderSettings
-	): LanguageModelV2 | Promise<LanguageModelV2> => {
+	): LanguageModelV2 => {
 		// Get config-based settings
 		const configDangerouslyAllowAllToolCalls =
 			getDangerouslyAllowAllToolCalls();
@@ -309,32 +309,15 @@ export function createSnowflake(
 		}
 
 		// CLI check is still pending (cliAvailableCache === null) and no REST credentials
-		// Await the CLI availability check before choosing a mode
-		return (async () => {
-			if (process.env.DEBUG?.includes('snowflake:provider')) {
-				console.log(
-					`[DEBUG snowflake:provider] Auto mode: awaiting CLI availability check (no REST credentials found)`
-				);
-			}
-
-			const cliAvailable = await checkCliAvailable();
-
-			if (cliAvailable) {
-				// CLI is available, use it
-				if (process.env.DEBUG?.includes('snowflake:provider')) {
-					console.log(
-						`[DEBUG snowflake:provider] Auto-routing model ${modelId} to cli endpoint (CLI available after awaited check)`
-					);
-				}
-				return createLanguageModelWithMode(modelId, mergedSettings, 'cli');
-			}
-
-			// CLI not available and no REST credentials
-			throw new Error(
-				'No Snowflake authentication available: REST API credentials not found and Cortex CLI not available. ' +
-				'Please configure REST credentials (SNOWFLAKE_API_KEY/SNOWFLAKE_ACCOUNT or key pair authentication) or install Cortex CLI.'
+		// Return CLI model optimistically - it will check availability and throw a clear error
+		// if CLI is not installed when doGenerate() is called. This maintains the synchronous
+		// return pattern required by the AI SDK.
+		if (process.env.DEBUG?.includes('snowflake:provider')) {
+			console.log(
+				`[DEBUG snowflake:provider] Auto mode: returning CLI model optimistically (no REST credentials, CLI check pending)`
 			);
-		})();
+		}
+		return createLanguageModelWithMode(modelId, mergedSettings, 'cli');
 	};
 
 	// Create the provider function that also has methods

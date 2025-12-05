@@ -189,18 +189,34 @@ describe('SnowflakeProvider', () => {
 			);
 		});
 
-		it('should fall back to CLI when no REST credentials but CLI available', async () => {
+		it('should fall back to CLI when no REST credentials but CLI available', () => {
 			// No REST credentials set
 			// CLI is available
 			setCliAvailabilityForTesting(true);
 
 			const provider = createSnowflake({ executionMode: 'auto' });
-			const modelOrPromise = provider('cortex/claude-sonnet-4-5');
+			const model = provider('cortex/claude-sonnet-4-5');
 			
-			// When no REST credentials, provider awaits CLI check and returns CLI model
-			const model = await Promise.resolve(modelOrPromise);
+			// When no REST credentials, provider returns CLI model synchronously
 			expect(model.constructor.name).toBe('CliLanguageModel');
 			expect(model.provider).toBe('snowflake');
+		});
+
+		it('should return CLI model synchronously when CLI check is still pending (no REST credentials)', () => {
+			// Reset cache to null (simulating pending check)
+			resetCliAvailabilityCache();
+			
+			// No REST credentials set, CLI availability unknown
+			const provider = createSnowflake({ executionMode: 'auto' });
+			const model = provider('cortex/claude-sonnet-4-5');
+			
+			// Should return CLI model synchronously (not a Promise)
+			// The CLI model will check availability when doGenerate() is called
+			expect(model.constructor.name).toBe('CliLanguageModel');
+			expect(model.provider).toBe('snowflake');
+			// Verify it's not a Promise
+			expect(model).not.toBeInstanceOf(Promise);
+			expect(typeof model.doGenerate).toBe('function');
 		});
 
 		it('should prefer REST over CLI when credentials are available', () => {
