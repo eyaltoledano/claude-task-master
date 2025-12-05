@@ -61,10 +61,6 @@ export default {
 	// Global teardown for proper async cleanup
 	globalTeardown: '<rootDir>/tests/teardown.ts',
 
-	// Worker configuration to handle async cleanup gracefully
-	// Setting workerIdleMemoryLimit helps workers terminate cleanly
-	workerIdleMemoryLimit: '512MB',
-
 	// ========================================================================
 	// Coverage Configuration
 	// ========================================================================
