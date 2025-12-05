@@ -12,11 +12,12 @@ import {
 // CLI availability is checked synchronously at module load by test-environment.ts
 const cliAvailable = hasCliAvailable();
 
+// Use skip.each when CLI is unavailable so tests are properly reported as skipped
+const testRunner = cliAvailable ? it.concurrent.each : it.skip.each;
+
 describeWithCredentials('CLI Mode Integration Tests', () => {
 	beforeAll(async () => {
 		clearAuthCache();
-		console.log(`\n=== CLI Mode Tests ===`);
-		console.log(`CLI: ${cliAvailable ? '✅ Available' : '❌ Not available'}\n`);
 	}, 15000);
 
 	afterAll(() => {
@@ -24,14 +25,9 @@ describeWithCredentials('CLI Mode Integration Tests', () => {
 	});
 
 	// Claude Models
-	it.concurrent.each(CLAUDE_MODELS)(
+	testRunner(CLAUDE_MODELS)(
 		'%s generates text via CLI',
 		async (modelId) => {
-			// CLI availability checked at module load
-			if (!cliAvailable) {
-				console.log(`Skipping ${modelId}: Cortex CLI not available`);
-				return;
-			}
 			const result = await testModelGeneration(modelId, 'cli', 'claude');
 			expect(result.success).toBe(true);
 			expect(result.responseText).toBeDefined();
@@ -40,14 +36,9 @@ describeWithCredentials('CLI Mode Integration Tests', () => {
 	);
 
 	// OpenAI Models
-	it.concurrent.each(OPENAI_MODELS)(
+	testRunner(OPENAI_MODELS)(
 		'%s generates text via CLI',
 		async (modelId) => {
-			// CLI availability checked at module load
-			if (!cliAvailable) {
-				console.log(`Skipping ${modelId}: Cortex CLI not available`);
-				return;
-			}
 			// Enable debug for comparison with REST
 			const result = await testModelGeneration(modelId, 'cli', 'openai', true);
 			expect(result.success).toBe(true);
@@ -57,14 +48,9 @@ describeWithCredentials('CLI Mode Integration Tests', () => {
 	);
 
 	// Other Models
-	it.concurrent.each(OTHER_MODELS)(
+	testRunner(OTHER_MODELS)(
 		'%s generates text via CLI',
 		async (modelId) => {
-			// CLI availability checked at module load
-			if (!cliAvailable) {
-				console.log(`Skipping ${modelId}: Cortex CLI not available`);
-				return;
-			}
 			const result = await testModelGeneration(modelId, 'cli', 'other');
 			expect(result.success).toBe(true);
 			expect(result.responseText).toBeDefined();

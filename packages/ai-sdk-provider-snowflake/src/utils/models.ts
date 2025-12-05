@@ -296,7 +296,7 @@ export const STREAMING_PREFIXED_MODEL_IDS = STREAMING_MODEL_IDS.map(
  */
 export function normalizeModelId(modelId: SnowflakeModelId): string {
 	if (!modelId || typeof modelId !== 'string') {
-		return modelId;
+		return '';
 	}
 	return modelId.replace(/^cortex\//, '').toLowerCase();
 }

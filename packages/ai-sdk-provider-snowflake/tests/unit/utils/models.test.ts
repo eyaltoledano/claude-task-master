@@ -78,10 +78,10 @@ describe('Model Utilities', () => {
 
 	describe('normalizeModelId', () => {
 		it.concurrent.each([
-			['null input', null, null],
-			['undefined input', undefined, undefined],
+			['null input', null, ''],
+			['undefined input', undefined, ''],
 			['empty string', '', ''],
-			['non-string input', 123, 123],
+			['non-string input', 123, ''],
 			[
 				'cortex/ prefix removed',
 				'cortex/claude-sonnet-4-5',

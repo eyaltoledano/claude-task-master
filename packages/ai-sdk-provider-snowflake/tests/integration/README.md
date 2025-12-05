@@ -132,5 +132,5 @@ These tests require actual Snowflake credentials. See the main integration test 
 
 ## Migration Notes
 
-The original monolithic `integration.test.ts` file has been reorganized into this feature-based structure for better maintainability. The original file has been renamed to `integration.test.ts.deprecated` for reference.
+The original monolithic `integration.test.ts` file has been reorganized into this feature-based structure for better maintainability.
 

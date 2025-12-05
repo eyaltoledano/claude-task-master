@@ -131,7 +131,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 	private async executeCortexCli(
 		args: string[],
 		options: { timeout?: number } = {}
-	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+	): Promise<{ stdout: string; stderr: string; exitCode: number | null; signal: NodeJS.Signals | null }> {
 		const timeout = options.timeout ?? this.settings.timeout ?? 60000;
 
 		return new Promise((resolve, reject) => {
@@ -176,7 +176,7 @@ export class CliLanguageModel implements LanguageModelV2 {
 			});
 
 			// Handle process completion
-			child.on('close', (code) => {
+			child.on('close', (code, signal) => {
 				if (timeoutId) {
 					clearTimeout(timeoutId);
 				}
@@ -189,7 +189,8 @@ export class CliLanguageModel implements LanguageModelV2 {
 				resolve({
 					stdout,
 					stderr,
-					exitCode: code ?? 0
+					exitCode: code,
+					signal
 				});
 			});
 

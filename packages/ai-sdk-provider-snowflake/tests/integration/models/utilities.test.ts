@@ -21,9 +21,9 @@ config({ path: resolve(process.cwd(), '../../.env') });
 describeWithCredentials('Model Utilities Unit Tests', () => {
 	describe('Model ID Normalization', () => {
 		// Use it.concurrent.each for parallel execution of all normalizeModelId tests
-		const normalizeModelIdCases: Array<[string, string | null | undefined, string | null | undefined]> = [
-			['null input', null, null],
-			['undefined input', undefined, undefined],
+		const normalizeModelIdCases: Array<[string, string | null | undefined, string]> = [
+			['null input', null, ''],
+			['undefined input', undefined, ''],
 			['empty string', '', ''],
 			['cortex/ prefix', 'cortex/claude-sonnet-4-5', 'claude-sonnet-4-5'],
 			['no prefix', 'llama3-70b', 'llama3-70b'],
@@ -123,26 +123,7 @@ describeWithCredentials('Model Utilities Unit Tests', () => {
 		});
 	});
 
-	describe('Token Parameter Handling', () => {
-		// Import normalizeTokenParams if available, otherwise test via provider
-		const tokenParamCases: Array<[string, number, number]> = [
-			['enforces minimum 8192 for small values', 2000, 8192],
-			['enforces minimum 8192 for decimal values', 1500, 8192],
-			['defaults to 8192 when zero', 0, 8192],
-			['preserves values above minimum', 16384, 16384],
-			['preserves large numbers', 200000, 200000],
-			['allows exact minimum', 8192, 8192]
-		];
-
-		it.each(tokenParamCases)(
-			'%s: input %d -> expected >= %d',
-			async (_label, input, minExpected) => {
-				// Token handling is internal - test via API call behavior
-				// For now, verify the constraint logic
-				const effectiveTokens = input < 8192 ? 8192 : input;
-				expect(effectiveTokens).toBeGreaterThanOrEqual(minExpected);
-			}
-		);
-	});
+	// Note: Token parameter handling is tested in tests/unit/schema/transformer.test.ts
+	// via normalizeTokenParams function which is the actual implementation
 });
 

@@ -292,6 +292,78 @@ describe('Tool Helpers', () => {
 			);
 		});
 
+		it('should handle deeply nested Zod objects with correct property conversion', () => {
+			const zodLikeSchema = {
+				_def: {
+					typeName: 'ZodObject',
+					shape: () => ({
+						level1: {
+							_def: {
+								typeName: 'ZodObject',
+								description: 'First level',
+								shape: () => ({
+									level2: {
+										_def: {
+											typeName: 'ZodObject',
+											description: 'Second level',
+											shape: () => ({
+												deepValue: {
+													_def: {
+														typeName: 'ZodString',
+														description: 'Deep string value'
+													}
+												},
+												deepNumber: {
+													_def: {
+														typeName: 'ZodNumber',
+														description: 'Deep number value'
+													}
+												}
+											})
+										}
+									},
+									siblingValue: {
+										_def: { typeName: 'ZodBoolean' }
+									}
+								})
+							}
+						}
+					})
+				}
+			};
+
+			const tools = {
+				deep_nested_tool: {
+					description: 'Deeply nested tool',
+					parameters: zodLikeSchema
+				}
+			};
+
+			const result = convertToolsToSnowflakeFormat(tools);
+			const inputSchema = result[0].tool_spec.input_schema;
+
+			// Verify top-level structure
+			expect(inputSchema.type).toBe('object');
+			expect(inputSchema.properties.level1).toBeDefined();
+			expect(inputSchema.properties.level1.type).toBe('object');
+
+			// Verify second level
+			const level1Props = inputSchema.properties.level1.properties;
+			expect(level1Props.level2).toBeDefined();
+			expect(level1Props.level2.type).toBe('object');
+			expect(level1Props.siblingValue).toBeDefined();
+			expect(level1Props.siblingValue.type).toBe('boolean');
+
+			// Verify third level (deepest)
+			const level2Props = level1Props.level2.properties;
+			expect(level2Props.deepValue).toBeDefined();
+			expect(level2Props.deepValue.type).toBe('string');
+			expect(level2Props.deepValue.description).toBe('Deep string value');
+			expect(level2Props.deepNumber).toBeDefined();
+			expect(level2Props.deepNumber.type).toBe('number');
+			expect(level2Props.deepNumber.description).toBe('Deep number value');
+		});
+
 		it('should handle unknown Zod types with string fallback', () => {
 			const zodLikeSchema = {
 				_def: {

@@ -118,8 +118,39 @@ function convertZodType(def: Record<string, unknown>): Record<string, unknown> {
 			};
 		}
 
-		case 'ZodObject':
-			return zodToJsonSchema(def as Record<string, unknown>);
+		case 'ZodObject': {
+			// def is already _def, so handle shape directly
+			if (def.shape) {
+				const shape = def.shape as
+					| (() => Record<string, unknown>)
+					| Record<string, unknown>;
+				const properties: Record<string, unknown> = {};
+				const required: string[] = [];
+				const shapeObj = typeof shape === 'function' ? shape() : shape;
+
+				for (const [key, value] of Object.entries(shapeObj)) {
+					const propDef =
+						(value as { _def?: Record<string, unknown> })?._def || {};
+					properties[key] = convertZodType(propDef);
+
+					// Check if required (not optional)
+					if (
+						propDef.typeName !== 'ZodOptional' &&
+						propDef.typeName !== 'ZodDefault'
+					) {
+						required.push(key);
+					}
+				}
+
+				return {
+					type: 'object',
+					properties,
+					description: def.description as string | undefined,
+					required: required.length > 0 ? required : undefined
+				};
+			}
+			return { type: 'object', properties: {} };
+		}
 
 		default:
 			return { type: 'string' };

@@ -326,15 +326,22 @@ export const grepTool: ToolDefinition<GrepInput, GrepResult> = {
 
 		const files = await findFiles(targetDir, filePattern);
 		const allMatches: GrepMatch[] = [];
+		let hitLimit = false;
 
 		for (const filePath of files) {
-			if (allMatches.length >= maxMatches) break;
+			if (allMatches.length >= maxMatches) {
+				hitLimit = true;
+				break;
+			}
 
 			const matches = await grepFile(filePath, regex, contextLines);
 			for (const match of matches) {
 				match.file = path.relative(targetDir, filePath);
 				allMatches.push(match);
-				if (allMatches.length >= maxMatches) break;
+				if (allMatches.length >= maxMatches) {
+					hitLimit = true;
+					break;
+				}
 			}
 		}
 
@@ -343,7 +350,7 @@ export const grepTool: ToolDefinition<GrepInput, GrepResult> = {
 			directory: path.relative(projectRoot, targetDir) || '.',
 			matches: allMatches.slice(0, maxMatches),
 			totalMatches: allMatches.length,
-			truncated: allMatches.length > maxMatches
+			truncated: hitLimit
 		};
 	}
 };
