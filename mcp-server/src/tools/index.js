@@ -15,14 +15,16 @@ import {
 
 /**
  * Helper function to safely read and normalize the TASK_MASTER_TOOLS environment variable
- * @returns {string} The tools configuration string, defaults to 'all'
+ * @returns {string} The tools configuration string, defaults to 'standard'
  */
 export function getToolsConfiguration() {
 	const rawValue = process.env.TASK_MASTER_TOOLS;
 
 	if (!rawValue || rawValue.trim() === '') {
-		logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "all"');
-		return 'all';
+		logger.debug(
+			'No TASK_MASTER_TOOLS env var found, defaulting to "standard"'
+		);
+		return 'core';
 	}
 
 	const normalizedValue = rawValue.trim();
