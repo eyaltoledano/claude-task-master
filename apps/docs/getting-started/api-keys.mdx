@@ -96,16 +96,15 @@ XAI_API_KEY="your-xai-key-here"
 ```
 
 ### SNOWFLAKE_API_KEY
-- **Provider**: Snowflake
-- **Format**: Programmatic Access Token (PAT) or OAuth token
-- **Required**: ✅ **Yes**
-- **Models**: Claude, OpenAI, Llama, Mistral, DeepSeek, and other Cortex models
-- **Requirements**: Also requires `SNOWFLAKE_BASE_URL` configuration
+- **Provider**: Snowflake Cortex
+- **Required**: ✅ **Yes** (for REST API) or use [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-code)
+- **Requirements**: Also requires `SNOWFLAKE_BASE_URL` (or `SNOWFLAKE_ACCOUNT` to derive URL)
+- **Alternative Auth**: Key pair authentication (`SNOWFLAKE_ACCOUNT` + `SNOWFLAKE_USER` + `SNOWFLAKE_PRIVATE_KEY_PATH`)
 - **Models**: [Snowflake Cortex Model Availability](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
 - **Get Token**: [Snowflake PAT Documentation](https://docs.snowflake.com/en/sql-reference/sql/alter-user-add-programmatic-access-token)
 
 ```bash
-SNOWFLAKE_API_KEY="YOUR_SNOWFLAKE_API_KEY_HERE"
+SNOWFLAKE_API_KEY="YOUR_SNOWFLAKE_PAT_HERE"
 SNOWFLAKE_BASE_URL="https://org-account.snowflakecomputing.com"
 ```
 
@@ -233,8 +232,8 @@ For Claude Code integration, configure keys in `.mcp.json`:
 - **Google Vertex**: Requires `VERTEX_PROJECT_ID` and `VERTEX_LOCATION` environment variables
 - **AWS Bedrock**: Uses AWS credential chain (profiles, IAM roles, etc.) instead of API keys
 - **Ollama**: Only needs API key for remote servers with authentication
-- **CLI Providers**: Gemini CLI, Grok CLI, Cortex Code, and Claude Code use OAuth/CLI config instead of API keys
-- **Snowflake**: Requires both `SNOWFLAKE_API_KEY` and `SNOWFLAKE_BASE_URL` configuration
+- **CLI Providers**: Gemini CLI, Grok CLI, and Claude Code use OAuth/CLI config instead of API keys
+- **Snowflake**: Requires `SNOWFLAKE_API_KEY` + `SNOWFLAKE_BASE_URL`, or key pair auth, or Cortex Code CLI
 
 ## Model Configuration
 
