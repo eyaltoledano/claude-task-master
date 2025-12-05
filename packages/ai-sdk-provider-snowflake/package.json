@@ -4,11 +4,11 @@
 	"private": true,
 	"description": "Unified AI SDK provider for Snowflake Cortex with REST API and CLI support",
 	"type": "module",
-	"types": "./dist/index.d.ts",
+	"types": "./src/index.ts",
 	"main": "./dist/index.js",
 	"exports": {
 		".": {
-			"types": "./dist/index.d.ts",
+			"types": "./src/index.ts",
 			"default": "./dist/index.js"
 		}
 	},
