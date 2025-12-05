@@ -43,6 +43,7 @@ Taskmaster uses two primary methods for configuration:
           "projectName": "Your Project Name",
           "ollamaBaseURL": "http://localhost:11434/api",
           "azureBaseURL": "https://your-endpoint.azure.com/openai/deployments",
+          "snowflakeBaseURL": "https://org-account.snowflakecomputing.com",
           "vertexProjectId": "your-gcp-project-id",
           "vertexLocation": "us-central1",
 	      "responseLanguage": "English"
@@ -144,6 +145,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
   - `XAI_API_KEY`: Your X-AI API key.
+  - `SNOWFLAKE_API_KEY`: Your Snowflake API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.
   - **Environment Variable Overrides (`<PROVIDER>_BASE_URL`):** For greater flexibility, especially with third-party services, you can set an environment variable like `OPENAI_BASE_URL` or `MISTRAL_BASE_URL`. This will override any `baseURL` set in the configuration file for that provider. This is the recommended way to connect to OpenAI-compatible APIs.
@@ -152,6 +154,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `VERTEX_PROJECT_ID`: Your Google Cloud project ID for Vertex AI. Required when using the 'vertex' provider.
   - `VERTEX_LOCATION`: Google Cloud region for Vertex AI (e.g., 'us-central1'). Default is 'us-central1'.
   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to service account credentials JSON file for Google Cloud auth (alternative to API key for Vertex AI).
+  - `SNOWFLAKE_BASE_URL`: Your Snowflake account URL (e.g., `https://org-account.snowflakecomputing.com`). Can also be set as `snowflakeBaseURL` in config.json (recommended).
 
 **Important:** Settings like model ID selections (`main`, `research`, `fallback`), `maxTokens`, `temperature`, `logLevel`, `defaultSubtasks`, `defaultPriority`, and `projectName` are **managed in `.taskmaster/config.json`** (or `.taskmasterconfig` for unmigrated projects), not environment variables.
 
@@ -213,6 +216,10 @@ PERPLEXITY_API_KEY=pplx-your-key-here
 # Azure OpenAI Configuration
 # AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/ or https://your-endpoint-name.cognitiveservices.azure.com/openai/deployments
 # OLLAMA_BASE_URL=http://custom-ollama-host:11434/api
+
+# Snowflake Cortex Configuration (Required if using 'snowflake' provider)
+# SNOWFLAKE_API_KEY=YOUR_SNOWFLAKE_API_KEY_HERE
+# SNOWFLAKE_BASE_URL=https://org-account.snowflakecomputing.com
 
 # Google Vertex AI Configuration (Required if using 'vertex' provider)
 # VERTEX_PROJECT_ID=your-gcp-project-id
@@ -649,3 +656,55 @@ The Codex CLI provider integrates Task Master with OpenAI's Codex CLI, allowing 
     - Limited to OAuth-available models only (`gpt-5` and `gpt-5-codex`)
     - Pricing information is not available for OAuth models (shows as "Unknown" in cost calculations)
     - See [Codex CLI Provider Documentation](./providers/codex-cli.md) for more details
+
+### Snowflake Cortex Configuration
+
+Snowflake provides AI models through Cortex via REST API or Cortex Code CLI.
+
+> **Full Guide**: See [Snowflake Provider Integration Guide](./providers/snowflake.md) for complete setup instructions, all supported models, and troubleshooting.
+
+1. **Authentication** (choose one):
+
+   **Option A: Key Pair (Recommended)**
+   ```bash
+   export SNOWFLAKE_ACCOUNT="your-account"
+   export SNOWFLAKE_USER="your.name@company.com"
+   export SNOWFLAKE_PRIVATE_KEY_PATH="/path/to/rsa_key.p8"
+   ```
+
+   **Option B: Connection Profile** (`~/.snowflake/connections.toml`)
+   ```toml
+   [default]
+   account = "YOUR_ACCOUNT"
+   user = "YOUR_USERNAME"
+   private_key_path = "/path/to/rsa_key.p8"
+   ```
+
+   **Option C: Direct Token**
+   ```bash
+   export SNOWFLAKE_API_KEY="your-oauth-or-pat-token"
+   export SNOWFLAKE_ACCOUNT="your-account"
+   ```
+
+2. **Configuration**:
+   ```json
+   {
+     "models": {
+       "main": { "provider": "snowflake", "modelId": "claude-haiku-4-5" },
+       "research": { "provider": "snowflake", "modelId": "claude-sonnet-4-5" }
+     }
+   }
+   ```
+
+3. **Recommended Models** (Claude/OpenAI support structured outputs):
+   - `claude-sonnet-4-5`, `claude-haiku-4-5`, `claude-4-sonnet`, `claude-4-opus`
+   - `openai-gpt-5`, `openai-gpt-5-mini`, `openai-gpt-5-nano`, `openai-gpt-4.1`
+   
+   Any model available via the [Cortex REST API](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability) can be used.
+
+4. **Setup**:
+   ```bash
+   task-master models --set-main claude-haiku-4-5
+   task-master models --set-research claude-sonnet-4-5
+   ```
+   

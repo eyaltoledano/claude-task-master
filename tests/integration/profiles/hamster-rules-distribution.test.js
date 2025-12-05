@@ -17,6 +17,7 @@ describe('Hamster Rules Distribution', () => {
 	// Profiles that have includeDefaultRules: false and won't get hamster files via defaultFileMap
 	const PROFILES_WITHOUT_DEFAULT_RULES = [
 		'claude',
+		'cortex',
 		'gemini',
 		'codex',
 		'amp',
