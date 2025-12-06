@@ -557,7 +557,7 @@ Environment variables are used **only** for sensitive API keys related to AI pro
 
 ## MCP Tool Tiers
 
-Default: `standard` (14 tools). Set via `TASK_MASTER_TOOLS` env var in MCP config.
+Default: `core` (7 tools). Set via `TASK_MASTER_TOOLS` env var in MCP config.
 
 | Tier | Count | Tools |
 |------|-------|-------|
@@ -565,7 +565,7 @@ Default: `standard` (14 tools). Set via `TASK_MASTER_TOOLS` env var in MCP confi
 | `standard` | 14 | core + `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report` |
 | `all` | 44+ | standard + dependencies, tags, research, autopilot, scoping, models, rules |
 
-**Upgrade when tool unavailable:** Edit MCP config (`.cursor/mcp.json`, `.mcp.json`, or `.vscode/mcp.json`), change `TASK_MASTER_TOOLS` from `"standard"` to `"all"`, restart MCP.
+**Upgrade when tool unavailable:** Edit MCP config (`.cursor/mcp.json`, `.mcp.json`, or `.vscode/mcp.json`), change `TASK_MASTER_TOOLS` from `"core"` to `"standard"` or `"all"`, restart MCP.
 
 ---
 

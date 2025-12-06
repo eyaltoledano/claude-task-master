@@ -110,7 +110,7 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
 
 ### MCP Tool Tiers
 
-Default: `standard` (14 tools). Set via `TASK_MASTER_TOOLS` env var.
+Default: `core` (7 tools). Set via `TASK_MASTER_TOOLS` env var.
 
 | Tier | Count | Tools |
 |------|-------|-------|
@@ -118,7 +118,7 @@ Default: `standard` (14 tools). Set via `TASK_MASTER_TOOLS` env var.
 | `standard` | 14 | core + `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report` |
 | `all` | 44+ | standard + dependencies, tags, research, autopilot, scoping, models, rules |
 
-**Upgrade when tool unavailable:** Edit MCP config, change `TASK_MASTER_TOOLS` from `"standard"` to `"all"`, restart MCP.
+**Upgrade when tool unavailable:** Edit MCP config, change `TASK_MASTER_TOOLS` from `"core"` to `"standard"` or `"all"`, restart MCP.
 
 ### Essential MCP Tools
 

@@ -121,20 +121,20 @@ describe('Task Master Tool Registration System', () => {
 	});
 
 	describe('Configuration Modes', () => {
-		it(`should register all tools (${ALL_COUNT}) when TASK_MASTER_TOOLS is not set (default behavior)`, () => {
+		it(`should register core tools (${CORE_COUNT}) when toolMode defaults to 'core' (default behavior)`, () => {
 			delete process.env.TASK_MASTER_TOOLS;
 
 			registerTaskMasterTools(mockServer);
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(
-				EXPECTED_TOOL_COUNTS.total
+				EXPECTED_TOOL_COUNTS.core
 			);
 		});
 
 		it(`should register all tools (${ALL_COUNT}) when TASK_MASTER_TOOLS=all`, () => {
 			process.env.TASK_MASTER_TOOLS = 'all';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'all');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
@@ -197,20 +197,20 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
 
-		it('should default to all tools with completely invalid input', () => {
+		it('should fall back to all tools with completely invalid input', () => {
 			process.env.TASK_MASTER_TOOLS = 'completely_invalid';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'completely_invalid');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 
-		it('should handle empty string environment variable', () => {
+		it('should use core tools when empty string passed as toolMode', () => {
 			process.env.TASK_MASTER_TOOLS = '';
 
 			registerTaskMasterTools(mockServer);
 
-			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
+			expect(mockServer.addTool).toHaveBeenCalledTimes(CORE_COUNT);
 		});
 
 		it('should handle whitespace in comma-separated lists', () => {
@@ -232,10 +232,10 @@ describe('Task Master Tool Registration System', () => {
 			expect(mockServer.addTool).toHaveBeenCalledTimes(2);
 		});
 
-		it('should handle only commas and empty entries', () => {
+		it('should fall back to all tools when only commas passed as toolMode', () => {
 			process.env.TASK_MASTER_TOOLS = ',,,';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, ',,,');
 
 			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
@@ -254,33 +254,49 @@ describe('Task Master Tool Registration System', () => {
 			const testCases = [
 				{
 					env: undefined,
-					expectedCount: ALL_COUNT,
-					description: 'undefined env (all)'
+					toolMode: 'core',
+					expectedCount: CORE_COUNT,
+					description: 'undefined env (core default)'
 				},
 				{
 					env: '',
-					expectedCount: ALL_COUNT,
-					description: 'empty string (all)'
+					toolMode: 'core',
+					expectedCount: CORE_COUNT,
+					description: 'empty string (core default)'
 				},
-				{ env: 'all', expectedCount: ALL_COUNT, description: 'all mode' },
-				{ env: 'core', expectedCount: CORE_COUNT, description: 'core mode' },
+				{
+					env: 'all',
+					toolMode: 'all',
+					expectedCount: ALL_COUNT,
+					description: 'all mode'
+				},
+				{
+					env: 'core',
+					toolMode: 'core',
+					expectedCount: CORE_COUNT,
+					description: 'core mode'
+				},
 				{
 					env: 'lean',
+					toolMode: 'lean',
 					expectedCount: CORE_COUNT,
 					description: 'lean mode (alias)'
 				},
 				{
 					env: 'standard',
+					toolMode: 'standard',
 					expectedCount: STANDARD_COUNT,
 					description: 'standard mode'
 				},
 				{
 					env: 'get_tasks,next_task',
+					toolMode: 'get_tasks,next_task',
 					expectedCount: 2,
 					description: 'custom list'
 				},
 				{
 					env: 'invalid_tool',
+					toolMode: 'invalid_tool',
 					expectedCount: ALL_COUNT,
 					description: 'invalid fallback'
 				}
@@ -295,7 +311,7 @@ describe('Task Master Tool Registration System', () => {
 				mockServer.tools = [];
 				mockServer.addTool.mockClear();
 
-				registerTaskMasterTools(mockServer, testCase.env || 'all');
+				registerTaskMasterTools(mockServer, testCase.toolMode);
 
 				expect(mockServer.addTool).toHaveBeenCalledTimes(
 					testCase.expectedCount
@@ -308,7 +324,7 @@ describe('Task Master Tool Registration System', () => {
 
 			process.env.TASK_MASTER_TOOLS = 'all';
 
-			registerTaskMasterTools(mockServer);
+			registerTaskMasterTools(mockServer, 'all');
 
 			const endTime = Date.now();
 			const executionTime = endTime - startTime;
@@ -401,7 +417,7 @@ describe('Task Master Tool Registration System', () => {
 
 				process.env.TASK_MASTER_TOOLS = input;
 
-				expect(() => registerTaskMasterTools(mockServer)).not.toThrow();
+				expect(() => registerTaskMasterTools(mockServer, input)).not.toThrow();
 
 				expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 			});

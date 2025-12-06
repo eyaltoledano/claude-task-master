@@ -42,7 +42,7 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 	log('info', `Setting up MCP configuration at ${mcpPath}...`);
 
 	// New MCP config to be added - references the installed package
-	// TASK_MASTER_TOOLS: "standard" loads commonly used tools (14 tools)
+	// TASK_MASTER_TOOLS: "core" loads essential daily workflow tools (7 tools, default)
 	// Options: "core" (7 essential tools), "standard" (14 common tools), "all" (44+ tools)
 	// See agent rules for tool tier details and how to upgrade if needed
 	const newMCPServer = {
