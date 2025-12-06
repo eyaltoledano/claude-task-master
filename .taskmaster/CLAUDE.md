@@ -91,6 +91,7 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
       "command": "npx",
       "args": ["-y", "task-master-ai"],
       "env": {
+        "TASK_MASTER_TOOLS": "core",
         "ANTHROPIC_API_KEY": "your_key_here",
         "PERPLEXITY_API_KEY": "your_key_here",
         "OPENAI_API_KEY": "OPENAI_API_KEY_HERE",
@@ -105,6 +106,24 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
   }
 }
 ```
+
+### MCP Tool Tiers
+
+Task Master uses tiered tool loading to optimize context window usage:
+
+| Tier | Tools | Use Case |
+|------|-------|----------|
+| `core` | 7 | Minimal daily workflow tools (default) |
+| `standard` | 14 | Common task management |
+| `all` | 44+ | Full suite with research, autopilot, dependencies |
+
+**Core tools (7):** `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
+
+**Standard adds (7 more):** `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report`
+
+**All tier adds:** Dependency management, tag management, research, autopilot TDD workflow, scope up/down, models, rules
+
+**To upgrade tiers:** Change `TASK_MASTER_TOOLS` in `.mcp.json` from `"core"` to `"standard"` or `"all"` and restart the MCP connection.
 
 ### Essential MCP Tools
 

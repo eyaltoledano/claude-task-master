@@ -41,9 +41,9 @@ For MCP/Cursor usage: Configure keys in the env section of your .cursor/mcp.json
 **Optimize Context Usage**: You can control which Task Master MCP tools are loaded using the `TASK_MASTER_TOOLS` environment variable. This helps reduce LLM context usage by only loading the tools you need.
 
 Options:
-- `all` (default) - All 36 tools
+- `core` or `lean` (default) - 7 essential tools
 - `standard` - 15 commonly used tools
-- `core` or `lean` - 7 essential tools
+- `all` - All 36 tools
 
 Example:
 ```json

@@ -15,14 +15,14 @@ import {
 
 /**
  * Helper function to safely read and normalize the TASK_MASTER_TOOLS environment variable
- * @returns {string} The tools configuration string, defaults to 'all'
+ * @returns {string} The tools configuration string, defaults to 'core'
  */
 export function getToolsConfiguration() {
 	const rawValue = process.env.TASK_MASTER_TOOLS;
 
 	if (!rawValue || rawValue.trim() === '') {
-		logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "all"');
-		return 'all';
+		logger.debug('No TASK_MASTER_TOOLS env var found, defaulting to "core"');
+		return 'core';
 	}
 
 	const normalizedValue = rawValue.trim();
@@ -37,7 +37,7 @@ export function getToolsConfiguration() {
  * @param {string} toolMode - The tool mode configuration (defaults to 'all')
  * @returns {Object} Object containing registered tools, failed tools, and normalized mode
  */
-export function registerTaskMasterTools(server, toolMode = 'all') {
+export function registerTaskMasterTools(server, toolMode = 'core') {
 	const registeredTools = [];
 	const failedTools = [];
 

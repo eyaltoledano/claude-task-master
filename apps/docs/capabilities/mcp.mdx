@@ -19,27 +19,7 @@ To optimize LLM context usage, you can control which Task Master MCP tools are l
 
 ### Configuration Modes
 
-#### All Tools (Default)
-Loads all 36 available tools. Use when you need full Task Master functionality.
-
-```json
-{
-  "mcpServers": {
-    "task-master-ai": {
-      "command": "npx",
-      "args": ["-y", "task-master-ai"],
-      "env": {
-        "TASK_MASTER_TOOLS": "all",
-        "ANTHROPIC_API_KEY": "your_key_here"
-      }
-    }
-  }
-}
-```
-
-If `TASK_MASTER_TOOLS` is not set, all tools are loaded by default.
-
-#### Core Tools (Lean Mode)
+#### Core Tools (Default, Lean Mode)
 Loads only 7 essential tools for daily development. Ideal for minimal context usage.
 
 **Core tools included:**
@@ -66,7 +46,7 @@ Loads only 7 essential tools for daily development. Ideal for minimal context us
 }
 ```
 
-You can also use `"lean"` as an alias for `"core"`.
+You can also use `"lean"` as an alias for `"core"`. If `TASK_MASTER_TOOLS` is not set, core tools are loaded by default.
 
 #### Standard Tools
 Loads 15 commonly used tools. Balances functionality with context efficiency.
@@ -114,9 +94,27 @@ Specify exactly which tools to load using a comma-separated list. Tool names are
 }
 ```
 
+#### All Tools
+Loads all 36 available tools. Use when you need full Task Master functionality.
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "all",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
 ### Choosing the Right Configuration
 
-- **Use `core`/`lean`**: When working with basic task management workflows or when context limits are strict
+- **Use `core`/`lean`**: Default setting, ideal for basic task management workflows or when context limits are strict
 - **Use `standard`**: For most development workflows that include task creation and analysis
 - **Use `all`**: When you need full functionality including tag management, dependencies, and advanced features
 - **Use custom list**: When you have specific tool requirements or want to experiment with minimal sets

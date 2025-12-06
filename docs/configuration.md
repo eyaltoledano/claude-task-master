@@ -70,21 +70,20 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 
 #### Configuration Options
 
-- **`all`** (default): Loads all 36 available tools (~21,000 tokens)
-  - Best for: Users who need the complete feature set
-  - Use when: Working with complex projects requiring all Task Master features
-  - Backward compatibility: This is the default to maintain compatibility with existing installations
+- **`core`** (default, or `lean`): Loads 7 essential tools (~5,000 tokens, 70% reduction)
+  - Best for: Daily development with minimal token overhead
+  - Tools included: `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
+  - Use when: Working in large contexts where token usage is critical
+  - Note: "lean" is an alias for "core" (same tools)
 
 - **`standard`**: Loads 15 commonly used tools (~10,000 tokens, 50% reduction)
   - Best for: Regular task management workflows
   - Tools included: All core tools plus project initialization, complexity analysis, task generation, and more
   - Use when: You need a balanced set of features with reduced token usage
 
-- **`core`** (or `lean`): Loads 7 essential tools (~5,000 tokens, 70% reduction)
-  - Best for: Daily development with minimal token overhead
-  - Tools included: `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
-  - Use when: Working in large contexts where token usage is critical
-  - Note: "lean" is an alias for "core" (same tools, token estimate and recommended use). You can refer to it as either "core" or "lean" when configuring.
+- **`all`**: Loads all 36 available tools (~21,000 tokens)
+  - Best for: Users who need the complete feature set
+  - Use when: Working with complex projects requiring all Task Master features
 
 - **Custom list**: Comma-separated list of specific tool names
   - Best for: Specialized workflows requiring specific tools
@@ -124,7 +123,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
 
 #### Tool Loading Behavior
 
-- When `TASK_MASTER_TOOLS` is unset or empty, the system defaults to `"all"`
+- When `TASK_MASTER_TOOLS` is unset or empty, the system defaults to `"core"`
 - Invalid tool names in a user-specified list are ignored (a warning is emitted for each)
 - If every tool name in a custom list is invalid, the system falls back to `"all"`
 - Tool names are case-insensitive (e.g., `"CORE"`, `"core"`, and `"Core"` are treated identically)
