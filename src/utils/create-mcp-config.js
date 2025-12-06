@@ -42,11 +42,15 @@ export function setupMCPConfiguration(projectRoot, mcpConfigPath) {
 	log('info', `Setting up MCP configuration at ${mcpPath}...`);
 
 	// New MCP config to be added - references the installed package
+	// TASK_MASTER_TOOLS: "core" loads essential daily workflow tools (7 tools, default)
+	// Options: "core" (7 essential tools), "standard" (14 common tools), "all" (44+ tools)
+	// See agent rules for tool tier details and how to upgrade if needed
 	const newMCPServer = {
 		'task-master-ai': {
 			command: 'npx',
 			args: ['-y', 'task-master-ai'],
 			env: {
+				TASK_MASTER_TOOLS: 'core',
 				ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY_HERE',
 				PERPLEXITY_API_KEY: 'YOUR_PERPLEXITY_API_KEY_HERE',
 				OPENAI_API_KEY: 'YOUR_OPENAI_KEY_HERE',
@@ -158,7 +162,7 @@ export function removeTaskMasterMCPConfiguration(projectRoot, mcpConfigPath) {
 
 	const mcpPath = path.join(projectRoot, mcpConfigPath);
 
-	let result = {
+	const result = {
 		success: false,
 		removed: false,
 		deleted: false,
