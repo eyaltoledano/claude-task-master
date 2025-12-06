@@ -25,6 +25,7 @@ import { OpenAIProvider } from '../../../src/ai-providers/openai.js';
 import { OpenRouterAIProvider } from '../../../src/ai-providers/openrouter.js';
 import { PerplexityAIProvider } from '../../../src/ai-providers/perplexity.js';
 import { XAIProvider } from '../../../src/ai-providers/xai.js';
+import { SnowflakeProvider } from '../../../src/ai-providers/snowflake.js';
 
 describe('Provider Temperature Support', () => {
 	describe('CLI Providers', () => {
@@ -45,6 +46,7 @@ describe('Provider Temperature Support', () => {
 			expect(new XAIProvider().supportsTemperature).toBe(true);
 			expect(new GroqProvider().supportsTemperature).toBe(true);
 			expect(new OpenRouterAIProvider().supportsTemperature).toBe(true);
+			expect(new SnowflakeProvider().supportsTemperature).toBe(true);
 		});
 	});
 

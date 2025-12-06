@@ -3,6 +3,7 @@ export { ampProfile } from './amp.js';
 export { claudeProfile } from './claude.js';
 export { clineProfile } from './cline.js';
 export { codexProfile } from './codex.js';
+export { cortexProfile } from './cortex.js';
 export { cursorProfile } from './cursor.js';
 export { geminiProfile } from './gemini.js';
 export { kiloProfile } from './kilo.js';

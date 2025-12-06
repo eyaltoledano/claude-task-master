@@ -45,6 +45,7 @@ const mockGetAllProviders = jest.fn();
 const mockGetOllamaBaseURL = jest.fn();
 const mockGetAzureBaseURL = jest.fn();
 const mockGetBedrockBaseURL = jest.fn();
+const mockGetSnowflakeBaseURL = jest.fn();
 const mockGetVertexProjectId = jest.fn();
 const mockGetVertexLocation = jest.fn();
 const mockGetAvailableModels = jest.fn();
@@ -117,6 +118,7 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getOllamaBaseURL: mockGetOllamaBaseURL,
 	getAzureBaseURL: mockGetAzureBaseURL,
 	getBedrockBaseURL: mockGetBedrockBaseURL,
+	getSnowflakeBaseURL: mockGetSnowflakeBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
 	getMcpApiKeyStatus: mockGetMcpApiKeyStatus,
@@ -147,6 +149,14 @@ const mockOpenAIProvider = {
 	streamText: jest.fn(),
 	generateObject: jest.fn(),
 	getRequiredApiKeyName: jest.fn(() => 'OPENAI_API_KEY'),
+	isRequiredApiKey: jest.fn(() => true)
+};
+
+const mockSnowflakeProvider = {
+	generateText: jest.fn(),
+	streamText: jest.fn(),
+	generateObject: jest.fn(),
+	getRequiredApiKeyName: jest.fn(() => 'SNOWFLAKE_API_KEY'),
 	isRequiredApiKey: jest.fn(() => true)
 };
 
@@ -188,6 +198,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		isRequiredApiKey: jest.fn(() => true)
 	})),
 	OpenAIProvider: jest.fn(() => mockOpenAIProvider),
+	SnowflakeProvider: jest.fn(() => mockSnowflakeProvider),
 	XAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
@@ -373,6 +384,7 @@ describe('Unified AI Services', () => {
 		mockGetUserId.mockReturnValue('test-user-id'); // Add default mock for getUserId
 		mockIsApiKeySet.mockReturnValue(true); // Default to true for most tests
 		mockGetBaseUrlForRole.mockReturnValue(null); // Default to no base URL
+		mockGetSnowflakeBaseURL.mockReturnValue(null);
 	});
 
 	describe('generateTextService', () => {

@@ -13,7 +13,8 @@ export const VALIDATED_PROVIDERS = [
 	'perplexity',
 	'xai',
 	'groq',
-	'mistral'
+	'mistral',
+	'snowflake'
 ] as const;
 
 export type ValidatedProvider = (typeof VALIDATED_PROVIDERS)[number];
@@ -31,7 +32,8 @@ export const CUSTOM_PROVIDERS = {
 	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli',
 	GROK_CLI: 'grok-cli',
-	CODEX_CLI: 'codex-cli'
+	CODEX_CLI: 'codex-cli',
+	SNOWFLAKE: 'snowflake'
 } as const;
 
 export type CustomProvider =
