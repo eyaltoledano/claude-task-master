@@ -12,6 +12,7 @@ import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
+import { InteractiveCommand } from './commands/interactive.command.js';
 import { ListTasksCommand } from './commands/list.command.js';
 import { LoginCommand } from './commands/login.command.js';
 import { LogoutCommand } from './commands/logout.command.js';
@@ -88,6 +89,14 @@ export class CommandRegistry {
 				'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
 			commandClass: AutopilotCommand as any,
 			category: 'development'
+		},
+
+		// UI Commands
+		{
+			name: 'interactive',
+			description: 'Launch the interactive terminal UI',
+			commandClass: InteractiveCommand as any,
+			category: 'utility'
 		},
 
 		// Authentication & Context Commands
