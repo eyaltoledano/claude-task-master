@@ -3,7 +3,6 @@
  * Get comprehensive workflow status and progress information
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -28,16 +27,14 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 		parameters: StatusSchema,
 		execute: withToolContext(
 			'autopilot-status',
-			async (args: StatusArgs, { log }: ToolContext) => {
+			async (args: StatusArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
 					log.info(`Getting workflow status for ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -52,10 +49,10 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 					}
 
 					// Resume to load state
-					await workflowService.resumeWorkflow();
+					await tmCore.workflow.resume();
 
 					// Get status
-					const status = workflowService.getStatus();
+					const status = tmCore.workflow.getStatus();
 
 					log.info(`Workflow status retrieved for task ${status.taskId}`);
 

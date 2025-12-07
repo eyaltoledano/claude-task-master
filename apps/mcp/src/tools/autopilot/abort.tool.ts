@@ -3,7 +3,6 @@
  * Abort a running TDD workflow and clean up state
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -28,16 +27,14 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 		parameters: AbortSchema,
 		execute: withToolContext(
 			'autopilot-abort',
-			async (args: AbortArgs, { log }: ToolContext) => {
+			async (args: AbortArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
 					log.info(`Aborting autopilot workflow in ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					const hasWorkflow = await workflowService.hasWorkflow();
+					const hasWorkflow = await tmCore.workflow.hasWorkflow();
 
 					if (!hasWorkflow) {
 						log.warn('No active workflow to abort');
@@ -55,11 +52,11 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 					}
 
 					// Get info before aborting
-					await workflowService.resumeWorkflow();
-					const status = workflowService.getStatus();
+					await tmCore.workflow.resume();
+					const status = tmCore.workflow.getStatus();
 
 					// Abort workflow
-					await workflowService.abortWorkflow();
+					await tmCore.workflow.abort();
 
 					log.info('Workflow state deleted');
 

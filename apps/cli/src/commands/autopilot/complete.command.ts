@@ -2,15 +2,10 @@
  * @fileoverview Complete Command - Complete current TDD phase with validation
  */
 
-import { type TestResult, WorkflowOrchestrator } from '@tm/core';
+import { type TestResult, createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import { getProjectRoot } from '../../utils/project-root.js';
-import {
-	type AutopilotBaseOptions,
-	OutputFormatter,
-	hasWorkflowState,
-	loadWorkflowState
-} from './shared.js';
+import { type AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 interface CompleteOptions extends AutopilotBaseOptions {
 	results?: string;
@@ -49,37 +44,30 @@ export class CompleteCommand extends Command {
 		const formatter = new OutputFormatter(mergedOptions.json || false);
 
 		try {
-			// Check for workflow state
-			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
-			if (!hasState) {
+			const projectRoot = mergedOptions.projectRoot!;
+
+			// Initialize TmCore facade
+			const tmCore = await createTmCore({ projectPath: projectRoot });
+
+			// Check if workflow exists
+			if (!(await tmCore.workflow.hasWorkflow())) {
 				formatter.error('No active workflow', {
 					suggestion: 'Start a workflow with: autopilot start <taskId>'
 				});
 				process.exit(1);
 			}
 
-			// Load state
-			const state = await loadWorkflowState(mergedOptions.projectRoot!);
-			if (!state) {
-				formatter.error('Failed to load workflow state');
-				process.exit(1);
-			}
-
-			// Restore orchestrator with persistence
-			const { saveWorkflowState } = await import('./shared.js');
-			const orchestrator = new WorkflowOrchestrator(state.context);
-			orchestrator.restoreState(state);
-			orchestrator.enableAutoPersist(async (newState) => {
-				await saveWorkflowState(mergedOptions.projectRoot!, newState);
-			});
+			// Resume workflow
+			await tmCore.workflow.resume();
+			const status = tmCore.workflow.getStatus();
 
 			// Get current phase
-			const tddPhase = orchestrator.getCurrentTDDPhase();
-			const currentSubtask = orchestrator.getCurrentSubtask();
+			const tddPhase = status.tddPhase;
+			const currentSubtask = status.currentSubtask;
 
 			if (!tddPhase) {
 				formatter.error('Not in a TDD phase', {
-					phase: orchestrator.getCurrentPhase()
+					phase: status.phase
 				});
 				process.exit(1);
 			}
@@ -136,24 +124,18 @@ export class CompleteCommand extends Command {
 					process.exit(1);
 				}
 
-				// Complete phase with test results
+				// Complete phase with test results using tmCore facade
+				const newStatus = await tmCore.workflow.completePhase(testResults);
+
 				if (tddPhase === 'RED') {
-					orchestrator.transition({
-						type: 'RED_PHASE_COMPLETE',
-						testResults
-					});
 					formatter.success('RED phase completed', {
-						nextPhase: 'GREEN',
+						nextPhase: newStatus.tddPhase || 'GREEN',
 						testResults,
 						subtask: currentSubtask?.title
 					});
 				} else {
-					orchestrator.transition({
-						type: 'GREEN_PHASE_COMPLETE',
-						testResults
-					});
 					formatter.success('GREEN phase completed', {
-						nextPhase: 'COMMIT',
+						nextPhase: newStatus.tddPhase || 'COMMIT',
 						testResults,
 						subtask: currentSubtask?.title,
 						suggestion: 'Run: autopilot commit'

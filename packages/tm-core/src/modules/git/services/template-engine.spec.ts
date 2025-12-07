@@ -51,10 +51,24 @@ describe('TemplateEngine', () => {
 		});
 
 		it('should handle missing variables by leaving placeholder', () => {
+			const engineWithPreserve = new TemplateEngine({
+				preservePlaceholders: true
+			});
+			const template = 'Hello {{name}} from {{location}}';
+			const result = engineWithPreserve.render(
+				'test',
+				{ name: 'Alice' },
+				template
+			);
+
+			expect(result).toBe('Hello Alice from {{location}}');
+		});
+
+		it('should replace missing variables with empty string by default', () => {
 			const template = 'Hello {{name}} from {{location}}';
 			const result = templateEngine.render('test', { name: 'Alice' }, template);
 
-			expect(result).toBe('Hello Alice from {{location}}');
+			expect(result).toBe('Hello Alice from ');
 		});
 
 		it('should handle empty variable values', () => {
@@ -215,11 +229,21 @@ describe('TemplateEngine', () => {
 			expect(result).toBe('Static text');
 		});
 
+		it('should handle empty variables object with preservePlaceholders', () => {
+			const engineWithPreserve = new TemplateEngine({
+				preservePlaceholders: true
+			});
+			const template = 'Hello {{name}}';
+			const result = engineWithPreserve.render('test', {}, template);
+
+			expect(result).toBe('Hello {{name}}');
+		});
+
 		it('should handle empty variables object', () => {
 			const template = 'Hello {{name}}';
 			const result = templateEngine.render('test', {}, template);
 
-			expect(result).toBe('Hello {{name}}');
+			expect(result).toBe('Hello ');
 		});
 
 		it('should handle special characters in values', () => {

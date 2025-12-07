@@ -3,7 +3,7 @@
  * Create a git commit with automatic staging and message generation
  */
 
-import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
+import { CommitMessageGenerator, GitAdapter } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -38,16 +38,14 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 		parameters: CommitSchema,
 		execute: withToolContext(
 			'autopilot-commit',
-			async (args: CommitArgs, { log }: ToolContext) => {
+			async (args: CommitArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot, files, customMessage } = args;
 
 				try {
 					log.info(`Creating commit for workflow in ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -62,9 +60,9 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					}
 
 					// Resume workflow
-					await workflowService.resumeWorkflow();
-					const status = workflowService.getStatus();
-					const workflowContext = workflowService.getContext();
+					await tmCore.workflow.resume();
+					const status = tmCore.workflow.getStatus();
+					const workflowContext = tmCore.workflow.getContext();
 
 					// Verify we're in COMMIT phase
 					if (status.tddPhase !== 'COMMIT') {
@@ -187,7 +185,8 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					const lastCommit = await gitAdapter.getLastCommit();
 
 					// Complete COMMIT phase and advance workflow
-					const newStatus = await workflowService.commit();
+					// Status updates (subtask → done) are handled internally by tmCore.workflow
+					const newStatus = await tmCore.workflow.commit();
 
 					log.info(
 						`Commit completed. Current phase: ${newStatus.tddPhase || newStatus.phase}`
@@ -196,7 +195,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					const isComplete = newStatus.phase === 'COMPLETE';
 
 					// Get next action with guidance
-					const nextAction = workflowService.getNextAction();
+					const nextAction = tmCore.workflow.getNextAction();
 
 					return handleApiResult({
 						result: {

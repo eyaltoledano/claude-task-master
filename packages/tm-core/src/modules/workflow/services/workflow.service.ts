@@ -3,6 +3,8 @@
  * Provides a simplified API for MCP tools while delegating to WorkflowOrchestrator
  */
 
+import { getLogger } from '../../../common/logger/index.js';
+import type { TaskStatus } from '../../../common/types/index.js';
 import { GitAdapter } from '../../git/adapters/git-adapter.js';
 import { WorkflowStateManager } from '../managers/workflow-state-manager.js';
 import { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
@@ -30,7 +32,8 @@ export interface StartWorkflowOptions {
 	}>;
 	maxAttempts?: number;
 	force?: boolean;
-	tag?: string; // Optional tag for branch naming
+	tag?: string; // Optional tag for branch naming (local storage)
+	orgSlug?: string; // Optional org slug for branch naming (API storage, takes precedence over tag)
 }
 
 /**
@@ -71,18 +74,75 @@ export interface NextAction {
 }
 
 /**
+ * Interface for updating task statuses
+ * Allows WorkflowService to update task statuses without direct dependency on TasksDomain
+ */
+export interface TaskStatusUpdater {
+	updateStatus(taskId: string, status: TaskStatus, tag?: string): Promise<void>;
+}
+
+/**
+ * Options for WorkflowService constructor
+ */
+export interface WorkflowServiceOptions {
+	projectRoot: string;
+	taskStatusUpdater?: TaskStatusUpdater;
+	tag?: string;
+}
+
+/**
  * WorkflowService - Facade for workflow operations
  * Manages WorkflowOrchestrator lifecycle and state persistence
  */
 export class WorkflowService {
 	private readonly projectRoot: string;
 	private readonly stateManager: WorkflowStateManager;
+	private readonly taskStatusUpdater?: TaskStatusUpdater;
+	private readonly tag?: string;
+	private readonly logger = getLogger('WorkflowService');
 	private orchestrator?: WorkflowOrchestrator;
 	private activityLogger?: WorkflowActivityLogger;
 
-	constructor(projectRoot: string) {
-		this.projectRoot = projectRoot;
-		this.stateManager = new WorkflowStateManager(projectRoot);
+	constructor(projectRootOrOptions: string | WorkflowServiceOptions) {
+		if (typeof projectRootOrOptions === 'string') {
+			// Legacy constructor: just projectRoot
+			this.projectRoot = projectRootOrOptions;
+		} else {
+			// New constructor with options
+			this.projectRoot = projectRootOrOptions.projectRoot;
+			this.taskStatusUpdater = projectRootOrOptions.taskStatusUpdater;
+			this.tag = projectRootOrOptions.tag;
+		}
+		this.stateManager = new WorkflowStateManager(this.projectRoot);
+	}
+
+	/**
+	 * Update task status if updater is available
+	 * Logs warning but doesn't throw if update fails
+	 * @param taskId - Task ID to update
+	 * @param status - New status
+	 * @param tag - Optional tag override (uses constructor tag if not provided)
+	 */
+	private async updateTaskStatus(
+		taskId: string,
+		status: TaskStatus,
+		tag?: string
+	): Promise<void> {
+		if (!this.taskStatusUpdater) {
+			return;
+		}
+
+		try {
+			await this.taskStatusUpdater.updateStatus(
+				taskId,
+				status,
+				tag ?? this.tag
+			);
+		} catch (error: unknown) {
+			// Log but don't fail the workflow operation
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.warn(`Failed to update task ${taskId} status: ${message}`);
+		}
 	}
 
 	/**
@@ -102,7 +162,8 @@ export class WorkflowService {
 			subtasks,
 			maxAttempts = 3,
 			force,
-			tag
+			tag,
+			orgSlug
 		} = options;
 
 		// Check for existing workflow
@@ -143,6 +204,7 @@ export class WorkflowService {
 			taskId,
 			subtasks: workflowSubtasks,
 			currentSubtaskIndex: firstIncompleteIndex,
+			tag,
 			errors: [],
 			metadata: {
 				startedAt: new Date().toISOString(),
@@ -171,7 +233,7 @@ export class WorkflowService {
 		await this.orchestrator.transition({ type: 'PREFLIGHT_COMPLETE' });
 
 		// Create git branch with descriptive name
-		const branchName = this.generateBranchName(taskId, taskTitle, tag);
+		const branchName = this.generateBranchName(taskId, taskTitle, tag, orgSlug);
 
 		// Check if we're already on the target branch
 		const currentBranch = await gitAdapter.getCurrentBranch();
@@ -185,6 +247,9 @@ export class WorkflowService {
 			type: 'BRANCH_CREATED',
 			branchName
 		});
+
+		// Set main task status to in-progress
+		await this.updateTaskStatus(taskId, 'in-progress', tag);
 
 		return this.getStatus();
 	}
@@ -401,6 +466,10 @@ export class WorkflowService {
 			);
 		}
 
+		// Capture current subtask before transitioning
+		const currentSubtask = this.orchestrator.getCurrentSubtask();
+		const completedSubtaskId = currentSubtask?.id;
+
 		// Transition COMMIT phase complete
 		await this.orchestrator.transition({
 			type: 'COMMIT_COMPLETE'
@@ -415,12 +484,19 @@ export class WorkflowService {
 			await this.orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 		}
 
+		// Mark completed subtask as done (use workflow's tag from context)
+		if (completedSubtaskId) {
+			const context = this.orchestrator.getContext();
+			await this.updateTaskStatus(completedSubtaskId, 'done', context.tag);
+		}
+
 		return this.getStatus();
 	}
 
 	/**
 	 * Finalize and complete the workflow
 	 * Validates working tree is clean before marking complete
+	 * Cleans up workflow state file after successful completion
 	 */
 	async finalizeWorkflow(): Promise<WorkflowStatus> {
 		if (!this.orchestrator) {
@@ -447,10 +523,24 @@ export class WorkflowService {
 			);
 		}
 
+		// Capture task ID before transitioning
+		const context = this.orchestrator.getContext();
+		const taskId = context.taskId;
+
 		// Transition to COMPLETE
 		await this.orchestrator.transition({ type: 'FINALIZE_COMPLETE' });
 
-		return this.getStatus();
+		// Get final status before cleanup
+		const finalStatus = this.getStatus();
+
+		// Mark main task as done (use workflow's tag from context)
+		await this.updateTaskStatus(taskId, 'done', context.tag);
+
+		// Clean up workflow state file so new workflows can start without force
+		await this.stateManager.delete();
+		this.orchestrator = undefined;
+
+		return finalStatus;
 	}
 
 	/**
@@ -469,12 +559,14 @@ export class WorkflowService {
 
 	/**
 	 * Generate a descriptive git branch name
-	 * Format: tag-name/task-id-task-title or task-id-task-title
+	 * Format: tm/<namespace>/task-<id>-<title> where namespace is orgSlug (API) or tag (local)
+	 * All branches are prefixed with 'tm/' to avoid conflicts with existing branches
 	 */
 	private generateBranchName(
 		taskId: string,
 		taskTitle: string,
-		tag?: string
+		tag?: string,
+		orgSlug?: string
 	): string {
 		// Sanitize task title for branch name
 		const sanitizedTitle = taskTitle
@@ -486,9 +578,10 @@ export class WorkflowService {
 		// Format task ID for branch name
 		const formattedTaskId = taskId.replace(/\./g, '-');
 
-		// Add tag prefix if tag is provided
-		const tagPrefix = tag ? `${tag}/` : '';
+		// Priority: orgSlug (API storage) > tag (local storage) > none
+		const namespace = orgSlug || tag;
+		const prefix = namespace ? `tm/${namespace}` : 'tm';
 
-		return `${tagPrefix}task-${formattedTaskId}-${sanitizedTitle}`;
+		return `${prefix}/task-${formattedTaskId}-${sanitizedTitle}`;
 	}
 }

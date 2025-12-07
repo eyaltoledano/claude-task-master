@@ -2,15 +2,10 @@
  * @fileoverview Next Command - Get next action in TDD workflow
  */
 
-import { WorkflowOrchestrator } from '@tm/core';
+import { createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import { getProjectRoot } from '../../utils/project-root.js';
-import {
-	type AutopilotBaseOptions,
-	OutputFormatter,
-	hasWorkflowState,
-	loadWorkflowState
-} from './shared.js';
+import { type AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 type NextOptions = AutopilotBaseOptions;
 
@@ -54,112 +49,54 @@ export class NextCommand extends Command {
 				...mergedOptions,
 				projectRoot
 			};
-			// Check for workflow state
-			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
-			if (!hasState) {
+
+			// Initialize TmCore facade
+			const tmCore = await createTmCore({ projectPath: projectRoot });
+
+			// Check if workflow exists
+			if (!(await tmCore.workflow.hasWorkflow())) {
 				formatter.error('No active workflow', {
 					suggestion: 'Start a workflow with: autopilot start <taskId>'
 				});
 				process.exit(1);
 			}
 
-			// Load state
-			const state = await loadWorkflowState(mergedOptions.projectRoot!);
-			if (!state) {
-				formatter.error('Failed to load workflow state');
-				process.exit(1);
-			}
+			// Resume workflow and get next action
+			await tmCore.workflow.resume();
+			const status = tmCore.workflow.getStatus();
+			const nextAction = tmCore.workflow.getNextAction();
+			const context = tmCore.workflow.getContext();
 
-			// Restore orchestrator
-			const orchestrator = new WorkflowOrchestrator(state.context);
-			orchestrator.restoreState(state);
-
-			// Get current phase and subtask
-			const phase = orchestrator.getCurrentPhase();
-			const tddPhase = orchestrator.getCurrentTDDPhase();
-			const currentSubtask = orchestrator.getCurrentSubtask();
-
-			// Determine next action based on phase
-			let actionType: string;
-			let actionDescription: string;
-			let actionDetails: Record<string, unknown> = {};
+			// Get current phase info
+			const phase = status.phase;
+			const tddPhase = status.tddPhase;
+			const currentSubtask = status.currentSubtask;
 
 			if (phase === 'COMPLETE') {
 				formatter.success('Workflow complete', {
 					message: 'All subtasks have been completed',
-					taskId: state.context.taskId
+					taskId: status.taskId
 				});
 				return;
 			}
 
-			if (phase === 'SUBTASK_LOOP' && tddPhase) {
-				switch (tddPhase) {
-					case 'RED':
-						actionType = 'generate_test';
-						actionDescription = 'Write failing test for current subtask';
-						actionDetails = {
-							subtask: currentSubtask
-								? {
-										id: currentSubtask.id,
-										title: currentSubtask.title,
-										attempts: currentSubtask.attempts
-									}
-								: null,
-							testCommand: 'npm test', // Could be customized based on config
-							expectedOutcome: 'Test should fail'
-						};
-						break;
-
-					case 'GREEN':
-						actionType = 'implement_code';
-						actionDescription = 'Implement code to pass the failing test';
-						actionDetails = {
-							subtask: currentSubtask
-								? {
-										id: currentSubtask.id,
-										title: currentSubtask.title,
-										attempts: currentSubtask.attempts
-									}
-								: null,
-							testCommand: 'npm test',
-							expectedOutcome: 'All tests should pass',
-							lastTestResults: state.context.lastTestResults
-						};
-						break;
-
-					case 'COMMIT':
-						actionType = 'commit_changes';
-						actionDescription = 'Commit the changes';
-						actionDetails = {
-							subtask: currentSubtask
-								? {
-										id: currentSubtask.id,
-										title: currentSubtask.title,
-										attempts: currentSubtask.attempts
-									}
-								: null,
-							suggestion: 'Use: autopilot commit'
-						};
-						break;
-
-					default:
-						actionType = 'unknown';
-						actionDescription = 'Unknown TDD phase';
-				}
-			} else {
-				actionType = 'workflow_phase';
-				actionDescription = `Currently in ${phase} phase`;
-			}
-
-			// Output next action
+			// Output next action using the facade's guidance
 			const output = {
-				action: actionType,
-				description: actionDescription,
+				action: nextAction.action,
+				description: nextAction.description,
 				phase,
 				tddPhase,
-				taskId: state.context.taskId,
-				branchName: state.context.branchName,
-				...actionDetails
+				taskId: status.taskId,
+				branchName: status.branchName,
+				subtask: currentSubtask
+					? {
+							id: currentSubtask.id,
+							title: currentSubtask.title,
+							attempts: currentSubtask.attempts
+						}
+					: null,
+				nextSteps: nextAction.nextSteps,
+				lastTestResults: context.lastTestResults
 			};
 
 			if (mergedOptions.json) {

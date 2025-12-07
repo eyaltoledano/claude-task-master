@@ -3,7 +3,6 @@
  * Finalize and complete the workflow with working tree validation
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -28,16 +27,14 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 		parameters: FinalizeSchema,
 		execute: withToolContext(
 			'autopilot-finalize',
-			async (args: FinalizeArgs, { log }: ToolContext) => {
+			async (args: FinalizeArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
 					log.info(`Finalizing workflow in ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -52,8 +49,8 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 					}
 
 					// Resume workflow
-					await workflowService.resumeWorkflow();
-					const currentStatus = workflowService.getStatus();
+					await tmCore.workflow.resume();
+					const currentStatus = tmCore.workflow.getStatus();
 
 					// Verify we're in FINALIZE phase
 					if (currentStatus.phase !== 'FINALIZE') {
@@ -70,12 +67,13 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 					}
 
 					// Finalize workflow (validates clean working tree)
-					const newStatus = await workflowService.finalizeWorkflow();
+					// Status updates (main task → done) are handled internally by tmCore.workflow
+					const newStatus = await tmCore.workflow.finalize();
 
 					log.info('Workflow finalized successfully');
 
 					// Get next action
-					const nextAction = workflowService.getNextAction();
+					const nextAction = tmCore.workflow.getNextAction();
 
 					return handleApiResult({
 						result: {
