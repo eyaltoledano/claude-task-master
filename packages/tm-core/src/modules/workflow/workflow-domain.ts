@@ -6,8 +6,8 @@
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import type { TasksDomain } from '../tasks/tasks-domain.js';
 import {
-	WorkflowService,
-	type TaskStatusUpdater
+	type TaskStatusUpdater,
+	WorkflowService
 } from './services/workflow.service.js';
 import type {
 	NextAction,
@@ -50,7 +50,7 @@ export class WorkflowDomain {
 			const taskStatusUpdater: TaskStatusUpdater | undefined = this.tasksDomain
 				? {
 						updateStatus: async (taskId, status, tag) => {
-							await this.tasksDomain!.updateStatus(taskId, status as any, tag);
+							await this.tasksDomain!.updateStatus(taskId, status, tag);
 						}
 					}
 				: undefined;

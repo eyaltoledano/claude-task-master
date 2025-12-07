@@ -84,7 +84,7 @@ export class FinalizeCommand extends Command {
 			formatter.success('Workflow completed', {
 				taskId: newStatus.taskId,
 				phase: newStatus.phase,
-				branchName: currentStatus.branchName,
+				branchName: newStatus.branchName,
 				progress: newStatus.progress
 			});
 		} catch (error) {

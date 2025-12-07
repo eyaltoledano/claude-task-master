@@ -185,7 +185,7 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 					const lastCommit = await gitAdapter.getLastCommit();
 
 					// Complete COMMIT phase and advance workflow
-					// Status updates (subtask → done) are handled internally by WorkflowService
+					// Status updates (subtask → done) are handled internally by tmCore.workflow
 					const newStatus = await tmCore.workflow.commit();
 
 					log.info(

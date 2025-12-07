@@ -3,6 +3,7 @@
  * Provides a simplified API for MCP tools while delegating to WorkflowOrchestrator
  */
 
+import type { TaskStatus } from '../../../common/types/index.js';
 import { GitAdapter } from '../../git/adapters/git-adapter.js';
 import { WorkflowStateManager } from '../managers/workflow-state-manager.js';
 import { WorkflowOrchestrator } from '../orchestrators/workflow-orchestrator.js';
@@ -76,7 +77,7 @@ export interface NextAction {
  * Allows WorkflowService to update task statuses without direct dependency on TasksDomain
  */
 export interface TaskStatusUpdater {
-	updateStatus(taskId: string, status: string, tag?: string): Promise<void>;
+	updateStatus(taskId: string, status: TaskStatus, tag?: string): Promise<void>;
 }
 
 /**
@@ -119,7 +120,7 @@ export class WorkflowService {
 	 */
 	private async updateTaskStatus(
 		taskId: string,
-		status: string
+		status: TaskStatus
 	): Promise<void> {
 		if (!this.taskStatusUpdater) {
 			return;

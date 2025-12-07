@@ -87,11 +87,22 @@ describe('Autopilot Shared Utilities', () => {
 				formatter.warning('Warning message');
 
 				expect(consoleWarnSpy).toHaveBeenCalledWith(
-					expect.stringContaining('⚠ Warning message')
+					expect.stringContaining('⚠️ Warning message')
 				);
 				consoleWarnSpy.mockRestore();
 			});
 
+			it('should output formatted text for info', () => {
+				const formatter = new OutputFormatter(false);
+				formatter.info('Info message');
+
+				expect(consoleLogSpy).toHaveBeenCalledWith(
+					expect.stringContaining('ℹ Info message')
+				);
+			});
+		});
+
+		describe('info suppression', () => {
 			it('should not output info in JSON mode', () => {
 				const formatter = new OutputFormatter(true);
 				formatter.info('Info message');

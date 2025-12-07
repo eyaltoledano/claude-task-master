@@ -67,7 +67,7 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 					}
 
 					// Finalize workflow (validates clean working tree)
-					// Status updates (main task → done) are handled internally by WorkflowService
+					// Status updates (main task → done) are handled internally by tmCore.workflow
 					const newStatus = await tmCore.workflow.finalize();
 
 					log.info('Workflow finalized successfully');
