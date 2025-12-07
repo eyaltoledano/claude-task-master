@@ -67,6 +67,14 @@ TaskMaster provides a complete TDD workflow orchestration system that enables AI
 - Validates git repository state
 - Provides safety checks (clean working tree, etc.)
 
+**Branch Naming Convention**
+TaskMaster uses a structured branch naming convention for workflow branches:
+- **Standard format**: `tm/task-{taskId}-{sanitized-title}`
+- **Team mode**: `tm/{orgSlug}/task-{taskId}-{sanitized-title}` (when using API storage with team organization)
+- **Local mode**: `tm/{tag}/task-{taskId}-{sanitized-title}` (when using local storage with tag)
+
+The `tm/` prefix ensures workflow branches don't conflict with existing project branches. Titles are sanitized by converting to lowercase, replacing non-alphanumeric characters with dashes, and truncating to 50 characters.
+
 **TestResultValidator**
 - Validates RED phase has test failures
 - Validates GREEN phase has all tests passing
@@ -138,7 +146,7 @@ tm autopilot start 7 --max-attempts 5 --json
   "success": true,
   "message": "Workflow started for task 7",
   "taskId": "7",
-  "branchName": "task-7",
+  "branchName": "tm/task-7-implement-auth-system",
   "phase": "SUBTASK_LOOP",
   "tddPhase": "RED",
   "progress": {
@@ -177,7 +185,7 @@ Get the next action to perform with detailed context.
   "phase": "SUBTASK_LOOP",
   "tddPhase": "RED",
   "taskId": "7",
-  "branchName": "task-7",
+  "branchName": "tm/task-7-implement-auth-system",
   "progress": {
     "completed": 0,
     "total": 5,
@@ -400,7 +408,7 @@ PREFLIGHT → BRANCH_SETUP → SUBTASK_LOOP → FINALIZE → COMPLETE
 - Verify preconditions
 
 **BRANCH_SETUP**
-- Create workflow branch: `task-{taskId}`
+- Create workflow branch: `tm/task-{taskId}-{title}` or `tm/{namespace}/task-{taskId}-{title}` for team mode
 - Checkout new branch
 - Initialize workflow context
 
@@ -495,7 +503,7 @@ $ tm autopilot start 7 --json
 {
   "success": true,
   "taskId": "7",
-  "branchName": "task-7",
+  "branchName": "tm/task-7-implement-auth-system",
   "tddPhase": "RED",
   "currentSubtask": {
     "id": "1",
@@ -537,7 +545,7 @@ describe('StartCommand', () => {
     const command = new StartCommand();
     const result = await command.execute({ taskId: '7' });
     expect(result.success).toBe(true);
-    expect(result.branchName).toBe('task-7');
+    expect(result.branchName).toBe('tm/task-7-implement-auth-system');
   });
 });
 ```
@@ -585,7 +593,7 @@ export class StartCommand {
     // Implementation that makes test pass
     return {
       success: true,
-      branchName: `task-${options.taskId}`
+      branchName: `tm/task-${options.taskId}-${sanitizedTitle}`
     };
   }
 }
@@ -892,7 +900,7 @@ Ensure test results JSON has required fields:
 git branch
 
 # Delete old workflow branch if safe
-git branch -D task-7
+git branch -D tm/task-7-implement-auth-system
 
 # Start workflow again
 tm autopilot start 7

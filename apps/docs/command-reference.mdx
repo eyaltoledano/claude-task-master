@@ -210,6 +210,12 @@ description: "A comprehensive reference of all available Task Master commands"
     ```bash
     # Start autonomous TDD workflow for a task
     task-master autopilot start <taskId>
+    
+    # Start with force flag to override existing workflow
+    task-master autopilot start <taskId> --force
+    
+    # Set maximum attempts per subtask
+    task-master autopilot start <taskId> --max-attempts 5
 
     # Get next action with context
     task-master autopilot next
@@ -230,6 +236,6 @@ description: "A comprehensive reference of all available Task Master commands"
     task-master autopilot abort
     ```
 
-    The TDD workflow enforces RED → GREEN → COMMIT cycles for each subtask. See [AI Agent Integration](/tdd-workflow/ai-agent-integration) for details.
+    The TDD workflow enforces RED → GREEN → COMMIT cycles for each subtask and creates branches with the naming convention `tm/task-{id}-{title}` or `tm/{namespace}/task-{id}-{title}` for team mode. See [AI Agent Integration](/tdd-workflow/ai-agent-integration) for details.
   </Accordion>
 </AccordionGroup>

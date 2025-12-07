@@ -23,7 +23,7 @@ Example:
 $ tm autopilot start 7
 
 ✓ Workflow started for task 7
-✓ Created branch: task-7
+✓ Created branch: tm/task-7-implement-autopilot-workflow
 ✓ Current phase: RED
 ✓ Subtask 1/5: Implement start command
 → Next action: Write a failing test
@@ -151,7 +151,7 @@ $ tm autopilot status --json
 }
 ```
 
-Your branch `task-7` is ready for review/merge!
+Your branch `tm/task-7-implement-autopilot-workflow` is ready for review/merge!
 
 ## Common Patterns
 
@@ -227,7 +227,7 @@ $ tm autopilot start 7 --json | jq .
 {
   "success": true,
   "taskId": "7",
-  "branchName": "task-7",
+  "branchName": "tm/task-7-implement-autopilot-workflow",
   "phase": "SUBTASK_LOOP",
   "tddPhase": "RED",
   "progress": { ... },
