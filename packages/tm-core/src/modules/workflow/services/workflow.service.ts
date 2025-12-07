@@ -117,17 +117,25 @@ export class WorkflowService {
 	/**
 	 * Update task status if updater is available
 	 * Logs warning but doesn't throw if update fails
+	 * @param taskId - Task ID to update
+	 * @param status - New status
+	 * @param tag - Optional tag override (uses constructor tag if not provided)
 	 */
 	private async updateTaskStatus(
 		taskId: string,
-		status: TaskStatus
+		status: TaskStatus,
+		tag?: string
 	): Promise<void> {
 		if (!this.taskStatusUpdater) {
 			return;
 		}
 
 		try {
-			await this.taskStatusUpdater.updateStatus(taskId, status, this.tag);
+			await this.taskStatusUpdater.updateStatus(
+				taskId,
+				status,
+				tag ?? this.tag
+			);
 		} catch (error: any) {
 			// Log but don't fail the workflow operation
 			console.warn(`Failed to update task ${taskId} status: ${error.message}`);
@@ -193,6 +201,7 @@ export class WorkflowService {
 			taskId,
 			subtasks: workflowSubtasks,
 			currentSubtaskIndex: firstIncompleteIndex,
+			tag,
 			errors: [],
 			metadata: {
 				startedAt: new Date().toISOString(),
@@ -237,7 +246,7 @@ export class WorkflowService {
 		});
 
 		// Set main task status to in-progress
-		await this.updateTaskStatus(taskId, 'in-progress');
+		await this.updateTaskStatus(taskId, 'in-progress', tag);
 
 		return this.getStatus();
 	}
@@ -472,9 +481,10 @@ export class WorkflowService {
 			await this.orchestrator.transition({ type: 'ALL_SUBTASKS_COMPLETE' });
 		}
 
-		// Mark completed subtask as done
+		// Mark completed subtask as done (use workflow's tag from context)
 		if (completedSubtaskId) {
-			await this.updateTaskStatus(completedSubtaskId, 'done');
+			const context = this.orchestrator.getContext();
+			await this.updateTaskStatus(completedSubtaskId, 'done', context.tag);
 		}
 
 		return this.getStatus();
@@ -511,7 +521,8 @@ export class WorkflowService {
 		}
 
 		// Capture task ID before transitioning
-		const taskId = this.orchestrator.getContext().taskId;
+		const context = this.orchestrator.getContext();
+		const taskId = context.taskId;
 
 		// Transition to COMPLETE
 		await this.orchestrator.transition({ type: 'FINALIZE_COMPLETE' });
@@ -519,8 +530,8 @@ export class WorkflowService {
 		// Get final status before cleanup
 		const finalStatus = this.getStatus();
 
-		// Mark main task as done
-		await this.updateTaskStatus(taskId, 'done');
+		// Mark main task as done (use workflow's tag from context)
+		await this.updateTaskStatus(taskId, 'done', context.tag);
 
 		// Clean up workflow state file so new workflows can start without force
 		await this.stateManager.delete();
