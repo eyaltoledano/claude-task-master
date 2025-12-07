@@ -2,15 +2,10 @@
  * @fileoverview Status Command - Show workflow progress
  */
 
-import { WorkflowOrchestrator } from '@tm/core';
+import { createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import { getProjectRoot } from '../../utils/project-root.js';
-import {
-	AutopilotBaseOptions,
-	OutputFormatter,
-	hasWorkflowState,
-	loadWorkflowState
-} from './shared.js';
+import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 type StatusOptions = AutopilotBaseOptions;
 
@@ -42,62 +37,56 @@ export class StatusCommand extends Command {
 		const formatter = new OutputFormatter(mergedOptions.json || false);
 
 		try {
-			// Check for workflow state
-			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
-			if (!hasState) {
-				formatter.error('No active workflow', {
-					suggestion: 'Start a workflow with: autopilot start <taskId>'
-				});
-				process.exit(1);
+			const projectRoot = mergedOptions.projectRoot!;
+
+			// Initialize TmCore facade
+			const tmCore = await createTmCore({ projectPath: projectRoot });
+
+			// Check if workflow exists
+			if (!(await tmCore.workflow.hasWorkflow())) {
+				if (mergedOptions.json) {
+					formatter.output({
+						active: false,
+						message: 'No active workflow'
+					});
+				} else {
+					formatter.info('No active workflow');
+					console.log('Start a workflow with: autopilot start <taskId>');
+				}
+				return;
 			}
 
-			// Load state
-			const state = await loadWorkflowState(mergedOptions.projectRoot!);
-			if (!state) {
-				formatter.error('Failed to load workflow state');
-				process.exit(1);
-			}
-
-			// Restore orchestrator
-			const orchestrator = new WorkflowOrchestrator(state.context);
-			orchestrator.restoreState(state);
-
-			// Get status information
-			const phase = orchestrator.getCurrentPhase();
-			const tddPhase = orchestrator.getCurrentTDDPhase();
-			const progress = orchestrator.getProgress();
-			const currentSubtask = orchestrator.getCurrentSubtask();
-			const errors = state.context.errors ?? [];
+			// Resume workflow and get status
+			await tmCore.workflow.resume();
+			const workflowStatus = tmCore.workflow.getStatus();
+			const context = tmCore.workflow.getContext();
 
 			// Build status output
 			const status = {
-				taskId: state.context.taskId,
-				phase,
-				tddPhase,
-				branchName: state.context.branchName,
-				progress: {
-					completed: progress.completed,
-					total: progress.total,
-					current: progress.current,
-					percentage: progress.percentage
-				},
-				currentSubtask: currentSubtask
+				taskId: workflowStatus.taskId,
+				phase: workflowStatus.phase,
+				tddPhase: workflowStatus.tddPhase,
+				branchName: workflowStatus.branchName,
+				progress: workflowStatus.progress,
+				currentSubtask: workflowStatus.currentSubtask
 					? {
-							id: currentSubtask.id,
-							title: currentSubtask.title,
-							status: currentSubtask.status,
-							attempts: currentSubtask.attempts,
-							maxAttempts: currentSubtask.maxAttempts
+							id: workflowStatus.currentSubtask.id,
+							title: workflowStatus.currentSubtask.title,
+							attempts: workflowStatus.currentSubtask.attempts,
+							maxAttempts: workflowStatus.currentSubtask.maxAttempts
 						}
 					: null,
-				subtasks: state.context.subtasks.map((st) => ({
+				subtasks: context.subtasks.map((st) => ({
 					id: st.id,
 					title: st.title,
 					status: st.status,
 					attempts: st.attempts
 				})),
-				errors: errors.length > 0 ? errors : undefined,
-				metadata: state.context.metadata
+				errors:
+					context.errors && context.errors.length > 0
+						? context.errors
+						: undefined,
+				metadata: context.metadata
 			};
 
 			if (mergedOptions.json) {

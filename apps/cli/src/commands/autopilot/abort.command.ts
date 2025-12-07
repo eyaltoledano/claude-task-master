@@ -2,17 +2,11 @@
  * @fileoverview Abort Command - Safely terminate workflow
  */
 
-import { WorkflowOrchestrator } from '@tm/core';
+import { createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import { getProjectRoot } from '../../utils/project-root.js';
-import {
-	AutopilotBaseOptions,
-	OutputFormatter,
-	deleteWorkflowState,
-	hasWorkflowState,
-	loadWorkflowState
-} from './shared.js';
+import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
 
 interface AbortOptions extends AutopilotBaseOptions {
 	force?: boolean;
@@ -58,27 +52,19 @@ export class AbortCommand extends Command {
 				...mergedOptions,
 				projectRoot
 			};
-			// Check for workflow state
-			const hasState = await hasWorkflowState(mergedOptions.projectRoot!);
-			if (!hasState) {
+
+			// Initialize TmCore facade
+			const tmCore = await createTmCore({ projectPath: projectRoot });
+
+			// Check if workflow exists
+			if (!(await tmCore.workflow.hasWorkflow())) {
 				formatter.warning('No active workflow to abort');
 				return;
 			}
 
-			// Load state
-			const state = await loadWorkflowState(mergedOptions.projectRoot!);
-			if (!state) {
-				formatter.error('Failed to load workflow state');
-				process.exit(1);
-			}
-
-			// Restore orchestrator
-			const orchestrator = new WorkflowOrchestrator(state.context);
-			orchestrator.restoreState(state);
-
-			// Get progress before abort
-			const progress = orchestrator.getProgress();
-			const currentSubtask = orchestrator.getCurrentSubtask();
+			// Resume workflow to get status
+			await tmCore.workflow.resume();
+			const status = tmCore.workflow.getStatus();
 
 			// Confirm abort if not forced or in JSON mode
 			if (!mergedOptions.force && !mergedOptions.json) {
@@ -87,8 +73,8 @@ export class AbortCommand extends Command {
 						type: 'confirm',
 						name: 'confirmed',
 						message:
-							`This will abort the workflow for task ${state.context.taskId}. ` +
-							`Progress: ${progress.completed}/${progress.total} subtasks completed. ` +
+							`This will abort the workflow for task ${status.taskId}. ` +
+							`Progress: ${status.progress?.completed || 0}/${status.progress?.total || 0} subtasks completed. ` +
 							`Continue?`,
 						default: false
 					}
@@ -100,24 +86,18 @@ export class AbortCommand extends Command {
 				}
 			}
 
-			// Trigger abort in orchestrator
-			orchestrator.transition({ type: 'ABORT' });
-
-			// Delete workflow state
-			await deleteWorkflowState(mergedOptions.projectRoot!);
+			// Abort workflow (cleans up state internally)
+			await tmCore.workflow.abort();
 
 			// Output result
 			formatter.success('Workflow aborted', {
-				taskId: state.context.taskId,
-				branchName: state.context.branchName,
-				progress: {
-					completed: progress.completed,
-					total: progress.total
-				},
-				lastSubtask: currentSubtask
+				taskId: status.taskId,
+				branchName: status.branchName,
+				progress: status.progress,
+				lastSubtask: status.currentSubtask
 					? {
-							id: currentSubtask.id,
-							title: currentSubtask.title
+							id: status.currentSubtask.id,
+							title: status.currentSubtask.title
 						}
 					: null,
 				note: 'Branch and commits remain. Clean up manually if needed.'

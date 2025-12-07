@@ -3,12 +3,7 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import {
-	type Task,
-	type TmCore,
-	createTmCore,
-	normalizeDisplayId
-} from '@tm/core';
+import { type Task, type TmCore, createTmCore, TaskIdSchema } from '@tm/core';
 import type { StorageType, Subtask } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -106,12 +101,24 @@ export class ShowCommand extends Command {
 				process.exit(1);
 			}
 
-			// Check if multiple IDs are provided (comma-separated)
-			// Normalize display IDs (e.g., "ham31" → "HAM-31")
-			const taskIds = idArg
+			// Parse and validate task IDs (handle comma-separated values)
+			const rawIds = idArg
 				.split(',')
-				.map((id) => normalizeDisplayId(id.trim()))
+				.map((id) => id.trim())
 				.filter((id) => id.length > 0);
+			const taskIds: string[] = [];
+
+			for (const rawId of rawIds) {
+				const parseResult = TaskIdSchema.safeParse(rawId);
+				if (!parseResult.success) {
+					console.error(
+						chalk.red(`Invalid task ID: ${rawId}`),
+						chalk.gray(`- ${parseResult.error.issues[0]?.message}`)
+					);
+					process.exit(1);
+				}
+				taskIds.push(parseResult.data);
+			}
 
 			// Get tasks from core
 			const result =

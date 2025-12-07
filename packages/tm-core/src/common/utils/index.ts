@@ -4,14 +4,14 @@
  */
 
 // Export ID generation utilities
+// Note: normalizeDisplayId is now exported from common/schemas/task-id.schema.ts
 export {
 	generateTaskId as generateId, // Alias for backward compatibility
 	generateTaskId,
 	generateSubtaskId,
 	isValidTaskId,
 	isValidSubtaskId,
-	getParentTaskId,
-	normalizeDisplayId
+	getParentTaskId
 } from './id-generator.js';
 
 // Export git utilities

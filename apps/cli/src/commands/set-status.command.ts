@@ -7,7 +7,7 @@ import {
 	type TaskStatus,
 	type TmCore,
 	createTmCore,
-	normalizeDisplayId
+	TaskIdSchema
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
 import boxen from 'boxen';
@@ -150,11 +150,21 @@ export class SetStatusCommand extends Command {
 				projectPath: getProjectRoot(options.project)
 			});
 
-			// Parse task IDs (handle comma-separated values)
-			// Normalize display IDs (e.g., "ham31" → "HAM-31")
-			const taskIds = options.id
-				.split(',')
-				.map((id) => normalizeDisplayId(id.trim()));
+			// Parse and validate task IDs (handle comma-separated values)
+			const rawIds = options.id.split(',').map((id) => id.trim());
+			const taskIds: string[] = [];
+
+			for (const rawId of rawIds) {
+				const parseResult = TaskIdSchema.safeParse(rawId);
+				if (!parseResult.success) {
+					console.error(
+						chalk.red(`Invalid task ID: ${rawId}`),
+						chalk.gray(`- ${parseResult.error.issues[0]?.message}`)
+					);
+					process.exit(1);
+				}
+				taskIds.push(parseResult.data);
+			}
 
 			// Update each task
 			const updatedTasks: Array<{

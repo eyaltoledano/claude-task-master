@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { AbortCommand } from './abort.command.js';
 import { CommitCommand } from './commit.command.js';
 import { CompleteCommand } from './complete.command.js';
+import { FinalizeCommand } from './finalize.command.js';
 import { NextCommand } from './next.command.js';
 import { ResumeCommand } from './resume.command.js';
 import { StartCommand } from './start.command.js';
@@ -65,6 +66,9 @@ export class AutopilotCommand extends Command {
 
 		// Show status
 		this.addCommand(new StatusCommand());
+
+		// Finalize workflow
+		this.addCommand(new FinalizeCommand());
 
 		// Abort workflow
 		this.addCommand(new AbortCommand());

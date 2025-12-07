@@ -57,7 +57,7 @@
 		"@ai-sdk/anthropic": "^2.0.18",
 		"@ai-sdk/azure": "^2.0.34",
 		"@ai-sdk/google": "^2.0.16",
-		"@ai-sdk/google-vertex": "^3.0.29",
+		"@ai-sdk/google-vertex": "^3.0.86",
 		"@ai-sdk/groq": "^2.0.21",
 		"@ai-sdk/mistral": "^2.0.16",
 		"@ai-sdk/openai": "^2.0.34",
@@ -115,7 +115,7 @@
 		"zod": "^4.1.12"
 	},
 	"optionalDependencies": {
-		"@anthropic-ai/claude-code": "^1.0.88",
+		"@anthropic-ai/claude-code": "^2.0.59",
 		"@biomejs/cli-linux-x64": "^1.9.4"
 	},
 	"engines": {

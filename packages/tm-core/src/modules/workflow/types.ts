@@ -22,6 +22,7 @@ export interface WorkflowContext {
 	currentSubtaskIndex: number;
 	currentTDDPhase?: TDDPhase;
 	branchName?: string;
+	tag?: string;
 	errors: WorkflowError[];
 	metadata: Record<string, unknown>;
 	lastTestResults?: TestResult;
