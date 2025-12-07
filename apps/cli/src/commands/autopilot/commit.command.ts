@@ -2,7 +2,7 @@
  * @fileoverview Commit Command - Create commit with enhanced message generation
  */
 
-import { CommitMessageGenerator, GitAdapter, WorkflowService } from '@tm/core';
+import { CommitMessageGenerator, GitAdapter, createTmCore } from '@tm/core';
 import { Command } from 'commander';
 import { getProjectRoot } from '../../utils/project-root.js';
 import { AutopilotBaseOptions, OutputFormatter } from './shared.js';
@@ -39,21 +39,21 @@ export class CommitCommand extends Command {
 		try {
 			const projectRoot = mergedOptions.projectRoot!;
 
-			// Create workflow service (manages WorkflowStateManager internally)
-			const workflowService = new WorkflowService(projectRoot);
+			// Initialize TmCore facade
+			const tmCore = await createTmCore({ projectPath: projectRoot });
 
 			// Check if workflow exists
-			if (!(await workflowService.hasWorkflow())) {
+			if (!(await tmCore.workflow.hasWorkflow())) {
 				formatter.error('No active workflow', {
 					suggestion: 'Start a workflow with: autopilot start <taskId>'
 				});
 				process.exit(1);
 			}
 
-			// Resume workflow (loads state with single WorkflowStateManager instance)
-			await workflowService.resumeWorkflow();
-			const status = workflowService.getStatus();
-			const workflowContext = workflowService.getContext();
+			// Resume workflow
+			await tmCore.workflow.resume();
+			const status = tmCore.workflow.getStatus();
+			const workflowContext = tmCore.workflow.getContext();
 
 			// Verify in COMMIT phase
 			if (status.tddPhase !== 'COMMIT') {
@@ -116,8 +116,8 @@ export class CommitCommand extends Command {
 			const lastCommit = await gitAdapter.getLastCommit();
 
 			// Complete COMMIT phase and advance workflow
-			// This handles all transitions internally with a single WorkflowStateManager
-			const newStatus = await workflowService.commit();
+			// Status updates (subtask → done) are handled internally by WorkflowService
+			const newStatus = await tmCore.workflow.commit();
 
 			const isComplete = newStatus.phase === 'COMPLETE';
 

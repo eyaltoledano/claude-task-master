@@ -58,6 +58,9 @@ export * from './utils/time.utils.js';
 // Task validation schemas
 export * from './modules/tasks/validation/index.js';
 
+// Zod schemas for validation
+export * from './common/schemas/index.js';
+
 // ========== Domain-Specific Type Exports ==========
 
 // Task types
@@ -168,7 +171,11 @@ export { BriefService } from './modules/briefs/services/brief-service.js';
 // Workflow - Advanced
 export { WorkflowOrchestrator } from './modules/workflow/orchestrators/workflow-orchestrator.js';
 export { WorkflowStateManager } from './modules/workflow/managers/workflow-state-manager.js';
-export { WorkflowService } from './modules/workflow/services/workflow.service.js';
+export {
+	WorkflowService,
+	type TaskStatusUpdater,
+	type WorkflowServiceOptions
+} from './modules/workflow/services/workflow.service.js';
 export type { SubtaskInfo } from './modules/workflow/types.js';
 
 // Git - Advanced

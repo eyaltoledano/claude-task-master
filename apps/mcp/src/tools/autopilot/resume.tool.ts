@@ -3,7 +3,6 @@
  * Resume a previously started TDD workflow from saved state
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -28,16 +27,14 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 		parameters: ResumeWorkflowSchema,
 		execute: withToolContext(
 			'autopilot-resume',
-			async (args: ResumeWorkflowArgs, { log }: ToolContext) => {
+			async (args: ResumeWorkflowArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
 					log.info(`Resuming autopilot workflow in ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -52,8 +49,8 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 					}
 
 					// Resume workflow
-					const status = await workflowService.resumeWorkflow();
-					const nextAction = workflowService.getNextAction();
+					const status = await tmCore.workflow.resume();
+					const nextAction = tmCore.workflow.getNextAction();
 
 					log.info(`Workflow resumed successfully for task ${status.taskId}`);
 

@@ -3,7 +3,6 @@
  * Get the next action to perform in the TDD workflow
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -28,16 +27,14 @@ export function registerAutopilotNextTool(server: FastMCP) {
 		parameters: NextActionSchema,
 		execute: withToolContext(
 			'autopilot-next',
-			async (args: NextActionArgs, { log }: ToolContext) => {
+			async (args: NextActionArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot } = args;
 
 				try {
 					log.info(`Getting next action for workflow in ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -52,11 +49,11 @@ export function registerAutopilotNextTool(server: FastMCP) {
 					}
 
 					// Resume to load state
-					await workflowService.resumeWorkflow();
+					await tmCore.workflow.resume();
 
 					// Get next action
-					const nextAction = workflowService.getNextAction();
-					const status = workflowService.getStatus();
+					const nextAction = tmCore.workflow.getNextAction();
+					const status = tmCore.workflow.getStatus();
 
 					log.info(`Next action determined: ${nextAction.action}`);
 

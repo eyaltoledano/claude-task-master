@@ -3,7 +3,6 @@
  * Complete the current TDD phase with test result validation
  */
 
-import { WorkflowService } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
@@ -36,16 +35,14 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 		parameters: CompletePhaseSchema,
 		execute: withToolContext(
 			'autopilot-complete-phase',
-			async (args: CompletePhaseArgs, { log }: ToolContext) => {
+			async (args: CompletePhaseArgs, { log, tmCore }: ToolContext) => {
 				const { projectRoot, testResults } = args;
 
 				try {
 					log.info(`Completing current phase in workflow for ${projectRoot}`);
 
-					const workflowService = new WorkflowService(projectRoot);
-
 					// Check if workflow exists
-					if (!(await workflowService.hasWorkflow())) {
+					if (!(await tmCore.workflow.hasWorkflow())) {
 						return handleApiResult({
 							result: {
 								success: false,
@@ -60,8 +57,8 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 					}
 
 					// Resume workflow to get current state
-					await workflowService.resumeWorkflow();
-					const currentStatus = workflowService.getStatus();
+					await tmCore.workflow.resume();
+					const currentStatus = tmCore.workflow.getStatus();
 
 					// Validate that we're in a TDD phase (RED or GREEN)
 					if (!currentStatus.tddPhase) {
@@ -105,8 +102,8 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 					};
 
 					// Complete phase with test results
-					const status = await workflowService.completePhase(fullTestResults);
-					const nextAction = workflowService.getNextAction();
+					const status = await tmCore.workflow.completePhase(fullTestResults);
+					const nextAction = tmCore.workflow.getNextAction();
 
 					log.info(
 						`Phase completed. New phase: ${status.tddPhase || status.phase}`

@@ -2,13 +2,6 @@
  * @fileoverview Shared utilities for autopilot commands
  */
 
-import {
-	CommitMessageGenerator,
-	GitAdapter,
-	WorkflowOrchestrator,
-	WorkflowStateManager
-} from '@tm/core';
-import type { SubtaskInfo, WorkflowContext, WorkflowState } from '@tm/core';
 import chalk from 'chalk';
 
 /**
@@ -18,93 +11,6 @@ export interface AutopilotBaseOptions {
 	projectRoot?: string;
 	json?: boolean;
 	verbose?: boolean;
-}
-
-/**
- * Load workflow state from disk using WorkflowStateManager
- */
-export async function loadWorkflowState(
-	projectRoot: string
-): Promise<WorkflowState | null> {
-	const stateManager = new WorkflowStateManager(projectRoot);
-
-	if (!(await stateManager.exists())) {
-		return null;
-	}
-
-	try {
-		return await stateManager.load();
-	} catch (error) {
-		throw new Error(
-			`Failed to load workflow state: ${(error as Error).message}`
-		);
-	}
-}
-
-/**
- * Save workflow state to disk using WorkflowStateManager
- */
-export async function saveWorkflowState(
-	projectRoot: string,
-	state: WorkflowState
-): Promise<void> {
-	const stateManager = new WorkflowStateManager(projectRoot);
-
-	try {
-		await stateManager.save(state);
-	} catch (error) {
-		throw new Error(
-			`Failed to save workflow state: ${(error as Error).message}`
-		);
-	}
-}
-
-/**
- * Delete workflow state from disk using WorkflowStateManager
- */
-export async function deleteWorkflowState(projectRoot: string): Promise<void> {
-	const stateManager = new WorkflowStateManager(projectRoot);
-	await stateManager.delete();
-}
-
-/**
- * Check if workflow state exists using WorkflowStateManager
- */
-export async function hasWorkflowState(projectRoot: string): Promise<boolean> {
-	const stateManager = new WorkflowStateManager(projectRoot);
-	return await stateManager.exists();
-}
-
-/**
- * Initialize WorkflowOrchestrator with persistence
- */
-export function createOrchestrator(
-	context: WorkflowContext,
-	projectRoot: string
-): WorkflowOrchestrator {
-	const orchestrator = new WorkflowOrchestrator(context);
-	const stateManager = new WorkflowStateManager(projectRoot);
-
-	// Enable auto-persistence
-	orchestrator.enableAutoPersist(async (state: WorkflowState) => {
-		await stateManager.save(state);
-	});
-
-	return orchestrator;
-}
-
-/**
- * Initialize GitAdapter for project
- */
-export function createGitAdapter(projectRoot: string): GitAdapter {
-	return new GitAdapter(projectRoot);
-}
-
-/**
- * Initialize CommitMessageGenerator
- */
-export function createCommitMessageGenerator(): CommitMessageGenerator {
-	return new CommitMessageGenerator();
 }
 
 /**
@@ -230,33 +136,4 @@ export class OutputFormatter {
 		}
 		console.log(chalk.blue(`ℹ ${message}`));
 	}
-}
-
-/**
- * Validate task ID format
- */
-export function validateTaskId(taskId: string): boolean {
-	// Task ID should be in format: number or number.number (e.g., "1" or "1.2")
-	const pattern = /^\d+(\.\d+)*$/;
-	return pattern.test(taskId);
-}
-
-/**
- * Parse subtasks from task data
- */
-export function parseSubtasks(
-	task: any,
-	maxAttempts: number = 3
-): SubtaskInfo[] {
-	if (!task.subtasks || !Array.isArray(task.subtasks)) {
-		return [];
-	}
-
-	return task.subtasks.map((subtask: any) => ({
-		id: subtask.id,
-		title: subtask.title,
-		status: subtask.status === 'done' ? 'completed' : 'pending',
-		attempts: 0,
-		maxAttempts
-	}));
 }

@@ -180,6 +180,10 @@ export class TmCore {
 			// Initialize domains that need async setup
 			await this._tasks.initialize();
 
+			// Wire up cross-domain dependencies
+			// WorkflowDomain needs TasksDomain for status updates
+			this._workflow.setTasksDomain(this._tasks);
+
 			// Log successful initialization
 			this._logger.info('TmCore initialized successfully');
 		} catch (error) {
