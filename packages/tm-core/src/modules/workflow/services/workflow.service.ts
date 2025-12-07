@@ -3,6 +3,7 @@
  * Provides a simplified API for MCP tools while delegating to WorkflowOrchestrator
  */
 
+import { getLogger } from '../../../common/logger/index.js';
 import type { TaskStatus } from '../../../common/types/index.js';
 import { GitAdapter } from '../../git/adapters/git-adapter.js';
 import { WorkflowStateManager } from '../managers/workflow-state-manager.js';
@@ -98,6 +99,7 @@ export class WorkflowService {
 	private readonly stateManager: WorkflowStateManager;
 	private readonly taskStatusUpdater?: TaskStatusUpdater;
 	private readonly tag?: string;
+	private readonly logger = getLogger('WorkflowService');
 	private orchestrator?: WorkflowOrchestrator;
 	private activityLogger?: WorkflowActivityLogger;
 
@@ -136,9 +138,10 @@ export class WorkflowService {
 				status,
 				tag ?? this.tag
 			);
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// Log but don't fail the workflow operation
-			console.warn(`Failed to update task ${taskId} status: ${error.message}`);
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.warn(`Failed to update task ${taskId} status: ${message}`);
 		}
 	}
 
