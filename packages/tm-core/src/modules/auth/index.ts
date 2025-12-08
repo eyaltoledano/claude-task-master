@@ -16,7 +16,6 @@ export type {
 	AuthCredentials,
 	OAuthFlowOptions,
 	AuthConfig,
-	CliData,
 	UserContext,
 	MFAVerificationResult
 } from './types.js';
