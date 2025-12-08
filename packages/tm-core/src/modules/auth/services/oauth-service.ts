@@ -1,11 +1,14 @@
 /**
  * OAuth 2.0 Authorization Code Flow service
+ *
+ * Uses backend PKCE flow with E2E encryption:
+ * - CLI generates RSA keypair and sends public key to backend
+ * - Backend manages PKCE params (code_verifier never leaves server)
+ * - Backend encrypts tokens with CLI's public key before storage
+ * - CLI decrypts tokens with private key (tokens never stored in plaintext on server)
  */
 
-import crypto from 'crypto';
-import http from 'http';
 import os from 'os';
-import { URL } from 'url';
 import type { Session } from '@supabase/supabase-js';
 import { TASKMASTER_VERSION } from '../../../common/constants/index.js';
 import { getLogger } from '../../../common/logger/index.js';
@@ -16,10 +19,41 @@ import {
 	type AuthConfig,
 	type AuthCredentials,
 	AuthenticationError,
-	type CliData,
 	type MFAChallenge,
 	type OAuthFlowOptions
 } from '../types.js';
+import {
+	type AuthKeyPair,
+	type EncryptedTokenPayload,
+	decryptTokens,
+	generateKeyPair
+} from '../utils/cli-crypto.js';
+
+/**
+ * Response from POST /api/auth/cli/start
+ */
+interface StartFlowResponse {
+	success: boolean;
+	flow_id?: string;
+	verification_url?: string;
+	expires_at?: string;
+	poll_interval?: number;
+	error?: string;
+	message?: string;
+}
+
+/**
+ * Response from GET /api/auth/cli/status
+ */
+interface FlowStatusResponse {
+	success: boolean;
+	status?: 'pending' | 'authenticating' | 'complete' | 'failed' | 'expired';
+	encrypted_tokens?: EncryptedTokenPayload;
+	user_id?: string;
+	error?: string;
+	error_description?: string;
+	message?: string;
+}
 
 export class OAuthService {
 	private logger = getLogger('OAuthService');
@@ -27,9 +61,7 @@ export class OAuthService {
 	private supabaseClient: SupabaseAuthClient;
 	private baseUrl: string;
 	private authorizationUrl: string | null = null;
-	private originalState: string | null = null;
-	private authorizationReady: Promise<void> | null = null;
-	private resolveAuthorizationReady: (() => void) | null = null;
+	private keyPair: AuthKeyPair | null = null;
 
 	constructor(
 		contextStore: ContextStore,
@@ -44,6 +76,11 @@ export class OAuthService {
 
 	/**
 	 * Start OAuth 2.0 Authorization Code Flow with browser handling
+	 *
+	 * Uses secure backend PKCE flow where:
+	 * - CLI calls backend to start flow
+	 * - Backend manages PKCE params (code_verifier never leaves server)
+	 * - CLI polls backend for completion
 	 */
 	async authenticate(options: OAuthFlowOptions = {}): Promise<AuthCredentials> {
 		const {
@@ -56,54 +93,13 @@ export class OAuthService {
 		} = options;
 
 		try {
-			// Start the OAuth flow (starts local server)
-			const authPromise = this.startFlow(timeout);
-
-			// Wait for server to be ready and URL to be generated
-			if (this.authorizationReady) {
-				await this.authorizationReady;
-			}
-
-			// Get the authorization URL
-			const authUrl = this.getAuthorizationUrl();
-
-			if (!authUrl) {
-				throw new AuthenticationError(
-					'Failed to generate authorization URL',
-					'URL_GENERATION_FAILED'
-				);
-			}
-
-			// Notify about the auth URL
-			if (onAuthUrl) {
-				onAuthUrl(authUrl);
-			}
-
-			// Open browser if callback provided
-			if (openBrowser) {
-				try {
-					await openBrowser(authUrl);
-					this.logger.debug('Browser opened successfully with URL:', authUrl);
-				} catch (error) {
-					// Log the error but don't throw - user can still manually open the URL
-					this.logger.warn('Failed to open browser automatically:', error);
-				}
-			}
-
-			// Notify that we're waiting for authentication
-			if (onWaitingForAuth) {
-				onWaitingForAuth();
-			}
-
-			// Wait for authentication to complete
-			const credentials = await authPromise;
-
-			// Notify success
-			if (onSuccess) {
-				onSuccess(credentials);
-			}
-
-			return credentials;
+			return await this.authenticateWithBackendPKCE({
+				openBrowser,
+				timeout,
+				onAuthUrl,
+				onWaitingForAuth,
+				onSuccess
+			});
 		} catch (error) {
 			const authError =
 				error instanceof AuthenticationError
@@ -125,305 +121,302 @@ export class OAuthService {
 	}
 
 	/**
-	 * Start the OAuth flow (internal implementation)
+	 * Authenticate using backend-managed PKCE flow with E2E encryption
+	 *
+	 * This is the secure flow where:
+	 * 1. CLI generates RSA keypair for E2E encryption
+	 * 2. CLI calls POST /api/auth/cli/start with public key
+	 * 3. Backend generates PKCE params and stores them with public key
+	 * 4. CLI opens browser with verification URL
+	 * 5. User authenticates in browser
+	 * 6. Backend exchanges code for session, encrypts tokens with public key
+	 * 7. CLI polls GET /api/auth/cli/status until complete
+	 * 8. CLI decrypts tokens with private key
 	 */
-	private async startFlow(timeout = 300000): Promise<AuthCredentials> {
-		const state = this.generateState();
+	private async authenticateWithBackendPKCE(
+		options: OAuthFlowOptions
+	): Promise<AuthCredentials> {
+		const {
+			openBrowser,
+			timeout = 300000,
+			onAuthUrl,
+			onWaitingForAuth,
+			onSuccess
+		} = options;
 
-		// Store the original state for verification
-		this.originalState = state;
+		// Step 1: Generate keypair for E2E encryption
+		this.keyPair = generateKeyPair();
+		this.logger.debug('Generated RSA keypair for E2E encryption');
 
-		// Create a promise that will resolve when the server is ready
-		this.authorizationReady = new Promise<void>((resolve) => {
-			this.resolveAuthorizationReady = resolve;
+		// Step 2: Start the flow on the backend with our public key
+		const startResponse = await this.startBackendFlow();
+
+		if (!startResponse.success || !startResponse.flow_id) {
+			throw new AuthenticationError(
+				startResponse.message || 'Failed to start authentication flow',
+				'START_FLOW_FAILED'
+			);
+		}
+
+		const { flow_id, verification_url, poll_interval = 2 } = startResponse;
+
+		// Store the auth URL
+		this.authorizationUrl = verification_url || null;
+
+		// Notify about the auth URL
+		if (onAuthUrl && verification_url) {
+			onAuthUrl(verification_url);
+		}
+
+		// Step 3: Open browser with verification URL
+		if (openBrowser && verification_url) {
+			try {
+				await openBrowser(verification_url);
+				this.logger.debug(
+					'Browser opened successfully with URL:',
+					verification_url
+				);
+			} catch (error) {
+				this.logger.warn('Failed to open browser automatically:', error);
+			}
+		}
+
+		// Notify that we're waiting for authentication
+		if (onWaitingForAuth) {
+			onWaitingForAuth();
+		}
+
+		// Step 4: Poll for completion
+		const credentials = await this.pollForCompletion(
+			flow_id,
+			poll_interval * 1000,
+			timeout
+		);
+
+		// Set the session in Supabase client
+		// Note: Only set session if we have a valid refresh token
+		// Supabase requires a valid refresh_token to manage token lifecycle
+		if (!credentials.refreshToken) {
+			this.logger.warn(
+				'No refresh token received from server - session refresh will not work'
+			);
+		}
+
+		const session: Session = {
+			access_token: credentials.token,
+			refresh_token: credentials.refreshToken ?? '',
+			expires_in: credentials.expiresAt
+				? Math.floor(
+						(new Date(credentials.expiresAt).getTime() - Date.now()) / 1000
+					)
+				: 3600,
+			token_type: 'bearer',
+			user: {
+				id: credentials.userId,
+				email: credentials.email,
+				app_metadata: {},
+				user_metadata: {},
+				aud: 'authenticated',
+				created_at: ''
+			}
+		};
+
+		await this.supabaseClient.setSession(session);
+
+		// Save user info to context store
+		this.contextStore.saveContext({
+			userId: credentials.userId,
+			email: credentials.email
 		});
 
-		return new Promise((resolve, reject) => {
-			let timeoutId: NodeJS.Timeout;
-			// Create local HTTP server for OAuth callback
-			const server = http.createServer();
+		// Check if MFA is required
+		await this.checkAndThrowIfMFARequired();
 
-			// Start server on localhost only, bind to port 0 for automatic port assignment
-			server.listen(0, '127.0.0.1', () => {
-				const address = server.address();
-				if (!address || typeof address === 'string') {
-					reject(new Error('Failed to get server address'));
-					return;
-				}
-				const port = address.port;
-				const callbackUrl = `http://localhost:${port}/callback`;
+		// Notify success
+		if (onSuccess) {
+			onSuccess(credentials);
+		}
 
-				// Set up request handler after we know the port
-				server.on('request', async (req, res) => {
-					const url = new URL(req.url!, `http://127.0.0.1:${port}`);
+		return credentials;
+	}
 
-					if (url.pathname === '/callback') {
-						await this.handleCallback(
-							url,
-							res,
-							server,
-							resolve,
-							reject,
-							timeoutId
-						);
-					} else {
-						// Handle other paths (favicon, etc.)
-						res.writeHead(404);
-						res.end();
-					}
-				});
+	/**
+	 * Start a new authentication flow on the backend
+	 */
+	private async startBackendFlow(): Promise<StartFlowResponse> {
+		const startUrl = `${this.baseUrl}/api/auth/cli/start`;
 
-				// Prepare CLI data object (server handles OAuth/PKCE)
-				const cliData: CliData = {
-					callback: callbackUrl,
-					state: state,
+		if (!this.keyPair) {
+			throw new AuthenticationError(
+				'Keypair not generated before starting flow',
+				'INTERNAL_ERROR'
+			);
+		}
+
+		try {
+			const response = await fetch(startUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'User-Agent': `TaskMasterCLI/${this.getCliVersion()}`
+				},
+				body: JSON.stringify({
 					name: 'Task Master CLI',
 					version: this.getCliVersion(),
 					device: os.hostname(),
 					user: os.userInfo().username,
 					platform: os.platform(),
-					timestamp: Date.now()
-				};
-
-				// Build authorization URL for CLI-specific sign-in page
-				const authUrl = new URL(`${this.baseUrl}/auth/cli/sign-in`);
-
-				// Encode CLI data as base64
-				const cliParam = Buffer.from(JSON.stringify(cliData)).toString(
-					'base64'
-				);
-
-				// Set the single CLI parameter with all encoded data
-				authUrl.searchParams.append('cli', cliParam);
-
-				// Store auth URL for browser opening
-				this.authorizationUrl = authUrl.toString();
-
-				this.logger.info(
-					`OAuth session started - ${cliData.name} v${cliData.version} on port ${port}`
-				);
-				this.logger.debug('CLI data:', cliData);
-
-				// Signal that the server is ready and URL is available
-				if (this.resolveAuthorizationReady) {
-					this.resolveAuthorizationReady();
-					this.resolveAuthorizationReady = null;
-				}
+					public_key: this.keyPair.publicKey
+				})
 			});
 
-			// Set timeout for authentication
-			timeoutId = setTimeout(() => {
-				if (server.listening) {
-					server.close();
-					// Clean up the readiness promise if still pending
-					if (this.resolveAuthorizationReady) {
-						this.resolveAuthorizationReady();
-						this.resolveAuthorizationReady = null;
+			if (!response.ok) {
+				const errorData = (await response.json().catch(() => ({}))) as {
+					message?: string;
+				};
+				throw new AuthenticationError(
+					errorData.message || `HTTP ${response.status}`,
+					'START_FLOW_FAILED'
+				);
+			}
+
+			return (await response.json()) as StartFlowResponse;
+		} catch (error) {
+			if (error instanceof AuthenticationError) {
+				throw error;
+			}
+
+			// Network errors indicate backend is unreachable
+			this.logger.warn('Failed to reach backend for PKCE flow:', error);
+			throw new AuthenticationError(
+				'Unable to reach authentication server',
+				'BACKEND_UNREACHABLE',
+				error
+			);
+		}
+	}
+
+	/**
+	 * Poll the backend for flow completion
+	 */
+	private async pollForCompletion(
+		flowId: string,
+		pollInterval: number,
+		timeout: number
+	): Promise<AuthCredentials> {
+		const statusUrl = `${this.baseUrl}/api/auth/cli/status?flow_id=${flowId}`;
+		const startTime = Date.now();
+
+		if (!this.keyPair) {
+			throw new AuthenticationError(
+				'Keypair not available for decryption',
+				'INTERNAL_ERROR'
+			);
+		}
+
+		while (Date.now() - startTime < timeout) {
+			try {
+				const response = await fetch(statusUrl, {
+					method: 'GET',
+					headers: {
+						'User-Agent': `TaskMasterCLI/${this.getCliVersion()}`
 					}
-					reject(
-						new AuthenticationError('Authentication timeout', 'AUTH_TIMEOUT')
+				});
+
+				if (!response.ok) {
+					const errorData = (await response.json().catch(() => ({}))) as {
+						message?: string;
+					};
+
+					if (response.status === 404) {
+						throw new AuthenticationError(
+							'Authentication flow expired or not found',
+							'FLOW_NOT_FOUND'
+						);
+					}
+
+					throw new AuthenticationError(
+						errorData.message || `HTTP ${response.status}`,
+						'POLL_FAILED'
 					);
 				}
-			}, timeout);
-		});
-	}
 
-	/**
-	 * Handle OAuth callback
-	 */
-	private async handleCallback(
-		url: URL,
-		res: http.ServerResponse,
-		server: http.Server,
-		resolve: (value: AuthCredentials) => void,
-		reject: (error: any) => void,
-		timeoutId?: NodeJS.Timeout
-	): Promise<void> {
-		// Server now returns tokens directly instead of code
-		const type = url.searchParams.get('type');
-		const returnedState = url.searchParams.get('state');
-		const accessToken = url.searchParams.get('access_token');
-		const refreshToken = url.searchParams.get('refresh_token');
-		const expiresIn = url.searchParams.get('expires_in');
-		const error = url.searchParams.get('error');
-		const errorDescription = url.searchParams.get('error_description');
+				const data = (await response.json()) as FlowStatusResponse;
 
-		// Server handles displaying success/failure, just close connection
-		res.writeHead(200);
-		res.end();
-
-		if (error) {
-			if (server.listening) {
-				server.close();
-			}
-			reject(
-				new AuthenticationError(
-					errorDescription || error || 'Authentication failed',
-					'OAUTH_ERROR'
-				)
-			);
-			return;
-		}
-
-		// Verify state parameter for CSRF protection
-		if (returnedState !== this.originalState) {
-			if (server.listening) {
-				server.close();
-			}
-			reject(
-				new AuthenticationError('Invalid state parameter', 'INVALID_STATE')
-			);
-			return;
-		}
-
-		// Handle authorization code for PKCE flow
-		const code = url.searchParams.get('code');
-		this.logger.info(`Code: ${code}, type: ${type}`);
-		if (code && type === 'pkce_callback') {
-			try {
-				this.logger.info('Received authorization code for PKCE flow');
-
-				const session = await this.supabaseClient.exchangeCodeForSession(code);
-
-				// Save user info to context store
-				this.contextStore.saveContext({
-					userId: session.user.id,
-					email: session.user.email
-				});
-
-				// Check if MFA is required for this user
-				// This will throw MFA_REQUIRED error if MFA verification is needed
-				await this.checkAndThrowIfMFARequired();
-
-				// Calculate expiration - can be overridden with TM_TOKEN_EXPIRY_MINUTES
-				let expiresAt: string | undefined;
-				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
-				if (tokenExpiryMinutes) {
-					const minutes = parseInt(tokenExpiryMinutes);
-					expiresAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-					this.logger.warn(`Token expiry overridden to ${minutes} minute(s)`);
-				} else {
-					expiresAt = session.expires_at
-						? new Date(session.expires_at * 1000).toISOString()
-						: undefined;
+				if (!data.success) {
+					throw new AuthenticationError(
+						data.message || 'Failed to check status',
+						'POLL_FAILED'
+					);
 				}
 
-				// Return credentials for backward compatibility
-				const authData: AuthCredentials = {
-					token: session.access_token,
-					refreshToken: session.refresh_token,
-					userId: session.user.id,
-					email: session.user.email,
-					expiresAt,
-					tokenType: 'standard',
-					savedAt: new Date().toISOString()
-				};
+				switch (data.status) {
+					case 'complete': {
+						// Decrypt tokens using our private key
+						if (!data.encrypted_tokens) {
+							throw new AuthenticationError(
+								'Server returned no encrypted tokens',
+								'MISSING_TOKENS'
+							);
+						}
 
-				if (server.listening) {
-					server.close();
+						const tokens = decryptTokens(
+							data.encrypted_tokens,
+							this.keyPair.privateKey
+						);
+
+						this.logger.debug('Successfully decrypted authentication tokens');
+
+						return {
+							token: tokens.access_token,
+							refreshToken: tokens.refresh_token,
+							userId: tokens.user_id,
+							email: tokens.email,
+							expiresAt: tokens.expires_in
+								? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+								: undefined,
+							tokenType: 'standard',
+							savedAt: new Date().toISOString()
+						};
+					}
+
+					case 'failed':
+						throw new AuthenticationError(
+							data.error_description || data.error || 'Authentication failed',
+							'OAUTH_FAILED'
+						);
+
+					case 'expired':
+						throw new AuthenticationError(
+							'Authentication flow expired',
+							'AUTH_TIMEOUT'
+						);
+
+					case 'pending':
+					case 'authenticating':
+						// Still waiting, continue polling
+						this.logger.debug(
+							`Flow status: ${data.status}, continuing to poll`
+						);
+						break;
+
+					default:
+						this.logger.warn(`Unknown flow status: ${data.status}`);
 				}
-				// Clear timeout since authentication succeeded
-				if (timeoutId) {
-					clearTimeout(timeoutId);
-				}
-				resolve(authData);
-				return;
 			} catch (error) {
-				if (server.listening) {
-					server.close();
+				if (error instanceof AuthenticationError) {
+					throw error;
 				}
-				reject(error);
-				return;
+
+				// Log network errors but continue polling
+				this.logger.debug('Poll request failed, will retry:', error);
 			}
+
+			// Wait before next poll
+			await new Promise((resolve) => setTimeout(resolve, pollInterval));
 		}
 
-		// Handle direct token response from server (legacy flow)
-		if (
-			accessToken &&
-			(type === 'oauth_success' || type === 'session_transfer')
-		) {
-			try {
-				this.logger.info(
-					`\n\n==============================================\n Received tokens via ${type}\n==============================================\n`
-				);
-
-				// Create a session with the tokens and set it in Supabase client
-				// This automatically saves the session to session.json via SupabaseSessionStorage
-				const session: Session = {
-					access_token: accessToken,
-					refresh_token: refreshToken || '',
-					expires_in: expiresIn ? parseInt(expiresIn) : 0,
-					token_type: 'bearer',
-					user: null as any // Will be populated by setSession
-				};
-
-				// Set the session in Supabase client
-				await this.supabaseClient.setSession(session);
-
-				// Get user info from the session
-				const user = await this.supabaseClient.getUser();
-
-				// Save user info to context store
-				this.contextStore.saveContext({
-					userId: user?.id || 'unknown',
-					email: user?.email
-				});
-
-				// Check if MFA is required for this user
-				// This will throw MFA_REQUIRED error if MFA verification is needed
-				await this.checkAndThrowIfMFARequired();
-
-				// Calculate expiration time - can be overridden with TM_TOKEN_EXPIRY_MINUTES
-				let expiresAt: string | undefined;
-				const tokenExpiryMinutes = process.env.TM_TOKEN_EXPIRY_MINUTES;
-				if (tokenExpiryMinutes) {
-					const minutes = parseInt(tokenExpiryMinutes);
-					expiresAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-					this.logger.warn(`Token expiry overridden to ${minutes} minute(s)`);
-				} else {
-					expiresAt = expiresIn
-						? new Date(Date.now() + parseInt(expiresIn) * 1000).toISOString()
-						: undefined;
-				}
-
-				// Return credentials for backward compatibility
-				const authData: AuthCredentials = {
-					token: accessToken,
-					refreshToken: refreshToken || undefined,
-					userId: user?.id || 'unknown',
-					email: user?.email,
-					expiresAt,
-					tokenType: 'standard',
-					savedAt: new Date().toISOString()
-				};
-
-				if (server.listening) {
-					server.close();
-				}
-				// Clear timeout since authentication succeeded
-				if (timeoutId) {
-					clearTimeout(timeoutId);
-				}
-				resolve(authData);
-			} catch (error) {
-				if (server.listening) {
-					server.close();
-				}
-				reject(error);
-			}
-		} else {
-			if (server.listening) {
-				server.close();
-			}
-			reject(new AuthenticationError('No access token received', 'NO_TOKEN'));
-		}
-	}
-
-	/**
-	 * Generate state for OAuth flow
-	 */
-	private generateState(): string {
-		return crypto.randomBytes(32).toString('base64url');
+		throw new AuthenticationError('Authentication timeout', 'AUTH_TIMEOUT');
 	}
 
 	/**
