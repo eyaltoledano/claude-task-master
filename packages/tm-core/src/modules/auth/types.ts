@@ -112,7 +112,8 @@ export type AuthErrorCode =
 	| 'FLOW_NOT_FOUND'
 	// E2E encryption errors
 	| 'INTERNAL_ERROR'
-	| 'MISSING_TOKENS';
+	| 'MISSING_TOKENS'
+	| 'DECRYPTION_FAILED';
 
 /**
  * Authentication error class

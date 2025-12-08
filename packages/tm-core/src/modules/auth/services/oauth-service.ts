@@ -168,7 +168,7 @@ export class OAuthService {
 			onAuthUrl(verification_url);
 		}
 
-		// Step 2: Open browser with verification URL
+		// Step 3: Open browser with verification URL
 		if (openBrowser && verification_url) {
 			try {
 				await openBrowser(verification_url);
@@ -186,7 +186,7 @@ export class OAuthService {
 			onWaitingForAuth();
 		}
 
-		// Step 3: Poll for completion
+		// Step 4: Poll for completion
 		const credentials = await this.pollForCompletion(
 			flow_id,
 			poll_interval * 1000,
@@ -194,9 +194,17 @@ export class OAuthService {
 		);
 
 		// Set the session in Supabase client
+		// Note: Only set session if we have a valid refresh token
+		// Supabase requires a valid refresh_token to manage token lifecycle
+		if (!credentials.refreshToken) {
+			this.logger.warn(
+				'No refresh token received from server - session refresh will not work'
+			);
+		}
+
 		const session: Session = {
 			access_token: credentials.token,
-			refresh_token: credentials.refreshToken || '',
+			refresh_token: credentials.refreshToken ?? '',
 			expires_in: credentials.expiresAt
 				? Math.floor(
 						(new Date(credentials.expiresAt).getTime() - Date.now()) / 1000

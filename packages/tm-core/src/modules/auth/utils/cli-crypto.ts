@@ -8,6 +8,7 @@
  */
 
 import crypto from 'crypto';
+import { AuthenticationError } from '../types.js';
 
 /**
  * Encrypted token payload from server
@@ -69,30 +70,38 @@ export function decryptTokens(
 	payload: EncryptedTokenPayload,
 	privateKeyPem: string
 ): DecryptedTokens {
-	// Decode base64 values
-	const encryptedKey = Buffer.from(payload.encrypted_key, 'base64');
-	const encryptedData = Buffer.from(payload.encrypted_data, 'base64');
-	const iv = Buffer.from(payload.iv, 'base64');
-	const authTag = Buffer.from(payload.auth_tag, 'base64');
+	try {
+		// Decode base64 values
+		const encryptedKey = Buffer.from(payload.encrypted_key, 'base64');
+		const encryptedData = Buffer.from(payload.encrypted_data, 'base64');
+		const iv = Buffer.from(payload.iv, 'base64');
+		const authTag = Buffer.from(payload.auth_tag, 'base64');
 
-	// Decrypt AES key using RSA private key
-	const aesKey = crypto.privateDecrypt(
-		{
-			key: privateKeyPem,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-			oaepHash: 'sha256'
-		},
-		encryptedKey
-	);
+		// Decrypt AES key using RSA private key
+		const aesKey = crypto.privateDecrypt(
+			{
+				key: privateKeyPem,
+				padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+				oaepHash: 'sha256'
+			},
+			encryptedKey
+		);
 
-	// Decrypt tokens using AES-256-GCM
-	const decipher = crypto.createDecipheriv('aes-256-gcm', aesKey, iv);
-	decipher.setAuthTag(authTag);
+		// Decrypt tokens using AES-256-GCM
+		const decipher = crypto.createDecipheriv('aes-256-gcm', aesKey, iv);
+		decipher.setAuthTag(authTag);
 
-	const decrypted = Buffer.concat([
-		decipher.update(encryptedData),
-		decipher.final()
-	]);
+		const decrypted = Buffer.concat([
+			decipher.update(encryptedData),
+			decipher.final()
+		]);
 
-	return JSON.parse(decrypted.toString('utf8')) as DecryptedTokens;
+		return JSON.parse(decrypted.toString('utf8')) as DecryptedTokens;
+	} catch (error) {
+		throw new AuthenticationError(
+			`Token decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			'DECRYPTION_FAILED',
+			error
+		);
+	}
 }
