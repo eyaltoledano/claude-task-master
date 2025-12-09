@@ -44,9 +44,20 @@ export class AzureProvider extends BaseAIProvider {
 	 * @returns {boolean} True if the model needs the responses API
 	 */
 	isReasoningModel(modelId) {
+		if (!modelId) return false;
+
 		const azureModels = MODEL_MAP.azure || [];
 		const modelDef = azureModels.find((m) => m.id === modelId);
-		return modelDef?.api_type === 'responses';
+
+		// First check if we have a direct match in our model definitions
+		if (modelDef?.api_type === 'responses') {
+			return true;
+		}
+
+		// Fallback heuristic for custom Azure deployment names
+		// Check if the modelId contains canonical reasoning model base names
+		const canonical = modelId.toLowerCase();
+		return /^(gpt-5|o1|o3|o4)/.test(canonical);
 	}
 
 	/**
@@ -56,26 +67,43 @@ export class AzureProvider extends BaseAIProvider {
 	 * @returns {string} Adjusted base URL
 	 */
 	adjustBaseURL(baseURL, modelId) {
-		if (!this.isReasoningModel(modelId)) {
-			return baseURL;
-		}
+		if (!this.isReasoningModel(modelId) || !baseURL) return baseURL;
 
-		// Convert chat/completions URL to responses URL for reasoning models
-		if (baseURL.includes('/chat/completions')) {
-			return baseURL.replace('/chat/completions', '/responses');
-		}
+		try {
+			const url = new URL(baseURL);
+			// Normalize trailing slashes (don't touch query/search)
+			let pathname = url.pathname.replace(/\/+$/, '');
 
-		// If baseURL ends with deployments/<model-name>, add responses endpoint
-		if (baseURL.includes('/deployments/')) {
-			return baseURL.replace(/\/deployments\/[^\/]+$/, '/responses');
-		}
+			// 1) Replace .../chat/completions with .../responses
+			pathname = pathname.replace(/\/chat\/completions$/, '/responses');
 
-		// If baseURL is just the base, ensure it ends with /responses
-		if (!baseURL.endsWith('/responses')) {
-			return baseURL.replace(/\/$/, '') + '/responses';
-		}
+			// 2) If path ends with /openai/deployments/<dep>, append /responses
+			if (/\/openai\/deployments\/[^/]+$/.test(pathname)) {
+				pathname = `${pathname}/responses`;
+			}
+			// 3) If path ends with /openai, append /responses
+			else if (/\/openai$/.test(pathname)) {
+				pathname = `${pathname}/responses`;
+			}
 
-		return baseURL;
+			url.pathname = pathname;
+			return url.toString();
+		} catch {
+			// Fallback that preserves query string positioning
+			const qIdx = baseURL.indexOf('?');
+			const path = qIdx >= 0 ? baseURL.slice(0, qIdx) : baseURL;
+			const qs = qIdx >= 0 ? baseURL.slice(qIdx) : '';
+			let newPath = path.replace('/chat/completions', '/responses');
+			if (!/\/responses$/.test(newPath)) {
+				if (
+					/\/openai\/deployments\/[^/]+$/.test(newPath) ||
+					/\/openai$/.test(newPath)
+				) {
+					newPath = newPath.replace(/\/+$/, '') + '/responses';
+				}
+			}
+			return newPath + qs;
+		}
 	}
 
 	/**

@@ -1235,6 +1235,7 @@
 		},
 		{
 			"id": "gpt-5",
+			"name": "GPT-5",
 			"swe_score": 0.749,
 			"cost_per_1m_tokens": {
 				"input": 5.0,
@@ -1248,6 +1249,7 @@
 		},
 		{
 			"id": "o1",
+			"name": "o1",
 			"swe_score": 0.489,
 			"cost_per_1m_tokens": {
 				"input": 15.0,
@@ -1260,6 +1262,7 @@
 		},
 		{
 			"id": "o3",
+			"name": "o3",
 			"swe_score": 0.5,
 			"cost_per_1m_tokens": {
 				"input": 2.0,
@@ -1272,6 +1275,7 @@
 		},
 		{
 			"id": "o3-mini",
+			"name": "o3-mini",
 			"swe_score": 0.493,
 			"cost_per_1m_tokens": {
 				"input": 1.1,
@@ -1284,6 +1288,7 @@
 		},
 		{
 			"id": "o4-mini",
+			"name": "o4-mini",
 			"swe_score": 0.45,
 			"cost_per_1m_tokens": {
 				"input": 1.1,
