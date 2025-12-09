@@ -37,6 +37,5 @@ export const CUSTOM_PROVIDERS_ARRAY = Object.values(CUSTOM_PROVIDERS);
 
 // All known providers (for reference)
 export const ALL_PROVIDERS = [
-	...VALIDATED_PROVIDERS,
-	...CUSTOM_PROVIDERS_ARRAY
+	...new Set([...VALIDATED_PROVIDERS, ...CUSTOM_PROVIDERS_ARRAY])
 ];
