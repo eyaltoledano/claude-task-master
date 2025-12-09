@@ -48,12 +48,14 @@ jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({
 }));
 
 // Mock config manager
+const mockGetSupportedModelsForProvider = jest.fn(() => [
+	{ id: 'cortex/claude-haiku-4-5', name: 'Claude Haiku 4.5' },
+	{ id: 'cortex/claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+	{ id: 'cortex/llama3.1-8b', name: 'Llama 3.1 8B' }
+]);
+
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
-	getSupportedModelsForProvider: jest.fn(() => [
-		{ id: 'cortex/claude-haiku-4-5', name: 'Claude Haiku 4.5' },
-		{ id: 'cortex/claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
-		{ id: 'cortex/llama3.1-8b', name: 'Llama 3.1 8B' }
-	]),
+	getSupportedModelsForProvider: mockGetSupportedModelsForProvider,
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info')
 }));
@@ -63,11 +65,20 @@ const { SnowflakeProvider } = await import(
 	'../../../src/ai-providers/snowflake.js'
 );
 
+// Make mock available to tests
+const getSupportedModelsForProvider = mockGetSupportedModelsForProvider;
+
 describe('SnowflakeProvider', () => {
 	let provider;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		// Reset the mock to return default model objects
+		mockGetSupportedModelsForProvider.mockReturnValue([
+			{ id: 'cortex/claude-haiku-4-5', name: 'Claude Haiku 4.5' },
+			{ id: 'cortex/claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+			{ id: 'cortex/llama3.1-8b', name: 'Llama 3.1 8B' }
+		]);
 		provider = new SnowflakeProvider();
 	});
 
@@ -229,12 +240,16 @@ describe('SnowflakeProvider', () => {
 		});
 
 		it('should handle string models (not objects)', () => {
-			// Test via the mapping logic - if model is string, return as-is
-			const stringModels = ['cortex/model-a', 'cortex/model-b'];
-			const mapped = stringModels.map((m) =>
-				typeof m === 'object' ? m.id : m
-			);
-			expect(mapped).toEqual(['cortex/model-a', 'cortex/model-b']);
+			// Test with a mock that returns string-only models
+			getSupportedModelsForProvider.mockReturnValueOnce([
+				'cortex/model-a',
+				'cortex/model-b'
+			]);
+			const stringProvider = new SnowflakeProvider();
+			expect(stringProvider.getSupportedModels()).toEqual([
+				'cortex/model-a',
+				'cortex/model-b'
+			]);
 		});
 	});
 
