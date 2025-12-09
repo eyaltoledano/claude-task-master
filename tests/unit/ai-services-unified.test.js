@@ -157,7 +157,7 @@ const mockSnowflakeProvider = {
 	streamText: jest.fn(),
 	generateObject: jest.fn(),
 	getRequiredApiKeyName: jest.fn(() => 'SNOWFLAKE_API_KEY'),
-	isRequiredApiKey: jest.fn(() => true)
+	isRequiredApiKey: jest.fn(() => false)
 };
 
 const mockOllamaProvider = {
