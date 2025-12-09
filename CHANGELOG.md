@@ -1,5 +1,15 @@
 # task-master-ai
 
+## 0.37.2-rc.0
+
+### Patch Changes
+
+- [#1492](https://github.com/eyaltoledano/claude-task-master/pull/1492) [`071dfc6`](https://github.com/eyaltoledano/claude-task-master/commit/071dfc6be9abe30909157ea72e026036721cea1d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix login issues for users whose browsers or firewalls were blocking CLI authentication
+
+- [#1491](https://github.com/eyaltoledano/claude-task-master/pull/1491) [`0e908be`](https://github.com/eyaltoledano/claude-task-master/commit/0e908be43af1075bae1fd7f6b7a6fad8a131dd56) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add `tm/` prefix to autopilot branch names
+  - Team mode branches now follow the `tm/<org-slug>/task-<id>` naming convention for better organization.
+  - Solves issue some users were having regarding not being able to start workflow on master Taskmaster tag
+
 ## 0.37.1
 
 ### Patch Changes
