@@ -1,0 +1,20 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.37.1",
+    "@tm/cli": "",
+    "docs": "0.0.13",
+    "extension": "0.26.0",
+    "@tm/mcp": "",
+    "@tm/ai-sdk-provider-grok-cli": "",
+    "@tm/build-config": "",
+    "@tm/claude-code-plugin": "0.0.7",
+    "@tm/bridge": "",
+    "@tm/core": ""
+  },
+  "changesets": [
+    "six-eels-send",
+    "three-webs-drive"
+  ]
+}
