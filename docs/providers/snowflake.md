@@ -6,7 +6,7 @@ Use Task Master with Snowflake's Cortex AI models via **REST API** (default) or 
 
 ### 1. Set Up Authentication
 
-**Option A: Environment Variables (Recommended)**
+#### Option A: Environment Variables (Recommended)
 
 ```bash
 # Key pair authentication
@@ -16,7 +16,7 @@ export SNOWFLAKE_PRIVATE_KEY_PATH="/path/to/rsa_key.p8"
 export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE="optional-passphrase"  # if encrypted
 ```
 
-**Option B: Connection Profile**
+#### Option B: Connection Profile
 
 Create `~/.snowflake/connections.toml`:
 
