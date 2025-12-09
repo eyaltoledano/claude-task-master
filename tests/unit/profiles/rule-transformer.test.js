@@ -203,6 +203,11 @@ describe('Rule Transformer - General', () => {
 					mcpConfigName: null,
 					expectedPath: null
 				},
+				cortex: {
+					mcpConfig: false,
+					mcpConfigName: null,
+					expectedPath: null
+				},
 				cursor: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',

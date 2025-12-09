@@ -70,6 +70,7 @@
 		"@inquirer/search": "^3.0.15",
 		"@openrouter/ai-sdk-provider": "^1.2.0",
 		"@sentry/node": "^10.27.0",
+    	"@sfc-gh-dflippo/ai-sdk-provider-snowflake": "github:sfc-gh-dflippo/ai-sdk-provider-snowflake#v0.1.0",
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
 		"@types/turndown": "^5.0.6",
