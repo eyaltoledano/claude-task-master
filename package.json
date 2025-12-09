@@ -74,7 +74,7 @@
 		"@supabase/supabase-js": "^2.57.4",
 		"@types/turndown": "^5.0.6",
 		"ai": "^5.0.51",
-		"ai-sdk-provider-claude-code": "^2.2.0",
+		"ai-sdk-provider-claude-code": "^2.2.4",
 		"ai-sdk-provider-codex-cli": "^0.3.0",
 		"ai-sdk-provider-gemini-cli": "^1.4.0",
 		"ajv": "^8.17.1",
