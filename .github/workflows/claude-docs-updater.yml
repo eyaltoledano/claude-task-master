@@ -42,21 +42,12 @@ jobs:
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Run Claude Code to Update Documentation
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          timeout_minutes: "30"
-          mode: "agent"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          experimental_allowed_domains: |
-            .anthropic.com
-            .github.com
-            api.github.com
-            .githubusercontent.com
-            registry.npmjs.org
-            .task-master.dev
-          base_branch: "next"
-          direct_prompt: |
+          claude_args: "--max-turns 30"
+          prompt: |
             You are a documentation specialist. Analyze the recent changes pushed to the 'next' branch and update the documentation accordingly.
 
             Recent changes:
