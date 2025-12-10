@@ -36,13 +36,14 @@ export class AnthropicAIProvider extends BaseAIProvider {
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Anthropic API key
 	 * @param {string} [params.baseURL] - Optional custom API endpoint
+	 * @param {number} [params.timeoutMs] - Request timeout in milliseconds (default: 900000 = 15 minutes)
 	 * @returns {Function} Anthropic client function
 	 * @throws {Error} If initialization fails
 	 */
 	getClient(params) {
 		try {
-			const { apiKey, baseURL } = params;
-			const fetchImpl = this.createProxyFetch();
+			const { apiKey, baseURL, timeoutMs } = params;
+			const fetchImpl = this.createProxyFetch(timeoutMs);
 
 			return createAnthropic({
 				apiKey,
@@ -50,7 +51,7 @@ export class AnthropicAIProvider extends BaseAIProvider {
 				headers: {
 					'anthropic-beta': 'output-128k-2025-02-19'
 				},
-				...(fetchImpl && { fetch: fetchImpl })
+				fetch: fetchImpl
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

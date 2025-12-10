@@ -55,34 +55,77 @@ export class BaseAIProvider {
 	}
 
 	/**
-	 * Creates a custom fetch function with proxy support.
+	 * Creates a custom fetch function with proxy and timeout support.
 	 * Only enables proxy when TASKMASTER_ENABLE_PROXY environment variable is set to 'true'
 	 * or enableProxy is set to true in config.json.
 	 * Automatically reads http_proxy/https_proxy environment variables when enabled.
-	 * @returns {Function} Custom fetch function with proxy support, or undefined if proxy is disabled
+	 * @param {number} [timeoutMs] - Request timeout in milliseconds (default: 900000 = 15 minutes)
+	 * @returns {Function} Custom fetch function with proxy and timeout support
 	 */
-	createProxyFetch() {
+	createProxyFetch(timeoutMs = 900000) {
 		// Cache project root to avoid repeated lookups
 		if (!this._projectRoot) {
 			this._projectRoot = findProjectRoot();
 		}
 		const projectRoot = this._projectRoot;
 
-		if (!isProxyEnabled(null, projectRoot)) {
-			// Return undefined to use default fetch without proxy
-			return undefined;
-		}
-
-		// Proxy is enabled, create and return proxy fetch
-		if (!this._proxyAgent) {
+		const proxyEnabled = isProxyEnabled(null, projectRoot);
+		
+		// Create proxy agent if proxy is enabled
+		let proxyAgent = null;
+		if (proxyEnabled && !this._proxyAgent) {
 			this._proxyAgent = new EnvHttpProxyAgent();
 		}
+		proxyAgent = proxyEnabled ? this._proxyAgent : null;
+
+		// Always return a custom fetch function with timeout support
 		return (url, options = {}) => {
-			return fetch(url, {
+			// Create AbortController for timeout
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => {
+				controller.abort();
+			}, timeoutMs);
+
+			// Prepare fetch options
+			const fetchOptions = {
 				...options,
-				dispatcher: this._proxyAgent
+				signal: options.signal ? 
+					// Combine signals if one already exists
+					this.combineAbortSignals(options.signal, controller.signal) : 
+					controller.signal
+			};
+
+			// Add proxy dispatcher if enabled
+			if (proxyAgent) {
+				fetchOptions.dispatcher = proxyAgent;
+			}
+
+			// Execute fetch with timeout and cleanup
+			return fetch(url, fetchOptions).finally(() => {
+				clearTimeout(timeoutId);
 			});
 		};
+	}
+
+	/**
+	 * Combines multiple AbortSignals into one
+	 * @param {...AbortSignal} signals - Signals to combine
+	 * @returns {AbortSignal} Combined signal that aborts when any input signal aborts
+	 */
+	combineAbortSignals(...signals) {
+		const controller = new AbortController();
+
+		for (const signal of signals) {
+			if (signal.aborted) {
+				controller.abort(signal.reason);
+				break;
+			}
+			signal.addEventListener('abort', () => {
+				controller.abort(signal.reason);
+			}, { once: true });
+		}
+
+		return controller.signal;
 	}
 
 	/**
