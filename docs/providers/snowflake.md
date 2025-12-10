@@ -6,28 +6,22 @@ Use Task Master with Snowflake's Cortex AI models via **REST API** (default) or 
 
 ### 1. Set Up Authentication
 
-#### Option A: Environment Variables (Recommended)
+Choose one method (see [Authentication Methods](#authentication-methods) for details):
 
 ```bash
-# Key pair authentication
+# Option A: Key Pair (Recommended for production)
 export SNOWFLAKE_ACCOUNT="your-account"
 export SNOWFLAKE_USER="your.name@company.com"
 export SNOWFLAKE_PRIVATE_KEY_PATH="/path/to/rsa_key.p8"
 export SNOWFLAKE_PRIVATE_KEY_PASSPHRASE="optional-passphrase"  # if encrypted
 ```
 
-#### Option B: Connection Profile
+# Option B: Programmatic Access Token
+export SNOWFLAKE_API_KEY="your-pat-token"
+export SNOWFLAKE_BASE_URL="https://your-account.snowflakecomputing.com"
 
-Create `~/.snowflake/connections.toml`:
-
-```toml
-[default]
-account = "YOUR_ACCOUNT"
-user = "YOUR_USERNAME"
-private_key_path = "/path/to/rsa_key.p8"
-private_key_passphrase = "optional-passphrase"
-role = "YOUR_ROLE"
-warehouse = "YOUR_WAREHOUSE"
+# Option C: Connection Profile (~/.snowflake/connections.toml)
+# See Authentication Methods section for TOML configuration
 ```
 
 ### 2. Configure Task Master
@@ -48,33 +42,34 @@ task-master next
 
 ## Authentication Methods
 
+Task Master supports three authentication methods for Snowflake Cortex:
+
 | Method | Use Case | Setup |
 |--------|----------|-------|
-| **Key Pair** | Most secure, recommended | RSA private key + public key registered in Snowflake |
-| **Connection Profile** | CLI mode, multiple accounts | `~/.snowflake/connections.toml` |
-| **Programmatic Access Token** | Quick setup | `SNOWFLAKE_API_KEY` environment variable |
+| **Key Pair** | Production, long-lived credentials | RSA private key + environment variables |
+| **Programmatic Access Token** | Generated token with expiration | `SNOWFLAKE_API_KEY` environment variable |
+| **Connection Profile** | Preferred option for Cortex Code CLI, supports defining multiple accounts | `~/.snowflake/connections.toml` |
 
-### Generate RSA Key Pair
+**Authentication Priority (as implemented):**
+- Uses environment variables for PAT + Base URL - if `SNOWFLAKE_API_KEY` and `SNOWFLAKE_BASE_URL` (or `CORTEX_API_KEY` + `CORTEX_BASE_URL`) are both set
+- Uses other environment variables (`SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, etc.)
+- Uses connection defined in `~/.snowflake/connections.toml` or `~/.snowflake/config.toml`
 
-```bash
-# Generate private key (with passphrase)
-openssl genrsa 2048 | openssl pkcs8 -topk8 -v2 des3 -inform PEM -out rsa_key.p8
+> **Note:** All authentication methods work with both REST API and CLI execution modes.
 
-# Generate public key
-openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub
+**Security Considerations:**
+- **Programmatic Access Tokens (PAT)** have built-in expiration, which many organizations prefer for enhanced security. They require token refresh/rotation but provide better access control.
+- **Key Pair authentication** generates short-lived OAuth tokens (JWT → OAuth exchange) with automatic caching and renewal. The private key never leaves your environment, only the generated OAuth tokens are sent to Snowflake. Tokens are cached in memory for their lifetime (~120 seconds).
+- Choose based on your organization's security policies and compliance requirements.
 
-# Register in Snowflake
-ALTER USER YOUR_USER SET RSA_PUBLIC_KEY='<public_key_content>';
-
-# Secure permissions
-chmod 600 rsa_key.p8 ~/.snowflake/connections.toml
-```
+[Learn more about key pair authentication](https://docs.snowflake.com/en/user-guide/key-pair-auth)
+[Learn more about Programmatic Access Tokens](https://docs.snowflake.com/en/user-guide/programmatic-access-tokens)
 
 ## Supported Models
 
 Any model available via the [Snowflake Cortex REST API](https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference) can be used.
 
-**Claude Models (Recommended)** - Best for Task Master with structured output support:
+**Claude Models (Recommended)** - Best for Task Master with structured output support. All Claude models work with both REST API and Cortex Code CLI execution modes:
 
 | Model | Best For | Structured Output |
 |-------|----------|-------------------|
@@ -83,7 +78,7 @@ Any model available via the [Snowflake Cortex REST API](https://docs.snowflake.c
 | `claude-4-sonnet` | Balanced performance and speed | ✅ |
 | `claude-4-opus` | Most capable, complex tasks | ✅ |
 
-**OpenAI Models:**
+**OpenAI Models** - Require REST API execution mode (not available via Cortex Code CLI):
 
 | Model | Best For | Structured Output |
 |-------|----------|-------------------|
@@ -96,75 +91,36 @@ Any model available via the [Snowflake Cortex REST API](https://docs.snowflake.c
 
 ## Pricing
 
-All Task Master operations use the **REST API pricing** (Table 6(b) from the [Snowflake Service Consumption Table](https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf), effective December 5, 2025). This applies to both `executionMode: "rest"` and `executionMode: "cli"` - the Cortex Code CLI uses the REST API backend, so pricing is identical.
+All operations use **REST API pricing** ([Table 6(b)](https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf)) regardless of execution mode - CLI uses the REST backend.
 
-> **Important:** The Cortex Code CLI (private preview) supports **only Claude models** at this time. OpenAI models require REST mode.
+> **Note:** Cortex Code CLI (private preview) supports only Claude models. OpenAI models require REST mode.
 
-### Pricing Table (REST API with Prompt Caching)
+### Pricing & Specifications by Model
 
-Costs shown are per one million tokens in USD:
+| Model | Input | Output | Cache Write | Cache Read | Context Window (tokens) | Max Output (tokens) |
+|-------|-------|--------|-------------|------------|----------------|------------|
+| `claude-sonnet-4-5` | $3.30 | $16.50 | $4.13 | $0.33 | 200,000 | 64,000 |
+| `claude-haiku-4-5` | $1.10 | $5.50 | $1.38 | $0.11 | 200,000 | 64,000 |
+| `claude-4-sonnet` | $3.00 | $15.00 | $3.75 | $0.30 | 200,000 | 32,000 |
+| `claude-4-opus` | $15.00 | $75.00 | $18.75 | $1.50 | 200,000 | 8,192 |
+| `openai-gpt-5` | $1.38 | $11.00 | - | $0.14 | 272,000 | 8,192 |
+| `openai-gpt-5-mini` | $0.28 | $2.20 | - | $0.03 | 272,000 | 8,192 |
+| `openai-gpt-5-nano` | $0.06 | $0.44 | - | $0.01 | 272,000 | 8,192 |
+| `openai-gpt-4.1` | $2.20 | $8.80 | - | $0.55 | 128,000 | 32,000 |
 
-| Model | Input | Output | Cache Write | Cache Read |
-|-------|-------|--------|-------------|------------|
-| `claude-4-5-sonnet` | $3.30 | $16.50 | $4.13 | $0.33 |
-| `claude-4-5-haiku` | $1.10 | $5.50 | $1.38 | $0.11 |
-| `claude-4-sonnet` | $3.00 | $15.00 | $3.75 | $0.30 |
-| `claude-4-opus` | $15.00 | $75.00 | $18.75 | $1.50 |
-| `openai-gpt-5` | $1.38 | $11.00 | - | $0.14 |
-| `openai-gpt-5-mini` | $0.28 | $2.20 | - | $0.03 |
-| `openai-gpt-5-nano` | $0.06 | $0.44 | - | $0.01 |
-| `openai-gpt-4.1` | $2.20 | $8.80 | - | $0.55 |
 
-*Source: [Snowflake Service Consumption Table](https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf), Table 6(b)*
-
-**Prompt Caching:** Claude and Open AI models support prompt caching, which can significantly reduce costs for repeated operations. Task Master automatically benefits from this for operations like `expand-all` or `research` that share common context.
-
-### How Costs Are Calculated
-
-The costs in our [`supported-models.json`](../../scripts/modules/supported-models.json) come directly from Table 6(b).
-
-## Model Specifications
-
-Context window and output limits for Task Master supported models. For complete specifications of all Cortex models, see the [full model specifications documentation](https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#model-restrictions).
-
-**Task Master Supported Models:**
-
-| Model | Context Window (tokens) | Max Output (tokens) |
-|-------|------------------------|---------------------|
-| `claude-sonnet-4-5` | 200,000 | 64,000 |
-| `claude-haiku-4-5` | 200,000 | 64,000 |
-| `claude-4-sonnet` | 200,000 | 32,000 |
-| `claude-4-opus` | 200,000 | 8,192 |
-| `openai-gpt-5` | 272,000 | 8,192 |
-| `openai-gpt-5-mini` | 272,000 | 8,192 |
-| `openai-gpt-5-nano` | 272,000 | 8,192 |
-| `openai-gpt-4.1` | 128,000 | 32,000 |
-
-> **Important:** 
-> - **Context Window** = Full input capacity available for every request
-> - **Max Output** = Maximum tokens the model can generate in a single response
-> - The REST API `max_tokens` parameter controls output generation limit
-> - The `max_tokens` values in [`supported-models.json`](../../scripts/modules/supported-models.json) represent **output token limits**, not total context
-> - Input tokens always use the full context window capacity
+> **Notes:**
+> - Costs per million tokens (USD)
+> - **Context Window** = Full input capacity; **Max Output** = Maximum generation per response
+> - The `max_tokens` in [`supported-models.json`](../../scripts/modules/supported-models.json) specifies output limits only
+> - Prompt caching reduces costs for repeated operations (automatically applied by Task Master)
+> - For complete model specifications, see [Snowflake Cortex docs](https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#model-restrictions)
 
 ## Model Availability by Region
 
-Model availability varies by Snowflake region. Refer to the [full Model Availability table](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability) for your specific region. Enabling [Cross Region Inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) can allow access to models in different regions from your local Snowflake account.
+All Task Master–supported models are available on AWS and Azure in most regions. GCP regions may have limited OpenAI GPT-5 availability. Use [Cross Region Inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference) to access models from other regions.
 
-**Task Master Supported Models (abbreviated availability):**
-
-| Model | AWS (Most Regions) | Azure (Most Regions) | GCP (Most Regions) |
-|-------|-------------------|---------------------|-------------------|
-| `claude-4-5-sonnet` | ✅ | ✅ | ✅ |
-| `claude-4-5-haiku` | ✅ | ✅ | ✅ |
-| `claude-4-sonnet` | ✅ | ✅ | ✅ |
-| `claude-4-opus` | ✅ | ✅ | ✅ |
-| `openai-gpt-5` | ✅ | ✅ | ⚠️ Limited |
-| `openai-gpt-5-mini` | ✅ | ✅ | ⚠️ Limited |
-| `openai-gpt-5-nano` | ✅ | ✅ | ⚠️ Limited |
-| `openai-gpt-4.1` | ✅ | ✅ | ✅ |
-
-> **Note:** GCP regions may have limited OpenAI model availability. Check the [complete availability table](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability) for your specific region before configuring.
+[Check model availability for your region](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
 
 ## Configuration
 
@@ -203,24 +159,6 @@ Advanced options:
 | `enablePromptCaching` | Cache repeated prompts (Claude) | `false` |
 | `thinkingLevel` | Extended thinking: `"low"`, `"medium"`, `"high"` | - |
 
-## CLI-Only Features
-
-These features require the Cortex Code CLI (private preview):
-
-- **Planning Mode**: Read-only analysis without modifying tasks
-- **Custom Skills**: Domain-specific operations
-- **MCP Support**: Built-in Model Context Protocol
-
-```json
-{
-  "snowflake": {
-    "executionMode": "cli",
-    "enablePlanningMode": true,
-    "enableSkills": true
-  }
-}
-```
-
 ## Troubleshooting
 
 ### Authentication Failed
@@ -251,25 +189,6 @@ Increase timeout or use a faster model:
 
 ### Model Not Available
 
-1. Verify model name: `cortex model list`
+1. Verify model availability: `SHOW MODELS IN DATABASE SNOWFLAKE`
 2. Check role permissions in Snowflake
 3. Contact your Snowflake administrator
-
-## Security Best Practices
-
-- Use **key pair authentication** over passwords
-- Set file permissions to `600` for keys and config files
-- Use **separate connections** for dev/prod environments
-- **Rotate keys** regularly via Snowflake console
-- Use **role-based access control** in Snowflake
-
-## Resources
-
-### Official Documentation
-- [Snowflake Cortex REST API](https://docs.snowflake.com/developer-guide/snowflake-rest-api/reference/cortex-inference)
-- [Model Availability by Region](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-rest-api#model-availability)
-- [Model Restrictions by Edition](https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql#model-restrictions)
-
-### Pricing
-- [Snowflake Service Consumption Table (PDF)](https://www.snowflake.com/legal-files/CreditConsumptionTable.pdf) - Official pricing (see Table 6(b) for REST API costs)
-- Task Master uses REST API pricing for all operations, regardless of execution mode
