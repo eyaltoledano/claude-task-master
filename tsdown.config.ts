@@ -37,7 +37,7 @@ export default defineConfig(
 			'mcp-server': 'mcp-server/server.js'
 		},
 		outDir: 'dist',
-		copy: ['assets', 'scripts', 'src'],
+		copy: ['assets'],
 		ignoreWatch: ['node_modules', 'dist', 'tests', 'apps/extension'],
 		// Bundle only our workspace packages, keep npm dependencies external
 		noExternal: [/^@tm\//],

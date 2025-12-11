@@ -5,15 +5,13 @@
 	"main": "index.js",
 	"type": "module",
 	"bin": {
-		"task-master": "bin/task-master",
-		"task-master-mcp": "bin/task-master-mcp",
-		"task-master-ai": "bin/task-master"
+		"task-master": "dist/task-master.js",
+		"task-master-mcp": "dist/mcp-server.js",
+		"task-master-ai": "dist/mcp-server.js"
 	},
 	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
-		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown && node scripts/post-build.js",
-		"build:ts": "npm run build:build-config && tsc",
-		"prepublishOnly": "npm run build:ts",
+		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
 		"turbo:dev": "turbo dev",
 		"turbo:build": "turbo build",
@@ -133,14 +131,7 @@
 		"url": "https://github.com/eyaltoledano/claude-task-master/issues"
 	},
 	"files": [
-		"bin/**",
-		"scripts/**",
-		"mcp-server/**",
-		"src/**",
-		"packages/tm-core/**",
-		"packages/build-config/**",
-		"scripts/modules/supported-models.json",
-		"assets/**",
+		"dist/**",
 		"README-task-master.md",
 		"README.md",
 		"LICENSE",
