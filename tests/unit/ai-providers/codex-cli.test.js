@@ -20,7 +20,13 @@ jest.unstable_mockModule('ai-sdk-provider-codex-cli', () => ({
 // Mock config getters
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getCodexCliSettingsForCommand: jest.fn(() => ({ allowNpx: true })),
-	getSupportedModelsForProvider: jest.fn(() => ['gpt-5', 'gpt-5-codex']),
+	getSupportedModelsForProvider: jest.fn(() => [
+		'gpt-5',
+		'gpt-5-codex',
+		'gpt-5.1',
+		'gpt-5.1-codex-max',
+		'gpt-5.2'
+	]),
 	// Provide commonly imported getters to satisfy other module imports if any
 	getDebugFlag: jest.fn(() => false),
 	getLogLevel: jest.fn(() => 'info')
@@ -62,7 +68,13 @@ describe('CodexCliProvider', () => {
 
 	it('sets provider name and supported models', () => {
 		expect(provider.name).toBe('Codex CLI');
-		expect(provider.supportedModels).toEqual(['gpt-5', 'gpt-5-codex']);
+		expect(provider.supportedModels).toEqual([
+			'gpt-5',
+			'gpt-5-codex',
+			'gpt-5.1',
+			'gpt-5.1-codex-max',
+			'gpt-5.2'
+		]);
 	});
 
 	it('does not require API key', () => {

@@ -438,7 +438,10 @@ function validateCodexCliSettings(settings) {
 		outputLastMessageFile: z.string().optional(),
 		env: z.record(z.string(), z.string()).optional(),
 		verbose: z.boolean().optional(),
-		logger: z.union([z.object({}).passthrough(), z.literal(false)]).optional()
+		logger: z.union([z.object({}).passthrough(), z.literal(false)]).optional(),
+		reasoningEffort: z
+			.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+			.optional()
 	});
 
 	const CommandSpecificSchema = z
