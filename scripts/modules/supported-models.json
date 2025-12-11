@@ -172,14 +172,7 @@
 			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
-			"reasoning_efforts": [
-				"none",
-				"minimal",
-				"low",
-				"medium",
-				"high",
-				"xhigh"
-			],
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
 			"supported": true
 		},
 		{
@@ -467,14 +460,7 @@
 			},
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 128000,
-			"reasoning_efforts": [
-				"none",
-				"minimal",
-				"low",
-				"medium",
-				"high",
-				"xhigh"
-			],
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
 			"supported": true
 		},
 		{
