@@ -47,10 +47,12 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		// Basic validation for ID format (e.g., '5.2')
-		if (!id || typeof id !== 'string' || !id.includes('.')) {
-			const errorMessage =
-				'Invalid subtask ID format. Must be in format "parentId.subtaskId" (e.g., "5.2").';
+		// Basic validation - ID must be present
+		// In API storage, subtask IDs like "HAM-2611" are valid (no dot required)
+		// In file storage, subtask IDs must be in format "parentId.subtaskId"
+		// The core function handles storage-specific validation
+		if (!id || typeof id !== 'string' || !id.trim()) {
+			const errorMessage = 'Subtask ID cannot be empty.';
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
@@ -68,26 +70,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		// Validate subtask ID format
-		const subtaskId = id;
-		if (typeof subtaskId !== 'string' && typeof subtaskId !== 'number') {
-			const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Subtask ID must be a string or number.`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_TYPE', message: errorMessage }
-			};
-		}
-
-		const subtaskIdStr = String(subtaskId);
-		if (!subtaskIdStr.includes('.')) {
-			const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Subtask ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
-			log.error(errorMessage);
-			return {
-				success: false,
-				error: { code: 'INVALID_SUBTASK_ID_FORMAT', message: errorMessage }
-			};
-		}
+		const subtaskIdStr = String(id).trim();
 
 		// Use the provided path
 		const tasksPath = tasksJsonPath;
