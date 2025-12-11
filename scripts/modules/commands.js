@@ -48,6 +48,13 @@ import {
 import { moveTasksBetweenTags } from './task-manager/move-task.js';
 
 import {
+	getApiKeyStatusReport,
+	getAvailableModelsList,
+	getModelConfiguration,
+	setModel
+} from './task-manager/models.js';
+
+import {
 	copyTag,
 	createTag,
 	deleteTag,
