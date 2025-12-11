@@ -123,7 +123,7 @@ The Codex CLI provider supports only models available through ChatGPT subscripti
 | `gpt-5-codex` | GPT-5 optimized for agentic software engineering | 272K | 128K | - |
 | `gpt-5.1` | GPT-5.1 with optional reasoning | 272K | 128K | none, low, medium, high |
 | `gpt-5.1-codex-max` | GPT-5.1 Codex Max with enhanced reasoning | 272K | 128K | none, low, medium, high, xhigh |
-| `gpt-5.2` | Latest flagship model for coding and agentic tasks | 272K | 128K | none, minimal, low, medium, high, xhigh |
+| `gpt-5.2` | Latest flagship model for coding and agentic tasks | 272K | 128K | none, low, medium, high, xhigh |
 
 **Note**: These models are only available via OAuth subscription through Codex CLI (ChatGPT Plus, Pro, Business, Edu, or Enterprise plans). For other OpenAI models, use the standard `openai` provider with an API key.
 
