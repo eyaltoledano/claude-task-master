@@ -20,6 +20,7 @@
 		"./utils": "./src/utils/index.ts"
 	},
 	"scripts": {
+		"build": "tsc",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",

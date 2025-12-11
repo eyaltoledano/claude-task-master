@@ -150,6 +150,32 @@
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
 			"supported": true
+		},
+		{
+			"id": "gpt-5.1-codex",
+			"name": "GPT-5.1 Codex",
+			"swe_score": 0.799,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true,
+			"features": ["improved_reasoning", "faster_execution"]
+		},
+		{
+			"id": "gpt-5.1-codex-max",
+			"name": "GPT-5.1 Codex Max",
+			"swe_score": 0.809,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true,
+			"features": ["xhigh_reasoning", "maximum_analysis", "improved_accuracy", "27-42_faster_execution"]
 		}
 	],
 	"mcp": [

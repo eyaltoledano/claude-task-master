@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+
+// TaskMaster MCP Server Entry Point
+// Run the actual MCP server script
+
+// Set environment for MCP
+process.env.TASK_MASTER_MCP = 'true';
+
+// Import and run the server directly
+// The @tm/core imports will be handled by tsx automatically
+import('../mcp-server/server.js');

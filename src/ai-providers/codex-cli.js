@@ -85,12 +85,21 @@ export class CodexCliProvider extends BaseAIProvider {
 	 * @param {object} params
 	 * @param {string} [params.commandName] - Command name for settings lookup
 	 * @param {string} [params.apiKey] - Optional API key (injected as OPENAI_API_KEY for Codex CLI)
+	 * @param {string} [params.modelId] - Optional model ID for configuration-specific settings
 	 * @returns {Function}
 	 */
 	getClient(params = {}) {
 		try {
 			// Merge global + command-specific settings from config
 			const settings = getCodexCliSettingsForCommand(params.commandName) || {};
+
+			// Add xhigh reasoning for GPT-5.1-Codex-Max
+			if (params.modelId === "gpt-5.1-codex-max") {
+				settings.reasoningEffort = "xhigh";
+				// Optional: Set other enhanced settings for maximum performance
+				settings.reasoningSummary = "detailed";
+				settings.modelVerbosity = "high";
+			}
 
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
