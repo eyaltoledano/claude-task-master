@@ -93,13 +93,7 @@ export class CodexCliProvider extends BaseAIProvider {
 			// Merge global + command-specific settings from config
 			const settings = getCodexCliSettingsForCommand(params.commandName) || {};
 
-			// Add xhigh reasoning for GPT-5.1-Codex-Max
-			if (params.modelId === "gpt-5.1-codex-max") {
-				settings.reasoningEffort = "xhigh";
-				// Optional: Set other enhanced settings for maximum performance
-				settings.reasoningSummary = "detailed";
-				settings.modelVerbosity = "high";
-			}
+			// Note: Reasoning effort (xhigh, high, etc.) is set via ~/.codex/config.toml
 
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
