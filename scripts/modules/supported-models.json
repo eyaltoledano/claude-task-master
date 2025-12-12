@@ -150,6 +150,42 @@
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
 			"supported": true
+		},
+		{
+			"id": "gpt-5.1",
+			"swe_score": 0.76,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5.1-codex-max",
+			"swe_score": 0.78,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5.2",
+			"swe_score": 0.8,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true
 		}
 	],
 	"mcp": [
@@ -394,6 +430,54 @@
 			"allowed_roles": ["main", "fallback"],
 			"max_tokens": 100000,
 			"temperature": 1,
+			"supported": true
+		},
+		{
+			"id": "gpt-5.1",
+			"swe_score": 0.76,
+			"cost_per_1m_tokens": {
+				"input": 1.25,
+				"output": 10.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5.1-codex-max",
+			"swe_score": 0.78,
+			"cost_per_1m_tokens": {
+				"input": 1.25,
+				"output": 10.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5.2",
+			"swe_score": 0.8,
+			"cost_per_1m_tokens": {
+				"input": 1.75,
+				"output": 14.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true
+		},
+		{
+			"id": "gpt-5.2-pro",
+			"swe_score": 0.82,
+			"cost_per_1m_tokens": {
+				"input": 21.0,
+				"output": 168.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["medium", "high", "xhigh"],
 			"supported": true
 		}
 	],
