@@ -3,6 +3,7 @@
  * Tool to append additional information to a specific subtask
  */
 
+import { TaskIdSchemaForMcp } from '@tm/core';
 import {
 	createErrorResponse,
 	handleApiResult,
@@ -23,11 +24,9 @@ export function registerUpdateSubtaskTool(server) {
 		description:
 			'Appends timestamped information to a specific subtask without replacing existing content. If you just want to update the subtask status, use set_task_status instead.',
 		parameters: z.object({
-			id: z
-				.string()
-				.describe(
-					'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2"). Parent ID is the ID of the task that contains the subtask.'
-				),
+			id: TaskIdSchemaForMcp.describe(
+				'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2"). Parent ID is the ID of the task that contains the subtask.'
+			),
 			prompt: z.string().describe('Information to add to the subtask'),
 			research: z
 				.boolean()

@@ -1402,10 +1402,7 @@ function registerCommands(programInstance) {
 			'Path to the tasks file',
 			TASKMASTER_TASKS_FILE
 		)
-		.option(
-			'-i, --id <id>',
-			'Subtask ID to update in format "parentId.subtaskId" (required)'
-		)
+		.option('-i, --id <id>', 'Subtask ID to update (required)')
 		.option(
 			'-p, --prompt <text>',
 			'Prompt explaining what information to add (required)'
@@ -1438,21 +1435,10 @@ function registerCommands(programInstance) {
 					process.exit(1);
 				}
 
-				// Validate subtask ID format (should contain a dot)
+				// Get subtask ID - validation happens in the core function
+				// In API storage, subtask IDs like "HAM-2611" are valid
+				// In file storage, subtask IDs must be in format "parentId.subtaskId"
 				const subtaskId = options.id;
-				if (!subtaskId.includes('.')) {
-					console.error(
-						chalk.red(
-							`Error: Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId"`
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'Usage example: task-master update-subtask --id=5.2 --prompt="Add more details about the API endpoint"'
-						)
-					);
-					process.exit(1);
-				}
 
 				if (!options.prompt) {
 					console.error(
