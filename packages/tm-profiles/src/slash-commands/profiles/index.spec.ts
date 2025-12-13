@@ -17,7 +17,8 @@ import {
 	CursorProfile,
 	RooProfile,
 	GeminiProfile,
-	CodexProfile
+	CodexProfile,
+	OpenCodeProfile
 } from './index.js';
 
 describe('Profile Utility Functions', () => {
@@ -132,6 +133,7 @@ describe('Profile Utility Functions', () => {
 				expect(getProfile('Roo')).toBeInstanceOf(RooProfile);
 				expect(getProfile('GEMINI')).toBeInstanceOf(GeminiProfile);
 				expect(getProfile('CODEX')).toBeInstanceOf(CodexProfile);
+				expect(getProfile('OPENCODE')).toBeInstanceOf(OpenCodeProfile);
 			});
 		});
 
@@ -180,12 +182,12 @@ describe('Profile Utility Functions', () => {
 			expect(Array.isArray(profiles)).toBe(true);
 		});
 
-		it('contains 5 profiles', () => {
+		it('contains 6 profiles', () => {
 			// Act
 			const profiles = getAllProfiles();
 
 			// Assert
-			expect(profiles).toHaveLength(5);
+			expect(profiles).toHaveLength(6);
 		});
 
 		it('each profile is a BaseSlashCommandProfile instance', () => {
@@ -209,6 +211,7 @@ describe('Profile Utility Functions', () => {
 			expect(profileTypes).toContain('RooProfile');
 			expect(profileTypes).toContain('GeminiProfile');
 			expect(profileTypes).toContain('CodexProfile');
+			expect(profileTypes).toContain('OpenCodeProfile');
 		});
 
 		it('returns new array reference on each call (defensive copy)', () => {
@@ -302,14 +305,21 @@ describe('Profile Utility Functions', () => {
 			expect(names).toContain('codex');
 		});
 
-		it('returns all 5 profile names', () => {
+		it('returns all 6 profile names', () => {
 			// Act
 			const names = getProfileNames();
 
 			// Assert
-			expect(names).toHaveLength(5);
+			expect(names).toHaveLength(6);
 			expect(names).toEqual(
-				expect.arrayContaining(['claude', 'cursor', 'roo', 'gemini', 'codex'])
+				expect.arrayContaining([
+					'claude',
+					'cursor',
+					'roo',
+					'gemini',
+					'codex',
+					'opencode'
+				])
 			);
 		});
 

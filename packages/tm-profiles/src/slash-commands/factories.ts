@@ -3,7 +3,11 @@
  * Simple functions to create type-safe slash command objects.
  */
 
-import type { StaticSlashCommand, DynamicSlashCommand } from './types.js';
+import type {
+	StaticSlashCommand,
+	DynamicSlashCommand,
+	OperatingMode
+} from './types.js';
 
 /**
  * Options for creating a static slash command
@@ -14,6 +18,8 @@ export interface StaticCommandOptions {
 	content: string;
 	/** Optional argument hint for documentation (command doesn't use $ARGUMENTS) */
 	argumentHint?: string;
+	/** Operating mode - defaults to 'common' */
+	mode?: OperatingMode;
 }
 
 /**
@@ -40,12 +46,15 @@ export interface StaticCommandOptions {
 export function staticCommand(
 	options: StaticCommandOptions
 ): StaticSlashCommand {
-	const { name, description, content, argumentHint } = options;
+	const { name, description, content, argumentHint, mode } = options;
 	return {
 		type: 'static',
-		metadata: argumentHint
-			? { name, description, argumentHint }
-			: { name, description },
+		metadata: {
+			name,
+			description,
+			...(argumentHint && { argumentHint }),
+			...(mode && { mode })
+		},
 		content
 	};
 }
@@ -71,7 +80,8 @@ export function dynamicCommand(
 	name: string,
 	description: string,
 	argumentHint: string,
-	content: string
+	content: string,
+	mode?: OperatingMode
 ): DynamicSlashCommand {
 	if (!content.includes('$ARGUMENTS')) {
 		throw new Error(
@@ -81,7 +91,12 @@ export function dynamicCommand(
 
 	return {
 		type: 'dynamic',
-		metadata: { name, description, argumentHint },
+		metadata: {
+			name,
+			description,
+			argumentHint,
+			...(mode && { mode })
+		},
 		content
 	};
 }

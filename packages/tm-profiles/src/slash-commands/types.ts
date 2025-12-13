@@ -4,6 +4,14 @@
  */
 
 /**
+ * Operating mode for Task Master
+ * - 'solo': Local file-based storage (Taskmaster standalone)
+ * - 'team': API-based storage via Hamster (collaborative features)
+ * - 'common': Works in both modes
+ */
+export type OperatingMode = 'solo' | 'team' | 'common';
+
+/**
  * Base metadata shared by all slash commands
  */
 export interface SlashCommandMetadata {
@@ -13,6 +21,8 @@ export interface SlashCommandMetadata {
 	readonly description: string;
 	/** Optional hint for arguments (e.g., "[brief-url]") */
 	readonly argumentHint?: string;
+	/** Operating mode - defaults to 'common' if not specified */
+	readonly mode?: OperatingMode;
 }
 
 /**

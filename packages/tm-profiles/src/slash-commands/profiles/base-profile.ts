@@ -7,6 +7,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { SlashCommand, FormattedSlashCommand } from '../types.js';
+import { filterCommandsByMode } from '../commands/index.js';
 
 /** Default namespace for TaskMaster commands */
 export const TM_NAMESPACE = 'tm';
@@ -25,6 +26,19 @@ export interface SlashCommandResult {
 	files: string[];
 	/** Error message if operation failed */
 	error?: string;
+}
+
+/**
+ * Options for adding slash commands
+ */
+export interface AddSlashCommandsOptions {
+	/**
+	 * Operating mode to filter commands.
+	 * - 'solo': Solo + common commands (for local file storage)
+	 * - 'team': Team-only commands (exclusive, for Hamster cloud)
+	 * - undefined: All commands (no filtering)
+	 */
+	mode?: 'solo' | 'team';
 }
 
 /**
@@ -156,18 +170,26 @@ export abstract class BaseSlashCommandProfile {
 	 *
 	 * @param projectRoot - Absolute path to the project root
 	 * @param commands - Array of slash commands to add
+	 * @param options - Options including mode filtering
 	 * @returns Result of the operation
 	 *
 	 * @example
 	 * ```ts
 	 * const cursor = new CursorProfile();
+	 * // Add all commands
 	 * const result = cursor.addSlashCommands('/path/to/project', allCommands);
-	 * console.log(`Added ${result.count} commands to ${result.directory}`);
+	 *
+	 * // Add only solo mode commands
+	 * const soloResult = cursor.addSlashCommands('/path/to/project', allCommands, { mode: 'solo' });
+	 *
+	 * // Add only team mode commands (exclusive)
+	 * const teamResult = cursor.addSlashCommands('/path/to/project', allCommands, { mode: 'team' });
 	 * ```
 	 */
 	addSlashCommands(
 		projectRoot: string,
-		commands: SlashCommand[]
+		commands: SlashCommand[],
+		options?: AddSlashCommandsOptions
 	): SlashCommandResult {
 		const commandsPath = this.getCommandsPath(projectRoot);
 		const files: string[] = [];
@@ -183,13 +205,24 @@ export abstract class BaseSlashCommandProfile {
 		}
 
 		try {
+			// When mode is specified, first remove ALL existing TaskMaster commands
+			// to ensure clean slate (prevents orphaned commands when switching modes)
+			if (options?.mode) {
+				this.removeSlashCommands(projectRoot, commands, false);
+			}
+
+			// Filter commands by mode if specified
+			const filteredCommands = options?.mode
+				? filterCommandsByMode(commands, options.mode)
+				: commands;
+
 			// Ensure directory exists
 			if (!fs.existsSync(commandsPath)) {
 				fs.mkdirSync(commandsPath, { recursive: true });
 			}
 
 			// Format and write each command
-			const formatted = this.formatAll(commands);
+			const formatted = this.formatAll(filteredCommands);
 			for (const output of formatted) {
 				const filePath = path.join(commandsPath, output.filename);
 				fs.writeFileSync(filePath, output.content);
@@ -306,5 +339,38 @@ export abstract class BaseSlashCommandProfile {
 				error: err instanceof Error ? err.message : String(err)
 			};
 		}
+	}
+
+	/**
+	 * Replace slash commands for a new operating mode.
+	 *
+	 * Removes all existing TaskMaster commands and adds commands for the new mode.
+	 * This is useful when switching between solo and team modes.
+	 *
+	 * @param projectRoot - Absolute path to the project root
+	 * @param commands - Array of all slash commands (will be filtered by mode)
+	 * @param newMode - The new operating mode to switch to
+	 * @returns Result of the operation
+	 *
+	 * @example
+	 * ```ts
+	 * const cursor = new CursorProfile();
+	 * // Switch from solo to team mode
+	 * const result = cursor.replaceSlashCommands('/path/to/project', allCommands, 'team');
+	 * ```
+	 */
+	replaceSlashCommands(
+		projectRoot: string,
+		commands: SlashCommand[],
+		newMode: 'solo' | 'team'
+	): SlashCommandResult {
+		// Remove all existing TaskMaster commands
+		const removeResult = this.removeSlashCommands(projectRoot, commands);
+		if (!removeResult.success) {
+			return removeResult;
+		}
+
+		// Add commands for the new mode
+		return this.addSlashCommands(projectRoot, commands, { mode: newMode });
 	}
 }

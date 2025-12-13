@@ -189,6 +189,51 @@ function isConnectedToHamster() {
 }
 
 /**
+ * Get the operating mode for rules/commands filtering.
+ * Priority order:
+ * 1. Explicit CLI flag (--mode=solo|team)
+ * 2. Config file (storage.operatingMode)
+ * 3. Auth status fallback (authenticated = team, else solo)
+ *
+ * @param {string|undefined} explicitMode - Mode passed via CLI flag
+ * @returns {Promise<'solo'|'team'>} The operating mode
+ */
+async function getOperatingMode(explicitMode) {
+	// 1. CLI flag takes precedence
+	if (explicitMode === 'solo' || explicitMode === 'team') {
+		return explicitMode;
+	}
+
+	// 2. Check config file for operatingMode
+	try {
+		setSuppressConfigWarnings(true);
+		const config = getConfig(null, false, { storageType: 'api' });
+		if (config?.storage?.operatingMode) {
+			return config.storage.operatingMode;
+		}
+	} catch {
+		// Config check failed, continue to fallback
+	} finally {
+		setSuppressConfigWarnings(false);
+	}
+
+	// 3. Fallback: Check auth status
+	// If authenticated with Hamster, assume team mode
+	try {
+		const authManager = AuthManager.getInstance();
+		const credentials = await authManager.getAuthCredentials();
+		if (credentials) {
+			return 'team';
+		}
+	} catch {
+		// Auth check failed, default to solo
+	}
+
+	// Default to solo mode
+	return 'solo';
+}
+
+/**
  * Prompt user about using Hamster for collaborative PRD management
  * Only shown to users who are not already connected to Hamster
  * @returns {Promise<'local'|'hamster'>} User's choice
@@ -4388,11 +4433,16 @@ Examples:
 			`--${RULES_SETUP_ACTION}`,
 			'Run interactive setup to select rule profiles to add'
 		)
+		.option(
+			'-m, --mode <mode>',
+			'Operating mode for filtering rules/commands (solo or team). Auto-detected from config if not specified.'
+		)
 		.addHelpText(
 			'after',
 			`
 		Examples:
 		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add Windsurf and Roo rule sets
+		$ task-master rules ${RULES_ACTIONS.ADD} cursor --mode=team    # Add Cursor rules for team mode only
 		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set
 		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
 		)
@@ -4447,10 +4497,11 @@ Examples:
 						continue;
 					}
 					const profileConfig = getRulesProfile(profile);
-
+					const mode = await getOperatingMode(options.mode);
 					const addResult = convertAllRulesToProfileRules(
 						projectRoot,
-						profileConfig
+						profileConfig,
+						{ mode }
 					);
 
 					console.log(chalk.green(generateProfileSummary(profile, addResult)));
@@ -4525,9 +4576,11 @@ Examples:
 
 				if (action === RULES_ACTIONS.ADD) {
 					console.log(chalk.blue(`Adding rules for profile: ${profile}...`));
+					const mode = await getOperatingMode(options.mode);
 					const addResult = convertAllRulesToProfileRules(
 						projectRoot,
-						profileConfig
+						profileConfig,
+						{ mode }
 					);
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)

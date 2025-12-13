@@ -1,165 +1,171 @@
 /**
  * @fileoverview Slash Commands Index
- * Exports all TaskMaster slash commands.
+ * Exports all TaskMaster slash commands organized by operating mode.
  */
 
-// Static commands
-import { expandAllTasks } from './expand-all-tasks.js';
-import { fixDependencies } from './fix-dependencies.js';
-import { installTaskmaster } from './install-taskmaster.js';
-import { listTasksWithSubtasks } from './list-tasks-with-subtasks.js';
-import { quickInstallTaskmaster } from './quick-install-taskmaster.js';
-import { removeAllSubtasks } from './remove-all-subtasks.js';
-import { setupModels } from './setup-models.js';
-import { tmMain } from './tm-main.js';
-import { validateDependencies } from './validate-dependencies.js';
-import { viewModels } from './view-models.js';
+import type { SlashCommand } from '../types.js';
 
-// Dynamic commands
-import { addDependency } from './add-dependency.js';
-import { addSubtask } from './add-subtask.js';
-import { addTask } from './add-task.js';
-import { analyzeComplexity } from './analyze-complexity.js';
-import { analyzeProject } from './analyze-project.js';
-import { autoImplementTasks } from './auto-implement-tasks.js';
-import { commandPipeline } from './command-pipeline.js';
-import { complexityReport } from './complexity-report.js';
-import { convertTaskToSubtask } from './convert-task-to-subtask.js';
-import { expandTask } from './expand-task.js';
-import { goham } from './goham.js';
-import { help } from './help.js';
-import { initProject } from './init-project.js';
-import { initProjectQuick } from './init-project-quick.js';
-import { learn } from './learn.js';
-import { listTasks } from './list-tasks.js';
-import { listTasksByStatus } from './list-tasks-by-status.js';
-import { nextTask } from './next-task.js';
-import { parsePrd } from './parse-prd.js';
-import { parsePrdWithResearch } from './parse-prd-with-research.js';
-import { projectStatus } from './project-status.js';
-import { removeDependency } from './remove-dependency.js';
-import { removeSubtask } from './remove-subtask.js';
-import { removeSubtasks } from './remove-subtasks.js';
-import { removeTask } from './remove-task.js';
-import { showTask } from './show-task.js';
-import { smartWorkflow } from './smart-workflow.js';
-import { syncReadme } from './sync-readme.js';
-import { toCancelled } from './to-cancelled.js';
-import { toDeferred } from './to-deferred.js';
-import { toDone } from './to-done.js';
-import { toInProgress } from './to-in-progress.js';
-import { toPending } from './to-pending.js';
-import { toReview } from './to-review.js';
-import { updateSingleTask } from './update-single-task.js';
-import { updateTask } from './update-task.js';
-import { updateTasksFromId } from './update-tasks-from-id.js';
+// Solo commands (local file-based storage)
+import {
+	parsePrd,
+	parsePrdWithResearch,
+	analyzeComplexity,
+	complexityReport,
+	expandTask,
+	expandAllTasks,
+	addTask,
+	addSubtask,
+	removeTask,
+	removeSubtask,
+	removeSubtasks,
+	removeAllSubtasks,
+	convertTaskToSubtask,
+	addDependency,
+	removeDependency,
+	fixDependencies,
+	validateDependencies,
+	setupModels,
+	viewModels,
+	installTaskmaster,
+	quickInstallTaskmaster,
+	toReview,
+	toDeferred,
+	toCancelled,
+	initProject,
+	initProjectQuick
+} from './solo/index.js';
+
+// Team commands (API-based storage via Hamster)
+import { goham } from './team/index.js';
+
+// Common commands (work in both modes)
+import {
+	showTask,
+	listTasks,
+	listTasksWithSubtasks,
+	listTasksByStatus,
+	projectStatus,
+	nextTask,
+	help,
+	toDone,
+	toPending,
+	toInProgress,
+	updateTask,
+	updateSingleTask,
+	updateTasksFromId,
+	tmMain,
+	smartWorkflow,
+	learn,
+	commandPipeline,
+	autoImplementTasks,
+	analyzeProject,
+	syncReadme
+} from './common/index.js';
 
 /**
  * All TaskMaster slash commands
  * Add new commands here to have them automatically distributed to all profiles.
  */
-export const allCommands = [
-	// Static commands
-	expandAllTasks,
-	fixDependencies,
-	installTaskmaster,
-	listTasksWithSubtasks,
-	quickInstallTaskmaster,
-	removeAllSubtasks,
-	setupModels,
-	tmMain,
-	validateDependencies,
-	viewModels,
-
-	// Dynamic commands
-	addDependency,
-	addSubtask,
-	addTask,
-	analyzeComplexity,
-	analyzeProject,
-	autoImplementTasks,
-	commandPipeline,
-	complexityReport,
-	convertTaskToSubtask,
-	expandTask,
-	goham,
-	help,
-	initProject,
-	initProjectQuick,
-	learn,
-	listTasks,
-	listTasksByStatus,
-	nextTask,
+export const allCommands: SlashCommand[] = [
+	// Solo commands
 	parsePrd,
 	parsePrdWithResearch,
-	projectStatus,
-	removeDependency,
+	analyzeComplexity,
+	complexityReport,
+	expandTask,
+	expandAllTasks,
+	addTask,
+	addSubtask,
+	removeTask,
 	removeSubtask,
 	removeSubtasks,
-	removeTask,
-	showTask,
-	smartWorkflow,
-	syncReadme,
-	toCancelled,
-	toDeferred,
-	toDone,
-	toInProgress,
-	toPending,
+	removeAllSubtasks,
+	convertTaskToSubtask,
+	addDependency,
+	removeDependency,
+	fixDependencies,
+	validateDependencies,
+	setupModels,
+	viewModels,
+	installTaskmaster,
+	quickInstallTaskmaster,
 	toReview,
-	updateSingleTask,
+	toDeferred,
+	toCancelled,
+	initProject,
+	initProjectQuick,
+
+	// Team commands
+	goham,
+
+	// Common commands
+	showTask,
+	listTasks,
+	listTasksWithSubtasks,
+	listTasksByStatus,
+	projectStatus,
+	nextTask,
+	help,
+	toDone,
+	toPending,
+	toInProgress,
 	updateTask,
-	updateTasksFromId
+	updateSingleTask,
+	updateTasksFromId,
+	tmMain,
+	smartWorkflow,
+	learn,
+	commandPipeline,
+	autoImplementTasks,
+	analyzeProject,
+	syncReadme
 ];
 
-// Named exports for direct access
-export {
-	// Static commands
-	expandAllTasks,
-	fixDependencies,
-	installTaskmaster,
-	listTasksWithSubtasks,
-	quickInstallTaskmaster,
-	removeAllSubtasks,
-	setupModels,
-	tmMain,
-	validateDependencies,
-	viewModels,
-	// Dynamic commands
-	addDependency,
-	addSubtask,
-	addTask,
-	analyzeComplexity,
-	analyzeProject,
-	autoImplementTasks,
-	commandPipeline,
-	complexityReport,
-	convertTaskToSubtask,
-	expandTask,
-	goham,
-	help,
-	initProject,
-	initProjectQuick,
-	learn,
-	listTasks,
-	listTasksByStatus,
-	nextTask,
-	parsePrd,
-	parsePrdWithResearch,
-	projectStatus,
-	removeDependency,
-	removeSubtask,
-	removeSubtasks,
-	removeTask,
-	showTask,
-	smartWorkflow,
-	syncReadme,
-	toCancelled,
-	toDeferred,
-	toDone,
-	toInProgress,
-	toPending,
-	toReview,
-	updateSingleTask,
-	updateTask,
-	updateTasksFromId
-};
+/**
+ * Filter commands by operating mode
+ *
+ * Both modes include common commands:
+ * - Solo mode: solo + common commands
+ * - Team mode: team + common commands
+ *
+ * @param commands - Array of slash commands to filter
+ * @param mode - Operating mode ('solo' or 'team')
+ * @returns Filtered array of commands for the specified mode
+ */
+export function filterCommandsByMode(
+	commands: SlashCommand[],
+	mode: 'solo' | 'team'
+): SlashCommand[] {
+	if (mode === 'team') {
+		// Team mode: team + common commands
+		return commands.filter(
+			(cmd) =>
+				cmd.metadata.mode === 'team' ||
+				cmd.metadata.mode === 'common' ||
+				!cmd.metadata.mode // backward compat: no mode = common
+		);
+	}
+	// Solo mode: solo + common commands
+	return commands.filter(
+		(cmd) =>
+			cmd.metadata.mode === 'solo' ||
+			cmd.metadata.mode === 'common' ||
+			!cmd.metadata.mode // backward compat: no mode = common
+	);
+}
+
+/** Commands for solo mode (solo + common) */
+export const soloCommands = filterCommandsByMode(allCommands, 'solo');
+
+/** Commands for team mode (team + common) */
+export const teamCommands = filterCommandsByMode(allCommands, 'team');
+
+/** Commands that work in both modes */
+export const commonCommands = allCommands.filter(
+	(cmd) => cmd.metadata.mode === 'common' || !cmd.metadata.mode
+);
+
+// Re-export from subdirectories for direct access
+export * from './solo/index.js';
+export * from './team/index.js';
+export * from './common/index.js';
