@@ -67,7 +67,7 @@ listTasks(tasksPath, statusFilter, reportPath, withSubtasks, outputFormat, conte
 const tmCore = createTaskMasterCore(projectPath, { 
   storage: { 
     type: 'api',  // or 'file'
-    apiEndpoint: 'https://hamster.ai/api',
+    apiEndpoint: 'https://tryhamster.com',
     apiAccessToken: 'xxx'
   }
 });

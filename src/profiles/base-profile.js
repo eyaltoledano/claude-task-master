@@ -1,5 +1,52 @@
 // Base profile factory for rule-transformer
 import path from 'path';
+import { getProfile, allCommands } from '@tm/profiles';
+import { log } from '../../scripts/modules/utils.js';
+
+/**
+ * Rule files categorized by operating mode.
+ * - Solo: Rules for local file-based storage (Taskmaster standalone)
+ * - Team: Rules for API/cloud storage (Hamster integration)
+ *
+ * Team mode is EXCLUSIVE - team users get ONLY team-specific rules.
+ */
+export const RULE_MODES = {
+	/** Solo-only rules (local file storage) */
+	solo: [
+		'rules/taskmaster.mdc',
+		'rules/dev_workflow.mdc',
+		'rules/self_improve.mdc',
+		'rules/cursor_rules.mdc',
+		'rules/taskmaster_hooks_workflow.mdc'
+	],
+	/** Team-only rules (API/cloud storage - exclusive) */
+	team: ['rules/hamster.mdc']
+};
+
+/**
+ * Filter rules by operating mode.
+ * Team mode is EXCLUSIVE - returns ONLY team-specific rules.
+ *
+ * @param {Object} fileMap - The rule fileMap object
+ * @param {'solo' | 'team'} mode - Operating mode
+ * @returns {Object} - Filtered fileMap
+ */
+export function filterRulesByMode(fileMap, mode) {
+	if (mode === 'team') {
+		// Team mode: ONLY team-specific rules (exclusive)
+		return Object.fromEntries(
+			Object.entries(fileMap).filter(([sourceFile]) =>
+				RULE_MODES.team.includes(sourceFile)
+			)
+		);
+	}
+	// Solo mode: solo-specific rules only (no team rules)
+	return Object.fromEntries(
+		Object.entries(fileMap).filter(([sourceFile]) =>
+			RULE_MODES.solo.includes(sourceFile)
+		)
+	);
+}
 
 /**
  * Creates a standardized profile configuration for different editors
@@ -221,6 +268,23 @@ export function createProfile(editorConfig) {
 			: sourceFilename;
 	}
 
+	// Auto-detect slash command support from @tm/profiles
+	let slashCommands = null;
+	try {
+		const slashCommandProfile = getProfile(name);
+		if (slashCommandProfile?.supportsCommands) {
+			slashCommands = {
+				profile: slashCommandProfile,
+				commands: allCommands
+			};
+		}
+	} catch (err) {
+		log(
+			'debug',
+			`[${displayName}] Slash command profile lookup failed: ${err.message}`
+		);
+	}
+
 	return {
 		profileName: name, // Use name for programmatic access (tests expect this)
 		displayName: displayName, // Keep displayName for UI purposes
@@ -236,6 +300,8 @@ export function createProfile(editorConfig) {
 		conversionConfig,
 		getTargetRuleFilename,
 		targetExtension,
+		// Declarative slash command config - rule-transformer handles execution
+		slashCommands,
 		// Optional lifecycle hooks
 		...(onAdd && { onAddRulesProfile: onAdd }),
 		...(onRemove && { onRemoveRulesProfile: onRemove }),

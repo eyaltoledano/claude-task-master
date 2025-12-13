@@ -716,12 +716,21 @@ function updateStorageConfig(configPath, selectedStorage, authCredentials) {
 				process.env.TM_PUBLIC_BASE_DOMAIN ||
 				'https://tryhamster.com/api';
 
+			// Set operating mode to 'team' for cloud storage (Hamster)
+			// This determines which slash commands and rules are installed
+			config.storage.operatingMode = 'team';
+
 			// Note: Access token is stored in ~/.taskmaster/auth.json by AuthManager
 			// We don't store it in config.json for security reasons
 			log('debug', 'Connected to Hamster Studio');
 		} else {
 			// Configure for local file storage
 			config.storage.type = 'file';
+
+			// Set operating mode to 'solo' for local storage (Taskmaster standalone)
+			// This determines which slash commands and rules are installed
+			config.storage.operatingMode = 'solo';
+
 			log('debug', 'Configured storage for local file storage');
 		}
 
@@ -843,10 +852,18 @@ async function createProjectStructure(
 	};
 
 	// Helper function to create rule profiles
+	// Derives operating mode from storage selection:
+	// - 'cloud' (Hamster) -> 'team' mode
+	// - 'local' (Taskmaster standalone) -> 'solo' mode
+	const operatingMode = selectedStorage === 'cloud' ? 'team' : 'solo';
+
 	function _processSingleProfile(profileName) {
 		const profile = getRulesProfile(profileName);
 		if (profile) {
-			convertAllRulesToProfileRules(targetDir, profile);
+			// Pass operating mode to filter rules and slash commands
+			convertAllRulesToProfileRules(targetDir, profile, {
+				mode: operatingMode
+			});
 			// Also triggers MCP config setup (if applicable)
 		} else {
 			log('warn', `Unknown rule profile: ${profileName}`);

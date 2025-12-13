@@ -24,6 +24,9 @@ import { RULE_PROFILES } from '../constants/profiles.js';
 // --- Profile Imports ---
 import * as profilesModule from '../profiles/index.js';
 
+// Import rule filtering
+import { filterRulesByMode } from '../profiles/base-profile.js';
+
 export function isValidProfile(profile) {
 	return RULE_PROFILES.includes(profile);
 }
@@ -198,13 +201,65 @@ export function convertRuleToProfileRule(sourcePath, targetPath, profile) {
 }
 
 /**
- * Convert all Cursor rules to profile rules for a specific profile
+ * Options for converting rules to profile rules
+ * @typedef {Object} ConvertRulesOptions
+ * @property {'solo' | 'team'} [mode] - Operating mode to filter rules
  */
-export function convertAllRulesToProfileRules(projectRoot, profile) {
+
+/**
+ * Remove all TaskMaster rule files from a profile (used when switching modes)
+ * This removes files from ALL modes to ensure a clean slate.
+ * @param {string} projectRoot - The project root directory
+ * @param {Object} profile - The profile configuration
+ */
+function removeTaskMasterRuleFiles(projectRoot, profile) {
 	const targetDir = path.join(projectRoot, profile.rulesDir);
+
+	if (!fs.existsSync(targetDir)) {
+		return; // Nothing to remove
+	}
+
+	// Get all TaskMaster rule files (from all modes)
+	const allRuleFiles = Object.values(profile.fileMap);
+
+	for (const ruleFile of allRuleFiles) {
+		const filePath = path.join(targetDir, ruleFile);
+		if (fs.existsSync(filePath)) {
+			try {
+				fs.rmSync(filePath, { force: true });
+				log('debug', `[Rule Transformer] Removed rule file: ${ruleFile}`);
+			} catch (error) {
+				log(
+					'warn',
+					`[Rule Transformer] Failed to remove rule file ${ruleFile}: ${error.message}`
+				);
+			}
+		}
+	}
+}
+
+/**
+ * Convert all Cursor rules to profile rules for a specific profile
+ * @param {string} projectRoot - The project root directory
+ * @param {Object} profile - The profile configuration
+ * @param {ConvertRulesOptions} [options] - Options including mode filtering
+ */
+export function convertAllRulesToProfileRules(projectRoot, profile, options) {
+	const targetDir = path.join(projectRoot, profile.rulesDir);
+	const mode = options?.mode;
 
 	let success = 0;
 	let failed = 0;
+
+	// 0. When mode is specified, first remove ALL existing TaskMaster rules
+	// to ensure clean slate (prevents orphaned rules when switching modes)
+	if (mode) {
+		removeTaskMasterRuleFiles(projectRoot, profile);
+		log(
+			'debug',
+			`[Rule Transformer] Cleaned up existing rules before adding ${mode} mode rules`
+		);
+	}
 
 	// 1. Call onAddRulesProfile first (for pre-processing like copying assets)
 	if (typeof profile.onAddRulesProfile === 'function') {
@@ -225,7 +280,11 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 	}
 
 	// 2. Handle fileMap-based rule conversion (if any)
-	const sourceFiles = Object.keys(profile.fileMap);
+	// Filter by mode if specified
+	const filteredFileMap = mode
+		? filterRulesByMode(profile.fileMap, mode)
+		: profile.fileMap;
+	const sourceFiles = Object.keys(filteredFileMap);
 	if (sourceFiles.length > 0) {
 		// Only create rules directory if we have files to copy
 		if (!fs.existsSync(targetDir)) {
@@ -246,7 +305,7 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 					continue;
 				}
 
-				const targetFilename = profile.fileMap[sourceFile];
+				const targetFilename = filteredFileMap[sourceFile];
 				const targetPath = path.join(targetDir, targetFilename);
 
 				// Ensure target subdirectory exists (for rules like taskmaster/dev_workflow.md)
@@ -314,6 +373,35 @@ export function convertAllRulesToProfileRules(projectRoot, profile) {
 			log(
 				'error',
 				`[Rule Transformer] onPostConvertRulesProfile failed for ${profile.profileName}: ${error.message}`
+			);
+		}
+	}
+
+	// 5. Add slash commands (if profile supports them)
+	if (profile.slashCommands) {
+		try {
+			// Pass mode option for filtering commands by operating mode
+			const slashCommandOptions = mode ? { mode } : undefined;
+			const result = profile.slashCommands.profile.addSlashCommands(
+				projectRoot,
+				profile.slashCommands.commands,
+				slashCommandOptions
+			);
+			if (result.success) {
+				log(
+					'debug',
+					`[Rule Transformer] Created ${result.count} slash commands in ${result.directory}${mode ? ` (mode: ${mode})` : ''}`
+				);
+			} else {
+				log(
+					'error',
+					`[Rule Transformer] Failed to add slash commands for ${profile.profileName}: ${result.error}`
+				);
+			}
+		} catch (error) {
+			log(
+				'error',
+				`[Rule Transformer] Slash commands failed for ${profile.profileName}: ${error.message}`
 			);
 		}
 	}
@@ -493,7 +581,33 @@ export function removeProfileRules(projectRoot, profile) {
 			}
 		}
 
-		// 4. Check if we should remove the entire profile directory
+		// 4. Remove slash commands (if profile supports them)
+		if (profile.slashCommands) {
+			try {
+				const slashResult = profile.slashCommands.profile.removeSlashCommands(
+					projectRoot,
+					profile.slashCommands.commands
+				);
+				if (slashResult.success && slashResult.count > 0) {
+					log(
+						'debug',
+						`[Rule Transformer] Removed ${slashResult.count} slash commands for ${profile.profileName}`
+					);
+				} else if (!slashResult.success) {
+					log(
+						'error',
+						`[Rule Transformer] Failed to remove slash commands for ${profile.profileName}: ${slashResult.error}`
+					);
+				}
+			} catch (error) {
+				log(
+					'error',
+					`[Rule Transformer] Slash command cleanup failed for ${profile.profileName}: ${error.message}`
+				);
+			}
+		}
+
+		// 5. Check if we should remove the entire profile directory
 		if (fs.existsSync(profileDir)) {
 			const remainingContents = fs.readdirSync(profileDir);
 			if (remainingContents.length === 0 && profile.profileDir !== '.') {

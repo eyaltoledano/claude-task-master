@@ -78,6 +78,7 @@ import {
 	getConfig,
 	getDebugFlag,
 	getDefaultNumTasks,
+	getOperatingMode,
 	isApiKeySet,
 	isConfigFilePresent,
 	setSuppressConfigWarnings
@@ -4388,11 +4389,16 @@ Examples:
 			`--${RULES_SETUP_ACTION}`,
 			'Run interactive setup to select rule profiles to add'
 		)
+		.option(
+			'-m, --mode <mode>',
+			'Operating mode for filtering rules/commands (solo or team). Auto-detected from config if not specified.'
+		)
 		.addHelpText(
 			'after',
 			`
 		Examples:
 		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add Windsurf and Roo rule sets
+		$ task-master rules ${RULES_ACTIONS.ADD} cursor --mode=team    # Add Cursor rules for team mode only
 		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set
 		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
 		)
@@ -4447,10 +4453,11 @@ Examples:
 						continue;
 					}
 					const profileConfig = getRulesProfile(profile);
-
+					const mode = await getOperatingMode(options.mode);
 					const addResult = convertAllRulesToProfileRules(
 						projectRoot,
-						profileConfig
+						profileConfig,
+						{ mode }
 					);
 
 					console.log(chalk.green(generateProfileSummary(profile, addResult)));
@@ -4525,9 +4532,11 @@ Examples:
 
 				if (action === RULES_ACTIONS.ADD) {
 					console.log(chalk.blue(`Adding rules for profile: ${profile}...`));
+					const mode = await getOperatingMode(options.mode);
 					const addResult = convertAllRulesToProfileRules(
 						projectRoot,
-						profileConfig
+						profileConfig,
+						{ mode }
 					);
 					console.log(
 						chalk.blue(`Completed adding rules for profile: ${profile}`)

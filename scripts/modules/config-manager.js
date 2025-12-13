@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
 	ALL_PROVIDERS,
+	AuthManager,
 	CUSTOM_PROVIDERS,
 	CUSTOM_PROVIDERS_ARRAY,
 	VALIDATED_PROVIDERS
@@ -1189,6 +1190,51 @@ function getBaseUrlForRole(role, explicitRoot = null) {
 	return undefined;
 }
 
+/**
+ * Get the operating mode for rules/commands filtering.
+ * Priority order:
+ * 1. Explicit CLI flag (--mode=solo|team)
+ * 2. Config file (storage.operatingMode)
+ * 3. Auth status fallback (authenticated = team, else solo)
+ *
+ * @param {string|undefined} explicitMode - Mode passed via CLI flag
+ * @returns {Promise<'solo'|'team'>} The operating mode
+ */
+async function getOperatingMode(explicitMode) {
+	// 1. CLI flag takes precedence
+	if (explicitMode === 'solo' || explicitMode === 'team') {
+		return explicitMode;
+	}
+
+	// 2. Check config file for operatingMode
+	try {
+		setSuppressConfigWarnings(true);
+		const config = getConfig(null, false, { storageType: 'api' });
+		if (config?.storage?.operatingMode) {
+			return config.storage.operatingMode;
+		}
+	} catch {
+		// Config check failed, continue to fallback
+	} finally {
+		setSuppressConfigWarnings(false);
+	}
+
+	// 3. Fallback: Check auth status
+	// If authenticated with Hamster, assume team mode
+	try {
+		const authManager = AuthManager.getInstance();
+		const credentials = await authManager.getAuthCredentials();
+		if (credentials) {
+			return 'team';
+		}
+	} catch {
+		// Auth check failed, default to solo
+	}
+
+	// Default to solo mode
+	return 'solo';
+}
+
 // Export the providers without API keys array for use in other modules
 export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.OLLAMA,
@@ -1257,6 +1303,8 @@ export {
 	getAnonymousTelemetryEnabled,
 	getParametersForRole,
 	getUserId,
+	// Operating mode
+	getOperatingMode,
 	// API Key Checkers (still relevant)
 	isApiKeySet,
 	getMcpApiKeyStatus,
