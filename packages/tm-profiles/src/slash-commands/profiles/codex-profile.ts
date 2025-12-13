@@ -85,11 +85,16 @@ export class CodexProfile extends BaseSlashCommandProfile {
 
 	private buildFrontmatter(command: SlashCommand): string {
 		const escapeQuotes = (str: string): string => str.replace(/"/g, '\\"');
-		const lines = ['---', `description: "${escapeQuotes(command.metadata.description)}"`];
+		const lines = [
+			'---',
+			`description: "${escapeQuotes(command.metadata.description)}"`
+		];
 
 		// Include argument-hint if present
 		if (command.metadata.argumentHint) {
-			lines.push(`argument-hint: "${escapeQuotes(command.metadata.argumentHint)}"`);
+			lines.push(
+				`argument-hint: "${escapeQuotes(command.metadata.argumentHint)}"`
+			);
 		}
 
 		lines.push('---', '');
