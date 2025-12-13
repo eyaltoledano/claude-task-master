@@ -28,6 +28,8 @@
 			"@tm/ai-sdk-provider-grok-cli/*": [
 				"./packages/ai-sdk-provider-grok-cli/src/*"
 			],
+			"@tm/terminal-ui": ["./apps/terminal-ui/src/index.ts"],
+			"@tm/terminal-ui/*": ["./apps/terminal-ui/src/*"],
 			"@tm/bridge": ["./packages/tm-bridge/src/index.ts"],
 			"@tm/bridge/*": ["./packages/tm-bridge/src/*"]
 		}
