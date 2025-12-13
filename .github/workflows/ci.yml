@@ -20,23 +20,47 @@ env:
   NODE_ENV: development
 
 jobs:
-  # Fast checks that can run in parallel
-  format-check:
-    name: Format Check
+  # Single install job that caches node_modules for all other jobs
+  install:
+    name: Install Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+
+      - name: Cache node_modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
         timeout-minutes: 5
+
+  # Fast checks that can run in parallel
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Format Check
         run: npm run format-check
@@ -78,19 +102,20 @@ jobs:
     name: Typecheck
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    needs: install
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
-        timeout-minutes: 5
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Typecheck
         run: npm run turbo:typecheck
@@ -101,19 +126,20 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    needs: install
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
-        timeout-minutes: 5
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Build
         run: npm run turbo:build
@@ -139,17 +165,17 @@ jobs:
     if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
 
-      - name: Install dependencies
-        run: npm install --frozen-lockfile --prefer-offline
-        timeout-minutes: 5
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
