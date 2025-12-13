@@ -30,7 +30,7 @@ export class GeminiProfile extends BaseSlashCommandProfile {
 
 	format(command: SlashCommand): FormattedSlashCommand {
 		const description = this.escapeForPython(command.metadata.description);
-		const content = command.content.trim();
+		const content = this.escapeForTripleQuotedString(command.content.trim());
 
 		return {
 			filename: this.getFilename(command.metadata.name),
@@ -47,5 +47,13 @@ ${content}
 	 */
 	private escapeForPython(str: string): string {
 		return str.replace(/"/g, '\\"');
+	}
+
+	/**
+	 * Escape content for use inside triple-quoted strings.
+	 * Prevents `"""` sequences from breaking the TOML delimiter.
+	 */
+	private escapeForTripleQuotedString(str: string): string {
+		return str.replace(/"""/g, '""\\"');
 	}
 }

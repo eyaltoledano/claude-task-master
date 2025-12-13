@@ -3,9 +3,9 @@
  * Tests the Gemini CLI slash command profile formatting and metadata.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { dynamicCommand, staticCommand } from '../factories.js';
 import { GeminiProfile } from './gemini-profile.js';
-import { staticCommand, dynamicCommand } from '../factories.js';
 
 describe('GeminiProfile', () => {
 	describe('Profile Metadata', () => {
@@ -56,7 +56,7 @@ describe('GeminiProfile', () => {
 	});
 
 	describe('getFilename() method', () => {
-		it('should append .md extension to command name', () => {
+		it('should append .toml extension to command name', () => {
 			// Arrange
 			const profile = new GeminiProfile();
 
@@ -563,6 +563,58 @@ Query: $ARGUMENTS
 			// Assert
 			expect(commandsPath).toContain('.gemini');
 			expect(commandsPath).toContain('commands');
+		});
+	});
+
+	describe('escapeForTripleQuotedString() edge cases', () => {
+		it('should escape triple quotes in content to prevent TOML delimiter break', () => {
+			// Arrange
+			const profile = new GeminiProfile();
+			const command = staticCommand({
+				name: 'test',
+				description: 'Test command',
+				content: 'Content with """ triple quotes'
+			});
+
+			// Act
+			const result = profile.format(command);
+
+			// Assert
+			// The triple quotes should be escaped so they don't break the TOML delimiter
+			expect(result.content).not.toContain('Content with """ triple quotes');
+			expect(result.content).toContain('Content with ""\\" triple quotes');
+		});
+
+		it('should escape multiple triple quote sequences in content', () => {
+			// Arrange
+			const profile = new GeminiProfile();
+			const command = staticCommand({
+				name: 'test',
+				description: 'Test command',
+				content: 'First """ and second """ here'
+			});
+
+			// Act
+			const result = profile.format(command);
+
+			// Assert
+			expect(result.content).toContain('First ""\\" and second ""\\" here');
+		});
+
+		it('should handle content that is just triple quotes', () => {
+			// Arrange
+			const profile = new GeminiProfile();
+			const command = staticCommand({
+				name: 'test',
+				description: 'Test command',
+				content: '"""'
+			});
+
+			// Act
+			const result = profile.format(command);
+
+			// Assert
+			expect(result.content).toContain('prompt = """\n""\\"\n"""');
 		});
 	});
 

@@ -7,18 +7,18 @@
  * - getProfileNames() - returns array of profile names
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-	getProfile,
-	getAllProfiles,
-	getProfileNames,
 	BaseSlashCommandProfile,
 	ClaudeProfile,
-	CursorProfile,
-	RooProfile,
-	GeminiProfile,
 	CodexProfile,
-	OpenCodeProfile
+	CursorProfile,
+	GeminiProfile,
+	OpenCodeProfile,
+	RooProfile,
+	getAllProfiles,
+	getProfile,
+	getProfileNames
 } from './index.js';
 
 describe('Profile Utility Functions', () => {
@@ -445,7 +445,8 @@ describe('Profile Utility Functions', () => {
 				new CodexProfile(),
 				new CursorProfile(),
 				new RooProfile(),
-				new GeminiProfile()
+				new GeminiProfile(),
+				new OpenCodeProfile()
 			];
 
 			// Assert

@@ -5,9 +5,9 @@
 
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { dynamicCommand, staticCommand } from '../factories.js';
 import { CodexProfile } from './codex-profile.js';
-import { staticCommand, dynamicCommand } from '../factories.js';
 
 describe('CodexProfile', () => {
 	describe('Profile metadata', () => {
