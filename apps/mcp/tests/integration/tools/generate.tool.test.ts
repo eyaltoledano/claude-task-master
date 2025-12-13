@@ -72,7 +72,11 @@ describe('generate MCP tool', () => {
 
 		const output = execSync(
 			`npx @modelcontextprotocol/inspector --cli node "${mcpServerPath}" --method tools/call --tool-name ${toolName} ${toolArgs}`,
-			{ encoding: 'utf-8', stdio: 'pipe' }
+			{
+				encoding: 'utf-8',
+				stdio: 'pipe',
+				env: { ...process.env, TASK_MASTER_TOOLS: 'all' }
+			}
 		);
 
 		// Parse the MCP protocol response: { content: [{ type: "text", text: "<json>" }] }

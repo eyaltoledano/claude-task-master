@@ -127,10 +127,11 @@ describe('Hamster Rules Distribution', () => {
 
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 
+					// Strictly enforce that all profiles with default rules must have hamster mapping
+					expect(expectedPath).not.toBeNull();
+
 					// Verify hamster file does NOT exist in solo mode
-					if (expectedPath) {
-						expect(fs.existsSync(expectedPath)).toBe(false);
-					}
+					expect(fs.existsSync(expectedPath)).toBe(false);
 				} finally {
 					fs.rmSync(tempDir, { recursive: true, force: true });
 				}
@@ -157,10 +158,11 @@ describe('Hamster Rules Distribution', () => {
 
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 
+					// Strictly enforce that all profiles with default rules must have hamster mapping
+					expect(expectedPath).not.toBeNull();
+
 					// Default is solo mode, so hamster file should NOT exist
-					if (expectedPath) {
-						expect(fs.existsSync(expectedPath)).toBe(false);
-					}
+					expect(fs.existsSync(expectedPath)).toBe(false);
 				} finally {
 					fs.rmSync(tempDir, { recursive: true, force: true });
 				}
