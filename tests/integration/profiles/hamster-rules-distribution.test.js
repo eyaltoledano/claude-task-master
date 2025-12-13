@@ -109,6 +109,65 @@ describe('Hamster Rules Distribution', () => {
 		});
 	});
 
+	describe('Solo mode excludes hamster file', () => {
+		// Test that hamster.mdc is NOT distributed in solo mode
+		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
+			test(`${profile} profile does NOT receive hamster rules via 'rules add --mode=solo'`, () => {
+				const tempDir = fs.mkdtempSync(
+					path.join(os.tmpdir(), `tm-hamster-solo-test-${profile}-`)
+				);
+
+				try {
+					// Run in solo mode - hamster should NOT be distributed
+					execSync(`node ${CLI_PATH} rules add ${profile} --mode=solo`, {
+						cwd: tempDir,
+						stdio: 'pipe',
+						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
+					});
+
+					const expectedPath = getExpectedHamsterPath(profile, tempDir);
+
+					// Verify hamster file does NOT exist in solo mode
+					if (expectedPath) {
+						expect(fs.existsSync(expectedPath)).toBe(false);
+					}
+				} finally {
+					fs.rmSync(tempDir, { recursive: true, force: true });
+				}
+			});
+		});
+	});
+
+	describe('Default mode behavior (no --mode flag)', () => {
+		// When no mode is specified, default is 'solo' (no auth/config present)
+		// This means hamster.mdc should NOT be distributed by default
+		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
+			test(`${profile} profile defaults to solo mode (no hamster rules without --mode flag)`, () => {
+				const tempDir = fs.mkdtempSync(
+					path.join(os.tmpdir(), `tm-hamster-default-test-${profile}-`)
+				);
+
+				try {
+					// Run without mode flag - should default to solo
+					execSync(`node ${CLI_PATH} rules add ${profile}`, {
+						cwd: tempDir,
+						stdio: 'pipe',
+						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
+					});
+
+					const expectedPath = getExpectedHamsterPath(profile, tempDir);
+
+					// Default is solo mode, so hamster file should NOT exist
+					if (expectedPath) {
+						expect(fs.existsSync(expectedPath)).toBe(false);
+					}
+				} finally {
+					fs.rmSync(tempDir, { recursive: true, force: true });
+				}
+			});
+		});
+	});
+
 	describe('Profiles without default rules', () => {
 		// These profiles use different mechanisms (CLAUDE.md, AGENTS.md, etc.)
 		// and don't include the defaultFileMap rules
