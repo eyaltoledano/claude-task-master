@@ -9,7 +9,8 @@ import * as profilesModule from '../../../src/profiles/index.js';
  * Integration tests for hamster rules distribution across all profiles.
  *
  * These tests verify that hamster.mdc is correctly distributed
- * to all profiles that include default rules when running `rules add`.
+ * to all profiles that include default rules when running `rules add --mode=team`.
+ * Note: hamster.mdc is team-mode only (for Hamster API integration).
  */
 describe('Hamster Rules Distribution', () => {
 	const CLI_PATH = path.join(process.cwd(), 'dist', 'task-master.js');
@@ -69,18 +70,18 @@ describe('Hamster Rules Distribution', () => {
 		});
 	});
 
-	describe('Rules add command distributes hamster file', () => {
-		// Test each profile that should receive hamster rules
+	describe('Rules add command distributes hamster file in team mode', () => {
+		// Test each profile that should receive hamster rules when --mode=team
 		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
-			test(`${profile} profile receives hamster rules via 'rules add'`, () => {
+			test(`${profile} profile receives hamster rules via 'rules add --mode=team'`, () => {
 				// Create a unique temp directory for this test
 				const tempDir = fs.mkdtempSync(
 					path.join(os.tmpdir(), `tm-hamster-test-${profile}-`)
 				);
 
 				try {
-					// Run the rules add command
-					execSync(`node ${CLI_PATH} rules add ${profile}`, {
+					// Run the rules add command with team mode (hamster.mdc is team-only)
+					execSync(`node ${CLI_PATH} rules add ${profile} --mode=team`, {
 						cwd: tempDir,
 						stdio: 'pipe',
 						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
