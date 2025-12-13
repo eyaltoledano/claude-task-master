@@ -37,7 +37,7 @@ export function resolveProjectRoot(
 	}
 
 	// Count how many directory levels we need to go up
-	const levels = relativePath.split('/').filter(Boolean).length;
+	const levels = relativePath.split(path.sep).filter(Boolean).length;
 	let projectRoot = targetDir;
 	for (let i = 0; i < levels; i++) {
 		projectRoot = path.dirname(projectRoot);

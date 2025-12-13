@@ -221,7 +221,7 @@ describe('CodexProfile Integration Tests', () => {
 
 			expect(result.success).toBe(true);
 			expect(content).toContain(
-				'description: "Command with "quotes" and special chars"'
+				'description: "Command with \\"quotes\\" and special chars"'
 			);
 		});
 	});

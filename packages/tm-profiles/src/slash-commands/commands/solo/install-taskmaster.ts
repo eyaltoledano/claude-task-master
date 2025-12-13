@@ -116,19 +116,19 @@ nvm use 20
 
 Once installed, you should see:
 \`\`\`
-✅ Task Master v0.16.2 (or higher) installed
+✅ Task Master installed
 ✅ Command 'task-master' available globally
 ✅ AI provider configured
 ✅ Ready to use slash commands!
 
-Try: /project:task-master:init your-prd.md
+Try: /taskmaster:init your-prd.md
 \`\`\`
 
 ## Next Steps
 
 After installation:
-1. Run \`/project:utils:check-health\` to verify setup
-2. Configure AI providers with \`/project:task-master:models\`
+1. Run \`/taskmaster:status\` to verify setup
+2. Configure AI providers with \`/taskmaster:setup-models\`
 3. Start using Task Master commands!`,
 	mode: 'solo'
 });

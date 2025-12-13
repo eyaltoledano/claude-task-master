@@ -34,6 +34,6 @@ If you see "command not found" after installation, you may need to:
 
 Once installed, you can use all the Task Master commands!
 
-Quick test: Run \`/project:help\` to see all available commands.`,
+Quick test: Run \`/taskmaster:help\` to see all available commands.`,
 	mode: 'solo'
 });

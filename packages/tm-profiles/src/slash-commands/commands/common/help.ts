@@ -18,7 +18,7 @@ export const help = dynamicCommand(
 
 Arguments: $ARGUMENTS
 
-Display help for Task Master commands. If arguments provided, show specific command help.
+Display help for Task Master commands and available options.
 
 ## Task Master AI Command Help
 

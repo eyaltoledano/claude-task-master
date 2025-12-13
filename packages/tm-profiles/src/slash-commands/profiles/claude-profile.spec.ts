@@ -157,7 +157,7 @@ describe('ClaudeProfile', () => {
 			);
 		});
 
-		it('should handle static command with optional argumentHint (but not include it in output)', () => {
+		it('should include Arguments line for static command with argumentHint', () => {
 			// Arrange
 			const profile = new ClaudeProfile();
 			const command = staticCommand({

@@ -44,3 +44,6 @@ export { toCancelled } from './to-cancelled.js';
 // Init
 export { initProject } from './init-project.js';
 export { initProjectQuick } from './init-project-quick.js';
+
+// Generation
+export { generateTasks } from './generate-tasks.js';

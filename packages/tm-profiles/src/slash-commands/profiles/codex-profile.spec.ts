@@ -263,7 +263,7 @@ describe('CodexProfile', () => {
 
 			// Assert
 			expect(result.content).toContain(
-				'description: "Command with "quoted" text"'
+				'description: "Command with \\"quoted\\" text"'
 			);
 		});
 

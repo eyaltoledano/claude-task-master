@@ -16,12 +16,11 @@ export default defineConfig({
 			reporter: ['text'],
 			// Only measure coverage for profile classes
 			exclude: ['node_modules', 'dist', 'src/slash-commands/commands/**'],
-			// Disable thresholds for now - commands don't need tests
 			thresholds: {
-				branches: 0,
-				functions: 0,
-				lines: 0,
-				statements: 0
+				branches: 70,
+				functions: 80,
+				lines: 80,
+				statements: 80
 			}
 		}
 	}
