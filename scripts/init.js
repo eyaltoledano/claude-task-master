@@ -861,7 +861,9 @@ async function createProjectStructure(
 		const profile = getRulesProfile(profileName);
 		if (profile) {
 			// Pass operating mode to filter rules and slash commands
-			convertAllRulesToProfileRules(targetDir, profile, { mode: operatingMode });
+			convertAllRulesToProfileRules(targetDir, profile, {
+				mode: operatingMode
+			});
 			// Also triggers MCP config setup (if applicable)
 		} else {
 			log('warn', `Unknown rule profile: ${profileName}`);

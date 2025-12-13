@@ -83,7 +83,8 @@ describe('Mode-based Command Filtering', () => {
 
 				// Assert - team mode includes common commands
 				const commonInTeam = filtered.filter(
-					(cmd) => cmd.metadata.mode === 'common' || cmd.metadata.mode === undefined
+					(cmd) =>
+						cmd.metadata.mode === 'common' || cmd.metadata.mode === undefined
 				);
 				expect(commonInTeam.length).toBeGreaterThan(0);
 			});
@@ -300,7 +301,8 @@ describe('Mode-based Command Filtering', () => {
 				(cmd) => cmd.metadata.mode === 'team'
 			).length;
 			const commonCount = allCommands.filter(
-				(cmd) => cmd.metadata.mode === 'common' || cmd.metadata.mode === undefined
+				(cmd) =>
+					cmd.metadata.mode === 'common' || cmd.metadata.mode === undefined
 			).length;
 
 			// Assert

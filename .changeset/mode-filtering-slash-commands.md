@@ -1,6 +1,5 @@
 ---
 "task-master-ai": minor
-"@tm/profiles": minor
 ---
 
 Add operating mode filtering for slash commands and rules
