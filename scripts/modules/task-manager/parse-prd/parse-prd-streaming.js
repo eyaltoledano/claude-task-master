@@ -212,7 +212,8 @@ async function callAIServiceWithTimeout(config, prompts, timeout) {
 			systemPrompt,
 			prompt: userPrompt,
 			commandName: 'parse-prd',
-			outputType: config.isMCP ? 'mcp' : 'cli'
+			outputType: config.isMCP ? 'mcp' : 'cli',
+			timeoutMs: timeout // Pass timeout to the HTTP client
 		}),
 		timeout,
 		'Streaming operation'
@@ -564,7 +565,8 @@ async function processWithGenerateObject(context, logger) {
 		schema: context.config.schema,
 		outputFormat: context.config.outputFormat || 'text',
 		projectRoot: context.config.projectRoot,
-		session: context.config.session
+		session: context.config.session,
+		timeoutMs: context.config.streamingTimeout // Pass timeout to the HTTP client
 	});
 
 	// Extract tasks from the result (handle both direct tasks and mainResult.tasks)

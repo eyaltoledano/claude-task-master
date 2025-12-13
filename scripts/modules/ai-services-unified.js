@@ -503,6 +503,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 		commandName,
 		outputType,
 		experimental_transform,
+		timeoutMs,
 		...restApiParams
 	} = params;
 	if (getDebugFlag()) {
@@ -678,6 +679,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 				...(hamsterUserId && { userId: hamsterUserId }), // Pass Hamster userId if authenticated
 				...(hamsterBriefId && { briefId: hamsterBriefId }), // Pass Hamster briefId if connected
 				...(experimental_transform && { experimental_transform }), // Pass smoothStream or other transforms
+				...(timeoutMs && { timeoutMs }), // Pass timeout for long-running operations
 				...providerSpecificParams,
 				...restApiParams
 			};
