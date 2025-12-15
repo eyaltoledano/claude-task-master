@@ -80,7 +80,29 @@ export function createTask(
 		}),
 		...(overrides.complexityReasoning && {
 			complexityReasoning: overrides.complexityReasoning
-		})
+		}),
+		// AI implementation metadata fields
+		...(overrides.relevantFiles && { relevantFiles: overrides.relevantFiles }),
+		...(overrides.codebasePatterns && {
+			codebasePatterns: overrides.codebasePatterns
+		}),
+		...(overrides.existingInfrastructure && {
+			existingInfrastructure: overrides.existingInfrastructure
+		}),
+		...(overrides.scopeBoundaries && {
+			scopeBoundaries: overrides.scopeBoundaries
+		}),
+		...(overrides.implementationApproach && {
+			implementationApproach: overrides.implementationApproach
+		}),
+		...(overrides.technicalConstraints && {
+			technicalConstraints: overrides.technicalConstraints
+		}),
+		...(overrides.acceptanceCriteria && {
+			acceptanceCriteria: overrides.acceptanceCriteria
+		}),
+		...(overrides.skills && { skills: overrides.skills }),
+		...(overrides.category && { category: overrides.category })
 	};
 }
 
@@ -134,7 +156,29 @@ export function createSubtask(
 		}),
 		...(overrides.complexityReasoning && {
 			complexityReasoning: overrides.complexityReasoning
-		})
+		}),
+		// AI implementation metadata fields
+		...(overrides.relevantFiles && { relevantFiles: overrides.relevantFiles }),
+		...(overrides.codebasePatterns && {
+			codebasePatterns: overrides.codebasePatterns
+		}),
+		...(overrides.existingInfrastructure && {
+			existingInfrastructure: overrides.existingInfrastructure
+		}),
+		...(overrides.scopeBoundaries && {
+			scopeBoundaries: overrides.scopeBoundaries
+		}),
+		...(overrides.implementationApproach && {
+			implementationApproach: overrides.implementationApproach
+		}),
+		...(overrides.technicalConstraints && {
+			technicalConstraints: overrides.technicalConstraints
+		}),
+		...(overrides.acceptanceCriteria && {
+			acceptanceCriteria: overrides.acceptanceCriteria
+		}),
+		...(overrides.skills && { skills: overrides.skills }),
+		...(overrides.category && { category: overrides.category })
 	};
 }
 
@@ -303,5 +347,149 @@ export const TaskScenarios = {
 	/**
 	 * Empty task list
 	 */
-	empty: () => createTasksFile({ tasks: [] })
+	empty: () => createTasksFile({ tasks: [] }),
+
+	/**
+	 * Task with rich AI-generated implementation metadata
+	 */
+	taskWithImplementationMetadata: () =>
+		createTasksFile({
+			tasks: [
+				createTask({
+					id: 1,
+					title: 'Implement User Authentication',
+					description: 'Add JWT-based authentication to the API',
+					details: 'Implement secure JWT authentication with refresh tokens',
+					testStrategy:
+						'Unit tests for auth functions, integration tests for flow',
+					category: 'development',
+					skills: ['TypeScript', 'JWT', 'Security'],
+					relevantFiles: [
+						{
+							path: 'src/auth/auth.service.ts',
+							description: 'Main authentication service',
+							action: 'modify'
+						},
+						{
+							path: 'src/auth/jwt.strategy.ts',
+							description: 'JWT passport strategy',
+							action: 'create'
+						}
+					],
+					codebasePatterns: [
+						'Use dependency injection for services',
+						'Follow repository pattern for data access'
+					],
+					existingInfrastructure: [
+						{
+							name: 'UserRepository',
+							location: 'src/users/user.repository.ts',
+							usage: 'Use for user lookups during authentication'
+						}
+					],
+					scopeBoundaries: {
+						included: 'JWT token generation, validation, and refresh',
+						excluded: 'OAuth integration (handled in task 2)'
+					},
+					implementationApproach:
+						'1. Create JWT strategy\n2. Add auth guards\n3. Implement refresh token flow',
+					technicalConstraints: [
+						'Must use RS256 algorithm',
+						'Tokens must expire in 15 minutes'
+					],
+					acceptanceCriteria: [
+						'Users can login with email/password',
+						'JWT tokens are issued on successful login',
+						'Refresh tokens work correctly'
+					],
+					subtasks: [
+						createSubtask({
+							id: '1.1',
+							title: 'Create JWT Strategy',
+							category: 'development',
+							skills: ['TypeScript', 'Passport.js'],
+							relevantFiles: [
+								{
+									path: 'src/auth/jwt.strategy.ts',
+									description: 'JWT passport strategy implementation',
+									action: 'create'
+								}
+							],
+							acceptanceCriteria: ['Strategy validates JWT tokens correctly']
+						}),
+						createSubtask({
+							id: '1.2',
+							title: 'Implement Auth Guards',
+							category: 'development',
+							implementationApproach: 'Create NestJS guards using JWT strategy',
+							technicalConstraints: ['Must work with role-based access control']
+						})
+					]
+				})
+			]
+		})
+};
+
+/**
+ * Sample metadata fixtures for testing metadata extraction
+ */
+export const MetadataFixtures = {
+	/**
+	 * Complete metadata object with all fields populated
+	 */
+	completeMetadata: {
+		details: 'Detailed task requirements and scope',
+		testStrategy: 'Unit and integration tests',
+		relevantFiles: [
+			{
+				path: 'src/service.ts',
+				description: 'Main service file',
+				action: 'modify' as const
+			}
+		],
+		codebasePatterns: ['Use dependency injection', 'Follow SOLID principles'],
+		existingInfrastructure: [
+			{
+				name: 'Logger',
+				location: 'src/common/logger.ts',
+				usage: 'Use for structured logging'
+			}
+		],
+		scopeBoundaries: {
+			included: 'Core functionality',
+			excluded: 'UI changes'
+		},
+		implementationApproach: 'Step-by-step implementation guide',
+		technicalConstraints: ['Must be backwards compatible'],
+		acceptanceCriteria: ['Feature works as expected', 'Tests pass'],
+		skills: ['TypeScript', 'Node.js'],
+		category: 'development' as const
+	},
+
+	/**
+	 * Minimal metadata with only required fields
+	 */
+	minimalMetadata: {
+		details: 'Basic details',
+		testStrategy: 'Basic tests'
+	},
+
+	/**
+	 * Metadata with invalid/malformed data (for testing robustness)
+	 */
+	malformedMetadata: {
+		details: 123, // Should be string
+		testStrategy: null, // Should be string
+		relevantFiles: 'not-an-array', // Should be array
+		codebasePatterns: [123, null, 'valid'], // Mixed invalid types
+		existingInfrastructure: [{ invalid: 'structure' }], // Missing required fields
+		scopeBoundaries: 'not-an-object', // Should be object
+		category: 'invalid-category', // Invalid enum value
+		skills: { not: 'an-array' } // Should be array
+	},
+
+	/**
+	 * Empty metadata object
+	 */
+	emptyMetadata: {}
 };

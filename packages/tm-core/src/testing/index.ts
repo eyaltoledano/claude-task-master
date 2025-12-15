@@ -20,6 +20,7 @@ export {
 	createSubtask,
 	createTasksFile,
 	TaskScenarios,
+	MetadataFixtures,
 	type TasksFile
 } from './task-fixtures.js';
 

@@ -38,6 +38,80 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 export type TaskComplexity = 'simple' | 'moderate' | 'complex' | 'very-complex';
 
 // ============================================================================
+// AI Metadata Types (from Supabase task metadata)
+// ============================================================================
+
+/**
+ * File relevant to implementing a task/subtask
+ */
+export interface RelevantFile {
+	/** File path relative to project root */
+	path: string;
+	/** What this file contains and how it relates to the task */
+	description: string;
+	/** Whether to create, modify, or just reference this file */
+	action: 'create' | 'modify' | 'reference';
+}
+
+/**
+ * Existing infrastructure to leverage
+ */
+export interface ExistingInfrastructure {
+	/** Name of the existing service/module/infrastructure */
+	name: string;
+	/** Where it exists in the codebase */
+	location: string;
+	/** How to use or integrate with it */
+	usage: string;
+}
+
+/**
+ * Scope boundaries for a task
+ */
+export interface ScopeBoundaries {
+	/** What is explicitly in scope for this task */
+	included?: string;
+	/** What is explicitly out of scope (belongs to other tasks/already exists) */
+	excluded?: string;
+}
+
+/**
+ * Task work category
+ */
+export type TaskCategory =
+	| 'research'
+	| 'design'
+	| 'development'
+	| 'testing'
+	| 'documentation'
+	| 'review';
+
+/**
+ * AI-generated implementation guidance metadata
+ * These fields provide rich context for AI agents and developers
+ */
+export interface TaskImplementationMetadata {
+	/** Files relevant to implementing this task */
+	relevantFiles?: RelevantFile[];
+	/** Existing code patterns, conventions, or architectural principles to follow */
+	codebasePatterns?: string[];
+	/** Existing services, modules, or infrastructure to leverage */
+	existingInfrastructure?: ExistingInfrastructure[];
+	/** Clear boundaries of what this task should and should not do */
+	scopeBoundaries?: ScopeBoundaries;
+	/** Step-by-step implementation guidance or pseudo-code */
+	implementationApproach?: string;
+	/** Framework requirements, architecture decisions, or technical limitations */
+	technicalConstraints?: string[];
+	/** Acceptance criteria defining when this task is complete */
+	acceptanceCriteria?: string[];
+	/** Required technical skills to complete this task */
+	skills?: string[];
+	/** Category of work this task represents */
+	category?: TaskCategory;
+}
+
+// ============================================================================
 // Core Interfaces
 // ============================================================================
 
@@ -54,7 +128,7 @@ export interface PlaceholderTask {
 /**
  * Base task interface
  */
-export interface Task {
+export interface Task extends TaskImplementationMetadata {
 	id: string;
 	title: string;
 	description: string;

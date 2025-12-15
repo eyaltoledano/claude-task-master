@@ -3,88 +3,68 @@
  * Displays detailed task information in a structured format
  */
 
-import type { StorageType, Subtask, Task } from '@tm/core';
+import type {
+	ExistingInfrastructure,
+	RelevantFile,
+	ScopeBoundaries,
+	StorageType,
+	Subtask,
+	Task,
+	TaskCategory
+} from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { MarkedExtension, marked } from 'marked';
-import { markedTerminal } from 'marked-terminal';
-import TurndownService from 'turndown';
+import { renderContent } from '../../utils/content-renderer.js';
 import {
 	getComplexityWithColor,
 	getPriorityWithColor,
 	getStatusWithColor
 } from '../../utils/ui.js';
 
-// Initialize turndown for HTML to Markdown conversion
-const turndownService = new TurndownService({
-	headingStyle: 'atx',
-	codeBlockStyle: 'fenced',
-	bulletListMarker: '-'
-});
+// ============================================================================
+// Constants and Helper Functions
+// ============================================================================
 
 /**
- * Convert HTML content to Markdown, then render for terminal
- * Handles tiptap HTML from Hamster gracefully
+ * Icons for task categories
  */
-export function renderContent(content: string): string {
-	if (!content) return '';
+const CATEGORY_ICONS: Record<TaskCategory, string> = {
+	research: '🔍',
+	design: '🎨',
+	development: '🔧',
+	testing: '🧪',
+	documentation: '📝',
+	review: '👀'
+};
 
-	// Clean up escape characters first - order matters: handle escaped backslashes first
-	let cleaned = content
-		.replace(/\\\\/g, '\\')
-		.replace(/\\n/g, '\n')
-		.replace(/\\t/g, '\t')
-		.replace(/\\"/g, '"');
-
-	// Check if content has HTML tags - if so, convert to markdown first
-	if (/<[^>]+>/.test(cleaned)) {
-		cleaned = turndownService.turndown(cleaned);
+/**
+ * Get icon for file action
+ */
+function getFileActionIcon(action: RelevantFile['action']): string {
+	switch (action) {
+		case 'create':
+			return chalk.green('✚ CREATE');
+		case 'modify':
+			return chalk.yellow('✎ MODIFY');
+		case 'reference':
+			return chalk.blue('👁 REFER ');
+		default:
+			return chalk.gray('  FILE  ');
 	}
-
-	// Render markdown to terminal
-	const result = marked(cleaned);
-	return typeof result === 'string' ? result.trim() : cleaned;
 }
 
-// Configure marked to use terminal renderer with subtle colors
-marked.use(
-	markedTerminal({
-		// More subtle colors that match the overall design
-		code: (code: string) => {
-			// Custom code block handler to preserve formatting
-			return code
-				.split('\n')
-				.map((line) => '    ' + chalk.cyan(line))
-				.join('\n');
-		},
-		blockquote: chalk.gray.italic,
-		html: chalk.gray, // Any remaining HTML will be grayed out (should be rare after turndown)
-		heading: chalk.white.bold, // White bold for headings
-		hr: chalk.gray,
-		listitem: chalk.white, // White for list items
-		paragraph: chalk.white, // White for paragraphs (default text color)
-		strong: chalk.white.bold, // White bold for strong text
-		em: chalk.white.italic, // White italic for emphasis
-		codespan: chalk.cyan, // Cyan for inline code (no background)
-		del: chalk.dim.strikethrough,
-		link: chalk.blue,
-		href: chalk.blue.underline,
-		// Add more explicit code block handling
-		showSectionPrefix: false,
-		unescape: true,
-		emoji: false,
-		// Try to preserve whitespace in code blocks
-		tab: 4,
-		width: 120
-	}) as MarkedExtension
-);
+/**
+ * Get category display with icon
+ */
+function getCategoryDisplay(category: TaskCategory): string {
+	const icon = CATEGORY_ICONS[category] || '📋';
+	return `${icon} ${category}`;
+}
 
-// Also set marked options to preserve whitespace
-marked.setOptions({
-	breaks: true,
-	gfm: true
-});
+// ============================================================================
+// Display Functions
+// ============================================================================
 
 /**
  * Display the task header with tag
@@ -136,6 +116,17 @@ export function displayTaskProperties(
 	// Render description with markdown/HTML support (handles tiptap HTML from Hamster)
 	const renderedDescription = renderContent(task.description || '');
 
+	// Format category with icon
+	const categoryDisplay = task.category
+		? `${getCategoryDisplay(task.category)}`
+		: chalk.gray('N/A');
+
+	// Format skills as badges
+	const skillsDisplay =
+		task.skills && task.skills.length > 0
+			? task.skills.map((s) => chalk.magenta(`[${s}]`)).join(' ')
+			: chalk.gray('N/A');
+
 	// Build the left column (labels) and right column (values)
 	const labels = [
 		chalk.cyan('ID:'),
@@ -144,6 +135,8 @@ export function displayTaskProperties(
 		chalk.cyan('Priority:'),
 		chalk.cyan('Dependencies:'),
 		chalk.cyan('Complexity:'),
+		chalk.cyan('Category:'),
+		chalk.cyan('Skills:'),
 		chalk.cyan('Description:')
 	].join('\n');
 
@@ -156,6 +149,8 @@ export function displayTaskProperties(
 		typeof task.complexity === 'number'
 			? getComplexityWithColor(task.complexity)
 			: chalk.gray('N/A'),
+		categoryDisplay,
+		skillsDisplay,
 		renderedDescription
 	].join('\n');
 
@@ -273,6 +268,260 @@ export function displaySubtasks(
 	console.log(table.toString());
 }
 
+// ============================================================================
+// AI Implementation Metadata Display Functions
+// ============================================================================
+
+/**
+ * Display relevant files in a structured format
+ */
+export function displayRelevantFiles(files: RelevantFile[]): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	const content = files
+		.map((file) => {
+			const actionIcon = getFileActionIcon(file.action);
+			const path = chalk.white(file.path);
+			const desc = chalk.gray(file.description);
+			return `${actionIcon}  ${path}\n         ${desc}`;
+		})
+		.join('\n\n');
+
+	console.log(
+		boxen(chalk.white.bold('📂 Files to Touch:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'yellow',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display existing infrastructure to leverage
+ */
+export function displayExistingInfrastructure(
+	infrastructure: ExistingInfrastructure[]
+): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	const content = infrastructure
+		.map((infra) => {
+			const name = chalk.cyan.bold(infra.name);
+			const location = chalk.gray(infra.location);
+			const usage = chalk.white(infra.usage);
+			return `${name} → ${location}\n  ↳ ${usage}`;
+		})
+		.join('\n\n');
+
+	console.log(
+		boxen(chalk.white.bold('🔗 Leverage Existing Code:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'blue',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display scope boundaries (what's in/out of scope)
+ */
+export function displayScopeBoundaries(boundaries: ScopeBoundaries): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	let content = '';
+
+	if (boundaries.included) {
+		content += chalk.green.bold('✅ In Scope:\n');
+		content += chalk.white('   ' + boundaries.included);
+	}
+
+	if (boundaries.excluded) {
+		if (content) content += '\n\n';
+		content += chalk.red.bold('⛔ Out of Scope:\n');
+		content += chalk.gray('   ' + boundaries.excluded);
+	}
+
+	console.log(
+		boxen(chalk.white.bold('🎯 Scope Boundaries:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'magenta',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display acceptance criteria as a checklist
+ */
+export function displayAcceptanceCriteria(criteria: string[]): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	const content = criteria.map((c) => chalk.white(`☐ ${c}`)).join('\n');
+
+	console.log(
+		boxen(chalk.white.bold('✓ Acceptance Criteria:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'green',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display technical constraints
+ */
+export function displayTechnicalConstraints(constraints: string[]): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	const content = constraints.map((c) => chalk.yellow(`▸ ${c}`)).join('\n');
+
+	console.log(
+		boxen(chalk.white.bold('🔒 Technical Constraints:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'red',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display implementation approach (step-by-step guide)
+ */
+export function displayImplementationApproach(approach: string): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+	const formattedApproach = renderContent(approach);
+
+	console.log(
+		boxen(
+			chalk.white.bold('📋 Implementation Approach:') +
+				'\n\n' +
+				formattedApproach,
+			{
+				padding: 1,
+				borderStyle: 'round',
+				borderColor: 'cyan',
+				width: terminalWidth
+			}
+		)
+	);
+}
+
+/**
+ * Display codebase patterns to follow
+ */
+export function displayCodebasePatterns(patterns: string[]): void {
+	const terminalWidth = process.stdout.columns * 0.95 || 100;
+
+	const content = patterns.map((p) => chalk.white(`• ${p}`)).join('\n');
+
+	console.log(
+		boxen(chalk.white.bold('📐 Codebase Patterns:') + '\n\n' + content, {
+			padding: 1,
+			borderStyle: 'round',
+			borderColor: 'gray',
+			width: terminalWidth
+		})
+	);
+}
+
+/**
+ * Display skills and category as inline badges
+ */
+export function displaySkillsAndCategory(
+	category?: TaskCategory,
+	skills?: string[]
+): void {
+	let output = '';
+
+	if (category) {
+		output +=
+			chalk.gray('Category: ') +
+			chalk.cyan(`[${getCategoryDisplay(category)}]`);
+	}
+
+	if (skills && skills.length > 0) {
+		if (output) output += '  ';
+		output +=
+			chalk.gray('Skills: ') +
+			skills.map((s) => chalk.magenta(`[${s}]`)).join(' ');
+	}
+
+	if (output) {
+		console.log('\n' + output);
+	}
+}
+
+/**
+ * Display all implementation metadata for a task
+ * Shows all AI-generated guidance when available
+ * Note: Category and skills are displayed in the main properties table
+ */
+export function displayImplementationMetadata(task: Task | Subtask): void {
+	const hasMetadata =
+		task.relevantFiles ||
+		task.existingInfrastructure ||
+		task.scopeBoundaries ||
+		task.acceptanceCriteria ||
+		task.technicalConstraints ||
+		task.implementationApproach ||
+		task.codebasePatterns;
+
+	if (!hasMetadata) {
+		return;
+	}
+
+	// Display implementation approach
+	if (task.implementationApproach) {
+		console.log();
+		displayImplementationApproach(task.implementationApproach);
+	}
+
+	// Display relevant files
+	if (task.relevantFiles && task.relevantFiles.length > 0) {
+		console.log();
+		displayRelevantFiles(task.relevantFiles);
+	}
+
+	// Display existing infrastructure
+	if (task.existingInfrastructure && task.existingInfrastructure.length > 0) {
+		console.log();
+		displayExistingInfrastructure(task.existingInfrastructure);
+	}
+
+	// Display codebase patterns
+	if (task.codebasePatterns && task.codebasePatterns.length > 0) {
+		console.log();
+		displayCodebasePatterns(task.codebasePatterns);
+	}
+
+	// Display scope boundaries
+	if (task.scopeBoundaries) {
+		console.log();
+		displayScopeBoundaries(task.scopeBoundaries);
+	}
+
+	// Display technical constraints
+	if (task.technicalConstraints && task.technicalConstraints.length > 0) {
+		console.log();
+		displayTechnicalConstraints(task.technicalConstraints);
+	}
+
+	// Display acceptance criteria
+	if (task.acceptanceCriteria && task.acceptanceCriteria.length > 0) {
+		console.log();
+		displayAcceptanceCriteria(task.acceptanceCriteria);
+	}
+}
+
+// ============================================================================
+// Suggested Actions
+// ============================================================================
+
 /**
  * Display suggested actions
  */
@@ -348,6 +597,9 @@ export function displayTaskDetails(
 		console.log(); // Empty line for spacing
 		displayTestStrategy(task.testStrategy as string);
 	}
+
+	// Display AI implementation metadata (relevantFiles, codebasePatterns, etc.)
+	displayImplementationMetadata(task);
 
 	// Display subtasks if available
 	if (task.subtasks && task.subtasks.length > 0) {

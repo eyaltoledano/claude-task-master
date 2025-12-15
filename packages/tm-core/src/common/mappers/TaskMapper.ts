@@ -1,5 +1,13 @@
 import { Database, Tables } from '../types/database.types.js';
-import { Subtask, Task } from '../types/index.js';
+import type {
+	ExistingInfrastructure,
+	RelevantFile,
+	ScopeBoundaries,
+	Subtask,
+	Task,
+	TaskCategory,
+	TaskImplementationMetadata
+} from '../types/index.js';
 
 type TaskRow = Tables<'tasks'>;
 
@@ -51,27 +59,35 @@ export class TaskMapper {
 		dbSubtasks: TaskRow[],
 		dependenciesByTaskId: Map<string, string[]>
 	): Task {
-		// Map subtasks
-		const subtasks: Subtask[] = dbSubtasks.map((subtask, index) => ({
-			id: subtask.display_id || String(index + 1), // Use display_id if available (API storage), fallback to numeric (file storage)
-			parentId: dbTask.id,
-			title: subtask.title,
-			description: subtask.description || '',
-			status: this.mapStatus(subtask.status),
-			priority: this.mapPriority(subtask.priority),
-			dependencies: dependenciesByTaskId.get(subtask.id) || [],
-			details: this.extractMetadataField(subtask.metadata, 'details', ''),
-			testStrategy: this.extractMetadataField(
-				subtask.metadata,
-				'testStrategy',
-				''
-			),
-			createdAt: subtask.created_at,
-			updatedAt: subtask.updated_at,
-			assignee: subtask.assignee_id || undefined,
-			complexity: subtask.complexity ?? undefined,
-			databaseId: subtask.id // Include the actual database UUID
-		}));
+		// Map subtasks with implementation metadata
+		const subtasks: Subtask[] = dbSubtasks.map((subtask, index) => {
+			const implMeta = this.extractImplementationMetadata(subtask.metadata);
+			return {
+				id: subtask.display_id || String(index + 1), // Use display_id if available (API storage), fallback to numeric (file storage)
+				parentId: dbTask.id,
+				title: subtask.title,
+				description: subtask.description || '',
+				status: this.mapStatus(subtask.status),
+				priority: this.mapPriority(subtask.priority),
+				dependencies: dependenciesByTaskId.get(subtask.id) || [],
+				details: this.extractMetadataField(subtask.metadata, 'details', ''),
+				testStrategy: this.extractMetadataField(
+					subtask.metadata,
+					'testStrategy',
+					''
+				),
+				createdAt: subtask.created_at,
+				updatedAt: subtask.updated_at,
+				assignee: subtask.assignee_id || undefined,
+				complexity: subtask.complexity ?? undefined,
+				databaseId: subtask.id, // Include the actual database UUID
+				// Spread implementation metadata (only defined values)
+				...this.filterUndefined(implMeta)
+			};
+		});
+
+		// Extract implementation metadata for the task
+		const implMeta = this.extractImplementationMetadata(dbTask.metadata);
 
 		return {
 			id: dbTask.display_id || dbTask.id, // Use display_id if available
@@ -93,7 +109,9 @@ export class TaskMapper {
 			assignee: dbTask.assignee_id || undefined,
 			complexity: dbTask.complexity ?? undefined,
 			effort: dbTask.estimated_hours || undefined,
-			actualEffort: dbTask.actual_hours || undefined
+			actualEffort: dbTask.actual_hours || undefined,
+			// Spread implementation metadata (only defined values)
+			...this.filterUndefined(implMeta)
 		};
 	}
 
@@ -214,5 +232,183 @@ export class TaskMapper {
 		}
 
 		return value as T;
+	}
+
+	/**
+	 * Safely extracts an optional string field from metadata
+	 */
+	private static extractOptionalString(
+		metadata: unknown,
+		field: string
+	): string | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>)[field];
+		return typeof value === 'string' ? value : undefined;
+	}
+
+	/**
+	 * Safely extracts an optional string array from metadata
+	 */
+	private static extractStringArray(
+		metadata: unknown,
+		field: string
+	): string[] | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>)[field];
+		if (!Array.isArray(value)) {
+			return undefined;
+		}
+		// Filter to only valid strings
+		const strings = value.filter(
+			(item): item is string => typeof item === 'string'
+		);
+		return strings.length > 0 ? strings : undefined;
+	}
+
+	/**
+	 * Safely extracts RelevantFile[] from metadata
+	 */
+	private static extractRelevantFiles(
+		metadata: unknown
+	): RelevantFile[] | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>).relevantFiles;
+		if (!Array.isArray(value)) {
+			return undefined;
+		}
+
+		const validFiles = value.filter((item): item is RelevantFile => {
+			if (!item || typeof item !== 'object') return false;
+			const obj = item as Record<string, unknown>;
+			return (
+				typeof obj.path === 'string' &&
+				typeof obj.description === 'string' &&
+				(obj.action === 'create' ||
+					obj.action === 'modify' ||
+					obj.action === 'reference')
+			);
+		});
+
+		return validFiles.length > 0 ? validFiles : undefined;
+	}
+
+	/**
+	 * Safely extracts ExistingInfrastructure[] from metadata
+	 */
+	private static extractExistingInfrastructure(
+		metadata: unknown
+	): ExistingInfrastructure[] | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>).existingInfrastructure;
+		if (!Array.isArray(value)) {
+			return undefined;
+		}
+
+		const validInfra = value.filter((item): item is ExistingInfrastructure => {
+			if (!item || typeof item !== 'object') return false;
+			const obj = item as Record<string, unknown>;
+			return (
+				typeof obj.name === 'string' &&
+				typeof obj.location === 'string' &&
+				typeof obj.usage === 'string'
+			);
+		});
+
+		return validInfra.length > 0 ? validInfra : undefined;
+	}
+
+	/**
+	 * Safely extracts ScopeBoundaries from metadata
+	 */
+	private static extractScopeBoundaries(
+		metadata: unknown
+	): ScopeBoundaries | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>).scopeBoundaries;
+		if (!value || typeof value !== 'object') {
+			return undefined;
+		}
+
+		const obj = value as Record<string, unknown>;
+		const result: ScopeBoundaries = {};
+
+		if (typeof obj.included === 'string') {
+			result.included = obj.included;
+		}
+		if (typeof obj.excluded === 'string') {
+			result.excluded = obj.excluded;
+		}
+
+		// Return undefined if no valid fields
+		return result.included || result.excluded ? result : undefined;
+	}
+
+	/**
+	 * Safely extracts TaskCategory from metadata
+	 */
+	private static extractCategory(metadata: unknown): TaskCategory | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = (metadata as Record<string, unknown>).category;
+		const validCategories: TaskCategory[] = [
+			'research',
+			'design',
+			'development',
+			'testing',
+			'documentation',
+			'review'
+		];
+		return validCategories.includes(value as TaskCategory)
+			? (value as TaskCategory)
+			: undefined;
+	}
+
+	/**
+	 * Extracts all AI implementation metadata fields from database metadata
+	 */
+	static extractImplementationMetadata(
+		metadata: unknown
+	): TaskImplementationMetadata {
+		return {
+			relevantFiles: this.extractRelevantFiles(metadata),
+			codebasePatterns: this.extractStringArray(metadata, 'codebasePatterns'),
+			existingInfrastructure: this.extractExistingInfrastructure(metadata),
+			scopeBoundaries: this.extractScopeBoundaries(metadata),
+			implementationApproach: this.extractOptionalString(
+				metadata,
+				'implementationApproach'
+			),
+			technicalConstraints: this.extractStringArray(
+				metadata,
+				'technicalConstraints'
+			),
+			acceptanceCriteria: this.extractStringArray(
+				metadata,
+				'acceptanceCriteria'
+			),
+			skills: this.extractStringArray(metadata, 'skills'),
+			category: this.extractCategory(metadata)
+		};
+	}
+
+	/**
+	 * Filters out undefined values from an object
+	 * Used to avoid adding undefined properties to task objects
+	 */
+	private static filterUndefined<T extends object>(obj: T): Partial<T> {
+		return Object.fromEntries(
+			Object.entries(obj).filter(([_, v]) => v !== undefined)
+		) as Partial<T>;
 	}
 }

@@ -46,3 +46,6 @@ export {
 
 // Display helpers (command-specific helpers)
 export { displayCommandHeader } from './display-helpers.js';
+
+// Content rendering (HTML/Markdown to terminal)
+export { renderContent } from './content-renderer.js';

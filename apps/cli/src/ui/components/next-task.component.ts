@@ -6,8 +6,8 @@
 import type { Task } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
+import { renderContent } from '../../utils/content-renderer.js';
 import { getBoxWidth, getComplexityWithColor } from '../../utils/ui.js';
-import { renderContent } from './task-detail.component.js';
 
 /**
  * Next task display options
