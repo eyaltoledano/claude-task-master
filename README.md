@@ -48,6 +48,7 @@ For detailed guides, API references, and comprehensive examples, visit our docum
 The following documentation is also available in the `docs` directory:
 
 - [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
+- [CLI Agents Setup Guide](docs/cli-agents-setup.md) - Set up CLI-based agents with existing subscriptions (no API keys required)
 - [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
 - [Command Reference](docs/command-reference.md) - Complete list of all available commands
 - [Task Structure](docs/task-structure.md) - Understanding the task format and features
@@ -75,9 +76,9 @@ Don't forget to add your API keys to the configuration:
 
 ## Requirements
 
-Taskmaster utilizes AI across several commands, and those require a separate API key. You can use a variety of models from different AI providers provided you add your API keys. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
+Taskmaster utilizes AI across several commands, and those require a separate API key OR CLI authentication. You can use a variety of models from different AI providers provided you add your API keys or authenticate with CLI tools. For example, if you want to use Claude 3.7, you'll need an Anthropic API key.
 
-You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider API key must be present in either mcp.json or .env.
+You can define 3 types of models to be used: the main model, the research model, and the fallback model (in case either the main or research fail). Whatever model you use, its provider credentials must be present in either mcp.json or .env.
 
 At least one (1) of the following is required:
 
@@ -87,10 +88,26 @@ At least one (1) of the following is required:
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
 - OpenRouter API Key (for research or main model)
-- Claude Code (no API key required - requires Claude Code CLI)
-- Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
+- Claude Code (no API key required - requires Claude Code CLI with Anthropic account)
+- Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI with ChatGPT account)
+- Gemini CLI (no API key required - requires Gemini CLI with Google account)
+- Ollama models (no API key required - requires local Ollama server)
+- Qwen models via Ollama (no API key required - requires local Ollama server with Qwen model)
+- Zhipu AI GLM models (ZAI API key required - uses GLM 4.6 and coding models)
+- Minimax M2 models (Minimax API key required - uses MiniMax-M2 and MiniMax-M2-Stable)
 
-Using the research model is optional but highly recommended. You will need at least ONE API key (unless using Claude Code or Codex CLI with OAuth). Adding all API keys enables you to seamlessly switch between model providers at will.
+**Good News!** You can use Taskmaster with your existing subscriptions via CLI-based providers that don't require additional API keys:
+- ✅ **Claude Code** - No API key needed, uses your Claude account via CLI
+- ✅ **Codex CLI** - No API key needed, uses your ChatGPT subscription via CLI
+- ✅ **Gemini CLI** - No API key needed, uses your Google account via CLI
+- ✅ **Ollama** - No API key needed, runs models locally
+- ✅ **Qwen via Ollama** - No API key needed, runs Qwen models locally
+
+**Additional Support:** Taskmaster also supports these models through API keys:
+- ✅ **Zhipu AI** - Use GLM 4.6 models via ZAI API key
+- ✅ **Minimax** - Use M2 models via Minimax API key
+
+Using the research model is optional but highly recommended. Adding multiple providers enables you to seamlessly switch between model providers at will.
 
 ## Quick Start
 
@@ -111,6 +128,8 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 ##### Manual Configuration
 
 ###### Cursor & Windsurf & Q Developer CLI (`mcpServers`)
+
+Configuration with API keys (traditional approach):
 
 ```json
 {
@@ -137,6 +156,29 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
 ```
 
 > 🔑 Replace `YOUR_…_KEY_HERE` with your real API keys. You can remove keys you don't use.
+
+Configuration using CLI-based agents (no API keys required):
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        // "TASK_MASTER_TOOLS": "standard", // Options: "all", "standard", "core", or comma-separated list of tools
+        // No API keys needed for CLI-based providers! Just ensure the CLI tools are installed and authenticated:
+        // - Claude Code: Install with `npm install -g @anthropic-ai/claude-code` and authenticate
+        // - Codex CLI: Install with `npm install -g @openai/codex` and authenticate with `codex login`
+        // - Gemini CLI: Install with `npm install -g @google/gemini-cli` and authenticate with `gemini`
+        // - Ollama: Run locally with desired models downloaded
+      }
+    }
+  }
+}
+```
+
+> 🎉 No API keys needed! Just authenticate with your existing subscriptions and install the required CLI tools.
 
 > **Note**: If you see `0 tools enabled` in the MCP settings, restart your editor and check that your API keys are correctly configured.
 

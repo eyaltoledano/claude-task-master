@@ -1,0 +1,39 @@
+{
+  "models": {
+    "main": {
+      "provider": "claude-code",
+      "modelId": "sonnet",
+      "maxTokens": 64000,
+      "temperature": 0.2
+    },
+    "research": {
+      "provider": "gemini-cli",
+      "modelId": "gemini-2.5-pro",
+      "maxTokens": 65536,
+      "temperature": 0.1
+    },
+    "fallback": {
+      "provider": "codex-cli",
+      "modelId": "gpt-5",
+      "maxTokens": 128000,
+      "temperature": 0.2
+    }
+  },
+  "global": {
+    "logLevel": "info",
+    "debug": false,
+    "defaultNumTasks": 10,
+    "defaultSubtasks": 5,
+    "defaultPriority": "medium",
+    "projectName": "My Project",
+    "responseLanguage": "English",
+    "defaultTag": "master"
+  },
+  "claudeCode": {
+    "maxTurns": 5
+  },
+  "codexCli": {
+    "approvalMode": "on-failure",
+    "sandboxMode": "workspace-write"
+  }
+}

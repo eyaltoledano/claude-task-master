@@ -1,7 +1,7 @@
 {
 	"name": "task-master-ai",
 	"version": "0.38.0",
-	"description": "A task management system for ambitious AI-driven development that doesn't overwhelm and confuse Cursor.",
+	"description": "A task management system for ambitious AI-driven development that works seamlessly with Claude, OpenAI, Gemini and other AI providers - optimized for CLI-based agents with existing subscriptions (no API keys required).",
 	"main": "index.js",
 	"type": "module",
 	"bin": {
@@ -82,6 +82,7 @@
 		"ai-sdk-provider-claude-code": "^2.2.4",
 		"ai-sdk-provider-codex-cli": "^0.7.0",
 		"ai-sdk-provider-gemini-cli": "^1.4.0",
+		"vercel-minimax-ai-provider": "^1.0.0",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",

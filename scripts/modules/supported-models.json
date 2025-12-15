@@ -1327,5 +1327,31 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
+	],
+	"minimax": [
+		{
+			"id": "MiniMax-M2",
+			"name": "MiniMax M2",
+			"swe_score": 0.7,
+			"cost_per_1m_tokens": {
+				"input": 5,
+				"output": 15
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32768,
+			"supported": true
+		},
+		{
+			"id": "MiniMax-M2-Stable",
+			"name": "MiniMax M2 Stable",
+			"swe_score": 0.65,
+			"cost_per_1m_tokens": {
+				"input": 5,
+				"output": 12
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768,
+			"supported": true
+		}
 	]
 }
