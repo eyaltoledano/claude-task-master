@@ -27,8 +27,15 @@
 		"typescript": "^5.9.2",
 		"vitest": "^4.0.10"
 	},
-	"files": ["src", "README.md"],
-	"keywords": ["temporary", "bridge", "migration"],
+	"files": [
+		"src",
+		"README.md"
+	],
+	"keywords": [
+		"temporary",
+		"bridge",
+		"migration"
+	],
 	"author": "Task Master AI",
-	"version": ""
+	"version": null
 }

@@ -1,5 +1,34 @@
 # task-master-ai
 
+## 0.39.0
+
+### Minor Changes
+
+- [#1521](https://github.com/eyaltoledano/claude-task-master/pull/1521) [`353e3bf`](https://github.com/eyaltoledano/claude-task-master/commit/353e3bffd6df528dc19f7c5790564d0dead14c6d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Enhanced task metadata display for remote/team mode tasks
+  - Tasks now display rich implementation guidance in team mode including:
+    - **Relevant Files**: Files to create, modify, or reference with descriptions
+    - **Codebase Patterns**: Coding patterns and conventions to follow
+    - **Existing Infrastructure**: Code and utilities to leverage
+    - **Scope Boundaries**: What's in and out of scope for the task
+    - **Implementation Approach**: Step-by-step guidance
+    - **Technical Constraints**: Requirements and limitations
+    - **Acceptance Criteria**: Definition of done checklist
+    - **Skills & Category**: Task classification and required expertise
+  - How to see the new task details:
+    1. Create a brief on tryhamster.com
+    2. Generate the plan of the brief
+    3. View subtasks
+
+- [#1525](https://github.com/eyaltoledano/claude-task-master/pull/1525) [`1c2228d`](https://github.com/eyaltoledano/claude-task-master/commit/1c2228dbb618e522798c4484b74c1508f13d61d6) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add tool search tool for Claude Code MCP server and enable deferred MCP loading
+  - Added new tool search tool capabilities for the Taskmaster MCP in Claude Code
+  - Running `task-master rules add claude` now automatically configures your shell (`~/.zshrc`, `~/.bashrc`, or PowerShell profile) with `ENABLE_EXPERIMENTAL_MCP_CLI=true` to enable deferred MCP loading
+  - **Context savings**: Deferred loading saves ~16% of Claude Code's 200k context window (~33k tokens for Task Master alone). Savings apply to all MCP servers, so total savings may be higher depending on your setup.
+
+### Patch Changes
+
+- [#1310](https://github.com/eyaltoledano/claude-task-master/pull/1310) [`4b6570e`](https://github.com/eyaltoledano/claude-task-master/commit/4b6570e300eedb265af215c0ca6baeb772d42e4a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix Azure OpenAI provider to use correct deployment-based URL format
+  - Add Azure OpenAI documentation page <https://docs.task-master.dev/providers/azure>
+
 ## 0.39.0-rc.0
 
 ### Minor Changes
