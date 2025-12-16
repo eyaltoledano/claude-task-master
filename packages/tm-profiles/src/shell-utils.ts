@@ -29,9 +29,9 @@ export function getShellConfigPath(): string | null {
 	}
 
 	if (shell.includes('bash')) {
-		// macOS uses .bash_profile for login shells
+		// macOS uses .bash_profile for login shells - prefer it even if it doesn't exist yet
 		const bashProfile = path.join(homeDir, '.bash_profile');
-		if (process.platform === 'darwin' && fs.existsSync(bashProfile)) {
+		if (process.platform === 'darwin') {
 			return bashProfile;
 		}
 		return path.join(homeDir, '.bashrc');
@@ -112,6 +112,18 @@ export function addShellExport(
 		};
 	}
 
+	// Validate value to prevent shell injection
+	if (
+		typeof value !== 'string' ||
+		value.includes('\n') ||
+		value.includes('\r')
+	) {
+		return {
+			success: false,
+			message: `Invalid value: must be a single-line string without newlines`
+		};
+	}
+
 	const shellConfigFile = getShellConfigPath();
 
 	if (!shellConfigFile) {
@@ -122,16 +134,19 @@ export function addShellExport(
 	}
 
 	try {
-		// For PowerShell, create the profile directory if it doesn't exist
+		// Create the profile directory if it doesn't exist (handles fish's nested ~/.config/fish/ and PowerShell)
 		const profileDir = path.dirname(shellConfigFile);
-		if (isPowerShellProfile(shellConfigFile) && !fs.existsSync(profileDir)) {
+		if (!fs.existsSync(profileDir)) {
 			fs.mkdirSync(profileDir, { recursive: true });
 		}
 
-		// Check if file exists, create empty if it doesn't (common for PowerShell)
+		// Check if file exists, create empty if it doesn't (common for PowerShell and macOS .bash_profile)
 		if (!fs.existsSync(shellConfigFile)) {
-			if (isPowerShellProfile(shellConfigFile)) {
-				// Create empty PowerShell profile
+			const isBashProfileOnMac =
+				process.platform === 'darwin' &&
+				shellConfigFile.endsWith('.bash_profile');
+			if (isPowerShellProfile(shellConfigFile) || isBashProfileOnMac) {
+				// Create empty profile file
 				fs.writeFileSync(shellConfigFile, '');
 			} else {
 				return {
@@ -164,12 +179,14 @@ export function addShellExport(
 		let commentPrefix: string;
 
 		if (isPowerShellProfile(shellConfigFile)) {
-			// PowerShell syntax
-			exportLine = `$env:${envVar} = "${value}"`;
+			// PowerShell syntax - escape quotes and backticks
+			const escapedValue = value.replace(/["`$]/g, '`$&');
+			exportLine = `$env:${envVar} = "${escapedValue}"`;
 			commentPrefix = '#';
 		} else {
-			// Unix shell syntax (bash, zsh, fish)
-			exportLine = `export ${envVar}=${value}`;
+			// Unix shell syntax (bash, zsh, fish) - use single quotes and escape embedded single quotes
+			const escapedValue = value.replace(/'/g, "'\\''");
+			exportLine = `export ${envVar}='${escapedValue}'`;
 			commentPrefix = '#';
 		}
 
