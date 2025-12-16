@@ -60,7 +60,7 @@
 	"dependencies": {
 		"@ai-sdk/amazon-bedrock": "^3.0.23",
 		"@ai-sdk/anthropic": "^2.0.18",
-		"@ai-sdk/azure": "^2.0.34",
+		"@ai-sdk/azure": "^2.0.89",
 		"@ai-sdk/google": "^2.0.16",
 		"@ai-sdk/google-vertex": "^3.0.86",
 		"@ai-sdk/groq": "^2.0.21",

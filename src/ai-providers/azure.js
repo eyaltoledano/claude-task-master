@@ -1,10 +1,9 @@
 /**
  * azure.js
- * AI provider implementation for Azure OpenAI models using Vercel AI SDK.
+ * AI provider implementation for Azure OpenAI Service using Vercel AI SDK.
  */
 
 import { createAzure } from '@ai-sdk/azure';
-import { BaseAIProvider } from './base-provider.js';
 import { BaseAIProvider } from './base-provider.js';
 
 export class AzureProvider extends BaseAIProvider {
@@ -39,70 +38,31 @@ export class AzureProvider extends BaseAIProvider {
 	}
 
 	/**
-	 * Determines if a model requires the responses API endpoint instead of chat/completions
-	 * @param {string} modelId - The model ID to check
-	 * @returns {boolean} True if the model needs the responses API
-	 */
-	isReasoningModel(modelId) {
-		if (!modelId) return false;
-
-		const azureModels = MODEL_MAP.azure || [];
-		const modelDef = azureModels.find((m) => m.id === modelId);
-
-		// First check if we have a direct match in our model definitions
-		if (modelDef?.api_type === 'responses') {
-			return true;
-		}
-
-		// Fallback heuristic for custom Azure deployment names
-		// Check if the modelId contains canonical reasoning model base names
-		const canonical = modelId.toLowerCase();
-		return /^(gpt-5|o1|o3|o4)/.test(canonical);
-	}
-
-	/**
-	 * Adjusts the base URL for reasoning models that need the responses endpoint
+	 * Normalizes the base URL to ensure it ends with /openai for proper Azure API routing.
+	 * The Azure API expects paths like /openai/deployments/{model}/chat/completions
 	 * @param {string} baseURL - Original base URL
-	 * @param {string} modelId - Model ID
-	 * @returns {string} Adjusted base URL
+	 * @returns {string} Normalized base URL ending with /openai
 	 */
-	adjustBaseURL(baseURL, modelId) {
-		if (!this.isReasoningModel(modelId) || !baseURL) return baseURL;
+	normalizeBaseURL(baseURL) {
+		if (!baseURL) return baseURL;
 
 		try {
 			const url = new URL(baseURL);
-			// Normalize trailing slashes (don't touch query/search)
-			let pathname = url.pathname.replace(/\/+$/, '');
+			let pathname = url.pathname.replace(/\/+$/, ''); // Remove trailing slashes
 
-			// 1) Replace .../chat/completions with .../responses
-			pathname = pathname.replace(/\/chat\/completions$/, '/responses');
-
-			// 2) If path ends with /openai/deployments/<dep>, append /responses
-			if (/\/openai\/deployments\/[^/]+$/.test(pathname)) {
-				pathname = `${pathname}/responses`;
-			}
-			// 3) If path ends with /openai, append /responses
-			else if (/\/openai$/.test(pathname)) {
-				pathname = `${pathname}/responses`;
+			// If the path doesn't end with /openai, append it
+			if (!pathname.endsWith('/openai')) {
+				pathname = `${pathname}/openai`;
 			}
 
 			url.pathname = pathname;
 			return url.toString();
 		} catch {
-			// Fallback that preserves query string positioning
-			const qIdx = baseURL.indexOf('?');
-			const path = qIdx >= 0 ? baseURL.slice(0, qIdx) : baseURL;
-			const qs = qIdx >= 0 ? baseURL.slice(qIdx) : '';
-			let newPath = path.replace('/chat/completions', '/responses');
-			if (!/\/responses$/.test(newPath)) {
-				if (
-					/\/openai\/deployments\/[^/]+$/.test(newPath) ||
-					/\/openai$/.test(newPath)
-				) {
-					newPath = newPath.replace(/\/+$/, '') + '/responses';
-				}
-			}
-			return newPath + qs;
+			// Fallback for invalid URLs
+			const normalized = baseURL.replace(/\/+$/, '');
+			return normalized.endsWith('/openai')
+				? normalized
+				: `${normalized}/openai`;
 		}
 	}
 
@@ -111,21 +71,20 @@ export class AzureProvider extends BaseAIProvider {
 	 * @param {object} params - Parameters for client initialization
 	 * @param {string} params.apiKey - Azure OpenAI API key
 	 * @param {string} params.baseURL - Azure OpenAI endpoint URL (from .taskmasterconfig global.azureBaseURL or models.[role].baseURL)
-	 * @param {string} params.modelId - Model ID (used to determine API endpoint)
 	 * @returns {Function} Azure OpenAI client function
 	 * @throws {Error} If client initialization fails
 	 */
 	getClient(params) {
 		try {
-			const { apiKey, baseURL, modelId } = params;
+			const { apiKey, baseURL } = params;
 
-			// Adjust base URL for reasoning models
-			const adjustedBaseURL = this.adjustBaseURL(baseURL, modelId);
+			// Normalize base URL to ensure it ends with /openai
+			const normalizedBaseURL = this.normalizeBaseURL(baseURL);
 			const fetchImpl = this.createProxyFetch();
 
 			return createAzure({
 				apiKey,
-				baseURL: adjustedBaseURL,
+				baseURL: normalizedBaseURL,
 				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {

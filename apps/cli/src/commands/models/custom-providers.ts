@@ -5,6 +5,7 @@
 import { CUSTOM_PROVIDERS } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
+import { getConfig } from '../../lib/model-management.js';
 import { validateOllamaModel, validateOpenRouterModel } from './fetchers.js';
 import { CUSTOM_PROVIDER_IDS } from './types.js';
 import type {
@@ -86,18 +87,16 @@ export const customProviderConfigs: Record<
 	},
 	AZURE: {
 		id: '__CUSTOM_AZURE__',
-		name: '* Custom Azure model',
+		name: '* Custom Azure OpenAI model',
 		provider: CUSTOM_PROVIDERS.AZURE,
+		requiresBaseURL: true,
 		promptMessage: (role) =>
-			`Enter the custom Azure OpenAI Model ID for the ${role} role (e.g., gpt-4o):`,
+			`Enter the Azure deployment name for the ${role} role (e.g., gpt-4o):`,
 		checkEnvVars: () => {
-			if (
-				!process.env.AZURE_OPENAI_API_KEY ||
-				!process.env.AZURE_OPENAI_ENDPOINT
-			) {
+			if (!process.env.AZURE_OPENAI_API_KEY) {
 				console.error(
 					chalk.red(
-						'Error: AZURE_OPENAI_API_KEY and/or AZURE_OPENAI_ENDPOINT environment variables are missing. Please set them before using custom Azure models.'
+						'Error: AZURE_OPENAI_API_KEY environment variable is missing. Please set it before using Azure models.'
 					)
 				);
 				return false;
@@ -171,7 +170,8 @@ export async function handleCustomProvider(
 		modelId?: string | null;
 		provider?: string | null;
 		baseURL?: string | null;
-	} | null = null
+	} | null = null,
+	projectRoot?: string
 ): Promise<{
 	modelId: string | null;
 	provider: string | null;
@@ -203,6 +203,13 @@ export async function handleCustomProvider(
 		if (currentModel?.provider === config.provider && currentModel?.baseURL) {
 			// Already using this provider - preserve existing baseURL
 			defaultBaseURL = currentModel.baseURL;
+		} else if (
+			config.provider === CUSTOM_PROVIDERS.AZURE &&
+			projectRoot
+		) {
+			// For Azure, try to use the global azureBaseURL from config
+			const currentConfig = getConfig(projectRoot);
+			defaultBaseURL = currentConfig?.global?.azureBaseURL || '';
 		} else {
 			// Switching providers or no existing baseURL - use fallback default
 			defaultBaseURL = config.defaultBaseURL || '';

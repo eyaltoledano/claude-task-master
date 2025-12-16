@@ -1298,6 +1298,34 @@
 			"max_tokens": 100000,
 			"supported": true,
 			"api_type": "responses"
+		},
+		{
+			"id": "gpt-5.1",
+			"name": "GPT-5.1",
+			"swe_score": 0.76,
+			"cost_per_1m_tokens": {
+				"input": 1.25,
+				"output": 10.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high"],
+			"supported": true,
+			"api_type": "responses"
+		},
+		{
+			"id": "gpt-5.2",
+			"name": "GPT-5.2",
+			"swe_score": 0.8,
+			"cost_per_1m_tokens": {
+				"input": 1.75,
+				"output": 14.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true,
+			"api_type": "responses"
 		}
 	],
 	"bedrock": [

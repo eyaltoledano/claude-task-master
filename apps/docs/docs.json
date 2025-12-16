@@ -54,6 +54,12 @@
 						]
 					},
 					{
+						"group": "AI Providers",
+						"pages": [
+							"providers/azure"
+						]
+					},
+					{
 						"group": "TDD Workflow (Autopilot)",
 						"pages": [
 							"tdd-workflow/quickstart",

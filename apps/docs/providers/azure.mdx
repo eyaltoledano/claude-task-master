@@ -1,0 +1,159 @@
+---
+title: "Azure OpenAI"
+sidebarTitle: "Azure OpenAI"
+description: "Configure Task Master to use Azure OpenAI Service"
+---
+
+Azure OpenAI Service provides enterprise-grade access to OpenAI models through Microsoft Azure.
+
+## Prerequisites
+
+1. **Azure subscription** with access to Azure OpenAI Service
+2. **Deployed model** in your Azure OpenAI resource
+3. **API key** from your Azure OpenAI resource
+
+## Quick Setup
+
+### 1. Set Your API Key
+
+Add your Azure OpenAI API key to your `.env` file:
+
+```bash
+AZURE_OPENAI_API_KEY="your-azure-openai-api-key"
+```
+
+### 2. Configure the Base URL
+
+Set `azureBaseURL` in your `.taskmaster/config.json` under the `global` section:
+
+```json
+{
+  "global": {
+    "azureBaseURL": "https://your-resource.openai.azure.com/openai"
+  }
+}
+```
+
+Or use the CLI:
+
+```bash
+task-master models --set-azure-base-url "https://your-resource.openai.azure.com/openai"
+```
+
+<Tip>
+Task Master automatically appends `/openai` to your base URL if needed.
+</Tip>
+
+### 3. Set Azure as Your Provider
+
+```bash
+task-master models --set-main azure:gpt-4o
+```
+
+## Supported Models
+
+Task Master supports Azure OpenAI models that use the Chat Completions API:
+
+| Model | Notes |
+|-------|-------|
+| `gpt-4o` | Recommended for most use cases |
+| `gpt-4o-mini` | Cost-effective option |
+| `gpt-4-1` | GPT-4 Turbo |
+
+<Note>
+The `modelId` should match your Azure deployment name exactly. Azure deployment names are case-sensitive.
+</Note>
+
+## Configuration Examples
+
+### Basic Configuration
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "azure",
+      "modelId": "gpt-4o",
+      "maxTokens": 16384,
+      "temperature": 0.2
+    }
+  },
+  "global": {
+    "azureBaseURL": "https://my-resource.openai.azure.com"
+  }
+}
+```
+
+### Role-Specific Base URLs
+
+You can set different base URLs per role if you have deployments in different regions:
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "azure",
+      "modelId": "gpt-4o",
+      "baseURL": "https://us-east-resource.openai.azure.com",
+      "maxTokens": 16384
+    },
+    "fallback": {
+      "provider": "azure",
+      "modelId": "gpt-4o-mini",
+      "baseURL": "https://eu-west-resource.openai.azure.com",
+      "maxTokens": 16384
+    }
+  }
+}
+```
+
+## MCP Server Configuration
+
+For Claude Code integration, include your Azure configuration in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "AZURE_OPENAI_API_KEY": "your-azure-key-here"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### "Azure endpoint URL is required"
+
+Make sure you've set either:
+- `global.azureBaseURL` in config
+- `models.[role].baseURL` for the specific role
+
+### "Invalid API key"
+
+Verify your `AZURE_OPENAI_API_KEY` is correct and has access to the deployment.
+
+### "Resource not found" (404)
+
+1. Ensure the `modelId` matches your Azure deployment name exactly
+2. Verify your base URL format is correct (should be `https://your-resource.openai.azure.com`)
+
+## Getting Your Azure Credentials
+
+### Azure Portal
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to your Azure OpenAI resource
+3. Under **Keys and Endpoint**, copy:
+   - One of the API keys
+   - The endpoint URL
+
+### Creating a Deployment
+
+1. In your Azure OpenAI resource, go to **Model deployments**
+2. Click **Manage Deployments** to open Azure AI Studio
+3. Create a new deployment and note the deployment name - this is your `modelId`

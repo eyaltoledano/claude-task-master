@@ -221,7 +221,7 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
-		getRequiredApiKeyName: jest.fn(() => 'AZURE_API_KEY'),
+		getRequiredApiKeyName: jest.fn(() => 'AZURE_OPENAI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => true)
 	})),
 	VertexAIProvider: jest.fn(() => ({

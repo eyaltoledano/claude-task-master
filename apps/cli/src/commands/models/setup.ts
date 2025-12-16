@@ -69,7 +69,8 @@ async function handleSetModel(
 		const result = await handleCustomProvider(
 			selectedValue,
 			role,
-			currentModel
+			currentModel,
+			projectRoot
 		);
 		if (!result.success) {
 			return { success: false, modified: false };

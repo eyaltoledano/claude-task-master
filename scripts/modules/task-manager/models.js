@@ -551,8 +551,33 @@ async function setModel(role, modelId, options = {}) {
 				} else if (providerHint === CUSTOM_PROVIDERS.AZURE) {
 					// Set provider without model validation since Azure models are managed by Azure
 					determinedProvider = CUSTOM_PROVIDERS.AZURE;
-					warningMessage = `Warning: Custom Azure model '${modelId}' set. Please ensure the model deployment is valid and accessible in your Azure account.`;
+
+					// Get current provider for this role to check if we should preserve baseURL
+					let currentProvider;
+					if (role === 'main') {
+						currentProvider = getMainProvider(projectRoot);
+					} else if (role === 'research') {
+						currentProvider = getResearchProvider(projectRoot);
+					} else if (role === 'fallback') {
+						currentProvider = getFallbackProvider(projectRoot);
+					}
+
+					// Only preserve baseURL if we're already using AZURE
+					const existingBaseURL =
+						currentProvider === CUSTOM_PROVIDERS.AZURE
+							? getBaseUrlForRole(role, projectRoot)
+							: null;
+
+					const resolvedBaseURL = baseURL || existingBaseURL;
+					if (!resolvedBaseURL) {
+						throw new Error(
+							`Base URL is required for Azure providers. Please provide a baseURL or set global.azureBaseURL in config.`
+						);
+					}
+					warningMessage = `Warning: Custom Azure model '${modelId}' set with base URL '${resolvedBaseURL}'. Please ensure the model deployment is valid and accessible in your Azure account.`;
 					report('warn', warningMessage);
+					// Store the computed baseURL so it gets saved in config
+					computedBaseURL = resolvedBaseURL;
 				} else if (providerHint === CUSTOM_PROVIDERS.VERTEX) {
 					// Set provider without model validation since Vertex models are managed by Google Cloud
 					determinedProvider = CUSTOM_PROVIDERS.VERTEX;
@@ -700,7 +725,8 @@ async function setModel(role, modelId, options = {}) {
 			computedBaseURL &&
 			(determinedProvider === CUSTOM_PROVIDERS.OPENAI_COMPATIBLE ||
 				determinedProvider === CUSTOM_PROVIDERS.LMSTUDIO ||
-				determinedProvider === CUSTOM_PROVIDERS.OLLAMA)
+				determinedProvider === CUSTOM_PROVIDERS.OLLAMA ||
+				determinedProvider === CUSTOM_PROVIDERS.AZURE)
 		) {
 			currentConfig.models[role].baseURL = computedBaseURL;
 		} else {
