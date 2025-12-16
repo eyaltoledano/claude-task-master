@@ -5,3 +5,6 @@
 
 // Re-export everything from slash-commands module
 export * from './slash-commands/index.js';
+
+// Re-export shell utilities
+export * from './shell-utils.js';

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { isSilentMode, log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
+import { enableDeferredMcpLoading } from '@tm/profiles';
 
 // Helper function to recursively copy directory (adopted from Roo profile)
 function copyRecursiveSync(src, dest) {
@@ -102,6 +103,25 @@ function onAddRulesProfile(targetDir, assetsDir) {
 				`[Claude] Failed to set up Claude instructions: ${err.message}`
 			);
 		}
+	}
+
+	// Enable deferred MCP loading for reduced context usage
+	const deferredResult = enableDeferredMcpLoading();
+	if (deferredResult.success) {
+		if (deferredResult.alreadyExists) {
+			log('debug', '[Claude] Deferred MCP loading already configured');
+		} else {
+			log(
+				'info',
+				`[Claude] Enabled deferred MCP loading in ${deferredResult.shellConfigFile}`
+			);
+			log('info', '[Claude] Restart your terminal for changes to take effect');
+		}
+	} else {
+		log(
+			'debug',
+			`[Claude] Could not configure deferred loading: ${deferredResult.message}`
+		);
 	}
 }
 
@@ -273,4 +293,9 @@ export const claudeProfile = createProfile({
 });
 
 // Export lifecycle functions separately to avoid naming conflicts
-export { onAddRulesProfile, onRemoveRulesProfile, onPostConvertRulesProfile };
+export {
+	onAddRulesProfile,
+	onRemoveRulesProfile,
+	onPostConvertRulesProfile,
+	transformToClaudeFormat
+};

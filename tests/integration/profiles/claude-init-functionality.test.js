@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { claudeProfile } from '../../../src/profiles/claude.js';
+import {
+	claudeProfile,
+	transformToClaudeFormat
+} from '../../../src/profiles/claude.js';
 
 describe('Claude Profile Initialization Functionality', () => {
 	let claudeProfileContent;
@@ -58,5 +61,82 @@ describe('Claude Profile Initialization Functionality', () => {
 		expect(claudeProfileContent).toContain('try {');
 		expect(claudeProfileContent).toContain('} catch (err) {');
 		expect(claudeProfileContent).toContain("log('error'");
+	});
+});
+
+describe('transformToClaudeFormat', () => {
+	test('should add type: stdio to MCP server configs', () => {
+		const input = {
+			mcpServers: {
+				'task-master-ai': {
+					command: 'npx',
+					args: ['-y', 'task-master-ai'],
+					env: { ANTHROPIC_API_KEY: 'test-key' }
+				}
+			}
+		};
+
+		const result = transformToClaudeFormat(input);
+
+		expect(result.mcpServers['task-master-ai']).toEqual({
+			type: 'stdio',
+			command: 'npx',
+			args: ['-y', 'task-master-ai'],
+			env: { ANTHROPIC_API_KEY: 'test-key' }
+		});
+	});
+
+	test('should place type as first key in output', () => {
+		const input = {
+			mcpServers: {
+				'my-server': {
+					command: 'node',
+					args: ['server.js']
+				}
+			}
+		};
+
+		const result = transformToClaudeFormat(input);
+		const keys = Object.keys(result.mcpServers['my-server']);
+
+		// type should be first key
+		expect(keys[0]).toBe('type');
+		expect(keys[1]).toBe('command');
+		expect(keys[2]).toBe('args');
+	});
+
+	test('should handle multiple MCP servers', () => {
+		const input = {
+			mcpServers: {
+				server1: { command: 'cmd1' },
+				server2: { command: 'cmd2', args: ['arg1'] }
+			}
+		};
+
+		const result = transformToClaudeFormat(input);
+
+		expect(result.mcpServers.server1.type).toBe('stdio');
+		expect(result.mcpServers.server2.type).toBe('stdio');
+	});
+
+	test('should preserve additional non-standard properties', () => {
+		const input = {
+			mcpServers: {
+				'my-server': {
+					command: 'node',
+					customProperty: 'custom-value'
+				}
+			}
+		};
+
+		const result = transformToClaudeFormat(input);
+
+		expect(result.mcpServers['my-server'].customProperty).toBe('custom-value');
+	});
+
+	test('should return empty object when input has no mcpServers', () => {
+		const input = {};
+		const result = transformToClaudeFormat(input);
+		expect(result).toEqual({});
 	});
 });
