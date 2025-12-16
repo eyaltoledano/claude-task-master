@@ -55,9 +55,7 @@
 					},
 					{
 						"group": "AI Providers",
-						"pages": [
-							"providers/azure"
-						]
+						"pages": ["providers/azure"]
 					},
 					{
 						"group": "TDD Workflow (Autopilot)",
@@ -85,8 +83,8 @@
 		}
 	},
 	"logo": {
-		"light": "/logo/task-master-logo.png",
-		"dark": "/logo/task-master-logo.png"
+		"light": "/logo/light.svg",
+		"dark": "/logo/dark.svg"
 	},
 	"footer": {
 		"socials": {
