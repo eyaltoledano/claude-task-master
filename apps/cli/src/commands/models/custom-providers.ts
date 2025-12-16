@@ -203,10 +203,7 @@ export async function handleCustomProvider(
 		if (currentModel?.provider === config.provider && currentModel?.baseURL) {
 			// Already using this provider - preserve existing baseURL
 			defaultBaseURL = currentModel.baseURL;
-		} else if (
-			config.provider === CUSTOM_PROVIDERS.AZURE &&
-			projectRoot
-		) {
+		} else if (config.provider === CUSTOM_PROVIDERS.AZURE && projectRoot) {
 			// For Azure, try to use the global azureBaseURL from config
 			const currentConfig = getConfig(projectRoot);
 			defaultBaseURL = currentConfig?.global?.azureBaseURL || '';
