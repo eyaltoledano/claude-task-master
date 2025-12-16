@@ -5,7 +5,7 @@
 import { CUSTOM_PROVIDERS } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { getConfig } from '../../lib/model-management.js';
+import { getAzureBaseURL } from '../../lib/model-management.js';
 import { validateOllamaModel, validateOpenRouterModel } from './fetchers.js';
 import { CUSTOM_PROVIDER_IDS } from './types.js';
 import type {
@@ -205,8 +205,7 @@ export async function handleCustomProvider(
 			defaultBaseURL = currentModel.baseURL;
 		} else if (config.provider === CUSTOM_PROVIDERS.AZURE && projectRoot) {
 			// For Azure, try to use the global azureBaseURL from config
-			const currentConfig = getConfig(projectRoot);
-			defaultBaseURL = currentConfig?.global?.azureBaseURL || '';
+			defaultBaseURL = getAzureBaseURL(projectRoot) || '';
 		} else {
 			// Switching providers or no existing baseURL - use fallback default
 			defaultBaseURL = config.defaultBaseURL || '';

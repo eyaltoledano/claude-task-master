@@ -160,3 +160,11 @@ export function writeConfig(config: any, projectRoot: string): boolean {
 export function getAvailableModels(): ModelData[] {
 	return configManagerJs.getAvailableModels() as ModelData[];
 }
+
+/**
+ * Get Azure base URL from config
+ */
+export function getAzureBaseURL(projectRoot?: string | null): string {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return (configManagerJs.getAzureBaseURL(projectRoot as any) as string) ?? '';
+}

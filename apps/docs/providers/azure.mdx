@@ -79,7 +79,7 @@ The `modelId` should match your Azure deployment name exactly. Azure deployment 
     }
   },
   "global": {
-    "azureBaseURL": "https://my-resource.openai.azure.com"
+    "azureBaseURL": "https://my-resource.openai.azure.com/openai"
   }
 }
 ```
@@ -94,13 +94,13 @@ You can set different base URLs per role if you have deployments in different re
     "main": {
       "provider": "azure",
       "modelId": "gpt-4o",
-      "baseURL": "https://us-east-resource.openai.azure.com",
+      "baseURL": "https://us-east-resource.openai.azure.com/openai",
       "maxTokens": 16384
     },
     "fallback": {
       "provider": "azure",
       "modelId": "gpt-4o-mini",
-      "baseURL": "https://eu-west-resource.openai.azure.com",
+      "baseURL": "https://eu-west-resource.openai.azure.com/openai",
       "maxTokens": 16384
     }
   }
