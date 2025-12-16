@@ -104,6 +104,14 @@ export function addShellExport(
 	value: string,
 	comment?: string
 ): ShellConfigResult {
+	// Validate envVar contains only safe characters (prevents ReDoS attacks)
+	if (!/^[A-Z_][A-Z0-9_]*$/i.test(envVar)) {
+		return {
+			success: false,
+			message: `Invalid environment variable name: ${envVar}. Must start with a letter or underscore and contain only alphanumeric characters and underscores.`
+		};
+	}
+
 	const shellConfigFile = getShellConfigPath();
 
 	if (!shellConfigFile) {
