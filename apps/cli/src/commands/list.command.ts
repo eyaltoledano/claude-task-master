@@ -3,6 +3,8 @@
  * Extends Commander.Command for better integration with the framework
  */
 
+import fs from 'fs';
+import path from 'path';
 import {
 	OUTPUT_FORMATS,
 	type OutputFormat,
@@ -42,8 +44,11 @@ export interface ListCommandOptions {
 	withSubtasks?: boolean;
 	format?: OutputFormat;
 	json?: boolean;
+	compact?: boolean;
+	noHeader?: boolean;
 	silent?: boolean;
 	project?: string;
+	watch?: boolean;
 }
 
 /**
@@ -87,11 +92,17 @@ export class ListTasksCommand extends Command {
 				'text'
 			)
 			.option('--json', 'Output in JSON format (shorthand for --format json)')
+			.option(
+				'-c, --compact',
+				'Output in compact format (shorthand for --format compact)'
+			)
+			.option('--no-header', 'Hide the command header')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option(
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
+			.option('-w, --watch', 'Watch for changes and update list automatically')
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -127,17 +138,165 @@ export class ListTasksCommand extends Command {
 			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get tasks from core
-			const result = await this.getTasks(options);
+			if (options.watch) {
+				await this.watchTasks(options);
+			} else {
+				const result = await this.getTasks(options);
 
-			// Store result for programmatic access
-			this.setLastResult(result);
+				// Store result for programmatic access
+				this.setLastResult(result);
 
-			// Display results
-			if (!options.silent) {
-				this.displayResults(result, options);
+				// Display results
+				if (!options.silent) {
+					this.displayResults(result, options);
+				}
 			}
 		} catch (error: any) {
 			displayError(error);
+		}
+	}
+
+	/**
+	 * Format a timestamp for display
+	 */
+	private formatSyncTime(date: Date): string {
+		return date.toLocaleTimeString('en-US', {
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: true
+		});
+	}
+
+	/**
+	 * Display watch status footer
+	 */
+	private displayWatchFooter(
+		storageType: 'api' | 'file',
+		lastSync: Date
+	): void {
+		const syncTime = this.formatSyncTime(lastSync);
+		const source = storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
+
+		console.log(chalk.dim(`\nWatching ${source} for changes...`));
+		console.log(chalk.gray(`Last synced: ${syncTime}`));
+	}
+
+	/**
+	 * Watch for changes and update list
+	 */
+	private async watchTasks(options: ListCommandOptions): Promise<void> {
+		// Initial render
+		let result = await this.getTasks(options);
+		let lastSync = new Date();
+
+		console.clear();
+		this.displayResults(result, options);
+
+		const storageType = result.storageType;
+
+		if (storageType === 'api') {
+			// API implementation using Supabase Realtime
+			const { AuthManager } = await import('@tm/core');
+			const authManager = AuthManager.getInstance();
+			const context = authManager.getContext();
+
+			if (!context?.briefId) {
+				console.warn(chalk.yellow('No brief context found for watching.'));
+				return;
+			}
+
+			const supabase = authManager.supabaseClient.getClient();
+
+			this.displayWatchFooter('api', lastSync);
+
+			const channel = supabase
+				.channel(`tasks-list-watch-${Date.now()}`)
+				.on(
+					'postgres_changes',
+					{
+						event: '*',
+						schema: 'public',
+						table: 'tasks',
+						filter: `brief_id=eq.${context.briefId}`
+					},
+					async () => {
+						try {
+							// Re-fetch
+							result = await this.getTasks(options);
+							lastSync = new Date();
+
+							// Clear and display
+							console.clear();
+							this.displayResults(result, options);
+
+							// Show sync message with timestamp
+							console.log(
+								chalk.blue(
+									`\nℹ Sync received from Hamster Studio at ${this.formatSyncTime(lastSync)}`
+								)
+							);
+							this.displayWatchFooter('api', lastSync);
+						} catch (e) {
+							// Ignore errors
+						}
+					}
+				)
+				.subscribe();
+
+			// Keep process alive
+			await new Promise(() => {});
+		} else {
+			// File implementation - used when not authenticated
+			const projectRoot = getProjectRoot(options.project);
+			const tasksPath = path.join(
+				projectRoot,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+
+			if (fs.existsSync(tasksPath)) {
+				this.displayWatchFooter('file', lastSync);
+
+				let debounceTimer: NodeJS.Timeout;
+
+				fs.watch(tasksPath, (eventType, filename) => {
+					if (filename && eventType === 'change') {
+						clearTimeout(debounceTimer);
+						debounceTimer = setTimeout(async () => {
+							try {
+								// Re-fetch
+								result = await this.getTasks(options);
+								lastSync = new Date();
+
+								// Clear and display
+								console.clear();
+								this.displayResults(result, options);
+
+								// Show sync message with timestamp
+								console.log(
+									chalk.blue(
+										`\nℹ tasks.json updated at ${this.formatSyncTime(lastSync)}`
+									)
+								);
+								this.displayWatchFooter('file', lastSync);
+							} catch (e) {
+								// Ignore errors during watch (e.g. partial writes)
+							}
+						}, 100);
+					}
+				});
+
+				// Keep process alive
+				await new Promise(() => {});
+			} else {
+				console.warn(
+					chalk.yellow(
+						'Tasks file not found at expected path, watch mode disabled.'
+					)
+				);
+			}
 		}
 	}
 
@@ -219,9 +378,13 @@ export class ListTasksCommand extends Command {
 		result: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		// If --json flag is set, override format to 'json'
+		// Resolve format: --json and --compact flags override --format option
 		const format = (
-			options.json ? 'json' : options.format || 'text'
+			options.json
+				? 'json'
+				: options.compact
+					? 'compact'
+					: options.format || 'text'
 		) as OutputFormat;
 
 		switch (format) {
@@ -230,12 +393,12 @@ export class ListTasksCommand extends Command {
 				break;
 
 			case 'compact':
-				this.displayCompact(result.tasks, options.withSubtasks);
+				this.displayCompact(result, options);
 				break;
 
 			case 'text':
 			default:
-				this.displayText(result, options.withSubtasks, options.status);
+				this.displayText(result, options);
 				break;
 		}
 	}
@@ -264,12 +427,25 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Display in compact format
 	 */
-	private displayCompact(tasks: Task[], withSubtasks?: boolean): void {
+	private displayCompact(
+		data: ListTasksResult,
+		options: ListCommandOptions
+	): void {
+		const { tasks, tag, storageType } = data;
+
+		// Display header unless --no-header is set
+		if (options.noHeader !== true) {
+			displayCommandHeader(this.tmCore, {
+				tag: tag || 'master',
+				storageType
+			});
+		}
+
 		tasks.forEach((task) => {
 			const icon = STATUS_ICONS[task.status];
 			console.log(`${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
-			if (withSubtasks && task.subtasks?.length) {
+			if (options.withSubtasks && task.subtasks?.length) {
 				task.subtasks.forEach((subtask) => {
 					const subIcon = STATUS_ICONS[subtask.status];
 					console.log(
@@ -283,18 +459,16 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Display in text format with tables
 	 */
-	private displayText(
-		data: ListTasksResult,
-		withSubtasks?: boolean,
-		_statusFilter?: string
-	): void {
+	private displayText(data: ListTasksResult, options: ListCommandOptions): void {
 		const { tasks, tag, storageType } = data;
 
-		// Display header using utility function
-		displayCommandHeader(this.tmCore, {
-			tag: tag || 'master',
-			storageType
-		});
+		// Display header unless --no-header is set
+		if (options.noHeader !== true) {
+			displayCommandHeader(this.tmCore, {
+				tag: tag || 'master',
+				storageType
+			});
+		}
 
 		// No tasks message
 		if (tasks.length === 0) {
@@ -328,7 +502,7 @@ export class ListTasksCommand extends Command {
 		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
-				showSubtasks: withSubtasks,
+				showSubtasks: options.withSubtasks,
 				showDependencies: true,
 				showComplexity: true // Enable complexity column
 			})
