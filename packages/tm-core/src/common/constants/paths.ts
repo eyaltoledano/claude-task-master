@@ -53,24 +53,109 @@ export const TASKMASTER_PROJECT_MARKERS = [
 ] as const;
 
 /**
+ * Project boundary markers - these indicate a project root and STOP upward traversal
+ * during Task Master marker search. If we hit one of these without finding .taskmaster,
+ * we shouldn't traverse beyond it (prevents finding .taskmaster in home directory).
+ *
+ * Ordered by reliability: VCS markers first, then platform-specific, then language-specific
+ */
+export const PROJECT_BOUNDARY_MARKERS = [
+	// Version control (strongest indicators)
+	'.git', // Git repository
+	'.svn', // SVN repository
+	'.hg', // Mercurial repository
+	'.fossil', // Fossil repository
+	// CI/CD and platform-specific directories (typically at project root)
+	'.github', // GitHub Actions, configs
+	'.gitlab', // GitLab CI configs
+	'.circleci', // CircleCI configs
+	'.travis.yml', // Travis CI config
+	'.jenkins', // Jenkins configs
+	'.buildkite', // Buildkite configs
+	// Editor/IDE project markers (typically at project root)
+	'.vscode', // VS Code workspace settings
+	'.idea', // JetBrains IDE settings
+	'.project', // Eclipse project
+	'.devcontainer', // Dev containers config
+	// Package manager lock files (strong indicators of project root)
+	'package-lock.json', // npm
+	'yarn.lock', // Yarn
+	'pnpm-lock.yaml', // pnpm
+	'bun.lockb', // Bun
+	'bun.lock', // Bun (text format)
+	'deno.lock', // Deno
+	'deno.json', // Deno config
+	'deno.jsonc', // Deno config (with comments)
+	// Node.js/JavaScript project files
+	'package.json', // Node.js project
+	'lerna.json', // Lerna monorepo
+	'nx.json', // Nx monorepo
+	'turbo.json', // Turborepo
+	'rush.json', // Rush monorepo
+	'pnpm-workspace.yaml', // pnpm workspace
+	// Rust project files
+	'Cargo.toml', // Rust project
+	'Cargo.lock', // Rust lock file
+	// Go project files
+	'go.mod', // Go project
+	'go.sum', // Go checksum file
+	'go.work', // Go workspace
+	// Python project files
+	'pyproject.toml', // Python project (modern)
+	'setup.py', // Python project (legacy)
+	'setup.cfg', // Python setup config
+	'poetry.lock', // Poetry lock file
+	'Pipfile', // Pipenv
+	'Pipfile.lock', // Pipenv lock file
+	'uv.lock', // uv lock file
+	// Ruby project files
+	'Gemfile', // Ruby project
+	'Gemfile.lock', // Ruby lock file
+	// PHP project files
+	'composer.json', // PHP project
+	'composer.lock', // PHP lock file
+	// Java/JVM project files
+	'build.gradle', // Gradle (Java/Kotlin)
+	'build.gradle.kts', // Gradle Kotlin DSL
+	'settings.gradle', // Gradle settings
+	'settings.gradle.kts', // Gradle settings (Kotlin)
+	'pom.xml', // Maven (Java)
+	'build.sbt', // sbt (Scala)
+	'project.clj', // Leiningen (Clojure)
+	'deps.edn', // Clojure deps
+	// Elixir/Erlang project files
+	'mix.exs', // Elixir project
+	'rebar.config', // Erlang rebar
+	// Other language project files
+	'pubspec.yaml', // Dart/Flutter project
+	'Package.swift', // Swift package
+	'CMakeLists.txt', // CMake project
+	'Makefile', // Generic project indicator
+	'meson.build', // Meson build system
+	'BUILD.bazel', // Bazel build
+	'WORKSPACE', // Bazel workspace
+	'flake.nix', // Nix flake
+	'shell.nix', // Nix shell
+	'default.nix', // Nix expression
+	// Container/deployment files (typically at project root)
+	'Dockerfile', // Docker
+	'docker-compose.yml', // Docker Compose
+	'docker-compose.yaml', // Docker Compose
+	'Containerfile', // Podman/OCI container
+	'kubernetes.yml', // Kubernetes manifests
+	'kubernetes.yaml', // Kubernetes manifests
+	'helm/Chart.yaml' // Helm chart
+] as const;
+
+/**
  * Other project markers (only checked if no Task Master markers found)
  * Includes generic task files that could belong to any task runner/build system
  */
 export const OTHER_PROJECT_MARKERS = [
 	LEGACY_TASKS_FILE, // tasks/tasks.json (NOT Task Master-specific)
 	'tasks.json', // Generic tasks file (NOT Task Master-specific)
-	'.git', // Git repository
-	'.svn', // SVN repository
-	'package.json', // Node.js project
-	'yarn.lock', // Yarn project
-	'package-lock.json', // npm project
-	'pnpm-lock.yaml', // pnpm project
-	'Cargo.toml', // Rust project
-	'go.mod', // Go project
-	'pyproject.toml', // Python project
-	'requirements.txt', // Python project
-	'Gemfile', // Ruby project
-	'composer.json' // PHP project
+	...PROJECT_BOUNDARY_MARKERS, // Include all boundary markers
+	'requirements.txt' // Python requirements (weaker indicator, keep separate)
 ] as const;
 
 /**

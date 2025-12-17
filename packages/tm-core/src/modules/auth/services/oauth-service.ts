@@ -59,9 +59,17 @@ export class OAuthService {
 	private logger = getLogger('OAuthService');
 	private contextStore: ContextStore;
 	private supabaseClient: SupabaseAuthClient;
-	private baseUrl: string;
+	private configOverrides: Partial<AuthConfig>;
 	private authorizationUrl: string | null = null;
 	private keyPair: AuthKeyPair | null = null;
+
+	/**
+	 * Get the base URL lazily to ensure environment variables are read fresh.
+	 * This allows TM_BASE_DOMAIN to be set after service construction (e.g., in MCP flows).
+	 */
+	private get baseUrl(): string {
+		return getAuthConfig(this.configOverrides).baseUrl;
+	}
 
 	constructor(
 		contextStore: ContextStore,
@@ -70,8 +78,7 @@ export class OAuthService {
 	) {
 		this.contextStore = contextStore;
 		this.supabaseClient = supabaseClient;
-		const authConfig = getAuthConfig(config);
-		this.baseUrl = authConfig.baseUrl;
+		this.configOverrides = config;
 	}
 
 	/**
