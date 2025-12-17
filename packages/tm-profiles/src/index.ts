@@ -8,3 +8,6 @@ export * from './slash-commands/index.js';
 
 // Re-export shell utilities
 export * from './shell-utils.js';
+
+// Re-export IDE detection utilities
+export * from './detection/index.js';

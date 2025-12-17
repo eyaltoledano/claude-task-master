@@ -10,6 +10,7 @@ import inquirer from 'inquirer';
 import { log } from '../../scripts/modules/utils.js';
 import { RULE_PROFILES } from '../constants/profiles.js';
 import { getRulesProfile } from './rule-transformer.js';
+import { getPreSelectedProfiles } from '@tm/profiles';
 
 // =============================================================================
 // PROFILE DETECTION
@@ -95,13 +96,28 @@ export function wouldRemovalLeaveNoProfiles(projectRoot, profilesToRemove) {
  * Launches an interactive prompt for selecting which rule profiles to include in your project.
  *
  * This function dynamically lists all available profiles (from RULE_PROFILES) and presents them as checkboxes.
- * The user must select at least one profile (no defaults are pre-selected). The result is an array of selected profile names.
+ * Detected IDE profiles (based on directory markers like .cursor, .claude, etc.) are pre-selected.
+ * The result is an array of selected profile names.
  *
  * Used by both project initialization (init) and the CLI 'task-master rules setup' command.
  *
+ * @param {string} [projectRoot=process.cwd()] - Project root directory for IDE detection
  * @returns {Promise<string[]>} Array of selected profile names (e.g., ['cursor', 'windsurf'])
  */
-export async function runInteractiveProfilesSetup() {
+export async function runInteractiveProfilesSetup(projectRoot = process.cwd()) {
+	// Auto-detect installed IDEs for pre-selection
+	const preSelected = getPreSelectedProfiles({ projectRoot });
+
+	if (preSelected.length > 0) {
+		const detectedNames = preSelected
+			.map((p) => getProfileDisplayName(p))
+			.join(', ');
+		console.log(
+			chalk.cyan(`\n🔍 Auto-detected IDEs: ${detectedNames}`) +
+				chalk.gray(' (pre-selected below)\n')
+		);
+	}
+
 	// Generate the profile list dynamically with proper display names, alphabetized
 	const profileDescriptions = RULE_PROFILES.map((profileName) => {
 		const displayName = getProfileDisplayName(profileName);
@@ -165,10 +181,14 @@ export async function runInteractiveProfilesSetup() {
 	);
 
 	// Generate choices in the same order as the display text above
+	// Pre-select profiles that were auto-detected
 	const sortedChoices = profileDescriptions.map(
 		({ profileName, displayName }) => ({
-			name: displayName,
-			value: profileName
+			name: preSelected.includes(profileName)
+				? `${displayName} ${chalk.dim('(detected)')}`
+				: displayName,
+			value: profileName,
+			checked: preSelected.includes(profileName)
 		})
 	);
 
