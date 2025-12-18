@@ -50,6 +50,8 @@ export interface ListCommandOptions {
 	silent?: boolean;
 	project?: string;
 	watch?: boolean;
+	ready?: boolean;
+	blocking?: boolean;
 }
 
 /**
@@ -104,6 +106,14 @@ export class ListTasksCommand extends Command {
 				'Project root directory (auto-detected if not provided)'
 			)
 			.option('-w, --watch', 'Watch for changes and update list automatically')
+			.option(
+				'--ready',
+				'Show only tasks ready to work on (dependencies satisfied)'
+			)
+			.option(
+				'--blocking',
+				'Show only tasks that block other tasks'
+			)
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -289,7 +299,91 @@ export class ListTasksCommand extends Command {
 			includeSubtasks: options.withSubtasks
 		});
 
-		return result as ListTasksResult;
+		// Build blocks map and enrich tasks with blocks field
+		const blocksMap = this.buildBlocksMap(result.tasks);
+		const enrichedTasks = result.tasks.map((task) => ({
+			...task,
+			blocks: blocksMap.get(String(task.id)) || []
+		}));
+
+		// Apply ready/blocking filters
+		let filteredTasks = enrichedTasks;
+
+		if (options.ready) {
+			filteredTasks = this.filterReadyTasks(filteredTasks);
+		}
+
+		if (options.blocking) {
+			filteredTasks = this.filterBlockingTasks(filteredTasks);
+		}
+
+		return {
+			...result,
+			tasks: filteredTasks,
+			filtered: filteredTasks.length
+		} as ListTasksResult;
+	}
+
+	/**
+	 * Build a map of task ID -> array of task IDs that depend on it (blocks)
+	 */
+	private buildBlocksMap(tasks: Task[]): Map<string, string[]> {
+		const blocksMap = new Map<string, string[]>();
+
+		// Initialize all tasks with empty arrays
+		tasks.forEach((task) => {
+			blocksMap.set(String(task.id), []);
+		});
+
+		// For each task, add it to the blocks list of each of its dependencies
+		tasks.forEach((task) => {
+			if (task.dependencies && task.dependencies.length > 0) {
+				task.dependencies.forEach((depId) => {
+					const depIdStr = String(depId);
+					const currentBlocks = blocksMap.get(depIdStr) || [];
+					currentBlocks.push(String(task.id));
+					blocksMap.set(depIdStr, currentBlocks);
+				});
+			}
+		});
+
+		return blocksMap;
+	}
+
+	/**
+	 * Filter to only tasks that are ready to work on (dependencies satisfied, not completed)
+	 */
+	private filterReadyTasks(tasks: (Task & { blocks: string[] })[]): (Task & { blocks: string[] })[] {
+		// Build set of completed task IDs
+		const completedIds = new Set<string>();
+		tasks.forEach((t) => {
+			if (isTaskComplete(t.status)) {
+				completedIds.add(String(t.id));
+			}
+		});
+
+		return tasks.filter((task) => {
+			// Must be pending or in-progress (not completed)
+			if (isTaskComplete(task.status)) {
+				return false;
+			}
+
+			// Must have all dependencies satisfied
+			if (!task.dependencies || task.dependencies.length === 0) {
+				return true;
+			}
+
+			return task.dependencies.every((depId) =>
+				completedIds.has(String(depId))
+			);
+		});
+	}
+
+	/**
+	 * Filter to only tasks that block other tasks
+	 */
+	private filterBlockingTasks(tasks: (Task & { blocks: string[] })[]): (Task & { blocks: string[] })[] {
+		return tasks.filter((task) => task.blocks.length > 0);
 	}
 
 	/**
@@ -428,6 +522,7 @@ export class ListTasksCommand extends Command {
 			ui.createTaskTable(tasks, {
 				showSubtasks: options.withSubtasks,
 				showDependencies: true,
+				showBlocks: true, // Show which tasks this one blocks
 				showComplexity: true // Enable complexity column
 			})
 		);

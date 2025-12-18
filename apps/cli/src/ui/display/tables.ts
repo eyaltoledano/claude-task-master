@@ -17,41 +17,74 @@ import { getBoxWidth, truncate } from '../layout/helpers.js';
 const DEFAULT_PRIORITY: TaskPriority = 'medium';
 
 /**
+ * Task with blocks field (inverse of dependencies)
+ */
+export type TaskWithBlocks = (Task | Subtask) & { blocks?: string[] };
+
+/**
  * Create a task table for display
  */
 export function createTaskTable(
-	tasks: (Task | Subtask)[],
+	tasks: TaskWithBlocks[],
 	options?: {
 		showSubtasks?: boolean;
 		showComplexity?: boolean;
 		showDependencies?: boolean;
+		showBlocks?: boolean;
 	}
 ): string {
 	const {
 		showSubtasks = false,
 		showComplexity = false,
-		showDependencies = true
+		showDependencies = true,
+		showBlocks = false
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
 	const tableWidth = getBoxWidth(0.9, 100);
-	// Adjust column widths to better match the original layout
-	const baseColWidths = showComplexity
-		? [
-				Math.floor(tableWidth * 0.1),
-				Math.floor(tableWidth * 0.4),
-				Math.floor(tableWidth * 0.15),
-				Math.floor(tableWidth * 0.1),
-				Math.floor(tableWidth * 0.2),
-				Math.floor(tableWidth * 0.1)
-			] // ID, Title, Status, Priority, Dependencies, Complexity
-		: [
-				Math.floor(tableWidth * 0.08),
-				Math.floor(tableWidth * 0.4),
-				Math.floor(tableWidth * 0.18),
-				Math.floor(tableWidth * 0.12),
-				Math.floor(tableWidth * 0.2)
-			]; // ID, Title, Status, Priority, Dependencies
+
+	// Calculate number of optional columns
+	const optionalCols =
+		(showDependencies ? 1 : 0) + (showBlocks ? 1 : 0) + (showComplexity ? 1 : 0);
+
+	// Base widths: ID, Title, Status, Priority (then optional: Dependencies, Blocks, Complexity)
+	let baseColWidths: number[];
+	if (optionalCols === 0) {
+		baseColWidths = [
+			Math.floor(tableWidth * 0.1),
+			Math.floor(tableWidth * 0.5),
+			Math.floor(tableWidth * 0.2),
+			Math.floor(tableWidth * 0.2)
+		];
+	} else if (optionalCols === 1) {
+		baseColWidths = [
+			Math.floor(tableWidth * 0.08),
+			Math.floor(tableWidth * 0.4),
+			Math.floor(tableWidth * 0.18),
+			Math.floor(tableWidth * 0.14),
+			Math.floor(tableWidth * 0.2)
+		];
+	} else if (optionalCols === 2) {
+		baseColWidths = [
+			Math.floor(tableWidth * 0.08),
+			Math.floor(tableWidth * 0.35),
+			Math.floor(tableWidth * 0.14),
+			Math.floor(tableWidth * 0.11),
+			Math.floor(tableWidth * 0.16),
+			Math.floor(tableWidth * 0.16)
+		];
+	} else {
+		// All 3 optional columns
+		baseColWidths = [
+			Math.floor(tableWidth * 0.07),
+			Math.floor(tableWidth * 0.3),
+			Math.floor(tableWidth * 0.12),
+			Math.floor(tableWidth * 0.1),
+			Math.floor(tableWidth * 0.14),
+			Math.floor(tableWidth * 0.14),
+			Math.floor(tableWidth * 0.1)
+		];
+	}
 
 	const headers = [
 		chalk.blue.bold('ID'),
@@ -60,15 +93,21 @@ export function createTaskTable(
 		chalk.blue.bold('Priority')
 	];
 	const colWidths = baseColWidths.slice(0, 4);
+	let colIndex = 4;
 
 	if (showDependencies) {
 		headers.push(chalk.blue.bold('Dependencies'));
-		colWidths.push(baseColWidths[4]);
+		colWidths.push(baseColWidths[colIndex++]);
+	}
+
+	if (showBlocks) {
+		headers.push(chalk.blue.bold('Blocks'));
+		colWidths.push(baseColWidths[colIndex++]);
 	}
 
 	if (showComplexity) {
 		headers.push(chalk.blue.bold('Complexity'));
-		colWidths.push(baseColWidths[5] || 12);
+		colWidths.push(baseColWidths[colIndex] || 12);
 	}
 
 	const table = new Table({
@@ -89,10 +128,22 @@ export function createTaskTable(
 		if (showDependencies) {
 			// For table display, show simple format without status icons
 			if (!task.dependencies || task.dependencies.length === 0) {
-				row.push(chalk.gray('None'));
+				row.push(chalk.gray('-'));
 			} else {
 				row.push(
 					chalk.cyan(task.dependencies.map((d) => String(d)).join(', '))
+				);
+			}
+		}
+
+		if (showBlocks) {
+			// Show tasks that depend on this one
+			const taskWithBlocks = task as TaskWithBlocks;
+			if (!taskWithBlocks.blocks || taskWithBlocks.blocks.length === 0) {
+				row.push(chalk.gray('-'));
+			} else {
+				row.push(
+					chalk.yellow(taskWithBlocks.blocks.join(', '))
 				);
 			}
 		}
@@ -123,9 +174,14 @@ export function createTaskTable(
 						chalk.gray(
 							subtask.dependencies && subtask.dependencies.length > 0
 								? subtask.dependencies.map((dep) => String(dep)).join(', ')
-								: 'None'
+								: '-'
 						)
 					);
+				}
+
+				if (showBlocks) {
+					// Subtasks don't typically have blocks, show dash
+					subRow.push(chalk.gray('-'));
 				}
 
 				if (showComplexity) {
