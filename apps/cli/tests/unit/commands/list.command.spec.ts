@@ -18,7 +18,8 @@ vi.mock('@tm/core', () => ({
 		'done',
 		'review',
 		'deferred',
-		'cancelled'
+		'cancelled',
+		'blocked'
 	],
 	STATUS_ICONS: {
 		pending: '⏳',
@@ -26,7 +27,8 @@ vi.mock('@tm/core', () => ({
 		done: '✅',
 		review: '👀',
 		deferred: '⏸️',
-		cancelled: '❌'
+		cancelled: '❌',
+		blocked: '🚫'
 	},
 	TERMINAL_COMPLETE_STATUSES: ['done', 'cancelled'],
 	isTaskComplete: (status: string) =>
@@ -282,6 +284,50 @@ describe('ListTasksCommand', () => {
 			// Should only include task 3 (pending with no deps)
 			expect(parsed.tasks).toHaveLength(1);
 			expect(parsed.tasks[0].id).toBe('3');
+		});
+
+		it('should exclude deferred and blocked tasks from ready filter', async () => {
+			const command = new ListTasksCommand();
+
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'pending', dependencies: [] },
+				{ id: '2', title: 'Task 2', status: 'deferred', dependencies: [] },
+				{ id: '3', title: 'Task 3', status: 'blocked', dependencies: [] },
+				{ id: '4', title: 'Task 4', status: 'in-progress', dependencies: [] },
+				{ id: '5', title: 'Task 5', status: 'review', dependencies: [] }
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 5,
+						filtered: 5,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				ready: true,
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Should only include pending, in-progress, and review tasks
+			expect(parsed.tasks).toHaveLength(3);
+			const ids = parsed.tasks.map((t: any) => t.id);
+			expect(ids).toContain('1'); // pending
+			expect(ids).toContain('4'); // in-progress
+			expect(ids).toContain('5'); // review
+			expect(ids).not.toContain('2'); // deferred - excluded
+			expect(ids).not.toContain('3'); // blocked - excluded
 		});
 	});
 
