@@ -158,9 +158,15 @@ export function createSearchSource(
 		const filteredChoices = choices.filter((choice) => {
 			// Separators are always included
 			if (choice instanceof Separator) return true;
-			// Filter regular choices by search term
-			const searchText = (choice as ModelChoice).name || '';
-			return searchText.toLowerCase().includes(searchTerm.toLowerCase());
+			// Filter regular choices by search term (name and model ID)
+			const mc = choice as ModelChoice;
+			const displayText = mc.name || '';
+			const modelId =
+				typeof mc.value === 'object' && mc.value !== null && 'id' in mc.value
+					? mc.value.id
+					: '';
+			const searchText = `${displayText} ${modelId}`.toLowerCase();
+			return searchText.includes(searchTerm.toLowerCase());
 		});
 		// Map ModelChoice to the format inquirer expects
 		return Promise.resolve(

@@ -203,6 +203,18 @@
 	],
 	"gemini-cli": [
 		{
+			"id": "gemini-3-flash-preview",
+			"name": "Gemini 3 Flash",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 1048576,
+			"supported": true
+		},
+		{
 			"id": "gemini-3-pro-preview",
 			"swe_score": 0.762,
 			"cost_per_1m_tokens": {
@@ -482,6 +494,18 @@
 		}
 	],
 	"google": [
+		{
+			"id": "gemini-3-flash-preview",
+			"name": "Gemini 3 Flash",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.5,
+				"output": 3.0
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 1048576,
+			"supported": true
+		},
 		{
 			"id": "gemini-3-pro-preview",
 			"swe_score": 0.762,

@@ -18,6 +18,7 @@ export interface ModelCost {
 
 export interface ModelData {
 	id: string;
+	name?: string;
 	provider?: string;
 	swe_score?: number | null;
 	cost_per_1m_tokens?: ModelCost | null;
