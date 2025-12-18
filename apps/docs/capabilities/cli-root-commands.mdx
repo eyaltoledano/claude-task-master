@@ -28,6 +28,15 @@ sidebarTitle: "CLI Commands"
 
     # List tasks with a specific status and include subtasks
     task-master list --status=<status> --with-subtasks
+
+    # Watch for changes and auto-refresh the list
+    task-master list --watch
+    task-master list -w
+
+    # Combine watch with other options
+    task-master list all -w              # Watch all tasks with subtasks
+    task-master list -w --compact        # Watch in compact format
+    task-master list --status=pending -w # Watch pending tasks only
     ```
   </Accordion>
 

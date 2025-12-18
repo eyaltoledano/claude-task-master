@@ -27,6 +27,20 @@ description: "A comprehensive reference of all available Task Master commands"
 
     # List tasks with a specific status and include subtasks
     task-master list --status=<status> --with-subtasks
+
+    # Watch for changes and auto-refresh
+    task-master list --watch
+    task-master list -w
+
+    # Compact output format
+    task-master list --compact
+    task-master list -c
+
+    # Watch mode with compact output
+    task-master list -w -c
+
+    # Hide the header
+    task-master list --no-header
     ```
   </Accordion>
 

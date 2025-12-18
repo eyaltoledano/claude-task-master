@@ -101,7 +101,8 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `withSubtasks`: `Include subtasks indented under their parent tasks in the list.` (CLI: `--with-subtasks`)
     *   `tag`: `Specify which tag context to list tasks from. Defaults to the current active tag.` (CLI: `--tag <name>`)
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
-*   **Usage:** Get an overview of the project status, often used at the start of a work session.
+    *   `watch`: `Watch for changes and auto-refresh the list in real-time. Works with file storage (fs.watch) and API storage (Supabase Realtime).` (CLI: `-w, --watch`)
+*   **Usage:** Get an overview of the project status, often used at the start of a work session. Use `--watch` to keep the list live-updating as tasks change.
 
 ### 4. Get Next Task (`next_task`)
 

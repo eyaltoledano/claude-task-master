@@ -2,6 +2,7 @@
  * @fileoverview Refactored file-based storage implementation for Task Master
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import {
 	ERROR_CODES,
@@ -11,7 +12,10 @@ import type {
 	IStorage,
 	LoadTasksOptions,
 	StorageStats,
-	UpdateStatusResult
+	UpdateStatusResult,
+	WatchEvent,
+	WatchOptions,
+	WatchSubscription
 } from '../../../../common/interfaces/storage.interface.js';
 import type {
 	Task,
@@ -880,6 +884,68 @@ export class FileStorage implements IStorage {
 			// If state.json doesn't exist or can't be read, default to 'master'
 			return 'master';
 		}
+	}
+
+	/**
+	 * Watch for changes to tasks file
+	 * Uses fs.watch with debouncing to detect file changes
+	 */
+	async watch(
+		callback: (event: WatchEvent) => void,
+		options?: WatchOptions
+	): Promise<WatchSubscription> {
+		const tasksPath = this.pathResolver.getTasksPath();
+		const debounceMs = options?.debounceMs ?? 100;
+
+		// Ensure file exists before watching
+		const fileExists = await this.fileOps.exists(tasksPath);
+		if (!fileExists) {
+			throw new TaskMasterError(
+				'Tasks file not found. Initialize the project first.',
+				ERROR_CODES.NOT_FOUND,
+				{ path: tasksPath }
+			);
+		}
+
+		let debounceTimer: NodeJS.Timeout | undefined;
+		let closed = false;
+
+		const watcher = fs.watch(tasksPath, (eventType, filename) => {
+			if (closed) return;
+			if (filename && eventType === 'change') {
+				if (debounceTimer) {
+					clearTimeout(debounceTimer);
+				}
+				debounceTimer = setTimeout(() => {
+					if (!closed) {
+						callback({
+							type: 'change',
+							timestamp: new Date()
+						});
+					}
+				}, debounceMs);
+			}
+		});
+
+		watcher.on('error', (error) => {
+			if (!closed) {
+				callback({
+					type: 'error',
+					timestamp: new Date(),
+					error
+				});
+			}
+		});
+
+		return {
+			unsubscribe: () => {
+				closed = true;
+				if (debounceTimer) {
+					clearTimeout(debounceTimer);
+				}
+				watcher.close();
+			}
+		};
 	}
 
 	/**

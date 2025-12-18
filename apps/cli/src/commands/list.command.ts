@@ -11,6 +11,7 @@ import {
 	type Task,
 	type TaskStatus,
 	type TmCore,
+	type WatchSubscription,
 	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
@@ -24,6 +25,8 @@ import {
 	displayDashboards,
 	displayRecommendedNextTask,
 	displaySuggestedNextSteps,
+	displaySyncMessage,
+	displayWatchFooter,
 	getPriorityBreakdown,
 	getTaskDescription
 } from '../ui/index.js';
@@ -42,8 +45,11 @@ export interface ListCommandOptions {
 	withSubtasks?: boolean;
 	format?: OutputFormat;
 	json?: boolean;
+	compact?: boolean;
+	noHeader?: boolean;
 	silent?: boolean;
 	project?: string;
+	watch?: boolean;
 }
 
 /**
@@ -87,11 +93,17 @@ export class ListTasksCommand extends Command {
 				'text'
 			)
 			.option('--json', 'Output in JSON format (shorthand for --format json)')
+			.option(
+				'-c, --compact',
+				'Output in compact format (shorthand for --format compact)'
+			)
+			.option('--no-header', 'Hide the command header')
 			.option('--silent', 'Suppress output (useful for programmatic usage)')
 			.option(
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
+			.option('-w, --watch', 'Watch for changes and update list automatically')
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -127,17 +139,85 @@ export class ListTasksCommand extends Command {
 			await this.initializeCore(getProjectRoot(options.project));
 
 			// Get tasks from core
-			const result = await this.getTasks(options);
+			if (options.watch) {
+				await this.watchTasks(options);
+			} else {
+				const result = await this.getTasks(options);
 
-			// Store result for programmatic access
-			this.setLastResult(result);
+				// Store result for programmatic access
+				this.setLastResult(result);
 
-			// Display results
-			if (!options.silent) {
-				this.displayResults(result, options);
+				// Display results
+				if (!options.silent) {
+					this.displayResults(result, options);
+				}
 			}
 		} catch (error: any) {
 			displayError(error);
+		}
+	}
+
+	/**
+	 * Watch for changes and update list
+	 * Uses tm-core's unified watch API which handles both file and API storage
+	 */
+	private async watchTasks(options: ListCommandOptions): Promise<void> {
+		if (!this.tmCore) {
+			throw new Error('TmCore not initialized');
+		}
+
+		// Initial render
+		let result = await this.getTasks(options);
+		let lastSync = new Date();
+
+		console.clear();
+		this.displayResults(result, options);
+
+		const storageType = result.storageType;
+		displayWatchFooter(storageType, lastSync);
+
+		let subscription: WatchSubscription | undefined;
+
+		try {
+			// Subscribe to task changes via tm-core
+			subscription = await this.tmCore.tasks.watch(
+				async (event) => {
+					if (event.type === 'change') {
+						try {
+							// Re-fetch tasks
+							result = await this.getTasks(options);
+							lastSync = new Date();
+
+							// Clear and display
+							console.clear();
+							this.displayResults(result, options);
+
+							// Show sync message with timestamp
+							displaySyncMessage(storageType, lastSync);
+							displayWatchFooter(storageType, lastSync);
+						} catch {
+							// Ignore errors during watch (e.g. partial writes)
+						}
+					} else if (event.type === 'error' && event.error) {
+						console.error(chalk.red(`\n⚠ Watch error: ${event.error.message}`));
+					}
+				},
+				{ tag: options.tag }
+			);
+
+			// Cleanup on process termination
+			const cleanup = () => {
+				subscription?.unsubscribe();
+				process.exit(0);
+			};
+			process.on('SIGINT', cleanup);
+			process.on('SIGTERM', cleanup);
+
+			// Keep process alive
+			await new Promise(() => {});
+		} catch (error: any) {
+			console.error(chalk.red(`Watch mode error: ${error.message}`));
+			throw error;
 		}
 	}
 
@@ -219,9 +299,13 @@ export class ListTasksCommand extends Command {
 		result: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		// If --json flag is set, override format to 'json'
+		// Resolve format: --json and --compact flags override --format option
 		const format = (
-			options.json ? 'json' : options.format || 'text'
+			options.json
+				? 'json'
+				: options.compact
+					? 'compact'
+					: options.format || 'text'
 		) as OutputFormat;
 
 		switch (format) {
@@ -230,12 +314,12 @@ export class ListTasksCommand extends Command {
 				break;
 
 			case 'compact':
-				this.displayCompact(result.tasks, options.withSubtasks);
+				this.displayCompact(result, options);
 				break;
 
 			case 'text':
 			default:
-				this.displayText(result, options.withSubtasks, options.status);
+				this.displayText(result, options);
 				break;
 		}
 	}
@@ -264,12 +348,25 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Display in compact format
 	 */
-	private displayCompact(tasks: Task[], withSubtasks?: boolean): void {
+	private displayCompact(
+		data: ListTasksResult,
+		options: ListCommandOptions
+	): void {
+		const { tasks, tag, storageType } = data;
+
+		// Display header unless --no-header is set
+		if (options.noHeader !== true) {
+			displayCommandHeader(this.tmCore, {
+				tag: tag || 'master',
+				storageType
+			});
+		}
+
 		tasks.forEach((task) => {
 			const icon = STATUS_ICONS[task.status];
 			console.log(`${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
-			if (withSubtasks && task.subtasks?.length) {
+			if (options.withSubtasks && task.subtasks?.length) {
 				task.subtasks.forEach((subtask) => {
 					const subIcon = STATUS_ICONS[subtask.status];
 					console.log(
@@ -285,16 +382,17 @@ export class ListTasksCommand extends Command {
 	 */
 	private displayText(
 		data: ListTasksResult,
-		withSubtasks?: boolean,
-		_statusFilter?: string
+		options: ListCommandOptions
 	): void {
 		const { tasks, tag, storageType } = data;
 
-		// Display header using utility function
-		displayCommandHeader(this.tmCore, {
-			tag: tag || 'master',
-			storageType
-		});
+		// Display header unless --no-header is set
+		if (options.noHeader !== true) {
+			displayCommandHeader(this.tmCore, {
+				tag: tag || 'master',
+				storageType
+			});
+		}
 
 		// No tasks message
 		if (tasks.length === 0) {
@@ -328,7 +426,7 @@ export class ListTasksCommand extends Command {
 		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
-				showSubtasks: withSubtasks,
+				showSubtasks: options.withSubtasks,
 				showDependencies: true,
 				showComplexity: true // Enable complexity column
 			})
