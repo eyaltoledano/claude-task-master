@@ -55,10 +55,15 @@ export interface ListCommandOptions {
 }
 
 /**
+ * Task with blocks field (inverse of dependencies)
+ */
+export type TaskWithBlocks = Task & { blocks: string[] };
+
+/**
  * Result type from list command
  */
 export interface ListTasksResult {
-	tasks: Task[];
+	tasks: TaskWithBlocks[];
 	total: number;
 	filtered: number;
 	tag?: string;
@@ -110,10 +115,7 @@ export class ListTasksCommand extends Command {
 				'--ready',
 				'Show only tasks ready to work on (dependencies satisfied)'
 			)
-			.option(
-				'--blocking',
-				'Show only tasks that block other tasks'
-			)
+			.option('--blocking', 'Show only tasks that block other tasks')
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -282,14 +284,20 @@ export class ListTasksCommand extends Command {
 			throw new Error('TmCore not initialized');
 		}
 
-		// Build filter
-		const filter =
+		// Parse status filter values
+		const statusFilterValues =
 			options.status && options.status !== 'all'
-				? {
-						status: options.status
-							.split(',')
-							.map((s: string) => s.trim() as TaskStatus)
-					}
+				? options.status.split(',').map((s: string) => s.trim() as TaskStatus)
+				: undefined;
+
+		// When --ready is used, we need ALL tasks to correctly compute which dependencies are satisfied
+		// So we fetch without status filter first, then apply status filter after ready/blocking
+		const needsAllTasks = options.ready || options.blocking;
+
+		// Build filter - skip status filter if we need all tasks for ready/blocking computation
+		const filter =
+			statusFilterValues && !needsAllTasks
+				? { status: statusFilterValues }
 				: undefined;
 
 		// Call tm-core
@@ -306,7 +314,7 @@ export class ListTasksCommand extends Command {
 			blocks: blocksMap.get(String(task.id)) || []
 		}));
 
-		// Apply ready/blocking filters
+		// Apply ready/blocking filters (with full task context)
 		let filteredTasks = enrichedTasks;
 
 		if (options.ready) {
@@ -315,6 +323,13 @@ export class ListTasksCommand extends Command {
 
 		if (options.blocking) {
 			filteredTasks = this.filterBlockingTasks(filteredTasks);
+		}
+
+		// Apply status filter AFTER ready/blocking if we deferred it earlier
+		if (statusFilterValues && needsAllTasks) {
+			filteredTasks = filteredTasks.filter((task) =>
+				statusFilterValues.includes(task.status)
+			);
 		}
 
 		return {
@@ -353,7 +368,7 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Filter to only tasks that are ready to work on (dependencies satisfied, not completed)
 	 */
-	private filterReadyTasks(tasks: (Task & { blocks: string[] })[]): (Task & { blocks: string[] })[] {
+	private filterReadyTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
 		// Build set of completed task IDs
 		const completedIds = new Set<string>();
 		tasks.forEach((t) => {
@@ -382,7 +397,7 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Filter to only tasks that block other tasks
 	 */
-	private filterBlockingTasks(tasks: (Task & { blocks: string[] })[]): (Task & { blocks: string[] })[] {
+	private filterBlockingTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
 		return tasks.filter((task) => task.blocks.length > 0);
 	}
 
