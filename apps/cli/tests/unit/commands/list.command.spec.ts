@@ -39,8 +39,7 @@ vi.mock('../../../src/utils/project-root.js', () => ({
 
 vi.mock('../../../src/utils/task-status.js', () => ({
 	TERMINAL_COMPLETE_STATUSES: ['done', 'cancelled'],
-	isTaskComplete: (status: string) =>
-		['done', 'cancelled'].includes(status)
+	isTaskComplete: (status: string) => ['done', 'cancelled'].includes(status)
 }));
 
 vi.mock('../../../src/utils/error-handler.js', () => ({
@@ -379,7 +378,12 @@ describe('ListTasksCommand', () => {
 				{ id: '1', title: 'Task 1', status: 'pending', dependencies: [] },
 				{ id: '2', title: 'Task 2', status: 'pending', dependencies: ['1'] },
 				{ id: '3', title: 'Task 3', status: 'pending', dependencies: ['1'] },
-				{ id: '4', title: 'Task 4', status: 'pending', dependencies: ['2', '3'] }
+				{
+					id: '4',
+					title: 'Task 4',
+					status: 'pending',
+					dependencies: ['2', '3']
+				}
 			];
 
 			(command as any).tmCore = {
