@@ -619,12 +619,31 @@ async function tags(
 			const tasks = tagData.tasks || [];
 			const metadata = tagData.metadata || {};
 
+			// Calculate ready tasks (actionable status + dependencies satisfied)
+			const completedIds = new Set(
+				tasks
+					.filter(
+						(t) =>
+							t.status === 'done' ||
+							t.status === 'completed' ||
+							t.status === 'cancelled'
+					)
+					.map((t) => String(t.id))
+			);
+			const actionableStatuses = ['pending', 'in-progress', 'review'];
+			const readyTasks = tasks.filter((t) => {
+				if (!actionableStatuses.includes(t.status)) return false;
+				if (!t.dependencies || t.dependencies.length === 0) return true;
+				return t.dependencies.every((depId) => completedIds.has(String(depId)));
+			});
+
 			tagList.push({
 				name: tagName,
 				isCurrent: tagName === currentTag,
 				completedTasks: tasks.filter(
 					(t) => t.status === 'done' || t.status === 'completed'
 				).length,
+				readyTasks: readyTasks.length,
 				tasks: tasks || [],
 				created: metadata.created || 'Unknown',
 				description: metadata.description || 'No description'
@@ -667,7 +686,8 @@ async function tags(
 			const headers = [chalk.cyan.bold('Tag Name')];
 			if (showTaskCounts) {
 				headers.push(chalk.cyan.bold('Tasks'));
-				headers.push(chalk.cyan.bold('Completed'));
+				headers.push(chalk.cyan.bold('Ready'));
+				headers.push(chalk.cyan.bold('Done'));
 			}
 			if (showMetadata) {
 				headers.push(chalk.cyan.bold('Created'));
@@ -680,16 +700,16 @@ async function tags(
 
 			let colWidths;
 			if (showMetadata) {
-				// With metadata: Tag Name, Tasks, Completed, Created, Description
-				const widths = [0.25, 0.1, 0.12, 0.15, 0.38];
+				// With metadata: Tag Name, Tasks, Ready, Done, Created, Description
+				const widths = [0.22, 0.08, 0.08, 0.08, 0.14, 0.38];
 				colWidths = widths.map((w, i) =>
-					Math.max(Math.floor(usableWidth * w), i === 0 ? 15 : 8)
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 15 : 6)
 				);
 			} else {
-				// Without metadata: Tag Name, Tasks, Completed
-				const widths = [0.7, 0.15, 0.15];
+				// Without metadata: Tag Name, Tasks, Ready, Done
+				const widths = [0.6, 0.13, 0.13, 0.13];
 				colWidths = widths.map((w, i) =>
-					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 10)
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 8)
 				);
 			}
 
@@ -711,6 +731,11 @@ async function tags(
 
 				if (showTaskCounts) {
 					row.push(chalk.white(tag.tasks.length.toString()));
+					row.push(
+						tag.readyTasks > 0
+							? chalk.yellow(tag.readyTasks.toString())
+							: chalk.gray('0')
+					);
 					row.push(chalk.green(tag.completedTasks.toString()));
 				}
 
