@@ -10,6 +10,7 @@ import { getComplexityWithColor } from '../formatters/complexity-formatters.js';
 import { getPriorityWithColor } from '../formatters/priority-formatters.js';
 import { getStatusWithColor } from '../formatters/status-formatters.js';
 import { getBoxWidth, truncate } from '../layout/helpers.js';
+import { isTaskComplete } from '../../utils/task-status.js';
 
 /**
  * Default priority for tasks/subtasks when not specified
@@ -144,7 +145,13 @@ export function createTaskTable(
 			if (!taskWithBlocks.blocks || taskWithBlocks.blocks.length === 0) {
 				row.push(chalk.gray('-'));
 			} else {
-				row.push(chalk.yellow(taskWithBlocks.blocks.join(', ')));
+				// Gray out blocks for completed tasks (no longer blocking)
+				const blocksText = taskWithBlocks.blocks.join(', ');
+				row.push(
+					isTaskComplete(task.status)
+						? chalk.gray(blocksText)
+						: chalk.yellow(blocksText)
+				);
 			}
 		}
 
