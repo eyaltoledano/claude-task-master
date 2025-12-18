@@ -3,8 +3,6 @@
  * Extends Commander.Command for better integration with the framework
  */
 
-import fs from 'fs';
-import path from 'path';
 import {
 	OUTPUT_FORMATS,
 	type OutputFormat,
@@ -13,6 +11,7 @@ import {
 	type Task,
 	type TaskStatus,
 	type TmCore,
+	type WatchSubscription,
 	createTmCore
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
@@ -26,6 +25,8 @@ import {
 	displayDashboards,
 	displayRecommendedNextTask,
 	displaySuggestedNextSteps,
+	displaySyncMessage,
+	displayWatchFooter,
 	getPriorityBreakdown,
 	getTaskDescription
 } from '../ui/index.js';
@@ -157,35 +158,14 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
-	 * Format a timestamp for display
-	 */
-	private formatSyncTime(date: Date): string {
-		return date.toLocaleTimeString('en-US', {
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: true
-		});
-	}
-
-	/**
-	 * Display watch status footer
-	 */
-	private displayWatchFooter(
-		storageType: 'api' | 'file',
-		lastSync: Date
-	): void {
-		const syncTime = this.formatSyncTime(lastSync);
-		const source = storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
-
-		console.log(chalk.dim(`\nWatching ${source} for changes...`));
-		console.log(chalk.gray(`Last synced: ${syncTime}`));
-	}
-
-	/**
 	 * Watch for changes and update list
+	 * Uses tm-core's unified watch API which handles both file and API storage
 	 */
 	private async watchTasks(options: ListCommandOptions): Promise<void> {
+		if (!this.tmCore) {
+			throw new Error('TmCore not initialized');
+		}
+
 		// Initial render
 		let result = await this.getTasks(options);
 		let lastSync = new Date();
@@ -194,35 +174,17 @@ export class ListTasksCommand extends Command {
 		this.displayResults(result, options);
 
 		const storageType = result.storageType;
+		displayWatchFooter(storageType, lastSync);
 
-		if (storageType === 'api') {
-			// API implementation using Supabase Realtime
-			const { AuthManager } = await import('@tm/core');
-			const authManager = AuthManager.getInstance();
-			const context = authManager.getContext();
+		let subscription: WatchSubscription | undefined;
 
-			if (!context?.briefId) {
-				console.warn(chalk.yellow('No brief context found for watching.'));
-				return;
-			}
-
-			const supabase = authManager.supabaseClient.getClient();
-
-			this.displayWatchFooter('api', lastSync);
-
-			const channel = supabase
-				.channel(`tasks-list-watch-${Date.now()}`)
-				.on(
-					'postgres_changes',
-					{
-						event: '*',
-						schema: 'public',
-						table: 'tasks',
-						filter: `brief_id=eq.${context.briefId}`
-					},
-					async () => {
+		try {
+			// Subscribe to task changes via tm-core
+			subscription = await this.tmCore.tasks.watch(
+				async (event) => {
+					if (event.type === 'change') {
 						try {
-							// Re-fetch
+							// Re-fetch tasks
 							result = await this.getTasks(options);
 							lastSync = new Date();
 
@@ -231,72 +193,31 @@ export class ListTasksCommand extends Command {
 							this.displayResults(result, options);
 
 							// Show sync message with timestamp
-							console.log(
-								chalk.blue(
-									`\nℹ Sync received from Hamster Studio at ${this.formatSyncTime(lastSync)}`
-								)
-							);
-							this.displayWatchFooter('api', lastSync);
-						} catch (e) {
-							// Ignore errors
+							displaySyncMessage(storageType, lastSync);
+							displayWatchFooter(storageType, lastSync);
+						} catch {
+							// Ignore errors during watch (e.g. partial writes)
 						}
+					} else if (event.type === 'error' && event.error) {
+						console.error(chalk.red(`\n⚠ Watch error: ${event.error.message}`));
 					}
-				)
-				.subscribe();
+				},
+				{ tag: options.tag }
+			);
+
+			// Cleanup on process termination
+			const cleanup = () => {
+				subscription?.unsubscribe();
+				process.exit(0);
+			};
+			process.on('SIGINT', cleanup);
+			process.on('SIGTERM', cleanup);
 
 			// Keep process alive
 			await new Promise(() => {});
-		} else {
-			// File implementation - used when not authenticated
-			const projectRoot = getProjectRoot(options.project);
-			const tasksPath = path.join(
-				projectRoot,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
-
-			if (fs.existsSync(tasksPath)) {
-				this.displayWatchFooter('file', lastSync);
-
-				let debounceTimer: NodeJS.Timeout;
-
-				fs.watch(tasksPath, (eventType, filename) => {
-					if (filename && eventType === 'change') {
-						clearTimeout(debounceTimer);
-						debounceTimer = setTimeout(async () => {
-							try {
-								// Re-fetch
-								result = await this.getTasks(options);
-								lastSync = new Date();
-
-								// Clear and display
-								console.clear();
-								this.displayResults(result, options);
-
-								// Show sync message with timestamp
-								console.log(
-									chalk.blue(
-										`\nℹ tasks.json updated at ${this.formatSyncTime(lastSync)}`
-									)
-								);
-								this.displayWatchFooter('file', lastSync);
-							} catch (e) {
-								// Ignore errors during watch (e.g. partial writes)
-							}
-						}, 100);
-					}
-				});
-
-				// Keep process alive
-				await new Promise(() => {});
-			} else {
-				console.warn(
-					chalk.yellow(
-						'Tasks file not found at expected path, watch mode disabled.'
-					)
-				);
-			}
+		} catch (error: any) {
+			console.error(chalk.red(`Watch mode error: ${error.message}`));
+			throw error;
 		}
 	}
 
@@ -459,7 +380,10 @@ export class ListTasksCommand extends Command {
 	/**
 	 * Display in text format with tables
 	 */
-	private displayText(data: ListTasksResult, options: ListCommandOptions): void {
+	private displayText(
+		data: ListTasksResult,
+		options: ListCommandOptions
+	): void {
 		const { tasks, tag, storageType } = data;
 
 		// Display header unless --no-header is set

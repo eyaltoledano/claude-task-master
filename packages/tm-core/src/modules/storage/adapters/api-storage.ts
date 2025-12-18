@@ -12,7 +12,10 @@ import type {
 	IStorage,
 	LoadTasksOptions,
 	StorageStats,
-	UpdateStatusResult
+	UpdateStatusResult,
+	WatchEvent,
+	WatchOptions,
+	WatchSubscription
 } from '../../../common/interfaces/storage.interface.js';
 import { getLogger } from '../../../common/logger/factory.js';
 import type {
@@ -939,6 +942,64 @@ export class ApiStorage implements IStorage {
 	async close(): Promise<void> {
 		this.initialized = false;
 		this.tagsCache.clear();
+	}
+
+	/**
+	 * Watch for changes to tasks via Supabase Realtime
+	 * Subscribes to postgres_changes for the tasks table filtered by brief_id
+	 */
+	async watch(
+		callback: (event: WatchEvent) => void,
+		_options?: WatchOptions
+	): Promise<WatchSubscription> {
+		await this.ensureInitialized();
+
+		const authManager = AuthManager.getInstance();
+		const context = authManager.getContext();
+
+		if (!context?.briefId) {
+			throw new TaskMasterError(
+				'No brief context found for watching. Please connect to a brief first.',
+				ERROR_CODES.NO_BRIEF_SELECTED,
+				{ operation: 'watch' }
+			);
+		}
+
+		const supabase = authManager.supabaseClient.getClient();
+		const channelName = `tasks-watch-${context.briefId}-${Date.now()}`;
+
+		const channel = supabase
+			.channel(channelName)
+			.on(
+				'postgres_changes',
+				{
+					event: '*',
+					schema: 'public',
+					table: 'tasks',
+					filter: `brief_id=eq.${context.briefId}`
+				},
+				() => {
+					callback({
+						type: 'change',
+						timestamp: new Date()
+					});
+				}
+			)
+			.subscribe((status, error) => {
+				if (status === 'CHANNEL_ERROR' || error) {
+					callback({
+						type: 'error',
+						timestamp: new Date(),
+						error: error || new Error('Channel subscription failed')
+					});
+				}
+			});
+
+		return {
+			unsubscribe: () => {
+				channel.unsubscribe();
+			}
+		};
 	}
 
 	/**

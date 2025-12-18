@@ -36,6 +36,11 @@ import type {
 } from './services/preflight-checker.service.js';
 import type { TaskValidationResult } from './services/task-loader.service.js';
 import type { ExpandTaskResult } from '../integration/services/task-expansion.service.js';
+import type {
+	WatchEvent,
+	WatchOptions,
+	WatchSubscription
+} from '../../common/interfaces/storage.interface.js';
 
 /**
  * Tasks Domain - Unified API for all task operations
@@ -387,6 +392,25 @@ export class TasksDomain {
 	 */
 	getStorageType(): 'file' | 'api' {
 		return this.taskService.getStorageType();
+	}
+
+	// ========== Watch ==========
+
+	/**
+	 * Watch for changes to tasks
+	 * For file storage: uses fs.watch on tasks.json with debouncing
+	 * For API storage: uses Supabase Realtime subscriptions
+	 *
+	 * @param callback - Function called when tasks change
+	 * @param options - Watch options (debounce, tag)
+	 * @returns Subscription handle with unsubscribe method
+	 */
+	async watch(
+		callback: (event: WatchEvent) => void,
+		options?: WatchOptions
+	): Promise<WatchSubscription> {
+		const storage = this.taskService.getStorage();
+		return storage.watch(callback, options);
 	}
 
 	// ========== Task File Generation ==========

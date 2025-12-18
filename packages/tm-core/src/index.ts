@@ -36,10 +36,14 @@ export type * from './common/types/index.js';
 // Common interfaces
 export type * from './common/interfaces/index.js';
 
-// Storage interfaces - TagInfo and TagsWithStatsResult
+// Storage interfaces - TagInfo, TagsWithStatsResult, and Watch types
 export type {
 	TagInfo,
-	TagsWithStatsResult
+	TagsWithStatsResult,
+	WatchEvent,
+	WatchEventType,
+	WatchOptions,
+	WatchSubscription
 } from './common/interfaces/storage.interface.js';
 
 // Storage adapters - FileStorage for direct local file access

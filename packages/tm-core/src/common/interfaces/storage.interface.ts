@@ -235,6 +235,17 @@ export interface IStorage {
 	 * @returns Promise that resolves to tags with statistics
 	 */
 	getTagsWithStats(): Promise<TagsWithStatsResult>;
+
+	/**
+	 * Watch for changes to tasks
+	 * @param callback - Function called when tasks change
+	 * @param options - Watch options (debounce, tag)
+	 * @returns Subscription handle with unsubscribe method
+	 */
+	watch(
+		callback: (event: WatchEvent) => void,
+		options?: WatchOptions
+	): Promise<WatchSubscription>;
 }
 
 /**
@@ -280,6 +291,41 @@ export interface TagsWithStatsResult {
 	currentTag: string | null;
 	/** Total number of tags */
 	totalTags: number;
+}
+
+/**
+ * Watch event types
+ */
+export type WatchEventType = 'change' | 'error';
+
+/**
+ * Watch event payload
+ */
+export interface WatchEvent {
+	/** Type of event */
+	type: WatchEventType;
+	/** Timestamp of the event */
+	timestamp: Date;
+	/** Error if type is 'error' */
+	error?: Error;
+}
+
+/**
+ * Watch options
+ */
+export interface WatchOptions {
+	/** Debounce time in milliseconds (default: 100) */
+	debounceMs?: number;
+	/** Tag context for file storage */
+	tag?: string;
+}
+
+/**
+ * Watch subscription handle
+ */
+export interface WatchSubscription {
+	/** Unsubscribe from watch events */
+	unsubscribe: () => void;
 }
 
 /**
@@ -380,6 +426,10 @@ export abstract class BaseStorage implements IStorage {
 	abstract getStorageType(): 'file' | 'api';
 	abstract getCurrentBriefName(): string | null;
 	abstract getTagsWithStats(): Promise<TagsWithStatsResult>;
+	abstract watch(
+		callback: (event: WatchEvent) => void,
+		options?: WatchOptions
+	): Promise<WatchSubscription>;
 	/**
 	 * Utility method to generate backup filename
 	 * @param originalPath - Original file path
