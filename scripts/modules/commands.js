@@ -145,8 +145,10 @@ import {
 	categorizeRemovalResults,
 	generateProfileRemovalSummary,
 	generateProfileSummary,
+	processRuleProfiles,
 	runInteractiveProfilesSetup
 } from '../../src/utils/profiles.js';
+import { detectInstalledIDEs } from '@tm/profiles';
 import {
 	convertAllRulesToProfileRules,
 	getRulesProfile,
@@ -4393,14 +4395,19 @@ Examples:
 			'-m, --mode <mode>',
 			'Operating mode for filtering rules/commands (solo or team). Auto-detected from config if not specified.'
 		)
+		.option(
+			'-y, --yes',
+			'Non-interactive mode: auto-detect IDEs and install rules without prompting'
+		)
 		.addHelpText(
 			'after',
 			`
 		Examples:
-		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add Windsurf and Roo rule sets
+		$ task-master rules ${RULES_ACTIONS.ADD}                       # Interactive setup with auto-detected IDEs pre-selected
+		$ task-master rules ${RULES_ACTIONS.ADD} -y                    # Auto-detect and install without prompting
+		$ task-master rules ${RULES_ACTIONS.ADD} windsurf roo          # Add specific profiles
 		$ task-master rules ${RULES_ACTIONS.ADD} cursor --mode=team    # Add Cursor rules for team mode only
-		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set
-		$ task-master rules --${RULES_SETUP_ACTION}                  # Interactive setup to select rule profiles`
+		$ task-master rules ${RULES_ACTIONS.REMOVE} windsurf          # Remove Windsurf rule set`
 		)
 		.action(async (action, profiles, options) => {
 			const taskMaster = initTaskMaster({});
@@ -4425,7 +4432,8 @@ Examples:
 			 */
 			if (options[RULES_SETUP_ACTION]) {
 				// Run interactive rules setup ONLY (no project init)
-				const selectedRuleProfiles = await runInteractiveProfilesSetup();
+				const selectedRuleProfiles =
+					await runInteractiveProfilesSetup(projectRoot);
 
 				if (!selectedRuleProfiles || selectedRuleProfiles.length === 0) {
 					console.log(chalk.yellow('No profiles selected. Exiting.'));
@@ -4438,30 +4446,11 @@ Examples:
 					)
 				);
 
-				for (let i = 0; i < selectedRuleProfiles.length; i++) {
-					const profile = selectedRuleProfiles[i];
-					console.log(
-						chalk.blue(
-							`Processing profile ${i + 1}/${selectedRuleProfiles.length}: ${profile}...`
-						)
-					);
-
-					if (!isValidProfile(profile)) {
-						console.warn(
-							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
-						);
-						continue;
-					}
-					const profileConfig = getRulesProfile(profile);
-					const mode = await getOperatingMode(options.mode);
-					const addResult = convertAllRulesToProfileRules(
-						projectRoot,
-						profileConfig,
-						{ mode }
-					);
-
-					console.log(chalk.green(generateProfileSummary(profile, addResult)));
-				}
+				await processRuleProfiles(
+					selectedRuleProfiles,
+					projectRoot,
+					options.mode
+				);
 
 				console.log(
 					chalk.green(
@@ -4484,6 +4473,98 @@ Examples:
 					)
 				);
 				process.exit(1);
+			}
+
+			/**
+			 * 'task-master rules add' (no profiles):
+			 *
+			 * - Without -y: Opens interactive setup with auto-detected IDEs pre-selected
+			 * - With -y: Non-interactive mode, installs rules for all detected IDEs
+			 *
+			 * Example usage:
+			 *   $ task-master rules add       # Interactive setup with pre-selection
+			 *   $ task-master rules add -y    # Auto-detect and install without prompting
+			 */
+			if (
+				action === RULES_ACTIONS.ADD &&
+				(!profiles || profiles.length === 0)
+			) {
+				let selectedRuleProfiles;
+
+				if (options.yes) {
+					// Non-interactive mode: auto-detect and install
+					console.log(chalk.blue('\n🔍 Auto-detecting installed IDEs...\n'));
+
+					const detected = detectInstalledIDEs({ projectRoot });
+
+					if (detected.length === 0) {
+						console.log(
+							chalk.yellow(
+								'No IDE markers detected in this project.\n' +
+									chalk.gray(
+										'Searched for: .cursor, .claude, .windsurf, .roo, .vscode, etc.\n'
+									)
+							)
+						);
+						console.log(
+							chalk.cyan(
+								'To manually select profiles, run without -y flag:\n' +
+									'  task-master rules add\n\n' +
+									'Or specify profiles directly:\n' +
+									'  task-master rules add cursor windsurf\n'
+							)
+						);
+						return;
+					}
+
+					// Show what was detected
+					console.log(chalk.green('✓ Detected the following IDEs:\n'));
+					for (const ide of detected) {
+						console.log(
+							`  • ${ide.displayName} ${chalk.gray(`(${ide.markerPath})`)}`
+						);
+					}
+					console.log('');
+
+					selectedRuleProfiles = detected.map((d) => d.profileName);
+				} else {
+					// Interactive mode: open setup with pre-selection
+					selectedRuleProfiles = await runInteractiveProfilesSetup(projectRoot);
+				}
+
+				if (!selectedRuleProfiles || selectedRuleProfiles.length === 0) {
+					console.log(chalk.yellow('No profiles selected. Exiting.'));
+					return;
+				}
+
+				console.log(
+					chalk.blue(
+						`Installing ${selectedRuleProfiles.length} selected profile(s)...`
+					)
+				);
+
+				const addResults = await processRuleProfiles(
+					selectedRuleProfiles,
+					projectRoot,
+					options.mode
+				);
+
+				// Final summary
+				const { allSuccessfulProfiles, totalSuccess, totalFailed } =
+					categorizeProfileResults(addResults);
+				console.log(
+					chalk.green(
+						`\n✓ Successfully installed ${allSuccessfulProfiles.length} profile(s)`
+					)
+				);
+				if (totalSuccess > 0) {
+					console.log(
+						chalk.gray(
+							`  ${totalSuccess} files processed, ${totalFailed} failed`
+						)
+					);
+				}
+				return;
 			}
 
 			if (!profiles || profiles.length === 0) {

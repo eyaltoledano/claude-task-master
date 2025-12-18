@@ -7,9 +7,14 @@ import path from 'path';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { log } from '../../scripts/modules/utils.js';
 import { RULE_PROFILES } from '../constants/profiles.js';
-import { getRulesProfile } from './rule-transformer.js';
+import {
+	convertAllRulesToProfileRules,
+	getRulesProfile,
+	isValidProfile
+} from './rule-transformer.js';
+import { getPreSelectedProfiles } from '@tm/profiles';
+import { getOperatingMode } from '../../scripts/modules/config-manager.js';
 
 // =============================================================================
 // PROFILE DETECTION
@@ -95,13 +100,28 @@ export function wouldRemovalLeaveNoProfiles(projectRoot, profilesToRemove) {
  * Launches an interactive prompt for selecting which rule profiles to include in your project.
  *
  * This function dynamically lists all available profiles (from RULE_PROFILES) and presents them as checkboxes.
- * The user must select at least one profile (no defaults are pre-selected). The result is an array of selected profile names.
+ * Detected IDE profiles (based on directory markers like .cursor, .claude, etc.) are pre-selected.
+ * The result is an array of selected profile names.
  *
  * Used by both project initialization (init) and the CLI 'task-master rules setup' command.
  *
+ * @param {string} [projectRoot=process.cwd()] - Project root directory for IDE detection
  * @returns {Promise<string[]>} Array of selected profile names (e.g., ['cursor', 'windsurf'])
  */
-export async function runInteractiveProfilesSetup() {
+export async function runInteractiveProfilesSetup(projectRoot = process.cwd()) {
+	// Auto-detect installed IDEs for pre-selection
+	const preSelected = getPreSelectedProfiles({ projectRoot });
+
+	if (preSelected.length > 0) {
+		const detectedNames = preSelected
+			.map((p) => getProfileDisplayName(p))
+			.join(', ');
+		console.log(
+			chalk.cyan(`\n🔍 Auto-detected IDEs: ${detectedNames}`) +
+				chalk.gray(' (pre-selected below)\n')
+		);
+	}
+
 	// Generate the profile list dynamically with proper display names, alphabetized
 	const profileDescriptions = RULE_PROFILES.map((profileName) => {
 		const displayName = getProfileDisplayName(profileName);
@@ -165,10 +185,14 @@ export async function runInteractiveProfilesSetup() {
 	);
 
 	// Generate choices in the same order as the display text above
+	// Pre-select profiles that were auto-detected
 	const sortedChoices = profileDescriptions.map(
 		({ profileName, displayName }) => ({
-			name: displayName,
-			value: profileName
+			name: preSelected.includes(profileName)
+				? `${displayName} ${chalk.dim('(detected)')}`
+				: displayName,
+			value: profileName,
+			checked: preSelected.includes(profileName)
 		})
 	);
 
@@ -183,6 +207,57 @@ export async function runInteractiveProfilesSetup() {
 	};
 	const { ruleProfiles } = await inquirer.prompt([ruleProfilesQuestion]);
 	return ruleProfiles;
+}
+
+// =============================================================================
+// PROFILE PROCESSING
+// =============================================================================
+
+/**
+ * Processes rule profiles by validating, resolving mode, and installing rules.
+ * @param {string[]} profiles - Array of profile names to process
+ * @param {string} projectRoot - Project root directory path
+ * @param {string|undefined} modeOption - Operating mode option from CLI
+ * @returns {Promise<Array<{profileName: string, success: number, failed: number}>>} Results for each profile
+ */
+export async function processRuleProfiles(profiles, projectRoot, modeOption) {
+	const results = [];
+	const mode = await getOperatingMode(modeOption);
+
+	for (let i = 0; i < profiles.length; i++) {
+		const profile = profiles[i];
+		console.log(
+			chalk.blue(
+				`Processing profile ${i + 1}/${profiles.length}: ${profile}...`
+			)
+		);
+
+		if (!isValidProfile(profile)) {
+			console.warn(
+				`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
+			);
+			continue;
+		}
+
+		const profileConfig = getRulesProfile(profile);
+		const addResult = convertAllRulesToProfileRules(
+			projectRoot,
+			profileConfig,
+			{
+				mode
+			}
+		);
+
+		results.push({
+			profileName: profile,
+			success: addResult.success,
+			failed: addResult.failed
+		});
+
+		console.log(chalk.green(generateProfileSummary(profile, addResult)));
+	}
+
+	return results;
 }
 
 // =============================================================================
