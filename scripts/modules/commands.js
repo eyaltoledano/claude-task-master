@@ -145,8 +145,10 @@ import {
 	categorizeRemovalResults,
 	generateProfileRemovalSummary,
 	generateProfileSummary,
+	processRuleProfiles,
 	runInteractiveProfilesSetup
 } from '../../src/utils/profiles.js';
+import { detectInstalledIDEs } from '@tm/profiles';
 import {
 	convertAllRulesToProfileRules,
 	getRulesProfile,
@@ -4444,30 +4446,11 @@ Examples:
 					)
 				);
 
-				for (let i = 0; i < selectedRuleProfiles.length; i++) {
-					const profile = selectedRuleProfiles[i];
-					console.log(
-						chalk.blue(
-							`Processing profile ${i + 1}/${selectedRuleProfiles.length}: ${profile}...`
-						)
-					);
-
-					if (!isValidProfile(profile)) {
-						console.warn(
-							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
-						);
-						continue;
-					}
-					const profileConfig = getRulesProfile(profile);
-					const mode = await getOperatingMode(options.mode);
-					const addResult = convertAllRulesToProfileRules(
-						projectRoot,
-						profileConfig,
-						{ mode }
-					);
-
-					console.log(chalk.green(generateProfileSummary(profile, addResult)));
-				}
+				await processRuleProfiles(
+					selectedRuleProfiles,
+					projectRoot,
+					options.mode
+				);
 
 				console.log(
 					chalk.green(
@@ -4510,8 +4493,6 @@ Examples:
 
 				if (options.yes) {
 					// Non-interactive mode: auto-detect and install
-					const { detectInstalledIDEs } = await import('@tm/profiles');
-
 					console.log(chalk.blue('\n🔍 Auto-detecting installed IDEs...\n'));
 
 					const detected = detectInstalledIDEs({ projectRoot });
@@ -4527,7 +4508,10 @@ Examples:
 						);
 						console.log(
 							chalk.cyan(
-								'To manually select profiles, run without -y flag:\n  task-master rules add\n'
+								'To manually select profiles, run without -y flag:\n' +
+									'  task-master rules add\n\n' +
+									'Or specify profiles directly:\n' +
+									'  task-master rules add cursor windsurf\n'
 							)
 						);
 						return;
@@ -4559,37 +4543,11 @@ Examples:
 					)
 				);
 
-				const addResults = [];
-				for (let i = 0; i < selectedRuleProfiles.length; i++) {
-					const profile = selectedRuleProfiles[i];
-					console.log(
-						chalk.blue(
-							`Processing profile ${i + 1}/${selectedRuleProfiles.length}: ${profile}...`
-						)
-					);
-
-					if (!isValidProfile(profile)) {
-						console.warn(
-							`Rule profile for "${profile}" not found. Valid profiles: ${RULE_PROFILES.join(', ')}. Skipping.`
-						);
-						continue;
-					}
-					const profileConfig = getRulesProfile(profile);
-					const mode = await getOperatingMode(options.mode);
-					const addResult = convertAllRulesToProfileRules(
-						projectRoot,
-						profileConfig,
-						{ mode }
-					);
-
-					addResults.push({
-						profileName: profile,
-						success: addResult.success,
-						failed: addResult.failed
-					});
-
-					console.log(chalk.green(generateProfileSummary(profile, addResult)));
-				}
+				const addResults = await processRuleProfiles(
+					selectedRuleProfiles,
+					projectRoot,
+					options.mode
+				);
 
 				// Final summary
 				const { allSuccessfulProfiles, totalSuccess, totalFailed } =
