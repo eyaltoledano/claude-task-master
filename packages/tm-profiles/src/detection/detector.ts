@@ -18,7 +18,9 @@ import type { DetectionResult, DetectionOptions } from './types.js';
  * // Returns: [{ profileName: 'cursor', markerPath: '.cursor', displayName: 'Cursor', exists: true }]
  * ```
  */
-export function detectInstalledIDEs(options: DetectionOptions): DetectionResult[] {
+export function detectInstalledIDEs(
+	options: DetectionOptions
+): DetectionResult[] {
 	const { projectRoot } = options;
 	const results: DetectionResult[] = [];
 

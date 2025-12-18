@@ -2,8 +2,8 @@
  * IDE Detection Module
  *
  * Provides functions to auto-detect installed IDEs based on project markers.
- * Used for pre-selecting profiles in `tm rules add --setup` and
- * the `tm rules add auto` command.
+ * Used for pre-selecting profiles in `tm rules add` and
+ * non-interactive mode with `tm rules add -y`.
  */
 
 export type { DetectionResult, DetectionOptions } from './types.js';
