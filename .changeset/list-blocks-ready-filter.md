@@ -1,5 +1,5 @@
 ---
-"@tm/cli": minor
+"task-master-ai": minor
 ---
 
 Add --ready and --blocking filters to list command for parallel team assignment
