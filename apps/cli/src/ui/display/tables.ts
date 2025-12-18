@@ -45,7 +45,9 @@ export function createTaskTable(
 
 	// Calculate number of optional columns
 	const optionalCols =
-		(showDependencies ? 1 : 0) + (showBlocks ? 1 : 0) + (showComplexity ? 1 : 0);
+		(showDependencies ? 1 : 0) +
+		(showBlocks ? 1 : 0) +
+		(showComplexity ? 1 : 0);
 
 	// Base widths: ID, Title, Status, Priority (then optional: Dependencies, Blocks, Complexity)
 	let baseColWidths: number[];
@@ -142,9 +144,7 @@ export function createTaskTable(
 			if (!taskWithBlocks.blocks || taskWithBlocks.blocks.length === 0) {
 				row.push(chalk.gray('-'));
 			} else {
-				row.push(
-					chalk.yellow(taskWithBlocks.blocks.join(', '))
-				);
+				row.push(chalk.yellow(taskWithBlocks.blocks.join(', ')));
 			}
 		}
 
