@@ -27,17 +27,7 @@
 	"engines": {
 		"node": ">=20"
 	},
-	"keywords": [
-		"ai",
-		"grok",
-		"x.ai",
-		"cli",
-		"language-model",
-		"provider"
-	],
-	"files": [
-		"dist/**/*",
-		"README.md"
-	],
-	"version": null
+	"keywords": ["ai", "grok", "x.ai", "cli", "language-model", "provider"],
+	"files": ["dist/**/*", "README.md"],
+	"version": ""
 }

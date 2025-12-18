@@ -8,10 +8,7 @@
 	"exports": {
 		".": "./src/index.ts"
 	},
-	"files": [
-		"dist",
-		"README.md"
-	],
+	"files": ["dist", "README.md"],
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
@@ -53,20 +50,13 @@
 	"engines": {
 		"node": ">=20.0.0"
 	},
-	"keywords": [
-		"task-master",
-		"cli",
-		"task-management",
-		"productivity"
-	],
+	"keywords": ["task-master", "cli", "task-management", "productivity"],
 	"author": "",
 	"license": "MIT",
 	"typesVersions": {
 		"*": {
-			"*": [
-				"src/*"
-			]
+			"*": ["src/*"]
 		}
 	},
-	"version": null
+	"version": ""
 }
