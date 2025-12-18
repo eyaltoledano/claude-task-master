@@ -1,5 +1,28 @@
 # task-master-ai
 
+## 0.40.0
+
+### Minor Changes
+
+- [#1538](https://github.com/eyaltoledano/claude-task-master/pull/1538) [`a2d5639`](https://github.com/eyaltoledano/claude-task-master/commit/a2d563991dd8ad6b8a9b76d0d43eac7a6156dd97) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Added Gemini 3 Flash Preview model support for Google and Gemini CLI providers
+
+- [#1535](https://github.com/eyaltoledano/claude-task-master/pull/1535) [`4d1ed20`](https://github.com/eyaltoledano/claude-task-master/commit/4d1ed20345083ab2ec1c7fc268c69379281a68ea) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add auto-detection for IDE profiles in rules command
+  - `tm rules add` now opens interactive setup with detected IDEs pre-selected
+  - `tm rules add -y` auto-detects and installs rules without prompting
+  - Detects 13 IDEs: Cursor, Claude Code, Windsurf, VS Code, Roo, Cline, Kiro, Zed, Kilo, Trae, Gemini, OpenCode, Codex
+
+- [#1526](https://github.com/eyaltoledano/claude-task-master/pull/1526) [`38c2c08`](https://github.com/eyaltoledano/claude-task-master/commit/38c2c08af1f8de729d5d2dab586ec4622445f2db) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add watch mode and compact output to list command
+  - Add `-w/--watch` flag to continuously monitor task changes with real-time updates
+  - Add `-c/--compact` flag for minimal task output format
+  - Add `--no-header` flag to hide the command header
+  - Support file-based watching via fs.watch for local tasks.json
+  - Support API-based watching via Supabase Realtime for authenticated users
+  - Display last sync timestamp and source in watch mode
+
+### Patch Changes
+
+- [#1538](https://github.com/eyaltoledano/claude-task-master/pull/1538) [`a2d5639`](https://github.com/eyaltoledano/claude-task-master/commit/a2d563991dd8ad6b8a9b76d0d43eac7a6156dd97) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improved model search in `task-master models --setup` to match both display names and model IDs
+
 ## 0.40.0-rc.0
 
 ### Minor Changes
