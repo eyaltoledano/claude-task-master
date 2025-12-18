@@ -1,9 +1,9 @@
 /**
- * @fileoverview Time utilities for formatting relative timestamps
+ * @fileoverview Time utilities for formatting timestamps
  * Shared across CLI, MCP, extension, and other interfaces
  */
 
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 /**
  * Format a date as relative time from now (e.g., "2 hours ago", "3 days ago")
@@ -15,4 +15,13 @@ export function formatRelativeTime(date: string | Date): string {
 
 	// Use date-fns for robust formatting with proper edge case handling
 	return formatDistanceToNow(dateObj, { addSuffix: true });
+}
+
+/**
+ * Format a date as a time string (e.g., "02:30:45 PM")
+ * @param date - Date object to format
+ * @returns Formatted time string in 12-hour format with seconds
+ */
+export function formatTime(date: Date): string {
+	return format(date, 'hh:mm:ss a');
 }

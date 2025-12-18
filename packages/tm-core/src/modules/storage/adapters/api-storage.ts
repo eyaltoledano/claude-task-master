@@ -947,10 +947,14 @@ export class ApiStorage implements IStorage {
 	/**
 	 * Watch for changes to tasks via Supabase Realtime
 	 * Subscribes to postgres_changes for the tasks table filtered by brief_id
+	 *
+	 * Optional debouncing is supported for collaborative scenarios where multiple
+	 * rapid changes (e.g., bulk operations, multiple users) could cause UI flicker.
+	 * Default: 300ms (higher than FileStorage's 100ms since Realtime events are cleaner)
 	 */
 	async watch(
 		callback: (event: WatchEvent) => void,
-		_options?: WatchOptions
+		options?: WatchOptions
 	): Promise<WatchSubscription> {
 		await this.ensureInitialized();
 
@@ -967,6 +971,25 @@ export class ApiStorage implements IStorage {
 
 		const supabase = authManager.supabaseClient.getClient();
 		const channelName = `tasks-watch-${context.briefId}-${Date.now()}`;
+		const debounceMs = options?.debounceMs ?? 300;
+
+		let debounceTimer: NodeJS.Timeout | undefined;
+		let closed = false;
+
+		const debouncedCallback = () => {
+			if (closed) return;
+			if (debounceTimer) {
+				clearTimeout(debounceTimer);
+			}
+			debounceTimer = setTimeout(() => {
+				if (!closed) {
+					callback({
+						type: 'change',
+						timestamp: new Date()
+					});
+				}
+			}, debounceMs);
+		};
 
 		const channel = supabase
 			.channel(channelName)
@@ -978,25 +1001,30 @@ export class ApiStorage implements IStorage {
 					table: 'tasks',
 					filter: `brief_id=eq.${context.briefId}`
 				},
-				() => {
-					callback({
-						type: 'change',
-						timestamp: new Date()
-					});
-				}
+				debouncedCallback
 			)
 			.subscribe((status, error) => {
-				if (status === 'CHANNEL_ERROR' || error) {
+				if (
+					status === 'CHANNEL_ERROR' ||
+					status === 'TIMED_OUT' ||
+					status === 'CLOSED' ||
+					error
+				) {
 					callback({
 						type: 'error',
 						timestamp: new Date(),
-						error: error || new Error('Channel subscription failed')
+						error:
+							error || new Error(`Channel subscription ${status.toLowerCase()}`)
 					});
 				}
 			});
 
 		return {
 			unsubscribe: () => {
+				closed = true;
+				if (debounceTimer) {
+					clearTimeout(debounceTimer);
+				}
 				channel.unsubscribe();
 			}
 		};

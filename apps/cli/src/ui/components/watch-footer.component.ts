@@ -3,17 +3,13 @@
  */
 
 import chalk from 'chalk';
+import { formatTime } from '@tm/core';
 
 /**
- * Format a timestamp for display in watch mode
+ * Get display label for storage source
  */
-export function formatSyncTime(date: Date): string {
-	return date.toLocaleTimeString('en-US', {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		hour12: true
-	});
+function getSourceLabel(storageType: 'api' | 'file'): string {
+	return storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
 }
 
 /**
@@ -23,8 +19,8 @@ export function displayWatchFooter(
 	storageType: 'api' | 'file',
 	lastSync: Date
 ): void {
-	const syncTime = formatSyncTime(lastSync);
-	const source = storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
+	const syncTime = formatTime(lastSync);
+	const source = getSourceLabel(storageType);
 
 	console.log(chalk.dim(`\nWatching ${source} for changes...`));
 	console.log(chalk.gray(`Last synced: ${syncTime}`));
@@ -38,8 +34,8 @@ export function displaySyncMessage(
 	storageType: 'api' | 'file',
 	syncTime: Date
 ): void {
-	const formattedTime = formatSyncTime(syncTime);
-	const source = storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
+	const formattedTime = formatTime(syncTime);
+	const source = getSourceLabel(storageType);
 
 	console.log(chalk.blue(`\nℹ ${source} updated at ${formattedTime}`));
 }
