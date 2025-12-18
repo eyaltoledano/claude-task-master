@@ -18,15 +18,16 @@ import { isTaskComplete } from '../../utils/task-status.js';
 const DEFAULT_PRIORITY: TaskPriority = 'medium';
 
 /**
- * Task with blocks field (inverse of dependencies)
+ * Task-like object that can optionally have blocks field
+ * Used for table display - accepts both enriched TaskWithBlocks and regular Task/Subtask
  */
-export type TaskWithBlocks = (Task | Subtask) & { blocks?: string[] };
+export type TaskTableItem = (Task | Subtask) & { blocks?: string[] };
 
 /**
  * Create a task table for display
  */
 export function createTaskTable(
-	tasks: TaskWithBlocks[],
+	tasks: TaskTableItem[],
 	options?: {
 		showSubtasks?: boolean;
 		showComplexity?: boolean;
@@ -141,7 +142,7 @@ export function createTaskTable(
 
 		if (showBlocks) {
 			// Show tasks that depend on this one
-			const taskWithBlocks = task as TaskWithBlocks;
+			const taskWithBlocks = task as TaskTableItem;
 			if (!taskWithBlocks.blocks || taskWithBlocks.blocks.length === 0) {
 				row.push(chalk.gray('-'));
 			} else {
