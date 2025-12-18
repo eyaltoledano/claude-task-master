@@ -78,11 +78,10 @@ describe('findProjectRoot', () => {
 		});
 	});
 
-	describe('Monorepo behavior - Task Master markers take precedence', () => {
-		it('should find .taskmaster in parent when starting from apps subdirectory', () => {
-			// Simulate exact user scenario:
-			// /project/.taskmaster exists
-			// Starting from /project/apps
+	describe('Project boundary behavior', () => {
+		it('should find .taskmaster in parent when child has NO boundary markers', () => {
+			// Scenario: /project/.taskmaster and /project/apps (no markers)
+			// This is a simple subdirectory, should find .taskmaster in parent
 			const projectRoot = tempDir;
 			const appsDir = path.join(tempDir, 'apps');
 			const taskmasterDir = path.join(projectRoot, '.taskmaster');
@@ -90,63 +89,137 @@ describe('findProjectRoot', () => {
 			fs.mkdirSync(taskmasterDir);
 			fs.mkdirSync(appsDir);
 
-			// When called from apps directory
 			const result = findProjectRoot(appsDir);
-			// Should return project root (one level up)
 			expect(result).toBe(projectRoot);
 		});
 
-		it('should prioritize .taskmaster in parent over .git in child', () => {
-			// Create structure: /parent/.taskmaster and /parent/child/.git
-			const parentDir = tempDir;
-			const childDir = path.join(tempDir, 'child');
-			const gitDir = path.join(childDir, '.git');
-			const taskmasterDir = path.join(parentDir, '.taskmaster');
+		it('should stop at project boundary (.git) and NOT find .taskmaster in distant parent', () => {
+			// Scenario: /home/.taskmaster (should be ignored!) and /home/code/project/.git
+			// This is the user's reported issue - .taskmaster in home dir should NOT be found
+			const homeDir = tempDir;
+			const codeDir = path.join(tempDir, 'code');
+			const projectDir = path.join(codeDir, 'project');
+			const taskmasterInHome = path.join(homeDir, '.taskmaster');
+
+			fs.mkdirSync(taskmasterInHome);
+			fs.mkdirSync(codeDir);
+			fs.mkdirSync(projectDir);
+			fs.mkdirSync(path.join(projectDir, '.git')); // Project boundary
+
+			const result = findProjectRoot(projectDir);
+			// Should return project (with .git), NOT home (with .taskmaster)
+			expect(result).toBe(projectDir);
+		});
+
+		it('should stop at project boundary (package.json) and NOT find .taskmaster beyond', () => {
+			// Scenario: /home/.taskmaster and /home/code/project/package.json
+			const homeDir = tempDir;
+			const codeDir = path.join(tempDir, 'code');
+			const projectDir = path.join(codeDir, 'project');
+			const taskmasterInHome = path.join(homeDir, '.taskmaster');
+
+			fs.mkdirSync(taskmasterInHome);
+			fs.mkdirSync(codeDir);
+			fs.mkdirSync(projectDir);
+			fs.writeFileSync(path.join(projectDir, 'package.json'), '{}'); // Project boundary
+
+			const result = findProjectRoot(projectDir);
+			// Should return project (with package.json), NOT home (with .taskmaster)
+			expect(result).toBe(projectDir);
+		});
+
+		it('should stop at project boundary (lock file) and NOT find .taskmaster beyond', () => {
+			// Scenario: /home/.taskmaster and /home/code/project/package-lock.json
+			const homeDir = tempDir;
+			const codeDir = path.join(tempDir, 'code');
+			const projectDir = path.join(codeDir, 'project');
+			const taskmasterInHome = path.join(homeDir, '.taskmaster');
+
+			fs.mkdirSync(taskmasterInHome);
+			fs.mkdirSync(codeDir);
+			fs.mkdirSync(projectDir);
+			fs.writeFileSync(path.join(projectDir, 'package-lock.json'), '{}'); // Project boundary
+
+			const result = findProjectRoot(projectDir);
+			expect(result).toBe(projectDir);
+		});
+
+		it('should find .taskmaster when at SAME level as project boundary', () => {
+			// Scenario: /project/.taskmaster AND /project/.git
+			// This is a properly initialized Task Master project
+			const projectDir = tempDir;
+			const taskmasterDir = path.join(projectDir, '.taskmaster');
+			const gitDir = path.join(projectDir, '.git');
 
 			fs.mkdirSync(taskmasterDir);
-			fs.mkdirSync(childDir);
 			fs.mkdirSync(gitDir);
 
-			// When called from child directory
-			const result = findProjectRoot(childDir);
-			// Should return parent (with .taskmaster), not child (with .git)
-			expect(result).toBe(parentDir);
+			const result = findProjectRoot(projectDir);
+			// Should return project (has both .taskmaster and .git)
+			expect(result).toBe(projectDir);
 		});
 
-		it('should prioritize .taskmaster in grandparent over package.json in child', () => {
-			// Create structure: /grandparent/.taskmaster and /grandparent/parent/child/package.json
-			const grandparentDir = tempDir;
-			const parentDir = path.join(tempDir, 'parent');
-			const childDir = path.join(parentDir, 'child');
-			const taskmasterDir = path.join(grandparentDir, '.taskmaster');
+		it('should find .taskmaster when at same level as boundary, called from subdirectory', () => {
+			// Scenario: /project/.taskmaster, /project/.git, called from /project/src
+			// This is a typical monorepo setup
+			const projectDir = tempDir;
+			const srcDir = path.join(projectDir, 'src');
+			const taskmasterDir = path.join(projectDir, '.taskmaster');
+			const gitDir = path.join(projectDir, '.git');
 
 			fs.mkdirSync(taskmasterDir);
-			fs.mkdirSync(parentDir);
-			fs.mkdirSync(childDir);
-			fs.writeFileSync(path.join(childDir, 'package.json'), '{}');
+			fs.mkdirSync(gitDir);
+			fs.mkdirSync(srcDir);
 
-			const result = findProjectRoot(childDir);
-			expect(result).toBe(grandparentDir);
+			const result = findProjectRoot(srcDir);
+			// Should find project root with .taskmaster (boundary and .taskmaster at same level)
+			expect(result).toBe(projectDir);
+		});
+	});
+
+	describe('Monorepo behavior', () => {
+		it('should find .taskmaster in monorepo root when package has no boundary markers', () => {
+			// Scenario: /monorepo/.taskmaster, /monorepo/.git, /monorepo/packages/pkg/src
+			// pkg directory has no markers
+			const monorepoRoot = tempDir;
+			const pkgDir = path.join(tempDir, 'packages', 'pkg');
+			const srcDir = path.join(pkgDir, 'src');
+
+			fs.mkdirSync(path.join(monorepoRoot, '.taskmaster'));
+			fs.mkdirSync(path.join(monorepoRoot, '.git'));
+			fs.mkdirSync(srcDir, { recursive: true });
+
+			const result = findProjectRoot(srcDir);
+			expect(result).toBe(monorepoRoot);
 		});
 
-		it('should prioritize .taskmaster over multiple other project markers', () => {
-			// Create structure with many markers
-			const parentDir = tempDir;
-			const childDir = path.join(tempDir, 'packages', 'my-package');
-			const taskmasterDir = path.join(parentDir, '.taskmaster');
+		it('should return package root when package HAS its own boundary marker', () => {
+			// Scenario: /monorepo/.taskmaster, /monorepo/packages/pkg/package.json
+			// When a package has its own project marker, it's treated as its own project
+			const monorepoRoot = tempDir;
+			const pkgDir = path.join(tempDir, 'packages', 'pkg');
 
-			fs.mkdirSync(taskmasterDir);
-			fs.mkdirSync(childDir, { recursive: true });
+			fs.mkdirSync(path.join(monorepoRoot, '.taskmaster'));
+			fs.mkdirSync(pkgDir, { recursive: true });
+			fs.writeFileSync(path.join(pkgDir, 'package.json'), '{}'); // Package has its own marker
 
-			// Add multiple other project markers in child
-			fs.mkdirSync(path.join(childDir, '.git'));
-			fs.writeFileSync(path.join(childDir, 'package.json'), '{}');
-			fs.writeFileSync(path.join(childDir, 'go.mod'), '');
-			fs.writeFileSync(path.join(childDir, 'Cargo.toml'), '');
+			const result = findProjectRoot(pkgDir);
+			// Returns package root (the first project boundary encountered)
+			expect(result).toBe(pkgDir);
+		});
 
-			const result = findProjectRoot(childDir);
-			// Should still return parent with .taskmaster
-			expect(result).toBe(parentDir);
+		it('should return package root when package HAS .taskmaster (nested Task Master)', () => {
+			// Scenario: /monorepo/.taskmaster, /monorepo/packages/pkg/.taskmaster
+			// Package has its own Task Master initialization
+			const monorepoRoot = tempDir;
+			const pkgDir = path.join(tempDir, 'packages', 'pkg');
+
+			fs.mkdirSync(path.join(monorepoRoot, '.taskmaster'));
+			fs.mkdirSync(path.join(pkgDir, '.taskmaster'), { recursive: true });
+
+			const result = findProjectRoot(pkgDir);
+			// Returns package (has its own .taskmaster)
+			expect(result).toBe(pkgDir);
 		});
 	});
 
@@ -189,10 +262,11 @@ describe('findProjectRoot', () => {
 	});
 
 	describe('Edge cases', () => {
-		it('should return current directory if no markers found', () => {
+		it('should return startDir if no markers found (empty repo)', () => {
+			// Scenario: Empty repo with just a .env file - should use startDir as project root
 			const result = findProjectRoot(tempDir);
-			// Should fall back to process.cwd()
-			expect(result).toBe(process.cwd());
+			// Should fall back to startDir, not process.cwd()
+			expect(result).toBe(tempDir);
 		});
 
 		it('should handle permission errors gracefully', () => {
