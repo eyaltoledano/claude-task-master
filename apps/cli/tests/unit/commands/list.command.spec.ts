@@ -5,6 +5,9 @@
 import type { TmCore } from '@tm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Terminal complete statuses
+const TERMINAL_COMPLETE_STATUSES = ['done', 'cancelled'] as const;
+
 // Mock dependencies
 vi.mock('@tm/core', () => ({
 	createTmCore: vi.fn(),
@@ -24,11 +27,20 @@ vi.mock('@tm/core', () => ({
 		review: '👀',
 		deferred: '⏸️',
 		cancelled: '❌'
-	}
+	},
+	TERMINAL_COMPLETE_STATUSES: ['done', 'cancelled'],
+	isTaskComplete: (status: string) =>
+		TERMINAL_COMPLETE_STATUSES.includes(status as any)
 }));
 
 vi.mock('../../../src/utils/project-root.js', () => ({
 	getProjectRoot: vi.fn((path?: string) => path || '/test/project')
+}));
+
+vi.mock('../../../src/utils/task-status.js', () => ({
+	TERMINAL_COMPLETE_STATUSES: ['done', 'cancelled'],
+	isTaskComplete: (status: string) =>
+		['done', 'cancelled'].includes(status)
 }));
 
 vi.mock('../../../src/utils/error-handler.js', () => ({
@@ -190,6 +202,223 @@ describe('ListTasksCommand', () => {
 			);
 
 			consoleErrorSpy.mockRestore();
+		});
+	});
+
+	describe('--ready filter', () => {
+		it('should filter to only tasks with all dependencies satisfied', async () => {
+			const command = new ListTasksCommand();
+
+			// Mock tasks where some have satisfied deps and some don't
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'done', dependencies: [] },
+				{ id: '2', title: 'Task 2', status: 'pending', dependencies: ['1'] }, // deps satisfied (1 is done)
+				{ id: '3', title: 'Task 3', status: 'pending', dependencies: ['2'] }, // deps NOT satisfied (2 is pending)
+				{ id: '4', title: 'Task 4', status: 'pending', dependencies: [] } // no deps, ready
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 4,
+						filtered: 4,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				ready: true,
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Should only include tasks 2 and 4 (ready to work on)
+			expect(parsed.tasks).toHaveLength(2);
+			expect(parsed.tasks.map((t: any) => t.id)).toEqual(
+				expect.arrayContaining(['2', '4'])
+			);
+			expect(parsed.tasks.map((t: any) => t.id)).not.toContain('3');
+		});
+
+		it('should exclude done/cancelled tasks from ready filter', async () => {
+			const command = new ListTasksCommand();
+
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'done', dependencies: [] },
+				{ id: '2', title: 'Task 2', status: 'cancelled', dependencies: [] },
+				{ id: '3', title: 'Task 3', status: 'pending', dependencies: [] }
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 3,
+						filtered: 3,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				ready: true,
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Should only include task 3 (pending with no deps)
+			expect(parsed.tasks).toHaveLength(1);
+			expect(parsed.tasks[0].id).toBe('3');
+		});
+	});
+
+	describe('--blocking filter', () => {
+		it('should filter to only tasks that block other tasks', async () => {
+			const command = new ListTasksCommand();
+
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'pending', dependencies: [] }, // blocks 2, 3
+				{ id: '2', title: 'Task 2', status: 'pending', dependencies: ['1'] }, // blocks 4
+				{ id: '3', title: 'Task 3', status: 'pending', dependencies: ['1'] }, // blocks nothing
+				{ id: '4', title: 'Task 4', status: 'pending', dependencies: ['2'] } // blocks nothing
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 4,
+						filtered: 4,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				blocking: true,
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Should only include tasks 1 and 2 (they block other tasks)
+			expect(parsed.tasks).toHaveLength(2);
+			expect(parsed.tasks.map((t: any) => t.id)).toEqual(
+				expect.arrayContaining(['1', '2'])
+			);
+		});
+	});
+
+	describe('--ready --blocking combined filter', () => {
+		it('should show high-impact tasks (ready AND blocking)', async () => {
+			const command = new ListTasksCommand();
+
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'done', dependencies: [] },
+				{ id: '2', title: 'Task 2', status: 'pending', dependencies: ['1'] }, // ready (1 done), blocks 3,4
+				{ id: '3', title: 'Task 3', status: 'pending', dependencies: ['2'] }, // not ready, blocks 5
+				{ id: '4', title: 'Task 4', status: 'pending', dependencies: ['2'] }, // not ready, blocks nothing
+				{ id: '5', title: 'Task 5', status: 'pending', dependencies: ['3'] }, // not ready, blocks nothing
+				{ id: '6', title: 'Task 6', status: 'pending', dependencies: [] } // ready, blocks nothing
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 6,
+						filtered: 6,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				ready: true,
+				blocking: true,
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Should only include task 2 (ready AND blocks other tasks)
+			expect(parsed.tasks).toHaveLength(1);
+			expect(parsed.tasks[0].id).toBe('2');
+		});
+	});
+
+	describe('blocks field in output', () => {
+		it('should include blocks field showing which tasks depend on each task', async () => {
+			const command = new ListTasksCommand();
+
+			const mockTasks = [
+				{ id: '1', title: 'Task 1', status: 'pending', dependencies: [] },
+				{ id: '2', title: 'Task 2', status: 'pending', dependencies: ['1'] },
+				{ id: '3', title: 'Task 3', status: 'pending', dependencies: ['1'] },
+				{ id: '4', title: 'Task 4', status: 'pending', dependencies: ['2', '3'] }
+			];
+
+			(command as any).tmCore = {
+				tasks: {
+					list: vi.fn().mockResolvedValue({
+						tasks: mockTasks,
+						total: 4,
+						filtered: 4,
+						storageType: 'json'
+					}),
+					getStorageType: vi.fn().mockReturnValue('json')
+				},
+				config: {
+					getActiveTag: vi.fn().mockReturnValue('master')
+				}
+			};
+
+			await (command as any).executeCommand({
+				json: true
+			});
+
+			const output = consoleLogSpy.mock.calls[0][0];
+			const parsed = JSON.parse(output);
+
+			// Task 1 blocks tasks 2 and 3
+			const task1 = parsed.tasks.find((t: any) => t.id === '1');
+			expect(task1.blocks).toEqual(expect.arrayContaining(['2', '3']));
+
+			// Task 2 blocks task 4
+			const task2 = parsed.tasks.find((t: any) => t.id === '2');
+			expect(task2.blocks).toEqual(['4']);
+
+			// Task 3 blocks task 4
+			const task3 = parsed.tasks.find((t: any) => t.id === '3');
+			expect(task3.blocks).toEqual(['4']);
+
+			// Task 4 blocks nothing
+			const task4 = parsed.tasks.find((t: any) => t.id === '4');
+			expect(task4.blocks).toEqual([]);
 		});
 	});
 });
