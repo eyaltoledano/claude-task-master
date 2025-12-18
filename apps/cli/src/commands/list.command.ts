@@ -366,9 +366,16 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
-	 * Filter to only tasks that are ready to work on (dependencies satisfied, not completed)
+	 * Filter to only tasks that are ready to work on (dependencies satisfied, actionable status)
 	 */
 	private filterReadyTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
+		// Statuses that are actionable (not deferred, blocked, or terminal)
+		const actionableStatuses: TaskStatus[] = [
+			'pending',
+			'in-progress',
+			'review'
+		];
+
 		// Build set of completed task IDs
 		const completedIds = new Set<string>();
 		tasks.forEach((t) => {
@@ -378,8 +385,8 @@ export class ListTasksCommand extends Command {
 		});
 
 		return tasks.filter((task) => {
-			// Must be pending or in-progress (not completed)
-			if (isTaskComplete(task.status)) {
+			// Must be in an actionable status (excludes deferred, blocked, done, cancelled)
+			if (!actionableStatuses.includes(task.status)) {
 				return false;
 			}
 
