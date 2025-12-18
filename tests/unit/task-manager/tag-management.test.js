@@ -113,3 +113,88 @@ describe('Tag Management – writeJSON context preservation', () => {
 		expect(tagNames).not.toContain('copy');
 	});
 });
+
+describe('Tag Management – ready tasks count', () => {
+	beforeEach(() => {
+		fs.mkdirSync(TEMP_DIR, { recursive: true });
+	});
+
+	afterEach(() => {
+		fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+	});
+
+	it('should count tasks with no dependencies as ready', async () => {
+		const data = {
+			master: {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'pending', dependencies: [] },
+					{ id: 2, title: 'Task 2', status: 'pending', dependencies: [] },
+					{ id: 3, title: 'Task 3', status: 'done', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		const masterTag = result.tags.find((t) => t.name === 'master');
+		expect(masterTag.readyTasks).toBe(2); // 2 pending, 1 done (not ready)
+	});
+
+	it('should count tasks with satisfied dependencies as ready', async () => {
+		const data = {
+			master: {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'done', dependencies: [] },
+					{ id: 2, title: 'Task 2', status: 'pending', dependencies: [1] }, // deps satisfied
+					{ id: 3, title: 'Task 3', status: 'pending', dependencies: [2] } // deps NOT satisfied
+				],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		const masterTag = result.tags.find((t) => t.name === 'master');
+		expect(masterTag.readyTasks).toBe(1); // only task 2 is ready
+	});
+
+	it('should exclude deferred and blocked tasks from ready count', async () => {
+		const data = {
+			master: {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'pending', dependencies: [] },
+					{ id: 2, title: 'Task 2', status: 'deferred', dependencies: [] },
+					{ id: 3, title: 'Task 3', status: 'blocked', dependencies: [] },
+					{ id: 4, title: 'Task 4', status: 'in-progress', dependencies: [] },
+					{ id: 5, title: 'Task 5', status: 'review', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		const masterTag = result.tags.find((t) => t.name === 'master');
+		// Only pending, in-progress, review are actionable
+		expect(masterTag.readyTasks).toBe(3); // tasks 1, 4, 5
+	});
+});
