@@ -101,6 +101,7 @@ export class TagsCommand extends Command {
 		this.command('list')
 			.description('List all tags with statistics (default action)')
 			.option('--show-metadata', 'Show additional tag metadata')
+			.option('--ready', 'Show only tags with ready tasks available')
 			.addHelpText(
 				'after',
 				`
@@ -108,6 +109,7 @@ Examples:
   $ tm tags          # List all tags (default)
   $ tm tags list     # List all tags (explicit)
   $ tm tags list --show-metadata  # List with metadata
+  $ tm tags list --ready  # Show only tags with parallelizable work
 `
 			)
 			.action(async (options) => {
@@ -245,6 +247,7 @@ Examples:
 	 */
 	private async executeList(options?: {
 		showMetadata?: boolean;
+		ready?: boolean;
 	}): Promise<void> {
 		try {
 			// Initialize tmCore first (needed by bridge functions)
@@ -257,7 +260,8 @@ Examples:
 				tasksPath,
 				{
 					showTaskCounts: true,
-					showMetadata: options?.showMetadata || false
+					showMetadata: options?.showMetadata || false,
+					ready: options?.ready || false
 				},
 				{ projectRoot },
 				'text'

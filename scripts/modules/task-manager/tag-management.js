@@ -531,6 +531,7 @@ async function enhanceTagsWithMetadata(tasksPath, rawData, context = {}) {
  * @param {Object} options - Options object
  * @param {boolean} [options.showTaskCounts=true] - Whether to show task counts
  * @param {boolean} [options.showMetadata=false] - Whether to show metadata
+ * @param {boolean} [options.ready=false] - Whether to filter to only tags with ready tasks
  * @param {Object} context - Context object containing session and projectRoot
  * @param {string} [context.projectRoot] - Project root path
  * @param {Object} [context.mcpLog] - MCP logger object (optional)
@@ -544,7 +545,11 @@ async function tags(
 	outputFormat = 'text'
 ) {
 	const { mcpLog, projectRoot } = context;
-	const { showTaskCounts = true, showMetadata = false } = options;
+	const {
+		showTaskCounts = true,
+		showMetadata = false,
+		ready = false
+	} = options;
 
 	// Create a consistent logFn object regardless of context
 	const logFn = mcpLog || {
@@ -657,22 +662,32 @@ async function tags(
 			return a.name.localeCompare(b.name);
 		});
 
-		logFn.success(`Found ${tagList.length} tags`);
+		// Filter to only tags with ready tasks if --ready flag is set
+		let filteredTagList = tagList;
+		if (ready) {
+			filteredTagList = tagList.filter((tag) => tag.readyTasks > 0);
+			logFn.info(`Filtered to ${filteredTagList.length} tags with ready tasks`);
+		}
+
+		logFn.success(`Found ${filteredTagList.length} tags`);
 
 		// For JSON output, return structured data
 		if (outputFormat === 'json') {
 			return {
-				tags: tagList,
+				tags: filteredTagList,
 				currentTag,
-				totalTags: tagList.length
+				totalTags: filteredTagList.length
 			};
 		}
 
 		// For text output, display formatted table
 		if (outputFormat === 'text') {
-			if (tagList.length === 0) {
+			if (filteredTagList.length === 0) {
+				const message = ready
+					? 'No tags with ready tasks found'
+					: 'No tags found';
 				console.log(
-					boxen(chalk.yellow('No tags found'), {
+					boxen(chalk.yellow(message), {
 						padding: 1,
 						borderColor: 'yellow',
 						borderStyle: 'round',
@@ -720,7 +735,7 @@ async function tags(
 			});
 
 			// Add rows
-			tagList.forEach((tag) => {
+			filteredTagList.forEach((tag) => {
 				const row = [];
 
 				// Tag name with current indicator
@@ -768,9 +783,9 @@ async function tags(
 		}
 
 		return {
-			tags: tagList,
+			tags: filteredTagList,
 			currentTag,
-			totalTags: tagList.length
+			totalTags: filteredTagList.length
 		};
 	} catch (error) {
 		logFn.error(`Error listing tags: ${error.message}`);

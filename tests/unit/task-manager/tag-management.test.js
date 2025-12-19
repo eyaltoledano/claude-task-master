@@ -198,3 +198,95 @@ describe('Tag Management – ready tasks count', () => {
 		expect(masterTag.readyTasks).toBe(3); // tasks 1, 4, 5
 	});
 });
+
+describe('Tag Management – --ready filter', () => {
+	beforeEach(() => {
+		fs.mkdirSync(TEMP_DIR, { recursive: true });
+	});
+
+	afterEach(() => {
+		fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+	});
+
+	it('should filter out tags with no ready tasks when --ready is set', async () => {
+		const data = {
+			'has-ready': {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'pending', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			},
+			'no-ready': {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'done', dependencies: [] },
+					{ id: 2, title: 'Task 2', status: 'deferred', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			},
+			'all-blocked': {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'blocked', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true, ready: true },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		expect(result.tags.length).toBe(1);
+		expect(result.tags[0].name).toBe('has-ready');
+		expect(result.totalTags).toBe(1);
+	});
+
+	it('should include all tags when --ready is not set', async () => {
+		const data = {
+			'has-ready': {
+				tasks: [
+					{ id: 1, title: 'Task 1', status: 'pending', dependencies: [] }
+				],
+				metadata: { created: new Date().toISOString() }
+			},
+			'no-ready': {
+				tasks: [{ id: 1, title: 'Task 1', status: 'done', dependencies: [] }],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true, ready: false },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		expect(result.tags.length).toBe(2);
+		expect(result.totalTags).toBe(2);
+	});
+
+	it('should return empty list when no tags have ready tasks', async () => {
+		const data = {
+			'all-done': {
+				tasks: [{ id: 1, title: 'Task 1', status: 'done', dependencies: [] }],
+				metadata: { created: new Date().toISOString() }
+			}
+		};
+		fs.writeFileSync(TASKS_PATH, JSON.stringify(data, null, 2));
+
+		const result = await listTags(
+			TASKS_PATH,
+			{ showTaskCounts: true, ready: true },
+			{ projectRoot: TEMP_DIR },
+			'json'
+		);
+
+		expect(result.tags.length).toBe(0);
+		expect(result.totalTags).toBe(0);
+	});
+});

@@ -10,4 +10,5 @@ Add --ready and --blocking filters to list command for identifying parallelizabl
 - Add "Blocks" column to task table showing which tasks depend on each task
 - Blocks field included in JSON output for programmatic access
 - Add "Ready" column to `tags` command showing count of ready tasks per tag
+- Add `--ready` filter to `tags` command to show only tags with available work
 - Excludes deferred/blocked tasks from ready count (only actionable statuses)
