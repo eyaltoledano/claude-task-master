@@ -530,14 +530,18 @@ export class ListTasksCommand extends Command {
 			? tasks.find((t) => String(t.id) === String(nextTaskInfo.id))
 			: undefined;
 
-		// Display dashboard boxes (nextTask already has complexity from storage enrichment)
-		displayDashboards(
-			taskStats,
-			subtaskStats,
-			priorityBreakdown,
-			depStats,
-			nextTask
-		);
+		// Display dashboard boxes unless filtering by --ready or --blocking
+		// (filtered dashboards would show misleading statistics)
+		const isFiltered = options.ready || options.blocking;
+		if (!isFiltered) {
+			displayDashboards(
+				taskStats,
+				subtaskStats,
+				priorityBreakdown,
+				depStats,
+				nextTask
+			);
+		}
 
 		// Task table
 		console.log(
@@ -550,24 +554,27 @@ export class ListTasksCommand extends Command {
 		);
 
 		// Display recommended next task section immediately after table
-		// Don't show "no tasks available" message in list command - that's for tm next
-		if (nextTask) {
-			const description = getTaskDescription(nextTask);
+		// Skip when filtering by --ready or --blocking (user already knows what they're looking at)
+		if (!isFiltered) {
+			// Don't show "no tasks available" message in list command - that's for tm next
+			if (nextTask) {
+				const description = getTaskDescription(nextTask);
 
-			displayRecommendedNextTask({
-				id: nextTask.id,
-				title: nextTask.title,
-				priority: nextTask.priority,
-				status: nextTask.status,
-				dependencies: nextTask.dependencies,
-				description,
-				complexity: nextTask.complexity as number | undefined
-			});
+				displayRecommendedNextTask({
+					id: nextTask.id,
+					title: nextTask.title,
+					priority: nextTask.priority,
+					status: nextTask.status,
+					dependencies: nextTask.dependencies,
+					description,
+					complexity: nextTask.complexity as number | undefined
+				});
+			}
+			// If no next task, don't show any message - dashboard already shows the info
+
+			// Display suggested next steps at the end
+			displaySuggestedNextSteps();
 		}
-		// If no next task, don't show any message - dashboard already shows the info
-
-		// Display suggested next steps at the end
-		displaySuggestedNextSteps();
 	}
 
 	/**
