@@ -719,11 +719,11 @@ function getVertexProjectId(explicitRoot = null) {
 /**
  * Gets the Google Cloud location for Vertex AI from configuration
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
- * @returns {string} The location or default value of "us-central1"
+ * @returns {string} The location
  */
 function getVertexLocation(explicitRoot = null) {
 	// Return value from config or default
-	return getGlobalConfig(explicitRoot).vertexLocation || 'us-central1';
+	return getGlobalConfig(explicitRoot).vertexLocation;
 }
 
 function getResponseLanguage(explicitRoot = null) {
