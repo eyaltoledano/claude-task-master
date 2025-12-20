@@ -9,7 +9,9 @@ export const AddTaskResponseSchema = z
 			.describe('A one or two sentence description of the task'),
 		details: z
 			.string()
-			.describe('In-depth implementation details, considerations, and guidance'),
+			.describe(
+				'In-depth implementation details, considerations, and guidance'
+			),
 		testStrategy: z
 			.string()
 			.describe('Detailed approach for verifying task completion'),

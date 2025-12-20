@@ -39,7 +39,7 @@ const REASONING_EFFORT_SUPPORT = {
 const DEFAULT_REASONING_EFFORTS = ['none', 'low', 'medium', 'high'];
 
 // Ordering for effort levels (lowest to highest)
-const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+const EFFORT_ORDER = ['none', 'low', 'medium', 'high', 'xhigh'];
 
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {
@@ -171,9 +171,7 @@ export class CodexCliProvider extends BaseAIProvider {
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
 				...settings,
-				...(validatedReasoningEffort !== undefined && {
-					reasoningEffort: validatedReasoningEffort
-				}),
+				reasoningEffort: validatedReasoningEffort,
 				...(params.apiKey
 					? { env: { ...(settings.env || {}), OPENAI_API_KEY: params.apiKey } }
 					: {})
