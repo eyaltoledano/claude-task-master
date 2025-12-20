@@ -1,6 +1,16 @@
 import { z } from 'zod';
 
-// Base schemas that will be reused across commands
+/**
+ * Base schemas that will be reused across commands.
+ *
+ * IMPORTANT: All object schemas use .strict() to add "additionalProperties: false"
+ * to the generated JSON Schema. This is REQUIRED for OpenAI's Structured Outputs API,
+ * which mandates that every object type explicitly includes additionalProperties: false.
+ * Without .strict(), OpenAI API returns 400 Bad Request errors.
+ *
+ * Other providers (Anthropic, Google, etc.) safely ignore this constraint.
+ * See: https://platform.openai.com/docs/guides/structured-outputs
+ */
 export const TaskStatusSchema = z.enum([
 	'pending',
 	'in-progress',
