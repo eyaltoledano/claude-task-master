@@ -25,6 +25,10 @@ export function registerAutopilotNextTool(server: FastMCP) {
 		description:
 			'Get the next action to perform in the TDD workflow. Returns detailed context about what needs to be done next, including the current phase, subtask, and expected actions.',
 		parameters: NextActionSchema,
+		annotations: {
+			title: 'Get Next Autopilot Action',
+			readOnlyHint: true
+		},
 		execute: withToolContext(
 			'autopilot-next',
 			async (args: NextActionArgs, { log, tmCore }: ToolContext) => {

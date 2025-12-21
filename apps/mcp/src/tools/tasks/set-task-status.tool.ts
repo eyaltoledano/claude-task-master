@@ -34,6 +34,10 @@ export function registerSetTaskStatusTool(server: FastMCP) {
 		name: 'set_task_status',
 		description: 'Set the status of one or more tasks or subtasks.',
 		parameters: SetTaskStatusSchema,
+		annotations: {
+			title: 'Set Task Status',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'set-task-status',
 			async (args: SetTaskStatusArgs, { log, tmCore }: ToolContext) => {

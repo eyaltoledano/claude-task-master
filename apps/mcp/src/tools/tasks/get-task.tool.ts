@@ -38,6 +38,10 @@ export function registerGetTaskTool(server: FastMCP) {
 		name: 'get_task',
 		description: 'Get detailed information about a specific task',
 		parameters: GetTaskSchema,
+		annotations: {
+			title: 'Get Task',
+			readOnlyHint: true
+		},
 		execute: withToolContext(
 			'get-task',
 			async (args: GetTaskArgs, { log, tmCore }: ToolContext) => {
