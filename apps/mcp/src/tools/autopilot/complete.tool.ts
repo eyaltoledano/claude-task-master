@@ -33,6 +33,10 @@ export function registerAutopilotCompleteTool(server: FastMCP) {
 		description:
 			'Complete the current TDD phase (RED or GREEN) with test result validation. RED phase: expects failures (if 0 failures, feature is already implemented and subtask auto-completes). GREEN phase: expects all tests passing. For COMMIT phase, use autopilot_commit instead.',
 		parameters: CompletePhaseSchema,
+		annotations: {
+			title: 'Complete Autopilot Phase',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'autopilot-complete-phase',
 			async (args: CompletePhaseArgs, { log, tmCore }: ToolContext) => {

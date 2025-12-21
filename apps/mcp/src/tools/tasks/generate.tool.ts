@@ -33,6 +33,10 @@ export function registerGenerateTool(server: FastMCP) {
 		description:
 			'Generates individual task files in tasks/ directory based on tasks.json. Only works with local file storage.',
 		parameters: GenerateSchema,
+		annotations: {
+			title: 'Generate Task Files',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'generate',
 			async (args: GenerateArgs, { log, tmCore }: ToolContext) => {

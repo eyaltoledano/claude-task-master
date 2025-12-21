@@ -36,6 +36,10 @@ export function registerAutopilotCommitTool(server: FastMCP) {
 		description:
 			'Create a git commit with automatic staging, message generation, and metadata embedding. Generates appropriate commit messages based on subtask context and TDD phase.',
 		parameters: CommitSchema,
+		annotations: {
+			title: 'Commit Autopilot Changes',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'autopilot-commit',
 			async (args: CommitArgs, { log, tmCore }: ToolContext) => {

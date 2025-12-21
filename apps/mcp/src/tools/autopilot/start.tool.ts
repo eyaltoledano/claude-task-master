@@ -39,6 +39,10 @@ export function registerAutopilotStartTool(server: FastMCP) {
 		description:
 			'Initialize and start a new TDD workflow for a task. Creates a git branch and sets up the workflow state machine.',
 		parameters: StartWorkflowSchema,
+		annotations: {
+			title: 'Start Autopilot Workflow',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'autopilot-start',
 			async (args: StartWorkflowArgs, { log, tmCore }: ToolContext) => {

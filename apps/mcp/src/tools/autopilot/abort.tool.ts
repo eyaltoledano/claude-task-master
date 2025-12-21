@@ -25,6 +25,10 @@ export function registerAutopilotAbortTool(server: FastMCP) {
 		description:
 			'Abort the current TDD workflow and clean up workflow state. This will remove the workflow state file but will NOT delete the git branch or any code changes.',
 		parameters: AbortSchema,
+		annotations: {
+			title: 'Abort Autopilot Workflow',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'autopilot-abort',
 			async (args: AbortArgs, { log, tmCore }: ToolContext) => {

@@ -40,6 +40,10 @@ export function registerGetTasksTool(server: FastMCP) {
 		description:
 			'Get all tasks from Task Master, optionally filtering by status and including subtasks.',
 		parameters: GetTasksSchema,
+		annotations: {
+			title: 'Get Tasks',
+			readOnlyHint: true
+		},
 		execute: withToolContext(
 			'get-tasks',
 			async (args: GetTasksArgs, { log, tmCore }: ToolContext) => {
