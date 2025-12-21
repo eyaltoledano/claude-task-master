@@ -25,6 +25,10 @@ export function registerAutopilotStatusTool(server: FastMCP) {
 		description:
 			'Get comprehensive workflow status including current phase, progress, subtask details, and activity history.',
 		parameters: StatusSchema,
+		annotations: {
+			title: 'Get Autopilot Status',
+			readOnlyHint: true
+		},
 		execute: withToolContext(
 			'autopilot-status',
 			async (args: StatusArgs, { log, tmCore }: ToolContext) => {
