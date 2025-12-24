@@ -389,8 +389,9 @@ export class ListTasksCommand extends Command {
 			}));
 
 			// Apply ready filter only if --ready is specified
-			const tasksToAdd = options.ready
-				? this.filterReadyTasks(enrichedTasks)
+			// Cast is safe because filterReadyTasks preserves all properties
+			const tasksToAdd: TaskWithTag[] = options.ready
+				? (this.filterReadyTasks(enrichedTasks) as TaskWithTag[])
 				: enrichedTasks;
 
 			allTaggedTasks.push(...tasksToAdd);
