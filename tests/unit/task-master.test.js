@@ -93,9 +93,12 @@ describe('initTaskMaster', () => {
 		});
 
 		test('should find project root from deeply nested subdirectory', () => {
-			// Arrange - Create .taskmaster directory in temp dir
+			// Arrange - Create .taskmaster directory and a boundary marker in temp dir
+			// The boundary marker (.git) anchors .taskmaster to prevent false matches
+			// from stray .taskmaster dirs (e.g., in home directory)
 			const taskMasterDir = path.join(tempDir, TASKMASTER_DIR);
 			fs.mkdirSync(taskMasterDir, { recursive: true });
+			fs.mkdirSync(path.join(tempDir, '.git'), { recursive: true });
 
 			// Create deeply nested subdirectory and change to it
 			const deepDir = path.join(tempDir, 'src', 'components', 'ui');
