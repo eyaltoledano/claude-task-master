@@ -77,8 +77,10 @@ export class TagsCommand extends Command {
 	constructor(name?: string) {
 		super(name || 'tags');
 
-		// Configure the command
-		this.description('Manage tags for task organization');
+		// Configure the command with options that apply to default list action
+		this.description('Manage tags for task organization')
+			.option('--show-metadata', 'Show additional tag metadata')
+			.option('--ready', 'Show only tags with ready tasks available');
 
 		// Add subcommands
 		this.addListCommand();
@@ -88,9 +90,9 @@ export class TagsCommand extends Command {
 		this.addRenameCommand();
 		this.addCopyCommand();
 
-		// Default action: list tags
-		this.action(async () => {
-			await this.executeList();
+		// Default action: list tags (with options from parent command)
+		this.action(async (options) => {
+			await this.executeList(options);
 		});
 	}
 
