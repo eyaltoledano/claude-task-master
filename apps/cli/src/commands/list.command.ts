@@ -50,17 +50,31 @@ export interface ListCommandOptions {
 	silent?: boolean;
 	project?: string;
 	watch?: boolean;
+	ready?: boolean;
+	blocking?: boolean;
+	allTags?: boolean;
 }
+
+/**
+ * Task with blocks field (inverse of dependencies)
+ */
+export type TaskWithBlocks = Task & { blocks: string[] };
+
+/**
+ * Task with tag info for cross-tag listing
+ */
+export type TaskWithTag = TaskWithBlocks & { tagName: string };
 
 /**
  * Result type from list command
  */
 export interface ListTasksResult {
-	tasks: Task[];
+	tasks: TaskWithBlocks[] | TaskWithTag[];
 	total: number;
 	filtered: number;
 	tag?: string;
 	storageType: Exclude<StorageType, 'auto'>;
+	allTags?: boolean;
 }
 
 /**
@@ -104,6 +118,15 @@ export class ListTasksCommand extends Command {
 				'Project root directory (auto-detected if not provided)'
 			)
 			.option('-w, --watch', 'Watch for changes and update list automatically')
+			.option(
+				'--ready',
+				'Show only tasks ready to work on (dependencies satisfied)'
+			)
+			.option('--blocking', 'Show only tasks that block other tasks')
+			.option(
+				'--all-tags',
+				'Show tasks from all tags (combine with --ready for actionable tasks)'
+			)
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -142,7 +165,10 @@ export class ListTasksCommand extends Command {
 			if (options.watch) {
 				await this.watchTasks(options);
 			} else {
-				const result = await this.getTasks(options);
+				// Use cross-tag listing when --all-tags is specified
+				const result = options.allTags
+					? await this.getTasksFromAllTags(options)
+					: await this.getTasks(options);
 
 				// Store result for programmatic access
 				this.setLastResult(result);
@@ -272,14 +298,20 @@ export class ListTasksCommand extends Command {
 			throw new Error('TmCore not initialized');
 		}
 
-		// Build filter
-		const filter =
+		// Parse status filter values
+		const statusFilterValues =
 			options.status && options.status !== 'all'
-				? {
-						status: options.status
-							.split(',')
-							.map((s: string) => s.trim() as TaskStatus)
-					}
+				? options.status.split(',').map((s: string) => s.trim() as TaskStatus)
+				: undefined;
+
+		// When --ready is used, we need ALL tasks to correctly compute which dependencies are satisfied
+		// So we fetch without status filter first, then apply status filter after ready/blocking
+		const needsAllTasks = options.ready || options.blocking;
+
+		// Build filter - skip status filter if we need all tasks for ready/blocking computation
+		const filter =
+			statusFilterValues && !needsAllTasks
+				? { status: statusFilterValues }
 				: undefined;
 
 		// Call tm-core
@@ -289,7 +321,175 @@ export class ListTasksCommand extends Command {
 			includeSubtasks: options.withSubtasks
 		});
 
-		return result as ListTasksResult;
+		// Build blocks map and enrich tasks with blocks field
+		const blocksMap = this.buildBlocksMap(result.tasks);
+		const enrichedTasks = result.tasks.map((task) => ({
+			...task,
+			blocks: blocksMap.get(String(task.id)) || []
+		}));
+
+		// Apply ready/blocking filters (with full task context)
+		let filteredTasks = enrichedTasks;
+
+		if (options.ready) {
+			filteredTasks = this.filterReadyTasks(filteredTasks);
+		}
+
+		if (options.blocking) {
+			filteredTasks = this.filterBlockingTasks(filteredTasks);
+		}
+
+		// Apply status filter AFTER ready/blocking if we deferred it earlier
+		if (statusFilterValues && needsAllTasks) {
+			filteredTasks = filteredTasks.filter((task) =>
+				statusFilterValues.includes(task.status)
+			);
+		}
+
+		return {
+			...result,
+			tasks: filteredTasks,
+			filtered: filteredTasks.length
+		} as ListTasksResult;
+	}
+
+	/**
+	 * Get ready tasks from all tags
+	 * Fetches tasks from each tag and combines them with tag info
+	 */
+	private async getTasksFromAllTags(
+		options: ListCommandOptions
+	): Promise<ListTasksResult> {
+		if (!this.tmCore) {
+			throw new Error('TmCore not initialized');
+		}
+
+		// Get all tags
+		const tagsResult = await this.tmCore.tasks.getTagsWithStats();
+		const allTaggedTasks: TaskWithTag[] = [];
+
+		// Fetch tasks from each tag
+		for (const tagInfo of tagsResult.tags) {
+			const tagName = tagInfo.name;
+
+			// Get tasks for this tag
+			const result = await this.tmCore.tasks.list({
+				tag: tagName,
+				includeSubtasks: options.withSubtasks
+			});
+
+			// Build blocks map for this tag's tasks
+			const blocksMap = this.buildBlocksMap(result.tasks);
+
+			// Enrich tasks with blocks field and tag name
+			const enrichedTasks: TaskWithTag[] = result.tasks.map((task) => ({
+				...task,
+				blocks: blocksMap.get(String(task.id)) || [],
+				tagName
+			}));
+
+			// Apply ready filter only if --ready is specified
+			// Cast is safe because filterReadyTasks preserves all properties
+			const tasksToAdd: TaskWithTag[] = options.ready
+				? (this.filterReadyTasks(enrichedTasks) as TaskWithTag[])
+				: enrichedTasks;
+
+			allTaggedTasks.push(...tasksToAdd);
+		}
+
+		// Apply additional filters if specified
+		let filteredTasks: TaskWithTag[] = allTaggedTasks;
+
+		if (options.blocking) {
+			filteredTasks = filteredTasks.filter((task) => task.blocks.length > 0);
+		}
+
+		// Apply status filter if specified
+		if (options.status && options.status !== 'all') {
+			const statusValues = options.status
+				.split(',')
+				.map((s) => s.trim() as TaskStatus);
+			filteredTasks = filteredTasks.filter((task) =>
+				statusValues.includes(task.status)
+			);
+		}
+
+		return {
+			tasks: filteredTasks,
+			total: allTaggedTasks.length,
+			filtered: filteredTasks.length,
+			storageType: this.tmCore.tasks.getStorageType(),
+			allTags: true
+		};
+	}
+
+	/**
+	 * Build a map of task ID -> array of task IDs that depend on it (blocks)
+	 */
+	private buildBlocksMap(tasks: Task[]): Map<string, string[]> {
+		const blocksMap = new Map<string, string[]>();
+
+		// Initialize all tasks with empty arrays
+		tasks.forEach((task) => {
+			blocksMap.set(String(task.id), []);
+		});
+
+		// For each task, add it to the blocks list of each of its dependencies
+		tasks.forEach((task) => {
+			if (task.dependencies && task.dependencies.length > 0) {
+				task.dependencies.forEach((depId) => {
+					const depIdStr = String(depId);
+					const currentBlocks = blocksMap.get(depIdStr) || [];
+					currentBlocks.push(String(task.id));
+					blocksMap.set(depIdStr, currentBlocks);
+				});
+			}
+		});
+
+		return blocksMap;
+	}
+
+	/**
+	 * Filter to only tasks that are ready to work on (dependencies satisfied, actionable status)
+	 */
+	private filterReadyTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
+		// Statuses that are actionable (not deferred, blocked, or terminal)
+		const actionableStatuses: TaskStatus[] = [
+			'pending',
+			'in-progress',
+			'review'
+		];
+
+		// Build set of completed task IDs
+		const completedIds = new Set<string>();
+		tasks.forEach((t) => {
+			if (isTaskComplete(t.status)) {
+				completedIds.add(String(t.id));
+			}
+		});
+
+		return tasks.filter((task) => {
+			// Must be in an actionable status (excludes deferred, blocked, done, cancelled)
+			if (!actionableStatuses.includes(task.status)) {
+				return false;
+			}
+
+			// Must have all dependencies satisfied
+			if (!task.dependencies || task.dependencies.length === 0) {
+				return true;
+			}
+
+			return task.dependencies.every((depId) =>
+				completedIds.has(String(depId))
+			);
+		});
+	}
+
+	/**
+	 * Filter to only tasks that block other tasks
+	 */
+	private filterBlockingTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
+		return tasks.filter((task) => task.blocks.length > 0);
 	}
 
 	/**
@@ -335,8 +535,9 @@ export class ListTasksCommand extends Command {
 					metadata: {
 						total: data.total,
 						filtered: data.filtered,
-						tag: data.tag,
-						storageType: data.storageType
+						tag: data.allTags ? 'all' : data.tag,
+						storageType: data.storageType,
+						allTags: data.allTags || false
 					}
 				},
 				null,
@@ -352,19 +553,24 @@ export class ListTasksCommand extends Command {
 		data: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const { tasks, tag, storageType } = data;
+		const { tasks, tag, storageType, allTags } = data;
 
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: tag || 'master',
+				tag: allTags ? 'all tags' : tag || 'master',
 				storageType
 			});
 		}
 
 		tasks.forEach((task) => {
 			const icon = STATUS_ICONS[task.status];
-			console.log(`${chalk.cyan(task.id)} ${icon} ${task.title}`);
+			// Show tag in compact format when listing all tags
+			const tagPrefix =
+				allTags && (task as any).tagName
+					? chalk.magenta(`[${(task as any).tagName}] `)
+					: '';
+			console.log(`${tagPrefix}${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
 			if (options.withSubtasks && task.subtasks?.length) {
 				task.subtasks.forEach((subtask) => {
@@ -384,12 +590,12 @@ export class ListTasksCommand extends Command {
 		data: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const { tasks, tag, storageType } = data;
+		const { tasks, tag, storageType, allTags } = data;
 
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: tag || 'master',
+				tag: allTags ? 'all tags' : tag || 'master',
 				storageType
 			});
 		}
@@ -414,43 +620,52 @@ export class ListTasksCommand extends Command {
 			? tasks.find((t) => String(t.id) === String(nextTaskInfo.id))
 			: undefined;
 
-		// Display dashboard boxes (nextTask already has complexity from storage enrichment)
-		displayDashboards(
-			taskStats,
-			subtaskStats,
-			priorityBreakdown,
-			depStats,
-			nextTask
-		);
+		// Display dashboard boxes unless filtering by --ready, --blocking, or --all-tags
+		// (filtered/cross-tag dashboards would show misleading statistics)
+		const isFiltered = options.ready || options.blocking || allTags;
+		if (!isFiltered) {
+			displayDashboards(
+				taskStats,
+				subtaskStats,
+				priorityBreakdown,
+				depStats,
+				nextTask
+			);
+		}
 
 		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
 				showSubtasks: options.withSubtasks,
 				showDependencies: true,
-				showComplexity: true // Enable complexity column
+				showBlocks: true, // Show which tasks this one blocks
+				showComplexity: true, // Enable complexity column
+				showTag: allTags // Show tag column for cross-tag listing
 			})
 		);
 
 		// Display recommended next task section immediately after table
-		// Don't show "no tasks available" message in list command - that's for tm next
-		if (nextTask) {
-			const description = getTaskDescription(nextTask);
+		// Skip when filtering by --ready or --blocking (user already knows what they're looking at)
+		if (!isFiltered) {
+			// Don't show "no tasks available" message in list command - that's for tm next
+			if (nextTask) {
+				const description = getTaskDescription(nextTask);
 
-			displayRecommendedNextTask({
-				id: nextTask.id,
-				title: nextTask.title,
-				priority: nextTask.priority,
-				status: nextTask.status,
-				dependencies: nextTask.dependencies,
-				description,
-				complexity: nextTask.complexity as number | undefined
-			});
+				displayRecommendedNextTask({
+					id: nextTask.id,
+					title: nextTask.title,
+					priority: nextTask.priority,
+					status: nextTask.status,
+					dependencies: nextTask.dependencies,
+					description,
+					complexity: nextTask.complexity as number | undefined
+				});
+			}
+			// If no next task, don't show any message - dashboard already shows the info
+
+			// Display suggested next steps at the end
+			displaySuggestedNextSteps();
 		}
-		// If no next task, don't show any message - dashboard already shows the info
-
-		// Display suggested next steps at the end
-		displaySuggestedNextSteps();
 	}
 
 	/**

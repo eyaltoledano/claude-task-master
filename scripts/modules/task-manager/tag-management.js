@@ -531,6 +531,7 @@ async function enhanceTagsWithMetadata(tasksPath, rawData, context = {}) {
  * @param {Object} options - Options object
  * @param {boolean} [options.showTaskCounts=true] - Whether to show task counts
  * @param {boolean} [options.showMetadata=false] - Whether to show metadata
+ * @param {boolean} [options.ready=false] - Whether to filter to only tags with ready tasks
  * @param {Object} context - Context object containing session and projectRoot
  * @param {string} [context.projectRoot] - Project root path
  * @param {Object} [context.mcpLog] - MCP logger object (optional)
@@ -544,7 +545,11 @@ async function tags(
 	outputFormat = 'text'
 ) {
 	const { mcpLog, projectRoot } = context;
-	const { showTaskCounts = true, showMetadata = false } = options;
+	const {
+		showTaskCounts = true,
+		showMetadata = false,
+		ready = false
+	} = options;
 
 	// Create a consistent logFn object regardless of context
 	const logFn = mcpLog || {
@@ -619,12 +624,31 @@ async function tags(
 			const tasks = tagData.tasks || [];
 			const metadata = tagData.metadata || {};
 
+			// Calculate ready tasks (actionable status + dependencies satisfied)
+			const completedIds = new Set(
+				tasks
+					.filter(
+						(t) =>
+							t.status === 'done' ||
+							t.status === 'completed' ||
+							t.status === 'cancelled'
+					)
+					.map((t) => String(t.id))
+			);
+			const actionableStatuses = ['pending', 'in-progress', 'review'];
+			const readyTasks = tasks.filter((t) => {
+				if (!actionableStatuses.includes(t.status)) return false;
+				if (!t.dependencies || t.dependencies.length === 0) return true;
+				return t.dependencies.every((depId) => completedIds.has(String(depId)));
+			});
+
 			tagList.push({
 				name: tagName,
 				isCurrent: tagName === currentTag,
 				completedTasks: tasks.filter(
 					(t) => t.status === 'done' || t.status === 'completed'
 				).length,
+				readyTasks: readyTasks.length,
 				tasks: tasks || [],
 				created: metadata.created || 'Unknown',
 				description: metadata.description || 'No description'
@@ -638,22 +662,32 @@ async function tags(
 			return a.name.localeCompare(b.name);
 		});
 
-		logFn.success(`Found ${tagList.length} tags`);
+		// Filter to only tags with ready tasks if --ready flag is set
+		let filteredTagList = tagList;
+		if (ready) {
+			filteredTagList = tagList.filter((tag) => tag.readyTasks > 0);
+			logFn.info(`Filtered to ${filteredTagList.length} tags with ready tasks`);
+		}
+
+		logFn.success(`Found ${filteredTagList.length} tags`);
 
 		// For JSON output, return structured data
 		if (outputFormat === 'json') {
 			return {
-				tags: tagList,
+				tags: filteredTagList,
 				currentTag,
-				totalTags: tagList.length
+				totalTags: filteredTagList.length
 			};
 		}
 
 		// For text output, display formatted table
 		if (outputFormat === 'text') {
-			if (tagList.length === 0) {
+			if (filteredTagList.length === 0) {
+				const message = ready
+					? 'No tags with ready tasks found'
+					: 'No tags found';
 				console.log(
-					boxen(chalk.yellow('No tags found'), {
+					boxen(chalk.yellow(message), {
 						padding: 1,
 						borderColor: 'yellow',
 						borderStyle: 'round',
@@ -667,7 +701,8 @@ async function tags(
 			const headers = [chalk.cyan.bold('Tag Name')];
 			if (showTaskCounts) {
 				headers.push(chalk.cyan.bold('Tasks'));
-				headers.push(chalk.cyan.bold('Completed'));
+				headers.push(chalk.cyan.bold('Ready'));
+				headers.push(chalk.cyan.bold('Done'));
 			}
 			if (showMetadata) {
 				headers.push(chalk.cyan.bold('Created'));
@@ -680,16 +715,16 @@ async function tags(
 
 			let colWidths;
 			if (showMetadata) {
-				// With metadata: Tag Name, Tasks, Completed, Created, Description
-				const widths = [0.25, 0.1, 0.12, 0.15, 0.38];
+				// With metadata: Tag Name, Tasks, Ready, Done, Created, Description
+				const widths = [0.22, 0.08, 0.08, 0.08, 0.14, 0.38];
 				colWidths = widths.map((w, i) =>
-					Math.max(Math.floor(usableWidth * w), i === 0 ? 15 : 8)
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 15 : 6)
 				);
 			} else {
-				// Without metadata: Tag Name, Tasks, Completed
-				const widths = [0.7, 0.15, 0.15];
+				// Without metadata: Tag Name, Tasks, Ready, Done
+				const widths = [0.6, 0.13, 0.13, 0.13];
 				colWidths = widths.map((w, i) =>
-					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 10)
+					Math.max(Math.floor(usableWidth * w), i === 0 ? 20 : 8)
 				);
 			}
 
@@ -700,7 +735,7 @@ async function tags(
 			});
 
 			// Add rows
-			tagList.forEach((tag) => {
+			filteredTagList.forEach((tag) => {
 				const row = [];
 
 				// Tag name with current indicator
@@ -711,6 +746,11 @@ async function tags(
 
 				if (showTaskCounts) {
 					row.push(chalk.white(tag.tasks.length.toString()));
+					row.push(
+						tag.readyTasks > 0
+							? chalk.yellow(tag.readyTasks.toString())
+							: chalk.gray('0')
+					);
 					row.push(chalk.green(tag.completedTasks.toString()));
 				}
 
@@ -743,9 +783,9 @@ async function tags(
 		}
 
 		return {
-			tags: tagList,
+			tags: filteredTagList,
 			currentTag,
-			totalTags: tagList.length
+			totalTags: filteredTagList.length
 		};
 	} catch (error) {
 		logFn.error(`Error listing tags: ${error.message}`);
