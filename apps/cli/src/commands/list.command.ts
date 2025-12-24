@@ -125,7 +125,7 @@ export class ListTasksCommand extends Command {
 			.option('--blocking', 'Show only tasks that block other tasks')
 			.option(
 				'--all-tags',
-				'Show ready tasks from all tags (use with --ready)'
+				'Show tasks from all tags (combine with --ready for actionable tasks)'
 			)
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
@@ -388,13 +388,12 @@ export class ListTasksCommand extends Command {
 				tagName
 			}));
 
-			// Apply ready filter to this tag's tasks
-			const readyTasks = this.filterReadyTasks(enrichedTasks);
+			// Apply ready filter only if --ready is specified
+			const tasksToAdd = options.ready
+				? this.filterReadyTasks(enrichedTasks)
+				: enrichedTasks;
 
-			// Add tag name to each task and collect
-			allTaggedTasks.push(
-				...readyTasks.map((task) => ({ ...task, tagName }))
-			);
+			allTaggedTasks.push(...tasksToAdd);
 		}
 
 		// Apply additional filters if specified
@@ -558,7 +557,7 @@ export class ListTasksCommand extends Command {
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: allTags ? 'all tags' : (tag || 'master'),
+				tag: allTags ? 'all tags' : tag || 'master',
 				storageType
 			});
 		}
@@ -566,9 +565,10 @@ export class ListTasksCommand extends Command {
 		tasks.forEach((task) => {
 			const icon = STATUS_ICONS[task.status];
 			// Show tag in compact format when listing all tags
-			const tagPrefix = allTags && (task as any).tagName
-				? chalk.magenta(`[${(task as any).tagName}] `)
-				: '';
+			const tagPrefix =
+				allTags && (task as any).tagName
+					? chalk.magenta(`[${(task as any).tagName}] `)
+					: '';
 			console.log(`${tagPrefix}${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
 			if (options.withSubtasks && task.subtasks?.length) {
@@ -594,7 +594,7 @@ export class ListTasksCommand extends Command {
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: allTags ? 'all tags' : (tag || 'master'),
+				tag: allTags ? 'all tags' : tag || 'master',
 				storageType
 			});
 		}

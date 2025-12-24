@@ -6,11 +6,11 @@
 import type { Subtask, Task, TaskPriority } from '@tm/core';
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import { isTaskComplete } from '../../utils/task-status.js';
 import { getComplexityWithColor } from '../formatters/complexity-formatters.js';
 import { getPriorityWithColor } from '../formatters/priority-formatters.js';
 import { getStatusWithColor } from '../formatters/status-formatters.js';
 import { getBoxWidth, truncate } from '../layout/helpers.js';
-import { isTaskComplete } from '../../utils/task-status.js';
 
 /**
  * Default priority for tasks/subtasks when not specified
@@ -21,7 +21,10 @@ const DEFAULT_PRIORITY: TaskPriority = 'medium';
  * Task-like object that can optionally have blocks field and tag name
  * Used for table display - accepts both enriched TaskWithBlocks and regular Task/Subtask
  */
-export type TaskTableItem = (Task | Subtask) & { blocks?: string[]; tagName?: string };
+export type TaskTableItem = (Task | Subtask) & {
+	blocks?: string[];
+	tagName?: string;
+};
 
 /**
  * Create a task table for display
