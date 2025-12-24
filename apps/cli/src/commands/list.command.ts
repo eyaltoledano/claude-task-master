@@ -52,6 +52,7 @@ export interface ListCommandOptions {
 	watch?: boolean;
 	ready?: boolean;
 	blocking?: boolean;
+	allTags?: boolean;
 }
 
 /**
@@ -60,14 +61,20 @@ export interface ListCommandOptions {
 export type TaskWithBlocks = Task & { blocks: string[] };
 
 /**
+ * Task with tag info for cross-tag listing
+ */
+export type TaskWithTag = TaskWithBlocks & { tagName: string };
+
+/**
  * Result type from list command
  */
 export interface ListTasksResult {
-	tasks: TaskWithBlocks[];
+	tasks: TaskWithBlocks[] | TaskWithTag[];
 	total: number;
 	filtered: number;
 	tag?: string;
 	storageType: Exclude<StorageType, 'auto'>;
+	allTags?: boolean;
 }
 
 /**
@@ -116,6 +123,10 @@ export class ListTasksCommand extends Command {
 				'Show only tasks ready to work on (dependencies satisfied)'
 			)
 			.option('--blocking', 'Show only tasks that block other tasks')
+			.option(
+				'--all-tags',
+				'Show ready tasks from all tags (use with --ready)'
+			)
 			.action(async (statusArg?: string, options?: ListCommandOptions) => {
 				// Handle special "all" keyword to show with subtasks
 				let status = statusArg || options?.status;
@@ -154,7 +165,10 @@ export class ListTasksCommand extends Command {
 			if (options.watch) {
 				await this.watchTasks(options);
 			} else {
-				const result = await this.getTasks(options);
+				// Use cross-tag listing when --all-tags is specified
+				const result = options.allTags
+					? await this.getTasksFromAllTags(options)
+					: await this.getTasks(options);
 
 				// Store result for programmatic access
 				this.setLastResult(result);
@@ -340,6 +354,76 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
+	 * Get ready tasks from all tags
+	 * Fetches tasks from each tag and combines them with tag info
+	 */
+	private async getTasksFromAllTags(
+		options: ListCommandOptions
+	): Promise<ListTasksResult> {
+		if (!this.tmCore) {
+			throw new Error('TmCore not initialized');
+		}
+
+		// Get all tags
+		const tagsResult = await this.tmCore.tasks.getTagsWithStats();
+		const allTaggedTasks: TaskWithTag[] = [];
+
+		// Fetch tasks from each tag
+		for (const tagInfo of tagsResult.tags) {
+			const tagName = tagInfo.name;
+
+			// Get tasks for this tag
+			const result = await this.tmCore.tasks.list({
+				tag: tagName,
+				includeSubtasks: options.withSubtasks
+			});
+
+			// Build blocks map for this tag's tasks
+			const blocksMap = this.buildBlocksMap(result.tasks);
+
+			// Enrich tasks with blocks field and tag name
+			const enrichedTasks: TaskWithTag[] = result.tasks.map((task) => ({
+				...task,
+				blocks: blocksMap.get(String(task.id)) || [],
+				tagName
+			}));
+
+			// Apply ready filter to this tag's tasks
+			const readyTasks = this.filterReadyTasks(enrichedTasks);
+
+			// Add tag name to each task and collect
+			allTaggedTasks.push(
+				...readyTasks.map((task) => ({ ...task, tagName }))
+			);
+		}
+
+		// Apply additional filters if specified
+		let filteredTasks: TaskWithTag[] = allTaggedTasks;
+
+		if (options.blocking) {
+			filteredTasks = filteredTasks.filter((task) => task.blocks.length > 0);
+		}
+
+		// Apply status filter if specified
+		if (options.status && options.status !== 'all') {
+			const statusValues = options.status
+				.split(',')
+				.map((s) => s.trim() as TaskStatus);
+			filteredTasks = filteredTasks.filter((task) =>
+				statusValues.includes(task.status)
+			);
+		}
+
+		return {
+			tasks: filteredTasks,
+			total: allTaggedTasks.length,
+			filtered: filteredTasks.length,
+			storageType: this.tmCore.tasks.getStorageType(),
+			allTags: true
+		};
+	}
+
+	/**
 	 * Build a map of task ID -> array of task IDs that depend on it (blocks)
 	 */
 	private buildBlocksMap(tasks: Task[]): Map<string, string[]> {
@@ -451,8 +535,9 @@ export class ListTasksCommand extends Command {
 					metadata: {
 						total: data.total,
 						filtered: data.filtered,
-						tag: data.tag,
-						storageType: data.storageType
+						tag: data.allTags ? 'all' : data.tag,
+						storageType: data.storageType,
+						allTags: data.allTags || false
 					}
 				},
 				null,
@@ -468,19 +553,23 @@ export class ListTasksCommand extends Command {
 		data: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const { tasks, tag, storageType } = data;
+		const { tasks, tag, storageType, allTags } = data;
 
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: tag || 'master',
+				tag: allTags ? 'all tags' : (tag || 'master'),
 				storageType
 			});
 		}
 
 		tasks.forEach((task) => {
 			const icon = STATUS_ICONS[task.status];
-			console.log(`${chalk.cyan(task.id)} ${icon} ${task.title}`);
+			// Show tag in compact format when listing all tags
+			const tagPrefix = allTags && (task as any).tagName
+				? chalk.magenta(`[${(task as any).tagName}] `)
+				: '';
+			console.log(`${tagPrefix}${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
 			if (options.withSubtasks && task.subtasks?.length) {
 				task.subtasks.forEach((subtask) => {
@@ -500,12 +589,12 @@ export class ListTasksCommand extends Command {
 		data: ListTasksResult,
 		options: ListCommandOptions
 	): void {
-		const { tasks, tag, storageType } = data;
+		const { tasks, tag, storageType, allTags } = data;
 
 		// Display header unless --no-header is set
 		if (options.noHeader !== true) {
 			displayCommandHeader(this.tmCore, {
-				tag: tag || 'master',
+				tag: allTags ? 'all tags' : (tag || 'master'),
 				storageType
 			});
 		}
@@ -530,9 +619,9 @@ export class ListTasksCommand extends Command {
 			? tasks.find((t) => String(t.id) === String(nextTaskInfo.id))
 			: undefined;
 
-		// Display dashboard boxes unless filtering by --ready or --blocking
-		// (filtered dashboards would show misleading statistics)
-		const isFiltered = options.ready || options.blocking;
+		// Display dashboard boxes unless filtering by --ready, --blocking, or --all-tags
+		// (filtered/cross-tag dashboards would show misleading statistics)
+		const isFiltered = options.ready || options.blocking || allTags;
 		if (!isFiltered) {
 			displayDashboards(
 				taskStats,
@@ -549,7 +638,8 @@ export class ListTasksCommand extends Command {
 				showSubtasks: options.withSubtasks,
 				showDependencies: true,
 				showBlocks: true, // Show which tasks this one blocks
-				showComplexity: true // Enable complexity column
+				showComplexity: true, // Enable complexity column
+				showTag: allTags // Show tag column for cross-tag listing
 			})
 		);
 

@@ -18,10 +18,10 @@ import { isTaskComplete } from '../../utils/task-status.js';
 const DEFAULT_PRIORITY: TaskPriority = 'medium';
 
 /**
- * Task-like object that can optionally have blocks field
+ * Task-like object that can optionally have blocks field and tag name
  * Used for table display - accepts both enriched TaskWithBlocks and regular Task/Subtask
  */
-export type TaskTableItem = (Task | Subtask) & { blocks?: string[] };
+export type TaskTableItem = (Task | Subtask) & { blocks?: string[]; tagName?: string };
 
 /**
  * Create a task table for display
@@ -33,13 +33,15 @@ export function createTaskTable(
 		showComplexity?: boolean;
 		showDependencies?: boolean;
 		showBlocks?: boolean;
+		showTag?: boolean;
 	}
 ): string {
 	const {
 		showSubtasks = false,
 		showComplexity = false,
 		showDependencies = true,
-		showBlocks = false
+		showBlocks = false,
+		showTag = false
 	} = options || {};
 
 	// Calculate dynamic column widths based on terminal width
@@ -47,11 +49,12 @@ export function createTaskTable(
 
 	// Calculate number of optional columns
 	const optionalCols =
+		(showTag ? 1 : 0) +
 		(showDependencies ? 1 : 0) +
 		(showBlocks ? 1 : 0) +
 		(showComplexity ? 1 : 0);
 
-	// Base widths: ID, Title, Status, Priority (then optional: Dependencies, Blocks, Complexity)
+	// Base widths: ID, Title, Status, Priority (then optional: Tag, Dependencies, Blocks, Complexity)
 	let baseColWidths: number[];
 	if (optionalCols === 0) {
 		baseColWidths = [
@@ -77,8 +80,7 @@ export function createTaskTable(
 			Math.floor(tableWidth * 0.16),
 			Math.floor(tableWidth * 0.16)
 		];
-	} else {
-		// All 3 optional columns
+	} else if (optionalCols === 3) {
 		baseColWidths = [
 			Math.floor(tableWidth * 0.07),
 			Math.floor(tableWidth * 0.3),
@@ -88,16 +90,41 @@ export function createTaskTable(
 			Math.floor(tableWidth * 0.14),
 			Math.floor(tableWidth * 0.1)
 		];
+	} else {
+		// 4 optional columns (Tag + Dependencies + Blocks + Complexity)
+		baseColWidths = [
+			Math.floor(tableWidth * 0.06),
+			Math.floor(tableWidth * 0.22),
+			Math.floor(tableWidth * 0.11),
+			Math.floor(tableWidth * 0.09),
+			Math.floor(tableWidth * 0.14),
+			Math.floor(tableWidth * 0.12),
+			Math.floor(tableWidth * 0.12),
+			Math.floor(tableWidth * 0.1)
+		];
 	}
 
-	const headers = [
+	// Build headers - Tag goes first when showing all tags
+	const headers: string[] = [];
+	const colWidths: number[] = [];
+	let colIndex = 0;
+
+	if (showTag) {
+		headers.push(chalk.blue.bold('Tag'));
+		colWidths.push(baseColWidths[colIndex++]);
+	}
+
+	// Core columns: ID, Title, Status, Priority
+	headers.push(
 		chalk.blue.bold('ID'),
 		chalk.blue.bold('Title'),
 		chalk.blue.bold('Status'),
 		chalk.blue.bold('Priority')
-	];
-	const colWidths = baseColWidths.slice(0, 4);
-	let colIndex = 4;
+	);
+	// Add 4 widths for core columns, adjusting for tag position
+	const coreStart = showTag ? 1 : 0;
+	colWidths.push(...baseColWidths.slice(coreStart, coreStart + 4));
+	colIndex = showTag ? 5 : 4;
 
 	if (showDependencies) {
 		headers.push(chalk.blue.bold('Dependencies'));
@@ -122,12 +149,22 @@ export function createTaskTable(
 	});
 
 	tasks.forEach((task) => {
-		const row: string[] = [
+		const row: string[] = [];
+
+		// Tag goes first when showing all tags
+		if (showTag) {
+			row.push(chalk.magenta(task.tagName || '-'));
+		}
+
+		// Core columns: ID, Title, Status, Priority
+		// Title column index depends on whether tag is shown
+		const titleColIndex = showTag ? 2 : 1;
+		row.push(
 			chalk.cyan(task.id.toString()),
-			truncate(task.title, colWidths[1] - 3),
+			truncate(task.title, colWidths[titleColIndex] - 3),
 			getStatusWithColor(task.status, true), // Use table version
 			getPriorityWithColor(task.priority)
-		];
+		);
 
 		if (showDependencies) {
 			// For table display, show simple format without status icons
@@ -170,12 +207,22 @@ export function createTaskTable(
 		// Add subtasks if requested
 		if (showSubtasks && task.subtasks && task.subtasks.length > 0) {
 			task.subtasks.forEach((subtask) => {
-				const subRow: string[] = [
+				const subRow: string[] = [];
+
+				// Tag goes first when showing all tags
+				if (showTag) {
+					// Subtasks inherit parent's tag, just show dash
+					subRow.push(chalk.gray('-'));
+				}
+
+				// Core subtask columns: ID, Title, Status, Priority
+				const subTitleColIndex = showTag ? 2 : 1;
+				subRow.push(
 					chalk.gray(` └─ ${subtask.id}`),
-					chalk.gray(truncate(subtask.title, colWidths[1] - 6)),
+					chalk.gray(truncate(subtask.title, colWidths[subTitleColIndex] - 6)),
 					chalk.gray(getStatusWithColor(subtask.status, true)),
 					chalk.gray(subtask.priority || DEFAULT_PRIORITY)
-				];
+				);
 
 				if (showDependencies) {
 					subRow.push(
