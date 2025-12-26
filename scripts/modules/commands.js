@@ -5402,9 +5402,16 @@ async function runCLI(argv = process.argv) {
 			displayBanner();
 		}
 
-		// Check for updates BEFORE executing the command
+		// Check for updates BEFORE executing the command (skip entirely in test/CI mode)
+		const skipAutoUpdate =
+			process.env.TASKMASTER_SKIP_AUTO_UPDATE === '1' ||
+			process.env.CI ||
+			process.env.NODE_ENV === 'test';
+
 		const currentVersion = getTaskMasterVersion();
-		const updateInfo = await checkForUpdate(currentVersion);
+		const updateInfo = skipAutoUpdate
+			? { currentVersion, latestVersion: currentVersion, needsUpdate: false }
+			: await checkForUpdate(currentVersion);
 
 		if (updateInfo.needsUpdate) {
 			// Display the upgrade notification first
