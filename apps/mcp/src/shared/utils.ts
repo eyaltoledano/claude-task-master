@@ -2,6 +2,7 @@
  * Shared utilities for MCP tools
  */
 
+import dotenv from 'dotenv';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -395,6 +396,13 @@ export function withToolContext<TArgs extends { projectRoot?: string }>(
 			args: TArgs & { projectRoot: string },
 			context: Context<undefined>
 		) => {
+			// Load project .env if it exists (won't overwrite MCP-provided env vars)
+			// This ensures project-specific env vars are available to tool execution
+			const envPath = path.join(args.projectRoot, '.env');
+			if (fs.existsSync(envPath)) {
+				dotenv.config({ path: envPath });
+			}
+
 			// Create tmCore instance
 			const tmCore = await createTmCore({
 				projectPath: args.projectRoot,

@@ -359,10 +359,14 @@ function _getVertexConfiguration(projectRoot, session) {
 		`Using Vertex AI configuration: Project ID=${projectId}, Location=${location}`
 	);
 
+	const credentials = credentialsPath
+		? { keyFile: credentialsPath }
+		: undefined;
+
 	return {
 		projectId,
 		location,
-		...(credentialsPath && { credentials: { credentialsFromEnv: true } })
+		...(credentials && { credentials })
 	};
 }
 

@@ -15,6 +15,32 @@ import {
 import { log } from '../../scripts/modules/utils.js';
 import { BaseAIProvider } from './base-provider.js';
 
+/**
+ * OpenAI model reasoning effort support.
+ * Different models support different reasoning effort levels.
+ * This is provider-specific logic that belongs here, not in the general model catalog.
+ *
+ * See: https://platform.openai.com/docs/guides/reasoning
+ */
+const REASONING_EFFORT_SUPPORT = {
+	// GPT-5.1 base does not support xhigh
+	'gpt-5.1': ['none', 'low', 'medium', 'high'],
+	// GPT-5.1 Codex Max supports full range
+	'gpt-5.1-codex-max': ['none', 'low', 'medium', 'high', 'xhigh'],
+	// GPT-5.2 supports full range
+	'gpt-5.2': ['none', 'low', 'medium', 'high', 'xhigh'],
+	// GPT-5.2 Pro only supports medium and above
+	'gpt-5.2-pro': ['medium', 'high', 'xhigh'],
+	// GPT-5 supports full range
+	'gpt-5': ['none', 'low', 'medium', 'high', 'xhigh']
+};
+
+// Default for models not explicitly listed
+const DEFAULT_REASONING_EFFORTS = ['none', 'low', 'medium', 'high'];
+
+// Ordering for effort levels (lowest to highest)
+const EFFORT_ORDER = ['none', 'low', 'medium', 'high', 'xhigh'];
+
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {
 		super();
@@ -81,9 +107,53 @@ export class CodexCliProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * Gets a validated reasoningEffort for the model.
+	 * If no effort is specified, returns the model's highest supported effort.
+	 * If an unsupported effort is specified, caps it to the highest supported.
+	 * @param {string} modelId - The model ID to check
+	 * @param {string} [requestedEffort] - The requested reasoning effort (optional)
+	 * @returns {string} The validated reasoning effort
+	 */
+	_getValidatedReasoningEffort(modelId, requestedEffort) {
+		// Get supported efforts for this model, or use defaults
+		const supportedEfforts =
+			REASONING_EFFORT_SUPPORT[modelId] || DEFAULT_REASONING_EFFORTS;
+
+		// Get the highest supported effort for this model
+		const highestSupported = supportedEfforts.reduce((highest, effort) => {
+			const currentIndex = EFFORT_ORDER.indexOf(effort);
+			const highestIndex = EFFORT_ORDER.indexOf(highest);
+			return currentIndex > highestIndex ? effort : highest;
+		}, supportedEfforts[0]);
+
+		// If no effort requested, use the model's highest supported
+		if (!requestedEffort) {
+			log(
+				'debug',
+				`No reasoning effort specified for ${modelId}. Using '${highestSupported}'.`
+			);
+			return highestSupported;
+		}
+
+		// If the requested effort is supported, use it
+		if (supportedEfforts.includes(requestedEffort)) {
+			return requestedEffort;
+		}
+
+		// Cap to the highest supported effort
+		log(
+			'warn',
+			`Reasoning effort '${requestedEffort}' not supported by ${modelId}. Using '${highestSupported}' instead.`
+		);
+
+		return highestSupported;
+	}
+
+	/**
 	 * Creates a Codex CLI client instance
 	 * @param {object} params
 	 * @param {string} [params.commandName] - Command name for settings lookup
+	 * @param {string} [params.modelId] - Model ID for capability validation
 	 * @param {string} [params.apiKey] - Optional API key (injected as OPENAI_API_KEY for Codex CLI)
 	 * @returns {Function}
 	 */
@@ -92,9 +162,16 @@ export class CodexCliProvider extends BaseAIProvider {
 			// Merge global + command-specific settings from config
 			const settings = getCodexCliSettingsForCommand(params.commandName) || {};
 
+			// Get validated reasoningEffort - always pass to override Codex CLI global config
+			const validatedReasoningEffort = this._getValidatedReasoningEffort(
+				params.modelId,
+				settings.reasoningEffort
+			);
+
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
 				...settings,
+				reasoningEffort: validatedReasoningEffort,
 				...(params.apiKey
 					? { env: { ...(settings.env || {}), OPENAI_API_KEY: params.apiKey } }
 					: {})

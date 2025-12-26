@@ -49,29 +49,70 @@ export class VertexAIProvider extends BaseAIProvider {
 	}
 
 	/**
+	 * API key is optional, Service Account credentials can be used instead.
+	 * @returns {boolean}
+	 */
+	isRequiredApiKey() {
+		return false;
+	}
+
+	/**
+	 * API key  or  Service Account  is mandatory.
+	 * @returns {boolean}
+	 */
+	isAuthenticationRequired() {
+		return true;
+	}
+
+	/**
+	 * Validates that a credential value is present and non-empty.
+	 * @private
+	 * @param {string|object|null|undefined} value
+	 * @returns {boolean}
+	 */
+	isValidCredential(value) {
+		if (!value) return false;
+		if (typeof value === 'string') {
+			return value.trim().length > 0;
+		}
+		return typeof value === 'object';
+	}
+
+	/**
 	 * Validates Vertex AI-specific authentication parameters
 	 * @param {object} params - Parameters to validate
-	 * @throws {Error} If required parameters are missing
+	 * @throws {VertexAuthError|VertexConfigError}
 	 */
 	validateAuth(params) {
 		const { apiKey, projectId, location, credentials } = params;
 
 		// Check for API key OR service account credentials
-		if (!apiKey && !credentials) {
+		const hasValidApiKey = this.isValidCredential(apiKey);
+		const hasValidCredentials = this.isValidCredential(credentials);
+
+		if (!hasValidApiKey && !hasValidCredentials) {
 			throw new VertexAuthError(
-				'Either Google API key (GOOGLE_API_KEY) or service account credentials (GOOGLE_APPLICATION_CREDENTIALS) is required for Vertex AI'
+				'Vertex AI requires authentication. Provide one of the following:\n' +
+					'  • GOOGLE_API_KEY environment variable (typical for API-based auth), OR\n' +
+					'  • GOOGLE_APPLICATION_CREDENTIALS pointing to a service account JSON file (recommended for production)'
 			);
 		}
 
 		// Project ID is required for Vertex AI
-		if (!projectId) {
+		if (
+			!projectId ||
+			(typeof projectId === 'string' && projectId.trim().length === 0)
+		) {
 			throw new VertexConfigError(
 				'Google Cloud project ID is required for Vertex AI. Set VERTEX_PROJECT_ID environment variable.'
 			);
 		}
 
 		// Location is required for Vertex AI
-		if (!location) {
+		if (
+			!location ||
+			(typeof location === 'string' && location.trim().length === 0)
+		) {
 			throw new VertexConfigError(
 				'Google Cloud location is required for Vertex AI. Set VERTEX_LOCATION environment variable (e.g., "us-central1").'
 			);
@@ -97,7 +138,11 @@ export class VertexAIProvider extends BaseAIProvider {
 			// Configure auth options - either API key or service account
 			const authOptions = {};
 			if (apiKey) {
-				authOptions.apiKey = apiKey;
+				// Vercel AI SDK expects googleAuthOptions even when using apiKey for some configurations
+				authOptions.googleAuthOptions = {
+					...credentials,
+					apiKey
+				};
 			} else if (credentials) {
 				authOptions.googleAuthOptions = credentials;
 			}
@@ -105,7 +150,7 @@ export class VertexAIProvider extends BaseAIProvider {
 			// Return Vertex AI client
 			return createVertex({
 				...authOptions,
-				projectId,
+				project: projectId,
 				location,
 				...(baseURL && { baseURL }),
 				...(fetchImpl && { fetch: fetchImpl })
