@@ -1,5 +1,25 @@
 # task-master-ai
 
+## 0.40.1
+
+### Patch Changes
+
+- [#1523](https://github.com/eyaltoledano/claude-task-master/pull/1523) [`fc1a79f`](https://github.com/eyaltoledano/claude-task-master/commit/fc1a79f2565b0d8c24f009aec2c473a335262ae2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Codex cli Validate reasoning effort against model capabilities
+  - Add provider-level reasoning effort validation for OpenAI models
+  - Automatically cap unsupported effort levels (e.g., 'xhigh' on gpt-5.1 and gpt-5 becomes 'high')
+
+- [#1549](https://github.com/eyaltoledano/claude-task-master/pull/1549) [`98087ac`](https://github.com/eyaltoledano/claude-task-master/commit/98087acae91fad7345bdb4c253d4dfd0d584f81e) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve CLI startup speed by 2x
+
+- [#1545](https://github.com/eyaltoledano/claude-task-master/pull/1545) [`a0007a3`](https://github.com/eyaltoledano/claude-task-master/commit/a0007a3575305c367c8561584aa0dbd181f5e1cc) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Smarter project root detection with boundary markers
+  - Prevents Task Master from incorrectly detecting `.taskmaster` folders in your home directory when working inside a different project
+  - Now stops at project boundaries (`.git`, `package.json`, lock files) instead of searching all the way up to the filesystem root
+  - Adds support for monorepo markers (`lerna.json`, `nx.json`, `turbo.json`) and additional lock files (`bun.lockb`, `deno.lock`)
+
+- [#1523](https://github.com/eyaltoledano/claude-task-master/pull/1523) [`fc1a79f`](https://github.com/eyaltoledano/claude-task-master/commit/fc1a79f2565b0d8c24f009aec2c473a335262ae2) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve json schemas for ai-related commands making it more compatible with openai models
+  - Fixes #1541 #1542
+
+- [#1542](https://github.com/eyaltoledano/claude-task-master/pull/1542) [`b817d6f`](https://github.com/eyaltoledano/claude-task-master/commit/b817d6f9f278c84785ec468f9b305e70c47266f6) Thanks [@mdimitrovg](https://github.com/mdimitrovg)! - Fixed vertex-ai authentication when using service account and vertex location env variable.
+
 ## 0.40.0
 
 ### Minor Changes
