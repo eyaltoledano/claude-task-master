@@ -95,15 +95,16 @@ export function createTaskTable(
 		];
 	} else {
 		// 4 optional columns (Tag + Dependencies + Blocks + Complexity)
+		// Order: Tag, ID, Title, Status, Priority, Dependencies, Blocks, Complexity
 		baseColWidths = [
-			Math.floor(tableWidth * 0.06),
-			Math.floor(tableWidth * 0.22),
-			Math.floor(tableWidth * 0.11),
-			Math.floor(tableWidth * 0.09),
-			Math.floor(tableWidth * 0.14),
-			Math.floor(tableWidth * 0.12),
-			Math.floor(tableWidth * 0.12),
-			Math.floor(tableWidth * 0.1)
+			Math.floor(tableWidth * 0.12), // Tag
+			Math.floor(tableWidth * 0.06), // ID
+			Math.floor(tableWidth * 0.2), // Title
+			Math.floor(tableWidth * 0.1), // Status
+			Math.floor(tableWidth * 0.1), // Priority
+			Math.floor(tableWidth * 0.12), // Dependencies
+			Math.floor(tableWidth * 0.12), // Blocks
+			Math.floor(tableWidth * 0.1) // Complexity
 		];
 	}
 
