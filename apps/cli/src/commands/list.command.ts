@@ -276,6 +276,17 @@ export class ListTasksCommand extends Command {
 			}
 		}
 
+		// Validate --all-tags cannot be used with --watch
+		if (options.allTags && options.watch) {
+			console.error(chalk.red('--all-tags cannot be used with --watch mode'));
+			console.error(
+				chalk.gray(
+					'Use --all-tags without --watch, or --watch without --all-tags'
+				)
+			);
+			return false;
+		}
+
 		return true;
 	}
 
