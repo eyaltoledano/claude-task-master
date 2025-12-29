@@ -228,7 +228,23 @@ async function updateTasks(
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
 			// With generateObject, we get structured data directly
-			const parsedUpdatedTasks = aiServiceResponse.mainResult.tasks;
+			const parsedUpdatedTasks = aiServiceResponse.mainResult.tasks.map(
+				(task) => ({
+					...task,
+					dependencies: task.dependencies ?? [],
+					priority: task.priority ?? null,
+					details: task.details ?? null,
+					testStrategy: task.testStrategy ?? null,
+					subtasks: task.subtasks
+						? task.subtasks.map((subtask) => ({
+								...subtask,
+								dependencies: subtask.dependencies ?? [],
+								status: subtask.status ?? 'pending',
+								testStrategy: subtask.testStrategy ?? null
+							}))
+						: null
+				})
+			);
 
 			// --- Update Tasks Data (Updated writeJSON call) ---
 			if (!Array.isArray(parsedUpdatedTasks)) {

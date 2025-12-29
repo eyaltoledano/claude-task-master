@@ -26,13 +26,12 @@ export const BaseTaskSchema = z
 		title: z.string().min(1).max(200),
 		description: z.string().min(1),
 		status: TaskStatusSchema,
-		dependencies: z.array(z.union([z.number().int(), z.string()])).default([]),
+		dependencies: z.array(z.union([z.number().int(), z.string()])),
 		priority: z
 			.enum(['low', 'medium', 'high', 'critical'])
-			.nullable()
-			.default(null),
-		details: z.string().nullable().default(null),
-		testStrategy: z.string().nullable().default(null)
+			.nullable(),
+		details: z.string().nullable(),
+		testStrategy: z.string().nullable()
 	})
 	.strict();
 
@@ -41,9 +40,9 @@ export const SubtaskSchema = z
 		id: z.number().int().positive(),
 		title: z.string().min(5).max(200),
 		description: z.string().min(10),
-		dependencies: z.array(z.number().int()).default([]),
+		dependencies: z.array(z.number().int()),
 		details: z.string().min(20),
-		status: z.enum(['pending', 'done', 'completed']).default('pending'),
-		testStrategy: z.string().nullable().default(null)
+		status: z.enum(['pending', 'done', 'completed']),
+		testStrategy: z.string().nullable()
 	})
 	.strict();

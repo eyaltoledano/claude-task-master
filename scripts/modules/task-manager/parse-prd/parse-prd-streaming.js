@@ -570,6 +570,17 @@ async function processWithGenerateObject(context, logger) {
 	// Extract tasks from the result (handle both direct tasks and mainResult.tasks)
 	const tasks = result?.mainResult || result;
 
+	// Apply defaults to ensure all required fields are present
+	if (tasks && Array.isArray(tasks.tasks)) {
+		tasks.tasks = tasks.tasks.map((task) => ({
+			...task,
+			dependencies: task.dependencies ?? [],
+			priority: task.priority ?? null,
+			details: task.details ?? null,
+			testStrategy: task.testStrategy ?? null
+		}));
+	}
+
 	// Process the generated tasks
 	if (tasks && Array.isArray(tasks.tasks)) {
 		// Update progress tracker with final tasks

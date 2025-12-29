@@ -422,7 +422,13 @@ async function updateTaskById(
 			}
 
 			// Full update mode: Use structured data directly
-			const updatedTask = aiServiceResponse.mainResult.task;
+			const updatedTask = {
+				...aiServiceResponse.mainResult.task,
+				dependencies: aiServiceResponse.mainResult.task.dependencies ?? [],
+				priority: aiServiceResponse.mainResult.task.priority ?? null,
+				details: aiServiceResponse.mainResult.task.details ?? null,
+				testStrategy: aiServiceResponse.mainResult.task.testStrategy ?? null
+			};
 
 			// --- Task Validation/Correction (Keep existing logic) ---
 			if (!updatedTask || typeof updatedTask !== 'object')
@@ -465,7 +471,8 @@ async function updateTaskById(
 											depId < currentSubtaskId
 									)
 							: [],
-						status: subtask.status || 'pending'
+						status: subtask.status || 'pending',
+						testStrategy: subtask.testStrategy ?? null
 					};
 					currentSubtaskId++;
 					return correctedSubtask;
