@@ -378,6 +378,7 @@ export class ListTasksCommand extends Command {
 		// Get all tags
 		const tagsResult = await this.tmCore.tasks.getTagsWithStats();
 		const allTaggedTasks: TaskWithTag[] = [];
+		let totalTaskCount = 0;
 
 		// Fetch tasks from each tag
 		for (const tagInfo of tagsResult.tags) {
@@ -389,6 +390,9 @@ export class ListTasksCommand extends Command {
 				includeSubtasks: options.withSubtasks
 			});
 
+			// Track total count before any filtering (consistent with getTasks)
+			totalTaskCount += result.tasks.length;
+
 			// Build blocks map for this tag's tasks
 			const blocksMap = this.buildBlocksMap(result.tasks);
 
@@ -399,18 +403,18 @@ export class ListTasksCommand extends Command {
 				tagName
 			}));
 
-			// Apply ready filter only if --ready is specified
-			// Cast is safe because filterReadyTasks preserves all properties
-			const tasksToAdd: TaskWithTag[] = options.ready
-				? (this.filterReadyTasks(enrichedTasks) as TaskWithTag[])
-				: enrichedTasks;
-
-			allTaggedTasks.push(...tasksToAdd);
+			allTaggedTasks.push(...enrichedTasks);
 		}
 
-		// Apply additional filters if specified
+		// Apply filters (consistent with getTasks order)
 		let filteredTasks: TaskWithTag[] = allTaggedTasks;
 
+		// Apply ready filter if specified
+		if (options.ready) {
+			filteredTasks = this.filterReadyTasks(filteredTasks) as TaskWithTag[];
+		}
+
+		// Apply blocking filter if specified
 		if (options.blocking) {
 			filteredTasks = filteredTasks.filter((task) => task.blocks.length > 0);
 		}
@@ -427,7 +431,7 @@ export class ListTasksCommand extends Command {
 
 		return {
 			tasks: filteredTasks,
-			total: allTaggedTasks.length,
+			total: totalTaskCount,
 			filtered: filteredTasks.length,
 			storageType: this.tmCore.tasks.getStorageType(),
 			allTags: true
