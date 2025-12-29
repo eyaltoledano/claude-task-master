@@ -403,16 +403,17 @@ export class ListTasksCommand extends Command {
 				tagName
 			}));
 
-			allTaggedTasks.push(...enrichedTasks);
+			// Apply ready filter per-tag to respect tag-scoped dependencies
+			// (task IDs may overlap between tags, so we must filter within each tag)
+			const tasksToAdd: TaskWithTag[] = options.ready
+				? (this.filterReadyTasks(enrichedTasks) as TaskWithTag[])
+				: enrichedTasks;
+
+			allTaggedTasks.push(...tasksToAdd);
 		}
 
-		// Apply filters (consistent with getTasks order)
+		// Apply additional filters
 		let filteredTasks: TaskWithTag[] = allTaggedTasks;
-
-		// Apply ready filter if specified
-		if (options.ready) {
-			filteredTasks = this.filterReadyTasks(filteredTasks) as TaskWithTag[];
-		}
 
 		// Apply blocking filter if specified
 		if (options.blocking) {
