@@ -422,17 +422,17 @@ async function updateTaskById(
 			}
 
 			// Full update mode: Use structured data directly
-			const updatedTask = {
-				...aiServiceResponse.mainResult.task,
-				dependencies: aiServiceResponse.mainResult.task.dependencies ?? [],
-				priority: aiServiceResponse.mainResult.task.priority ?? null,
-				details: aiServiceResponse.mainResult.task.details ?? null,
-				testStrategy: aiServiceResponse.mainResult.task.testStrategy ?? null
-			};
-
-			// --- Task Validation/Correction (Keep existing logic) ---
-			if (!updatedTask || typeof updatedTask !== 'object')
+			const aiTask = aiServiceResponse.mainResult?.task;
+			if (!aiTask || typeof aiTask !== 'object')
 				throw new Error('Received invalid task object from AI.');
+
+			const updatedTask = {
+				...aiTask,
+				dependencies: aiTask.dependencies ?? [],
+				priority: aiTask.priority ?? null,
+				details: aiTask.details ?? null,
+				testStrategy: aiTask.testStrategy ?? null
+			};
 			if (!updatedTask.title || !updatedTask.description)
 				throw new Error('Updated task missing required fields.');
 			// Preserve ID if AI changed it
