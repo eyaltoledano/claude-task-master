@@ -27,9 +27,7 @@ export const BaseTaskSchema = z
 		description: z.string().min(1),
 		status: TaskStatusSchema,
 		dependencies: z.array(z.union([z.number().int(), z.string()])),
-		priority: z
-			.enum(['low', 'medium', 'high', 'critical'])
-			.nullable(),
+		priority: z.enum(['low', 'medium', 'high', 'critical']).nullable(),
 		details: z.string().nullable(),
 		testStrategy: z.string().nullable()
 	})
