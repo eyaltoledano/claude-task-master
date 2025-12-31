@@ -164,6 +164,30 @@ async function updateSubtaskById(
 
 		const subtask = parentTask.subtasks[subtaskIndex];
 
+		// --- Metadata-Only Update (Fast Path) ---
+		// If only metadata is provided (no prompt), skip AI and just update metadata
+		if (metadata && (!prompt || prompt.trim() === '')) {
+			report('info', `Metadata-only update for subtask ${subtaskId}`);
+			// Merge new metadata with existing
+			subtask.metadata = {
+				...(subtask.metadata || {}),
+				...metadata
+			};
+			parentTask.subtasks[subtaskIndex] = subtask;
+			writeJSON(tasksPath, data, projectRoot, tag);
+			report(
+				'success',
+				`Successfully updated metadata for subtask ${subtaskId}`
+			);
+
+			return {
+				updatedSubtask: subtask,
+				telemetryData: null,
+				tagInfo: { tag }
+			};
+		}
+		// --- End Metadata-Only Update ---
+
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
