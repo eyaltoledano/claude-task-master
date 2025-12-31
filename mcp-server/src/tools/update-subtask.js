@@ -27,11 +27,22 @@ export function registerUpdateSubtaskTool(server) {
 			id: TaskIdSchemaForMcp.describe(
 				'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2"). Parent ID is the ID of the task that contains the subtask.'
 			),
-			prompt: z.string().describe('Information to add to the subtask'),
+			prompt: z
+				.string()
+				.optional()
+				.describe(
+					'Information to add to the subtask. Required unless only updating metadata.'
+				),
 			research: z
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
+			metadata: z
+				.string()
+				.optional()
+				.describe(
+					'JSON string of metadata to merge into subtask metadata. Example: \'{"ticketId": "JIRA-456", "reviewed": true}\'. Requires TASK_MASTER_ALLOW_METADATA_UPDATES=true in MCP environment.'
+				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
@@ -65,12 +76,50 @@ export function registerUpdateSubtaskTool(server) {
 					);
 				}
 
+				// Validate metadata if provided
+				let parsedMetadata = null;
+				if (args.metadata) {
+					// Check if metadata updates are allowed
+					const allowMetadataUpdates =
+						process.env.TASK_MASTER_ALLOW_METADATA_UPDATES === 'true';
+					if (!allowMetadataUpdates) {
+						return createErrorResponse(
+							'Metadata updates are disabled. Set TASK_MASTER_ALLOW_METADATA_UPDATES=true in your MCP server environment to enable metadata modifications.'
+						);
+					}
+					// Parse and validate JSON
+					try {
+						parsedMetadata = JSON.parse(args.metadata);
+						if (
+							typeof parsedMetadata !== 'object' ||
+							parsedMetadata === null ||
+							Array.isArray(parsedMetadata)
+						) {
+							return createErrorResponse(
+								'Invalid metadata: must be a JSON object (not null or array)'
+							);
+						}
+					} catch {
+						return createErrorResponse(
+							`Invalid metadata JSON: ${args.metadata}. Provide a valid JSON object string.`
+						);
+					}
+				}
+
+				// Validate that at least prompt or metadata is provided
+				if (!args.prompt && !parsedMetadata) {
+					return createErrorResponse(
+						'Either prompt or metadata must be provided for update-subtask'
+					);
+				}
+
 				const result = await updateSubtaskByIdDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
+						metadata: parsedMetadata,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},

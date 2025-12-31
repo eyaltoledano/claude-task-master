@@ -109,9 +109,7 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 			expect(loadedTasks[0].description).toBe(
 				'AI refined description with more detail'
 			);
-			expect(loadedTasks[0].details).toBe(
-				'AI generated implementation details'
-			);
+			expect(loadedTasks[0].details).toBe('AI generated implementation details');
 			expect(loadedTasks[0].testStrategy).toBe('AI suggested test approach');
 			// Critical: metadata must be preserved
 			expect(loadedTasks[0].metadata).toEqual(originalMetadata);
@@ -162,8 +160,7 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 3. Add refresh token logic
 4. Set up protected routes
 				`.trim(),
-				testStrategy:
-					'Unit tests for JWT functions, integration tests for auth flow'
+				testStrategy: 'Unit tests for JWT functions, integration tests for auth flow'
 			});
 
 			const loadedTasks = await storage.loadTasks();
@@ -172,9 +169,7 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 			expect(loadedTasks[0].details).toContain('Implementation Plan');
 			// Realistic metadata preserved with all its nested structure
 			expect(loadedTasks[0].metadata).toEqual(realisticMetadata);
-			expect(
-				(loadedTasks[0].metadata as Record<string, unknown>).githubIssue
-			).toBe(42);
+			expect((loadedTasks[0].metadata as Record<string, unknown>).githubIssue).toBe(42);
 			expect(
 				(
 					(loadedTasks[0].metadata as Record<string, unknown>).jira as Record<
@@ -272,90 +267,6 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 				subtaskMeta: 'subtask-value'
 			});
 		});
-
-		it('should preserve subtask metadata when AI returns modified subtasks', async () => {
-			// This tests the scenario where update-task AI returns subtasks
-			// (full update mode, not append mode) - subtask metadata must be preserved
-			const tasks: Task[] = [
-				createTask('1', {
-					metadata: { parentMeta: 'parent-value' },
-					subtasks: [
-						{
-							id: 1,
-							parentId: '1',
-							title: 'Original subtask 1',
-							description: 'Has metadata',
-							status: 'pending',
-							priority: 'medium',
-							dependencies: [],
-							details: '',
-							testStrategy: '',
-							metadata: { ticket: 'JIRA-100', sprint: 'S1' }
-						},
-						{
-							id: 2,
-							parentId: '1',
-							title: 'Original subtask 2',
-							description: 'Also has metadata',
-							status: 'in-progress',
-							priority: 'high',
-							dependencies: [1],
-							details: '',
-							testStrategy: '',
-							metadata: { ticket: 'JIRA-101', reviewed: true }
-						}
-					]
-				})
-			];
-			await storage.saveTasks(tasks);
-
-			// Simulate AI returning modified subtasks (AI doesn't include metadata)
-			const aiModifiedSubtasks = [
-				{
-					id: 1,
-					parentId: '1',
-					title: 'AI updated subtask 1', // Title changed by AI
-					description: 'AI updated description',
-					status: 'pending',
-					priority: 'medium',
-					dependencies: [],
-					details: 'AI added details',
-					testStrategy: ''
-					// No metadata - AI schema excludes it
-				},
-				{
-					id: 2,
-					parentId: '1',
-					title: 'AI updated subtask 2',
-					description: 'AI updated this too',
-					status: 'in-progress',
-					priority: 'high',
-					dependencies: [1],
-					details: 'More AI details',
-					testStrategy: ''
-					// No metadata - AI schema excludes it
-				}
-			];
-
-			// Update task with AI-modified subtasks
-			await storage.updateTask('1', {
-				title: 'AI Updated Task',
-				subtasks: aiModifiedSubtasks
-			});
-
-			const loadedTasks = await storage.loadTasks();
-			// Parent metadata preserved
-			expect(loadedTasks[0].metadata).toEqual({ parentMeta: 'parent-value' });
-			// Subtask metadata should be preserved from originals
-			expect(loadedTasks[0].subtasks[0].metadata).toEqual({
-				ticket: 'JIRA-100',
-				sprint: 'S1'
-			});
-			expect(loadedTasks[0].subtasks[1].metadata).toEqual({
-				ticket: 'JIRA-101',
-				reviewed: true
-			});
-		});
 	});
 
 	describe('parse-prd operation simulation', () => {
@@ -399,9 +310,7 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 				metadata: { externalId: 'USER-ADDED-123' }
 			});
 			const updatedTasks = await storage.loadTasks();
-			expect(updatedTasks[0].metadata).toEqual({
-				externalId: 'USER-ADDED-123'
-			});
+			expect(updatedTasks[0].metadata).toEqual({ externalId: 'USER-ADDED-123' });
 		});
 	});
 

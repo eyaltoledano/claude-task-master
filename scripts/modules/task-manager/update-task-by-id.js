@@ -58,7 +58,13 @@ async function updateTaskById(
 	outputFormat = 'text',
 	appendMode = false
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		metadata
+	} = context;
 	const { report, isMCP } = createBridgeLogger(mcpLog, session);
 
 	try {
@@ -70,8 +76,15 @@ async function updateTaskById(
 		if (taskId === null || taskId === undefined || String(taskId).trim() === '')
 			throw new Error('Task ID cannot be empty.');
 
-		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '')
-			throw new Error('Prompt cannot be empty.');
+		// Allow metadata-only updates (prompt can be empty if metadata is provided)
+		if (
+			(!prompt || typeof prompt !== 'string' || prompt.trim() === '') &&
+			!metadata
+		) {
+			throw new Error(
+				'Prompt cannot be empty unless metadata is provided for update.'
+			);
+		}
 
 		// Determine project root first (needed for API key checks)
 		const projectRoot = providedProjectRoot || findProjectRoot();
@@ -165,6 +178,27 @@ async function updateTaskById(
 			return null;
 		}
 		// --- End Task Loading ---
+
+		// --- Metadata-Only Update (Fast Path) ---
+		// If only metadata is provided (no prompt), skip AI and just update metadata
+		if (metadata && (!prompt || prompt.trim() === '')) {
+			report('info', `Metadata-only update for task ${taskId}`);
+			// Merge new metadata with existing
+			taskToUpdate.metadata = {
+				...(taskToUpdate.metadata || {}),
+				...metadata
+			};
+			data.tasks[taskIndex] = taskToUpdate;
+			writeJSON(tasksPath, data, projectRoot, tag);
+			report('success', `Successfully updated metadata for task ${taskId}`);
+
+			return {
+				updatedTask: taskToUpdate,
+				telemetryData: null,
+				tagInfo: { tag }
+			};
+		}
+		// --- End Metadata-Only Update ---
 
 		// --- Context Gathering ---
 		let gatheredContext = '';
@@ -385,6 +419,14 @@ async function updateTaskById(
 					}
 				}
 
+				// Merge metadata if provided
+				if (metadata) {
+					taskToUpdate.metadata = {
+						...(taskToUpdate.metadata || {}),
+						...metadata
+					};
+				}
+
 				// Write the updated task back to file
 				data.tasks[taskIndex] = taskToUpdate;
 				writeJSON(tasksPath, data, projectRoot, tag);
@@ -539,6 +581,17 @@ async function updateTaskById(
 				}
 			}
 			// --- End Task Validation/Correction ---
+
+			// --- Preserve and Merge Metadata ---
+			// AI responses don't include metadata (AI schema excludes it)
+			// Preserve existing metadata from original task and merge new metadata if provided
+			if (taskToUpdate.metadata || metadata) {
+				updatedTask.metadata = {
+					...(taskToUpdate.metadata || {}),
+					...(metadata || {})
+				};
+			}
+			// --- End Preserve and Merge Metadata ---
 
 			// --- Update Task Data (Keep existing) ---
 			data.tasks[taskIndex] = updatedTask;
