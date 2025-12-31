@@ -36,6 +36,7 @@ export class TaskEntity implements Task {
 	recommendedSubtasks?: number;
 	expansionPrompt?: string;
 	complexityReasoning?: string;
+	metadata?: Record<string, unknown>;
 
 	constructor(data: Task | (Omit<Task, 'id'> & { id: number | string })) {
 		this.validate(data);
@@ -68,6 +69,7 @@ export class TaskEntity implements Task {
 		this.recommendedSubtasks = data.recommendedSubtasks;
 		this.expansionPrompt = data.expansionPrompt;
 		this.complexityReasoning = data.complexityReasoning;
+		this.metadata = data.metadata;
 	}
 
 	/**
@@ -255,7 +257,8 @@ export class TaskEntity implements Task {
 			complexity: this.complexity,
 			recommendedSubtasks: this.recommendedSubtasks,
 			expansionPrompt: this.expansionPrompt,
-			complexityReasoning: this.complexityReasoning
+			complexityReasoning: this.complexityReasoning,
+			metadata: this.metadata
 		};
 	}
 

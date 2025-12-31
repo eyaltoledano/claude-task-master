@@ -156,6 +156,13 @@ export interface Task extends TaskImplementationMetadata {
 	recommendedSubtasks?: number;
 	expansionPrompt?: string;
 	complexityReasoning?: string;
+
+	/**
+	 * User-defined metadata that survives all task operations.
+	 * Use for external IDs, custom workflow data, integrations, etc.
+	 * This field is preserved through AI operations, updates, and serialization.
+	 */
+	metadata?: Record<string, unknown>;
 }
 
 /**

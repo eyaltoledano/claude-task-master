@@ -158,7 +158,9 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 	describe('updateTask() metadata preservation', () => {
 		it('should preserve existing metadata when updating other fields', async () => {
 			const originalMetadata = { externalId: 'EXT-123', version: 1 };
-			const tasks: Task[] = [createTask('1', { metadata: originalMetadata })];
+			const tasks: Task[] = [
+				createTask('1', { metadata: originalMetadata })
+			];
 
 			await storage.saveTasks(tasks);
 
@@ -171,7 +173,9 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 		});
 
 		it('should allow updating metadata field directly', async () => {
-			const tasks: Task[] = [createTask('1', { metadata: { original: true } })];
+			const tasks: Task[] = [
+				createTask('1', { metadata: { original: true } })
+			];
 
 			await storage.saveTasks(tasks);
 
@@ -203,7 +207,9 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 		});
 
 		it('should preserve metadata when updating status', async () => {
-			const tasks: Task[] = [createTask('1', { metadata: { tracked: true } })];
+			const tasks: Task[] = [
+				createTask('1', { metadata: { tracked: true } })
+			];
 
 			await storage.saveTasks(tasks);
 			await storage.updateTask('1', { status: 'in-progress' });
@@ -414,7 +420,9 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 
 	describe('file format verification', () => {
 		it('should write metadata to JSON file correctly', async () => {
-			const tasks: Task[] = [createTask('1', { metadata: { written: true } })];
+			const tasks: Task[] = [
+				createTask('1', { metadata: { written: true } })
+			];
 
 			await storage.saveTasks(tasks);
 

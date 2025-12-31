@@ -292,6 +292,7 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Normalize task IDs - keep Task IDs as strings, Subtask IDs as numbers
+	 * Note: Uses spread operator to preserve all task properties including user-defined metadata
 	 */
 	private normalizeTaskIds(tasks: Task[]): Task[] {
 		return tasks.map((task) => ({

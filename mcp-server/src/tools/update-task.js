@@ -30,7 +30,10 @@ export function registerUpdateTaskTool(server) {
 				),
 			prompt: z
 				.string()
-				.describe('New information or context to incorporate into the task'),
+				.optional()
+				.describe(
+					'New information or context to incorporate into the task. Required unless only updating metadata.'
+				),
 			research: z
 				.boolean()
 				.optional()
@@ -40,6 +43,12 @@ export function registerUpdateTaskTool(server) {
 				.optional()
 				.describe(
 					'Append timestamped information to task details instead of full update'
+				),
+			metadata: z
+				.string()
+				.optional()
+				.describe(
+					'JSON string of metadata to merge into task metadata. Example: \'{"githubIssue": 42, "sprint": "Q1-S3"}\'. Requires TASK_MASTER_ALLOW_METADATA_UPDATES=true in MCP environment.'
 				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
@@ -76,7 +85,44 @@ export function registerUpdateTaskTool(server) {
 					);
 				}
 
-				// 3. Call Direct Function - Include projectRoot
+				// 3. Validate metadata if provided
+				let parsedMetadata = null;
+				if (args.metadata) {
+					// Check if metadata updates are allowed
+					const allowMetadataUpdates =
+						process.env.TASK_MASTER_ALLOW_METADATA_UPDATES === 'true';
+					if (!allowMetadataUpdates) {
+						return createErrorResponse(
+							'Metadata updates are disabled. Set TASK_MASTER_ALLOW_METADATA_UPDATES=true in your MCP server environment to enable metadata modifications.'
+						);
+					}
+					// Parse and validate JSON
+					try {
+						parsedMetadata = JSON.parse(args.metadata);
+						if (
+							typeof parsedMetadata !== 'object' ||
+							parsedMetadata === null ||
+							Array.isArray(parsedMetadata)
+						) {
+							return createErrorResponse(
+								'Invalid metadata: must be a JSON object (not null or array)'
+							);
+						}
+					} catch {
+						return createErrorResponse(
+							`Invalid metadata JSON: ${args.metadata}. Provide a valid JSON object string.`
+						);
+					}
+				}
+
+				// 4. Validate that at least prompt or metadata is provided
+				if (!args.prompt && !parsedMetadata) {
+					return createErrorResponse(
+						'Either prompt or metadata must be provided for update-task'
+					);
+				}
+
+				// 5. Call Direct Function - Include projectRoot and metadata
 				const result = await updateTaskByIdDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -84,6 +130,7 @@ export function registerUpdateTaskTool(server) {
 						prompt: args.prompt,
 						research: args.research,
 						append: args.append,
+						metadata: parsedMetadata,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},
