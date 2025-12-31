@@ -456,8 +456,12 @@ async function updateTaskById(
 				let currentSubtaskId = 1;
 				updatedTask.subtasks = updatedTask.subtasks.map((subtask) => {
 					// Find original subtask to preserve its metadata
+					// Use type-coerced ID matching (AI may return string IDs vs numeric)
+					// Also match by title as fallback (subtask titles are typically unique)
 					const originalSubtask = taskToUpdate.subtasks?.find(
-						(st) => st.id === subtask.id || st.id === currentSubtaskId
+						(st) =>
+							String(st.id) === String(subtask.id) ||
+							(subtask.title && st.title === subtask.title)
 					);
 					// Fix AI-generated subtask IDs that might be strings or use parent ID as prefix
 					const correctedSubtask = {
