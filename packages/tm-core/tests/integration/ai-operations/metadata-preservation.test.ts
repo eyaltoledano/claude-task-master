@@ -272,6 +272,90 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 				subtaskMeta: 'subtask-value'
 			});
 		});
+
+		it('should preserve subtask metadata when AI returns modified subtasks', async () => {
+			// This tests the scenario where update-task AI returns subtasks
+			// (full update mode, not append mode) - subtask metadata must be preserved
+			const tasks: Task[] = [
+				createTask('1', {
+					metadata: { parentMeta: 'parent-value' },
+					subtasks: [
+						{
+							id: 1,
+							parentId: '1',
+							title: 'Original subtask 1',
+							description: 'Has metadata',
+							status: 'pending',
+							priority: 'medium',
+							dependencies: [],
+							details: '',
+							testStrategy: '',
+							metadata: { ticket: 'JIRA-100', sprint: 'S1' }
+						},
+						{
+							id: 2,
+							parentId: '1',
+							title: 'Original subtask 2',
+							description: 'Also has metadata',
+							status: 'in-progress',
+							priority: 'high',
+							dependencies: [1],
+							details: '',
+							testStrategy: '',
+							metadata: { ticket: 'JIRA-101', reviewed: true }
+						}
+					]
+				})
+			];
+			await storage.saveTasks(tasks);
+
+			// Simulate AI returning modified subtasks (AI doesn't include metadata)
+			const aiModifiedSubtasks = [
+				{
+					id: 1,
+					parentId: '1',
+					title: 'AI updated subtask 1', // Title changed by AI
+					description: 'AI updated description',
+					status: 'pending',
+					priority: 'medium',
+					dependencies: [],
+					details: 'AI added details',
+					testStrategy: ''
+					// No metadata - AI schema excludes it
+				},
+				{
+					id: 2,
+					parentId: '1',
+					title: 'AI updated subtask 2',
+					description: 'AI updated this too',
+					status: 'in-progress',
+					priority: 'high',
+					dependencies: [1],
+					details: 'More AI details',
+					testStrategy: ''
+					// No metadata - AI schema excludes it
+				}
+			];
+
+			// Update task with AI-modified subtasks
+			await storage.updateTask('1', {
+				title: 'AI Updated Task',
+				subtasks: aiModifiedSubtasks
+			});
+
+			const loadedTasks = await storage.loadTasks();
+			// Parent metadata preserved
+			expect(loadedTasks[0].metadata).toEqual({ parentMeta: 'parent-value' });
+			// Subtask metadata should be preserved from originals
+			expect(loadedTasks[0].subtasks[0].metadata).toEqual({
+				ticket: 'JIRA-100',
+				sprint: 'S1'
+			});
+			expect(loadedTasks[0].subtasks[1].metadata).toEqual({
+				ticket: 'JIRA-101',
+				reviewed: true
+			});
+		});
 	});
 
 	describe('parse-prd operation simulation', () => {
