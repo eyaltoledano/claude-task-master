@@ -381,9 +381,28 @@ export class FileStorage implements IStorage {
 			throw new Error(`Task ${taskId} not found`);
 		}
 
+		const existingTask = tasks[taskIndex];
+
+		// Preserve subtask metadata when subtasks are updated
+		// AI operations don't include metadata in returned subtasks
+		let mergedSubtasks = updates.subtasks;
+		if (updates.subtasks && existingTask.subtasks) {
+			mergedSubtasks = updates.subtasks.map((updatedSubtask) => {
+				const originalSubtask = existingTask.subtasks?.find(
+					(st) => st.id === updatedSubtask.id
+				);
+				// Preserve original subtask's metadata if it exists
+				if (originalSubtask?.metadata) {
+					return { ...updatedSubtask, metadata: originalSubtask.metadata };
+				}
+				return updatedSubtask;
+			});
+		}
+
 		tasks[taskIndex] = {
-			...tasks[taskIndex],
+			...existingTask,
 			...updates,
+			...(mergedSubtasks && { subtasks: mergedSubtasks }),
 			id: String(taskId) // Keep consistent with normalizeTaskIds
 		};
 		await this.saveTasks(tasks, tag);

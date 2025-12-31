@@ -455,6 +455,10 @@ async function updateTaskById(
 			if (updatedTask.subtasks && Array.isArray(updatedTask.subtasks)) {
 				let currentSubtaskId = 1;
 				updatedTask.subtasks = updatedTask.subtasks.map((subtask) => {
+					// Find original subtask to preserve its metadata
+					const originalSubtask = taskToUpdate.subtasks?.find(
+						(st) => st.id === subtask.id || st.id === currentSubtaskId
+					);
 					// Fix AI-generated subtask IDs that might be strings or use parent ID as prefix
 					const correctedSubtask = {
 						...subtask,
@@ -472,8 +476,11 @@ async function updateTaskById(
 									)
 							: [],
 						status: subtask.status || 'pending',
-						testStrategy: subtask.testStrategy ?? null
-					};
+					testStrategy: subtask.testStrategy ?? null,
+					// Preserve subtask metadata from original (AI schema excludes metadata)
+					...(originalSubtask?.metadata && {
+						metadata: originalSubtask.metadata
+					})					};
 					currentSubtaskId++;
 					return correctedSubtask;
 				});
