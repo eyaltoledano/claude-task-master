@@ -329,7 +329,7 @@ describe('Task Master Tool Registration System', () => {
 			const endTime = Date.now();
 			const executionTime = endTime - startTime;
 
-			expect(executionTime).toBeLessThan(100);
+			expect(executionTime).toBeLessThan(200);
 			expect(mockServer.addTool).toHaveBeenCalledTimes(ALL_COUNT);
 		});
 

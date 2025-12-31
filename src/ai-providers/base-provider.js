@@ -1,4 +1,11 @@
-import {
+import * as ai from 'ai';
+import { jsonrepair } from 'jsonrepair';
+import { EnvHttpProxyAgent } from 'undici';
+import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
+import { findProjectRoot, log } from '../../scripts/modules/utils.js';
+import { getAITelemetryConfig, hashProjectRoot } from '../telemetry/sentry.js';
+
+const {
 	JSONParseError,
 	NoObjectGeneratedError,
 	generateObject,
@@ -6,12 +13,107 @@ import {
 	streamObject,
 	streamText,
 	zodSchema
-} from 'ai';
-import { jsonrepair } from 'jsonrepair';
-import { EnvHttpProxyAgent } from 'undici';
-import { isProxyEnabled } from '../../scripts/modules/config-manager.js';
-import { findProjectRoot, log } from '../../scripts/modules/utils.js';
-import { getAITelemetryConfig, hashProjectRoot } from '../telemetry/sentry.js';
+} = ai;
+
+const jsonSchemaHelper = ai.jsonSchema;
+
+const INTEGER_CONSTRAINT_KEYS = new Set([
+	'minimum',
+	'maximum',
+	'exclusiveMinimum',
+	'exclusiveMaximum'
+]);
+
+const SCHEMA_OBJECT_KEYS = [
+	'additionalProperties',
+	'contains',
+	'if',
+	'then',
+	'else',
+	'not',
+	'propertyNames'
+];
+
+const SCHEMA_ARRAY_KEYS = ['allOf', 'anyOf', 'oneOf', 'prefixItems'];
+
+const SCHEMA_RECORD_KEYS = ['definitions', '$defs', 'dependentSchemas', 'patternProperties', 'properties'];
+
+const isIntegerType = (type) => {
+	if (!type) {
+		return false;
+	}
+	if (Array.isArray(type)) {
+		return type.includes('integer');
+	}
+	return type === 'integer';
+};
+
+const sanitizeIntegerConstraints = (schema) => {
+	if (!schema || typeof schema !== 'object') {
+		return schema;
+	}
+
+	if (Array.isArray(schema)) {
+		return schema.map(sanitizeIntegerConstraints);
+	}
+
+	const next = { ...schema };
+
+	if (isIntegerType(next.type)) {
+		for (const key of INTEGER_CONSTRAINT_KEYS) {
+			if (key in next) {
+				delete next[key];
+			}
+		}
+	}
+
+	for (const key of SCHEMA_OBJECT_KEYS) {
+		if (next[key]) {
+			next[key] = sanitizeIntegerConstraints(next[key]);
+		}
+	}
+
+	for (const key of SCHEMA_ARRAY_KEYS) {
+		if (Array.isArray(next[key])) {
+			next[key] = next[key].map(sanitizeIntegerConstraints);
+		}
+	}
+
+	for (const key of SCHEMA_RECORD_KEYS) {
+		if (next[key] && typeof next[key] === 'object') {
+			const mapped = {};
+			for (const [entryKey, entryValue] of Object.entries(next[key])) {
+				mapped[entryKey] = sanitizeIntegerConstraints(entryValue);
+			}
+			next[key] = mapped;
+		}
+	}
+
+	if (next.items) {
+		next.items = sanitizeIntegerConstraints(next.items);
+	}
+
+	return next;
+};
+
+const buildSafeSchema = (schema) => {
+	const baseSchema = zodSchema(schema);
+	if (!baseSchema || typeof baseSchema !== 'object') {
+		return baseSchema;
+	}
+
+	if (!baseSchema.jsonSchema) {
+		return baseSchema;
+	}
+
+	const sanitizedSchema = sanitizeIntegerConstraints(baseSchema.jsonSchema);
+
+	if (typeof jsonSchemaHelper === 'function') {
+		return jsonSchemaHelper(sanitizedSchema, { validate: baseSchema.validate });
+	}
+
+	return { ...baseSchema, jsonSchema: sanitizedSchema };
+};
 
 /**
  * Base class for all AI providers
