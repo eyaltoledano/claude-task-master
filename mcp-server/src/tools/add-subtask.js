@@ -62,6 +62,9 @@ export function registerAddSubtaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Add Subtask'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				const resolvedTag = resolveTag({

@@ -33,6 +33,9 @@ export function registerAddDependencyTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Add Dependency'
+		},
 		execute: withToolContext(
 			'add-dependency',
 			async (args, { log, session }) => {

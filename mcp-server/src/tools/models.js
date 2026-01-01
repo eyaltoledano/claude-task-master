@@ -79,6 +79,9 @@ export function registerModelsTool(server) {
 					'Custom base URL for providers that support it (e.g., https://api.example.com/v1).'
 				)
 		}),
+		annotations: {
+			title: 'Models'
+		},
 		execute: withToolContext('models', async (args, context) => {
 			try {
 				context.log.info(

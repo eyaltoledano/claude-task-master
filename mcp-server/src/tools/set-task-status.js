@@ -51,6 +51,10 @@ export function registerSetTaskStatusTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Optional tag context to operate on')
 		}),
+		annotations: {
+			title: 'Set Task Status',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(

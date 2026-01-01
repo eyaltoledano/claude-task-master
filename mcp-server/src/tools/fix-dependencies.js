@@ -24,6 +24,10 @@ export function registerFixDependenciesTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Fix Dependencies',
+			destructiveHint: true
+		},
 		execute: withToolContext('fix-dependencies', async (args, context) => {
 			try {
 				context.log.info(

@@ -33,6 +33,10 @@ export function registerComplexityReportTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'Complexity Report',
+			readOnlyHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(

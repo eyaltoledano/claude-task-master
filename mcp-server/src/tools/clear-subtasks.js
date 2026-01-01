@@ -39,6 +39,10 @@ export function registerClearSubtasksTool(server) {
 				message: "Either 'id' or 'all' parameter must be provided",
 				path: ['id', 'all']
 			}),
+		annotations: {
+			title: 'Clear Subtasks',
+			destructiveHint: true
+		},
 		execute: withToolContext('clear-subtasks', async (args, context) => {
 			try {
 				context.log.info(

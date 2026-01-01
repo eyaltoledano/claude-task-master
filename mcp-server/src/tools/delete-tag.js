@@ -34,6 +34,10 @@ export function registerDeleteTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'Delete Tag',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting delete-tag with args: ${JSON.stringify(args)}`);

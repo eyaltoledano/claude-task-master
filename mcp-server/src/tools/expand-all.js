@@ -64,6 +64,9 @@ export function registerExpandAllTool(server) {
 				),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Expand All Tasks'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(

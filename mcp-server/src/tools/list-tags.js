@@ -33,6 +33,10 @@ export function registerListTagsTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'List Tags',
+			readOnlyHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting list-tags with args: ${JSON.stringify(args)}`);

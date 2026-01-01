@@ -36,6 +36,9 @@ export function registerCopyTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'Copy Tag'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting copy-tag with args: ${JSON.stringify(args)}`);

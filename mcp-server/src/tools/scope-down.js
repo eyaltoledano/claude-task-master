@@ -50,6 +50,9 @@ export function registerScopeDownTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for scoping')
 		}),
+		annotations: {
+			title: 'Scope Down Task'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting scope-down with args: ${JSON.stringify(args)}`);

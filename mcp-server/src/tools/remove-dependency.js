@@ -31,6 +31,10 @@ export function registerRemoveDependencyTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Remove Dependency',
+			destructiveHint: true
+		},
 		execute: withToolContext('remove-dependency', async (args, context) => {
 			try {
 				const resolvedTag = resolveTag({

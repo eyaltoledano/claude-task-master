@@ -54,6 +54,9 @@ export function registerMoveTaskTool(server) {
 				.optional()
 				.describe('Break cross-tag dependencies during move')
 		}),
+		annotations: {
+			title: 'Move Task'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				// Check if this is a cross-tag move

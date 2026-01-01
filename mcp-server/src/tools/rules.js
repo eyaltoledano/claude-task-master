@@ -43,6 +43,9 @@ export function registerRulesTool(server) {
 					'DANGEROUS: Force removal even if it would leave no rule profiles. Only use if you are absolutely certain.'
 				)
 		}),
+		annotations: {
+			title: 'Rules'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(

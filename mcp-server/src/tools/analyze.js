@@ -75,6 +75,9 @@ export function registerAnalyzeProjectComplexityTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Analyze Project Complexity'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'analyze_project_complexity'; // Define tool name for logging
 

@@ -22,6 +22,9 @@ export function registerResponseLanguageTool(server) {
 					'The new response language to set. like "中文" "English" or "español".'
 				)
 		}),
+		annotations: {
+			title: 'Response Language'
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(
