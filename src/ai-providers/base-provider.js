@@ -452,10 +452,12 @@ export class BaseAIProvider {
 
 			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
+			const schema = buildSafeSchema(params.schema);
+
 			const result = await streamObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: zodSchema(params.schema),
+				schema,
 				mode: params.mode || 'auto',
 				maxOutputTokens: params.maxTokens,
 				...(this.supportsTemperature && params.temperature !== undefined
@@ -516,10 +518,12 @@ export class BaseAIProvider {
 
 			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
+			const schema = buildSafeSchema(params.schema);
+
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,
-				schema: params.schema,
+				schema,
 				mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
 				schemaName: params.objectName,
 				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
