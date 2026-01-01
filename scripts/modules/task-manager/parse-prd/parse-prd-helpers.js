@@ -134,7 +134,7 @@ export function processTasks(
 	defaultPriority
 ) {
 	// Runtime guard: ensure PRD task IDs are unique and sequential (1..N).
-	validateSequentialTaskIds(rawTasks);
+	validateSequentialTaskIds(rawTasks, startId);
 
 	let currentId = startId;
 	const taskMap = new Map();
@@ -175,7 +175,7 @@ export function processTasks(
 	return processedTasks;
 }
 
-function validateSequentialTaskIds(rawTasks) {
+function validateSequentialTaskIds(rawTasks, expectedStartId = 1) {
 	if (!Array.isArray(rawTasks) || rawTasks.length === 0) {
 		return;
 	}
@@ -194,10 +194,16 @@ function validateSequentialTaskIds(rawTasks) {
 	}
 
 	const sortedIds = [...uniqueIds].sort((a, b) => a - b);
+	if (sortedIds[0] !== expectedStartId) {
+		throw new Error(
+			`PRD task IDs must start at ${expectedStartId} and be sequential.`
+		);
+	}
+
 	for (let index = 0; index < sortedIds.length; index += 1) {
-		if (sortedIds[index] !== index + 1) {
+		if (sortedIds[index] !== expectedStartId + index) {
 			throw new Error(
-				'PRD task IDs must be a contiguous sequence starting at 1.'
+				`PRD task IDs must be a contiguous sequence starting at ${expectedStartId}.`
 			);
 		}
 	}
