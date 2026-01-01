@@ -194,16 +194,17 @@ function validateSequentialTaskIds(rawTasks, expectedStartId = 1) {
 	}
 
 	const sortedIds = [...uniqueIds].sort((a, b) => a - b);
-	if (sortedIds[0] !== expectedStartId) {
+	const startId = sortedIds[0];
+	if (startId !== 1 && startId !== expectedStartId) {
 		throw new Error(
-			`PRD task IDs must start at ${expectedStartId} and be sequential.`
+			`PRD task IDs must start at 1 or ${expectedStartId} and be sequential.`
 		);
 	}
 
 	for (let index = 0; index < sortedIds.length; index += 1) {
-		if (sortedIds[index] !== expectedStartId + index) {
+		if (sortedIds[index] !== startId + index) {
 			throw new Error(
-				`PRD task IDs must be a contiguous sequence starting at ${expectedStartId}.`
+				`PRD task IDs must be a contiguous sequence starting at ${startId}.`
 			);
 		}
 	}
