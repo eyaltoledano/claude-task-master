@@ -448,6 +448,9 @@ function ensureSequentialSubtaskIds(subtasks) {
 	}
 
 	const ids = subtasks.map((subtask) => subtask.id);
+	if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+		throw new Error('Generated subtask ids must be positive integers');
+	}
 	const uniqueIds = new Set(ids);
 	if (uniqueIds.size !== ids.length) {
 		throw new Error('Generated subtasks must have unique ids');
