@@ -57,7 +57,8 @@ export function registerInitializeProjectTool(server) {
 				)
 		}),
 		annotations: {
-			title: 'Initialize Project'
+			title: 'Initialize Project',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, context) => {
 			const { log } = context;

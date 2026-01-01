@@ -48,7 +48,8 @@ export function registerUpdateTaskTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		annotations: {
-			title: 'Update Task'
+			title: 'Update Task',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_task';

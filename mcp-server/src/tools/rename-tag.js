@@ -32,7 +32,8 @@ export function registerRenameTagTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		annotations: {
-			title: 'Rename Tag'
+			title: 'Rename Tag',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

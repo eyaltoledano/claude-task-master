@@ -34,7 +34,8 @@ export function registerAddDependencyTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		annotations: {
-			title: 'Add Dependency'
+			title: 'Add Dependency',
+			destructiveHint: true
 		},
 		execute: withToolContext(
 			'add-dependency',

@@ -80,7 +80,8 @@ export function registerModelsTool(server) {
 				)
 		}),
 		annotations: {
-			title: 'Models'
+			title: 'Models',
+			destructiveHint: true
 		},
 		execute: withToolContext('models', async (args, context) => {
 			try {

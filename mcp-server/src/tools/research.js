@@ -68,6 +68,7 @@ export function registerResearchTool(server) {
 		}),
 		annotations: {
 			title: 'Research',
+			destructiveHint: true,
 			openWorldHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {

@@ -76,7 +76,8 @@ export function registerAnalyzeProjectComplexityTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		annotations: {
-			title: 'Analyze Project Complexity'
+			title: 'Analyze Project Complexity',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'analyze_project_complexity'; // Define tool name for logging

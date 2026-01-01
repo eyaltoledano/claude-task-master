@@ -44,7 +44,8 @@ export function registerRulesTool(server) {
 				)
 		}),
 		annotations: {
-			title: 'Rules'
+			title: 'Rules',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

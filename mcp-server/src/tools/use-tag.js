@@ -31,7 +31,8 @@ export function registerUseTagTool(server) {
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
 		annotations: {
-			title: 'Use Tag'
+			title: 'Use Tag',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

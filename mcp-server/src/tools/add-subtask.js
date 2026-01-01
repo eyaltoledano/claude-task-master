@@ -63,7 +63,8 @@ export function registerAddSubtaskTool(server) {
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
 		annotations: {
-			title: 'Add Subtask'
+			title: 'Add Subtask',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {

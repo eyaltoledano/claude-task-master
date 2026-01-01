@@ -23,7 +23,8 @@ export function registerResponseLanguageTool(server) {
 				)
 		}),
 		annotations: {
-			title: 'Response Language'
+			title: 'Response Language',
+			destructiveHint: true
 		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
