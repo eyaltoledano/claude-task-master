@@ -6,7 +6,8 @@
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	validateMcpMetadata
 } from '@tm/mcp';
 import { z } from 'zod';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -85,44 +86,23 @@ export function registerUpdateTaskTool(server) {
 					);
 				}
 
-				// 3. Validate metadata if provided
-				let parsedMetadata = null;
-				if (args.metadata) {
-					// Check if metadata updates are allowed
-					const allowMetadataUpdates =
-						process.env.TASK_MASTER_ALLOW_METADATA_UPDATES === 'true';
-					if (!allowMetadataUpdates) {
-						return createErrorResponse(
-							'Metadata updates are disabled. Set TASK_MASTER_ALLOW_METADATA_UPDATES=true in your MCP server environment to enable metadata modifications.'
-						);
-					}
-					// Parse and validate JSON
-					try {
-						parsedMetadata = JSON.parse(args.metadata);
-						if (
-							typeof parsedMetadata !== 'object' ||
-							parsedMetadata === null ||
-							Array.isArray(parsedMetadata)
-						) {
-							return createErrorResponse(
-								'Invalid metadata: must be a JSON object (not null or array)'
-							);
-						}
-					} catch {
-						return createErrorResponse(
-							`Invalid metadata JSON: ${args.metadata}. Provide a valid JSON object string.`
-						);
-					}
+				// Validate metadata if provided
+				const validationResult = validateMcpMetadata(
+					args.metadata,
+					createErrorResponse
+				);
+				if (validationResult.error) {
+					return validationResult.error;
 				}
-
-				// 4. Validate that at least prompt or metadata is provided
+				const parsedMetadata = validationResult.parsedMetadata;
+				// Validate that at least prompt or metadata is provided
 				if (!args.prompt && !parsedMetadata) {
 					return createErrorResponse(
 						'Either prompt or metadata must be provided for update-task'
 					);
 				}
 
-				// 5. Call Direct Function - Include projectRoot and metadata
+				// Call Direct Function - Include projectRoot and metadata
 				const result = await updateTaskByIdDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
