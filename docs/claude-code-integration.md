@@ -1,6 +1,12 @@
-# TODO: Move to apps/docs inside our documentation website
+# ⚠️ DEPRECATED
 
-# Claude Code Integration Guide
+**This documentation has been moved and consolidated.**
+
+📖 **See the new comprehensive guide:** https://docs.task-master.dev/integrations/claude-code
+
+---
+
+# Claude Code Integration Guide (Legacy)
 
 This guide covers how to use Task Master with Claude Code AI SDK integration for enhanced AI-powered development workflows.
 

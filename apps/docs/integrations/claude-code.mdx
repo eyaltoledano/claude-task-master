@@ -1,0 +1,254 @@
+---
+title: Claude Code Setup
+sidebarTitle: "Claude Code"
+description: "Complete guide to using Task Master with Claude Code"
+---
+
+# Claude Code Integration
+
+Task Master works seamlessly with Claude Code through multiple integration methods. This guide consolidates all Claude Code setup options in one place.
+
+## Understanding the Options
+
+Task Master offers **three ways** to integrate with Claude Code:
+
+1. **MCP Server** (Recommended) - Use `task-master-ai` MCP server for AI-powered task management
+2. **Plugin Marketplace** - Install Task Master plugin with slash commands
+3. **Claude Code Provider** - Use Claude Code's local models (no API key needed)
+
+<Note>
+**Package naming clarity:**
+- `task-master-ai` = The MCP server package (what you install via `npx`)
+- `task-master` = The CLI command (what you run in terminal)
+- These are the same package, just different names for different contexts
+</Note>
+
+---
+
+## Option 1: MCP Server (Recommended)
+
+The MCP server lets Claude Code directly manage your tasks through natural language.
+
+### Quick Install
+
+```bash
+claude mcp add taskmaster-ai -- npx -y task-master-ai
+```
+
+### What You Get
+
+- Direct task management from Claude Code chat
+- AI-powered PRD parsing, task expansion, and complexity analysis
+- Natural language task queries and updates
+- 7-44 MCP tools (configurable)
+
+### Configuration
+
+After installation, add your API keys to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_TOOLS": "core",  // Options: "core", "standard", "all"
+        "ANTHROPIC_API_KEY": "YOUR_KEY_HERE",
+        "PERPLEXITY_API_KEY": "YOUR_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+### Tool Loading Modes
+
+Control which tools are loaded to optimize context usage:
+
+| Mode | Tools | Use Case |
+|------|-------|----------|
+| `core` | 7 | Daily development workflow |
+| `standard` | 15 | Common task management |
+| `all` | 44+ | Full feature set |
+
+See the [MCP Tools documentation](/capabilities/mcp#configurable-tool-loading) for details.
+
+### Usage Examples
+
+Once configured, interact with Task Master naturally in Claude Code:
+
+```
+You: Parse my PRD at .taskmaster/docs/prd.md
+You: What's the next task I should work on?
+You: Show me task 1.2 details
+You: Mark task 1.2 as done
+You: Expand task 3 into subtasks
+```
+
+---
+
+## Option 2: Plugin Marketplace
+
+The plugin provides 49 slash commands and 3 specialized AI agents for comprehensive task management.
+
+### Installation
+
+```bash
+# Add the marketplace
+/plugin marketplace add eyaltoledano/claude-task-master
+
+# Install the plugin
+/plugin install taskmaster@taskmaster
+```
+
+### What You Get
+
+- 49 slash commands organized by category
+- Quick commands like `/tm:next`, `/tm:list`, `/tm:show`
+- Setup commands like `/tm:init`, `/tm:parse-prd`
+- Workflow automation with `/tm:workflows/*`
+
+### Quick Start Commands
+
+```bash
+/tm:init                    # Initialize project
+/tm:parse-prd              # Parse requirements
+/tm:next                   # Get next task
+/tm:set-status/to-done 1.2 # Mark task complete
+```
+
+See [Plugin Documentation](https://github.com/eyaltoledano/claude-task-master/blob/main/CLAUDE_CODE_PLUGIN.md) for the complete command list.
+
+---
+
+## Option 3: Claude Code Provider
+
+Use Claude Code's local models for Task Master AI operations (no API key required).
+
+### Setup
+
+1. Install and authenticate Claude Code CLI:
+```bash
+claude setup-token
+```
+
+2. Configure Task Master to use Claude Code:
+```bash
+task-master models --set-main claude-code/sonnet
+```
+
+Or update `.taskmaster/config.json`:
+
+```json
+{
+  "models": {
+    "main": "claude-code/sonnet",
+    "fallback": "claude-code/opus"
+  }
+}
+```
+
+### Available Models
+
+- `claude-code/sonnet` - Claude 3.5 Sonnet
+- `claude-code/opus` - Claude 3 Opus
+
+### Benefits
+
+- No API key required (uses your Claude Code authentication)
+- Native structured outputs with schema compliance
+- Works with all Task Master AI-powered commands
+
+### Usage
+
+Once configured, all Task Master commands automatically use Claude Code:
+
+```bash
+task-master parse-prd .taskmaster/docs/prd.md
+task-master expand --id=1 --research
+task-master analyze-complexity
+```
+
+See [Claude Code Provider docs](/providers/claude-code) for advanced configuration.
+
+---
+
+## Comparison: Which Option Should I Use?
+
+| Feature | MCP Server | Plugin | Provider |
+|---------|------------|--------|----------|
+| **Natural language in chat** | ✅ Yes | Limited | ❌ No |
+| **Slash commands** | ❌ No | ✅ 49 commands | ❌ No |
+| **No API key needed** | ❌ Requires API key | ❌ Requires API key | ✅ Yes |
+| **AI-powered operations** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Context optimization** | ✅ Configurable | ✅ Built-in | N/A |
+| **Best for** | Chat-first workflow | Command-first workflow | Cost-conscious users |
+
+<Tip>
+**Recommended Setup:** Use **MCP Server + Claude Code Provider** together:
+- MCP Server for natural language task management in chat
+- Claude Code Provider to eliminate API key costs
+- Best of both worlds!
+</Tip>
+
+---
+
+## Troubleshooting
+
+### "0 tools enabled" in MCP settings
+
+**Solution:** Restart your editor and verify API keys are correctly configured in `.mcp.json`.
+
+### Confusion between task-master-ai and task-master
+
+- `task-master-ai` is the **MCP server package name** (used in npx commands)
+- `task-master` is the **CLI command name** (used in terminal)
+- They're the same package, just different contexts
+
+### Claude Code authentication failures
+
+```bash
+# Re-authenticate
+claude setup-token
+
+# Verify token
+claude setup-token --verify
+```
+
+### Plugin not appearing
+
+```bash
+# Update marketplace
+/plugin marketplace update taskmaster
+
+# Reinstall
+/plugin install taskmaster@taskmaster
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start Guide" icon="rocket" href="/getting-started/quick-start/quick-start">
+    Get started with Task Master in minutes
+  </Card>
+  <Card title="MCP Tools Reference" icon="toolbox" href="/capabilities/mcp">
+    Complete MCP tools documentation
+  </Card>
+  <Card title="Command Reference" icon="terminal" href="/command-reference">
+    All CLI commands
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Customize Task Master
+  </Card>
+</CardGroup>
+
+---
+
+## Additional Resources
+
+- [Claude Code CLI Documentation](https://docs.anthropic.com/en/docs/claude-code)
+- [Task Master Discord Community](https://discord.gg/taskmasterai)
+- [GitHub Issues](https://github.com/eyaltoledano/claude-task-master/issues)
