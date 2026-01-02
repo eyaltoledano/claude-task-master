@@ -48,7 +48,13 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		metadata
+	} = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -71,10 +77,13 @@ async function updateSubtaskById(
 		if (!subtaskId || typeof subtaskId !== 'string') {
 			throw new Error('Subtask ID cannot be empty.');
 		}
-
-		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
+		// Allow metadata-only updates (no prompt required if metadata is provided)
+		if (
+			(!prompt || typeof prompt !== 'string' || prompt.trim() === '') &&
+			!metadata
+		) {
 			throw new Error(
-				'Prompt cannot be empty. Please provide context for the subtask update.'
+				'Prompt cannot be empty unless metadata is provided. Please provide context for the subtask update or metadata to merge.'
 			);
 		}
 
