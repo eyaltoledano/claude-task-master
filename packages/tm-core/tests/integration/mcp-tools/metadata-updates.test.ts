@@ -62,7 +62,9 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 			for (const meta of invalidMetadata) {
 				const parsed = JSON.parse(meta);
 				const isValidObject =
-					typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+					typeof parsed === 'object' &&
+					parsed !== null &&
+					!Array.isArray(parsed);
 				expect(isValidObject).toBe(false);
 			}
 		});
