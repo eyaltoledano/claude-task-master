@@ -358,6 +358,14 @@ async function updateSubtaskById(
 
 		const updatedSubtask = parentTask.subtasks[subtaskIndex];
 
+		// Merge metadata if provided (preserve existing metadata)
+		if (metadata) {
+			updatedSubtask.metadata = {
+				...(updatedSubtask.metadata || {}),
+				...metadata
+			};
+		}
+
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log(
 				'>>> DEBUG: Subtask details AFTER AI update:',
