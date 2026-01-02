@@ -522,11 +522,12 @@ async function updateTaskById(
 									)
 							: [],
 						status: subtask.status || 'pending',
-					testStrategy: subtask.testStrategy ?? null,
-					// Preserve subtask metadata from original (AI schema excludes metadata)
-					...(originalSubtask?.metadata && {
-						metadata: originalSubtask.metadata
-					})					};
+						testStrategy: subtask.testStrategy ?? null,
+						// Preserve subtask metadata from original (AI schema excludes metadata)
+						...(originalSubtask?.metadata && {
+							metadata: originalSubtask.metadata
+						})
+					};
 					currentSubtaskId++;
 					return correctedSubtask;
 				});

@@ -109,7 +109,9 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 			expect(loadedTasks[0].description).toBe(
 				'AI refined description with more detail'
 			);
-			expect(loadedTasks[0].details).toBe('AI generated implementation details');
+			expect(loadedTasks[0].details).toBe(
+				'AI generated implementation details'
+			);
 			expect(loadedTasks[0].testStrategy).toBe('AI suggested test approach');
 			// Critical: metadata must be preserved
 			expect(loadedTasks[0].metadata).toEqual(originalMetadata);
@@ -160,7 +162,8 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 3. Add refresh token logic
 4. Set up protected routes
 				`.trim(),
-				testStrategy: 'Unit tests for JWT functions, integration tests for auth flow'
+				testStrategy:
+					'Unit tests for JWT functions, integration tests for auth flow'
 			});
 
 			const loadedTasks = await storage.loadTasks();
@@ -169,7 +172,9 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 			expect(loadedTasks[0].details).toContain('Implementation Plan');
 			// Realistic metadata preserved with all its nested structure
 			expect(loadedTasks[0].metadata).toEqual(realisticMetadata);
-			expect((loadedTasks[0].metadata as Record<string, unknown>).githubIssue).toBe(42);
+			expect(
+				(loadedTasks[0].metadata as Record<string, unknown>).githubIssue
+			).toBe(42);
 			expect(
 				(
 					(loadedTasks[0].metadata as Record<string, unknown>).jira as Record<
@@ -310,7 +315,9 @@ describe('AI Operation Metadata Preservation - Integration Tests', () => {
 				metadata: { externalId: 'USER-ADDED-123' }
 			});
 			const updatedTasks = await storage.loadTasks();
-			expect(updatedTasks[0].metadata).toEqual({ externalId: 'USER-ADDED-123' });
+			expect(updatedTasks[0].metadata).toEqual({
+				externalId: 'USER-ADDED-123'
+			});
 		});
 	});
 
