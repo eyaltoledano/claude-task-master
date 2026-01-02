@@ -120,19 +120,21 @@ export function validateFileOperations({
 }
 
 /**
- * Process and transform tasks with ID remapping
- * @param {Array} rawTasks - Raw tasks from AI
- * @param {number} startId - Starting ID for new tasks
- * @param {Array} existingTasks - Existing tasks for dependency validation
- * @param {string} defaultPriority - Default priority for tasks
- * @returns {Array} Processed tasks with remapped IDs
- */
+ * Transform raw PRD tasks into normalized tasks with reassigned sequential IDs.
+ * @param {Array} rawTasks - Tasks parsed from a PRD; each task must include an integer `id`.
+ * @param {number} startId - ID to assign to the first processed task.
+ * @param {Array} existingTasks - Existing tasks used to validate dependency references.
+ * @param {string} defaultPriority - Priority to apply when a task has no priority.
+ * @returns {Array} An array of tasks with reassigned sequential IDs, normalized fields (status, priority, title, description, details, testStrategy, subtasks), and dependencies remapped to the new IDs.
 export function processTasks(
 	rawTasks,
 	startId,
 	existingTasks,
 	defaultPriority
 ) {
+	// Runtime guard: ensure PRD task IDs are unique and sequential (1..N).
+	validateSequentialTaskIds(rawTasks, startId);
+
 	let currentId = startId;
 	const taskMap = new Map();
 
@@ -170,6 +172,54 @@ export function processTasks(
 	});
 
 	return processedTasks;
+}
+
+/**
+ * Validate that an array of PRD tasks uses unique, positive integer IDs that form a contiguous sequence.
+ *
+ * Validates that each task has an integer `id` >= 1, that IDs are unique, and that the sorted IDs form
+ * a contiguous sequence starting at either `1` or the provided `expectedStartId`.
+ *
+ * @param {Array<{id: number}>} rawTasks - Array of task objects containing an `id` property. If not an array or empty, no validation is performed.
+ * @param {number} [expectedStartId=1] - Allowed alternative starting ID for the contiguous sequence.
+ * @throws {Error} If any `id` is not an integer >= 1: "PRD tasks must use sequential positive integer IDs starting at 1."
+ * @throws {Error} If IDs are not unique: "PRD task IDs must be unique and sequential starting at 1."
+ * @throws {Error} If the sequence does not start at `1` or `expectedStartId`: "PRD task IDs must start at 1 or {expectedStartId} and be sequential."
+ * @throws {Error} If IDs are not contiguous: "PRD task IDs must be a contiguous sequence starting at {startId}."
+ */
+function validateSequentialTaskIds(rawTasks, expectedStartId = 1) {
+	if (!Array.isArray(rawTasks) || rawTasks.length === 0) {
+		return;
+	}
+
+	const ids = rawTasks.map((task) => task.id);
+
+	if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+		throw new Error(
+			'PRD tasks must use sequential positive integer IDs starting at 1.'
+		);
+	}
+
+	const uniqueIds = new Set(ids);
+	if (uniqueIds.size !== ids.length) {
+		throw new Error('PRD task IDs must be unique and sequential starting at 1.');
+	}
+
+	const sortedIds = [...uniqueIds].sort((a, b) => a - b);
+	const startId = sortedIds[0];
+	if (startId !== 1 && startId !== expectedStartId) {
+		throw new Error(
+			`PRD task IDs must start at 1 or ${expectedStartId} and be sequential.`
+		);
+	}
+
+	for (let index = 0; index < sortedIds.length; index += 1) {
+		if (sortedIds[index] !== startId + index) {
+			throw new Error(
+				`PRD task IDs must be a contiguous sequence starting at ${startId}.`
+			);
+		}
+	}
 }
 
 /**
