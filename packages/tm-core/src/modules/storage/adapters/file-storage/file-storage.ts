@@ -395,9 +395,15 @@ export class FileStorage implements IStorage {
 						String(st.id) === String(updatedSubtask.id) ||
 						(updatedSubtask.title && st.title === updatedSubtask.title)
 				);
-				// Preserve original subtask's metadata if it exists
-				if (originalSubtask?.metadata) {
-					return { ...updatedSubtask, metadata: originalSubtask.metadata };
+				// Merge metadata: preserve original and add/override with new
+				if (originalSubtask?.metadata || updatedSubtask.metadata) {
+					return {
+						...updatedSubtask,
+						metadata: {
+							...(originalSubtask?.metadata || {}),
+							...(updatedSubtask.metadata || {})
+						}
+					};
 				}
 				return updatedSubtask;
 			});
