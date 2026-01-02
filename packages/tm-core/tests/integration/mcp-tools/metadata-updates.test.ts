@@ -6,6 +6,12 @@
  *
  * These tests validate the metadata flow from MCP tool layer through
  * direct functions to the legacy scripts and storage layer.
+ *
+ * NOTE: These tests focus on validation logic (JSON parsing, env flags, merge behavior)
+ * rather than full end-to-end MCP tool calls. End-to-end behavior is covered by:
+ * - FileStorage metadata tests (storage layer)
+ * - AI operation metadata preservation tests (full workflow)
+ * - Direct function integration (covered by the validation tests here)
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
