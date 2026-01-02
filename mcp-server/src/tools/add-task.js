@@ -65,6 +65,10 @@ export function registerAddTaskTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for task creation')
 		}),
+		annotations: {
+			title: 'Add Task',
+			destructiveHint: false
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-task with args: ${JSON.stringify(args)}`);

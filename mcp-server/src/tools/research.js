@@ -66,6 +66,11 @@ export function registerResearchTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Research',
+			destructiveHint: true,
+			openWorldHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				const resolvedTag = resolveTag({

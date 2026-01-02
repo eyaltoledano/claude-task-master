@@ -331,7 +331,12 @@ async function expandTask(
 			if (!mainResult || !Array.isArray(mainResult.subtasks)) {
 				throw new Error('AI response did not include a valid subtasks array.');
 			}
-			generatedSubtasks = mainResult.subtasks;
+			generatedSubtasks = mainResult.subtasks.map((subtask) => ({
+				...subtask,
+				dependencies: subtask.dependencies ?? [],
+				status: subtask.status ?? 'pending',
+				testStrategy: subtask.testStrategy ?? null
+			}));
 			logger.info(`Received ${generatedSubtasks.length} subtasks from AI.`);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);

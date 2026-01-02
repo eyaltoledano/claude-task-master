@@ -25,6 +25,10 @@ export function registerValidateDependenciesTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Validate Dependencies',
+			readOnlyHint: true
+		},
 		execute: withToolContext(
 			'validate-dependencies',
 			async (args, { log, session }) => {

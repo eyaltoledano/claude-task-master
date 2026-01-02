@@ -65,6 +65,10 @@ export function registerParsePRDTool(server) {
 				.optional()
 				.describe('Append generated tasks to existing file.')
 		}),
+		annotations: {
+			title: 'Parse PRD',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(
 			async (args, { log, session, reportProgress }) => {
 				try {

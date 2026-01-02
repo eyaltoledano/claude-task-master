@@ -42,6 +42,10 @@ export function registerRemoveTaskTool(server) {
 					'Specify which tag context to operate on. Defaults to the current active tag.'
 				)
 		}),
+		annotations: {
+			title: 'Remove Task',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Removing task(s) with ID(s): ${args.id}`);

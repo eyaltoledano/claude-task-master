@@ -38,6 +38,10 @@ export function registerUpdateSubtaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Update Subtask',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_subtask';
 

@@ -50,6 +50,10 @@ export function registerScopeUpTool(server) {
 				.optional()
 				.describe('Whether to use research capabilities for scoping')
 		}),
+		annotations: {
+			title: 'Scope Up Task',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting scope-up with args: ${JSON.stringify(args)}`);

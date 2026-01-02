@@ -50,6 +50,10 @@ export function registerAddTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'Add Tag',
+			destructiveHint: false
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting add-tag with args: ${JSON.stringify(args)}`);

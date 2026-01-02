@@ -25,6 +25,10 @@ export function registerAutopilotFinalizeTool(server: FastMCP) {
 		description:
 			'Finalize and complete the workflow. Validates that all changes are committed and working tree is clean before marking workflow as complete.',
 		parameters: FinalizeSchema,
+		annotations: {
+			title: 'Finalize Autopilot Workflow',
+			destructiveHint: true
+		},
 		execute: withToolContext(
 			'autopilot-finalize',
 			async (args: FinalizeArgs, { log, tmCore }: ToolContext) => {

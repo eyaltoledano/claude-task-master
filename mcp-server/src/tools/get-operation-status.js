@@ -15,6 +15,10 @@ export function registerGetOperationStatusTool(server, asyncManager) {
 		parameters: z.object({
 			operationId: z.string().describe('The ID of the operation to check.')
 		}),
+		annotations: {
+			title: 'Get Operation Status',
+			readOnlyHint: true
+		},
 		execute: async (args, { log }) => {
 			try {
 				const { operationId } = args;

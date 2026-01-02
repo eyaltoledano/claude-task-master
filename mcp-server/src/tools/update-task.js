@@ -47,6 +47,10 @@ export function registerUpdateTaskTool(server) {
 				.describe('The directory of the project. Must be an absolute path.'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Update Task',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			const toolName = 'update_task';
 			try {

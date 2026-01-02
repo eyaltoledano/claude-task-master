@@ -30,6 +30,10 @@ export function registerUseTagTool(server) {
 				.string()
 				.describe('The directory of the project. Must be an absolute path.')
 		}),
+		annotations: {
+			title: 'Use Tag',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting use-tag with args: ${JSON.stringify(args)}`);

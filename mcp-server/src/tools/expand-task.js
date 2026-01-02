@@ -52,6 +52,10 @@ export function registerExpandTaskTool(server) {
 				.describe('Force expansion even if subtasks exist'),
 			tag: z.string().optional().describe('Tag context to operate on')
 		}),
+		annotations: {
+			title: 'Expand Task',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
 				log.info(`Starting expand-task with args: ${JSON.stringify(args)}`);

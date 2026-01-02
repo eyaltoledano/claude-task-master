@@ -56,6 +56,10 @@ export function registerInitializeProjectTool(server) {
 					`List of rule profiles to include at initialization. If omitted, defaults to Cursor profile only. Available options: ${RULE_PROFILES.join(', ')}`
 				)
 		}),
+		annotations: {
+			title: 'Initialize Project',
+			destructiveHint: true
+		},
 		execute: withNormalizedProjectRoot(async (args, context) => {
 			const { log } = context;
 			const session = context.session;
