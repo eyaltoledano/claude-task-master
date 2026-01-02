@@ -389,8 +389,11 @@ export class FileStorage implements IStorage {
 		let mergedSubtasks = updates.subtasks;
 		if (updates.subtasks && existingTask.subtasks) {
 			mergedSubtasks = updates.subtasks.map((updatedSubtask) => {
+				// Type-coerce IDs for comparison; fall back to title match if IDs don't match
 				const originalSubtask = existingTask.subtasks?.find(
-					(st) => st.id === updatedSubtask.id
+					(st) =>
+						String(st.id) === String(updatedSubtask.id) ||
+						(updatedSubtask.title && st.title === updatedSubtask.title)
 				);
 				// Preserve original subtask's metadata if it exists
 				if (originalSubtask?.metadata) {
