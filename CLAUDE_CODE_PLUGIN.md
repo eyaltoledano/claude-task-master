@@ -1,6 +1,8 @@
-# Taskmaster AI - Claude Code Marketplace
+# Taskmaster AI - Claude Code Plugin Marketplace
 
-This repository includes a Claude Code plugin marketplace in `.claude-plugin/marketplace.json`.
+> 📖 **Looking for Claude Code setup?** See the [Complete Claude Code Setup Guide](https://docs.task-master.dev/integrations/claude-code) for all integration options (MCP, Plugin, Provider).
+
+This document is specifically for **plugin marketplace** installation. The repository includes a Claude Code plugin marketplace in `.claude-plugin/marketplace.json`.
 
 ## Installation
 

@@ -60,17 +60,18 @@ The following documentation is also available in the `docs` directory:
 
 > **Note:** After clicking the link, you'll still need to add your API keys to the configuration. The link installs the MCP server with placeholder keys that you'll need to replace with your actual API keys.
 
-#### Claude Code Quick Install
+#### Claude Code Setup
 
-For Claude Code users:
+For Claude Code users, we offer multiple integration options:
 
 ```bash
+# Quick MCP install
 claude mcp add taskmaster-ai -- npx -y task-master-ai
 ```
 
-Don't forget to add your API keys to the configuration:
-- in the root .env of your Project
-- in the "env" section of your mcp config for taskmaster-ai
+📖 **[Complete Claude Code Setup Guide](https://docs.task-master.dev/integrations/claude-code)** - Learn about MCP server, plugin marketplace, and Claude Code provider options.
+
+> **Note:** `task-master-ai` is the MCP server package name. The CLI command is `task-master`.
 
 
 ## Requirements
@@ -320,19 +321,14 @@ Add `TASK_MASTER_TOOLS` to your MCP configuration file's `env` section:
 }
 ```
 
-#### Method 2: Claude Code CLI (One-Time Setup)
+#### Method 2: Claude Code CLI
 
-For Claude Code users, you can set the mode during installation:
+For Claude Code users, you can set the mode during installation. See the [Complete Claude Code Setup Guide](https://docs.task-master.dev/integrations/claude-code) for details.
 
 ```bash
 # Core mode example (~70% token reduction)
 claude mcp add task-master-ai --scope user \
   --env TASK_MASTER_TOOLS="core" \
-  -- npx -y task-master-ai@latest
-
-# Custom tools example
-claude mcp add task-master-ai --scope user \
-  --env TASK_MASTER_TOOLS="get_tasks,next_task,set_task_status" \
   -- npx -y task-master-ai@latest
 ```
 
@@ -353,13 +349,13 @@ claude mcp add task-master-ai --scope user \
 
 ## Claude Code Support
 
-Task Master now supports Claude models through the Claude Code CLI, which requires no API key:
+Task Master offers comprehensive Claude Code integration:
 
-- **Models**: `claude-code/opus` and `claude-code/sonnet`
-- **Requirements**: Claude Code CLI installed
-- **Benefits**: No API key needed, uses your local Claude instance
+- **MCP Server**: Natural language task management in chat
+- **Plugin**: 49 slash commands for quick workflows
+- **Provider**: Use Claude Code models (no API key required)
 
-[Learn more about Claude Code setup](docs/examples/claude-code-usage.md)
+📖 **[Complete Claude Code Setup Guide](https://docs.task-master.dev/integrations/claude-code)** - Choose the best option for your workflow.
 
 ## Troubleshooting
 
