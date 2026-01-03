@@ -101,7 +101,7 @@ describe('GeminiCliProvider Structured Output Integration', () => {
 
 			// Verify schema was passed through
 			const callArgs = mockGenerateObject.mock.calls[0][0];
-			expect(callArgs.schema).toBe(testSchema);
+			expect(callArgs.schema).toEqual({ _zodSchema: testSchema });
 
 			// Verify result is returned correctly
 			expect(result.object).toEqual({

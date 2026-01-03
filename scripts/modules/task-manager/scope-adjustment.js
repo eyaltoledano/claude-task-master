@@ -378,6 +378,7 @@ Ensure the JSON is valid and properly formatted.`;
 		});
 
 		const generatedSubtasks = aiResult.mainResult.subtasks || [];
+		ensureSequentialSubtaskIds(generatedSubtasks);
 
 		// Post-process generated subtasks to ensure defaults
 		const processedGeneratedSubtasks = generatedSubtasks.map((subtask) => ({
@@ -438,6 +439,30 @@ Ensure the JSON is valid and properly formatted.`;
 			generated: 0,
 			error: error.message
 		};
+	}
+}
+
+function ensureSequentialSubtaskIds(subtasks) {
+	if (!Array.isArray(subtasks) || subtasks.length === 0) {
+		return;
+	}
+
+	const ids = subtasks.map((subtask) => subtask.id);
+	if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+		throw new Error('Generated subtask ids must be positive integers');
+	}
+	const uniqueIds = new Set(ids);
+	if (uniqueIds.size !== ids.length) {
+		throw new Error('Generated subtasks must have unique ids');
+	}
+
+	const sortedIds = [...uniqueIds].sort((a, b) => a - b);
+	for (let index = 0; index < sortedIds.length; index += 1) {
+		if (sortedIds[index] !== index + 1) {
+			throw new Error(
+				'Generated subtask ids must be sequential starting from 1'
+			);
+		}
 	}
 }
 
