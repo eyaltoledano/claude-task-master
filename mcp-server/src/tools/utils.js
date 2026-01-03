@@ -829,6 +829,72 @@ function checkProgressCapability(reportProgress, log) {
 	return reportProgress;
 }
 
+/**
+ * Validates and parses metadata string for MCP tools.
+ * Checks environment flag, validates JSON format, and ensures metadata is a plain object.
+ *
+ * @param {string|null|undefined} metadataString - JSON string to parse and validate
+ * @param {Function} createErrorResponse - Function to create error response
+ * @returns {{parsedMetadata: Object|null, error?: Object}} Object with parsed metadata or error
+ *
+ * @example Success case:
+ * const result = validateMcpMetadata('{"key":"value"}', createErrorResponse);
+ * if (result.error) return result.error;
+ * const metadata = result.parsedMetadata; // { key: "value" }
+ *
+ * @example Disabled case:
+ * // When TASK_MASTER_ALLOW_METADATA_UPDATES !== 'true'
+ * const result = validateMcpMetadata('{"key":"value"}', createErrorResponse);
+ * // Returns: { error: <error response> }
+ *
+ * @example Invalid JSON:
+ * const result = validateMcpMetadata('{invalid}', createErrorResponse);
+ * // Returns: { error: <error response> }
+ */
+export function validateMcpMetadata(metadataString, createErrorResponse) {
+	// Return null if no metadata provided
+	if (!metadataString) {
+		return { parsedMetadata: null };
+	}
+
+	// Check if metadata updates are allowed via environment variable
+	const allowMetadataUpdates =
+		process.env.TASK_MASTER_ALLOW_METADATA_UPDATES === 'true';
+	if (!allowMetadataUpdates) {
+		return {
+			error: createErrorResponse(
+				'Metadata updates are disabled. Set TASK_MASTER_ALLOW_METADATA_UPDATES=true in your MCP server environment to enable metadata modifications.'
+			)
+		};
+	}
+
+	// Parse and validate JSON
+	try {
+		const parsedMetadata = JSON.parse(metadataString);
+
+		// Ensure it's a plain object (not null, not array)
+		if (
+			typeof parsedMetadata !== 'object' ||
+			parsedMetadata === null ||
+			Array.isArray(parsedMetadata)
+		) {
+			return {
+				error: createErrorResponse(
+					'Invalid metadata: must be a JSON object (not null or array)'
+				)
+			};
+		}
+
+		return { parsedMetadata };
+	} catch (parseError) {
+		return {
+			error: createErrorResponse(
+				`Invalid metadata JSON: ${parseError.message}. Provide a valid JSON object string.`
+			)
+		};
+	}
+}
+
 // Ensure all functions are exported
 export {
 	getProjectRoot,

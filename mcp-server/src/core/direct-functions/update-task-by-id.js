@@ -18,9 +18,10 @@ import { findTasksPath } from '../utils/path-utils.js';
  * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Task ID (or subtask ID like "1.2").
- * @param {string} args.prompt - New information/context prompt.
+ * @param {string} [args.prompt] - New information/context prompt. Required unless only updating metadata.
  * @param {boolean} [args.research] - Whether to use research role.
  * @param {boolean} [args.append] - Whether to append timestamped information instead of full update.
+ * @param {Object} [args.metadata] - Parsed metadata object to merge into task metadata.
  * @param {string} [args.projectRoot] - Project root path.
  * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object.
@@ -29,9 +30,17 @@ import { findTasksPath } from '../utils/path-utils.js';
  */
 export async function updateTaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, append, projectRoot, tag } =
-		args;
+	// Destructure expected args, including projectRoot and metadata
+	const {
+		tasksJsonPath,
+		id,
+		prompt,
+		research,
+		append,
+		metadata,
+		projectRoot,
+		tag
+	} = args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -51,9 +60,10 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		if (!prompt) {
+		// At least prompt or metadata is required (validated in MCP tool layer)
+		if (!prompt && !metadata) {
 			const errorMessage =
-				'No prompt specified. Please provide a prompt with new information for the task update.';
+				'No prompt or metadata specified. Please provide a prompt with new information or metadata for the task update.';
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
@@ -95,7 +105,7 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 		const useResearch = research === true;
 
 		logWrapper.info(
-			`Updating task with ID ${taskId} with prompt "${prompt}" and research: ${useResearch}`
+			`Updating task with ID ${taskId} with prompt "${prompt || '(metadata-only)'}" and research: ${useResearch}`
 		);
 
 		const wasSilent = isSilentMode();
@@ -116,7 +126,8 @@ export async function updateTaskByIdDirect(args, log, context = {}) {
 					projectRoot,
 					tag,
 					commandName: 'update-task',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					metadata
 				},
 				'json',
 				append || false

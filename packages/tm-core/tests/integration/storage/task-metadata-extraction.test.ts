@@ -492,4 +492,157 @@ describe('Task Metadata Extraction - Integration Tests', () => {
 			expect(validCategories).toContain(task.category);
 		});
 	});
+
+	describe('User-Defined Metadata Field', () => {
+		it('should preserve user-defined metadata through JSON serialization', () => {
+			const taskWithMetadata: Task = {
+				id: '1',
+				title: 'Task with custom metadata',
+				description: 'Test description',
+				status: 'pending',
+				priority: 'high',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: [],
+				metadata: {
+					externalId: 'JIRA-123',
+					source: 'import',
+					customField: { nested: 'value' }
+				}
+			};
+
+			const serialized = JSON.stringify(taskWithMetadata);
+			const deserialized: Task = JSON.parse(serialized);
+
+			expect(deserialized.metadata).toEqual(taskWithMetadata.metadata);
+			expect(deserialized.metadata?.externalId).toBe('JIRA-123');
+			expect(deserialized.metadata?.customField).toEqual({ nested: 'value' });
+		});
+
+		it('should preserve metadata on subtasks through JSON serialization', () => {
+			const taskWithSubtasks: Task = {
+				id: '1',
+				title: 'Parent task',
+				description: 'Test',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				metadata: { parentMeta: true },
+				subtasks: [
+					{
+						id: 1,
+						parentId: '1',
+						title: 'Subtask 1',
+						description: 'Test',
+						status: 'pending',
+						priority: 'medium',
+						dependencies: [],
+						details: '',
+						testStrategy: '',
+						metadata: { subtaskMeta: 'value1' }
+					}
+				]
+			};
+
+			const serialized = JSON.stringify(taskWithSubtasks);
+			const deserialized: Task = JSON.parse(serialized);
+
+			expect(deserialized.metadata).toEqual({ parentMeta: true });
+			expect(deserialized.subtasks[0].metadata).toEqual({
+				subtaskMeta: 'value1'
+			});
+		});
+
+		it('should handle empty metadata object', () => {
+			const task: Task = {
+				id: '1',
+				title: 'Task',
+				description: 'Test',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: [],
+				metadata: {}
+			};
+
+			const serialized = JSON.stringify(task);
+			const deserialized: Task = JSON.parse(serialized);
+
+			expect(deserialized.metadata).toEqual({});
+		});
+
+		it('should handle complex metadata with various types', () => {
+			const task: Task = {
+				id: '1',
+				title: 'Task',
+				description: 'Test',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: [],
+				metadata: {
+					string: 'value',
+					number: 42,
+					boolean: true,
+					nullValue: null,
+					array: [1, 2, 3],
+					nested: {
+						deep: {
+							value: 'found'
+						}
+					}
+				}
+			};
+
+			const serialized = JSON.stringify(task);
+			const deserialized: Task = JSON.parse(serialized);
+
+			expect(deserialized.metadata?.string).toBe('value');
+			expect(deserialized.metadata?.number).toBe(42);
+			expect(deserialized.metadata?.boolean).toBe(true);
+			expect(deserialized.metadata?.nullValue).toBeNull();
+			expect(deserialized.metadata?.array).toEqual([1, 2, 3]);
+			expect((deserialized.metadata?.nested as any)?.deep?.value).toBe('found');
+		});
+
+		it('should preserve metadata alongside AI implementation metadata', () => {
+			const task: Task = {
+				id: '1',
+				title: 'Task',
+				description: 'Test',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: 'Some details',
+				testStrategy: 'Unit tests',
+				subtasks: [],
+				// AI implementation metadata
+				relevantFiles: [
+					{ path: 'src/test.ts', description: 'Test file', action: 'modify' }
+				],
+				category: 'development',
+				skills: ['TypeScript'],
+				// User-defined metadata
+				metadata: {
+					externalId: 'EXT-456',
+					importedAt: '2024-01-15T10:00:00Z'
+				}
+			};
+
+			const serialized = JSON.stringify(task);
+			const deserialized: Task = JSON.parse(serialized);
+
+			// Both types of metadata should be preserved
+			expect(deserialized.relevantFiles).toHaveLength(1);
+			expect(deserialized.category).toBe('development');
+			expect(deserialized.metadata?.externalId).toBe('EXT-456');
+		});
+	});
 });
