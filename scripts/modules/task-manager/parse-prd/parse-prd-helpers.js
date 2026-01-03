@@ -190,7 +190,9 @@ function validateSequentialTaskIds(rawTasks, expectedStartId = 1) {
 
 	const uniqueIds = new Set(ids);
 	if (uniqueIds.size !== ids.length) {
-		throw new Error('PRD task IDs must be unique and sequential starting at 1.');
+		throw new Error(
+			'PRD task IDs must be unique and sequential starting at 1.'
+		);
 	}
 
 	const sortedIds = [...uniqueIds].sort((a, b) => a - b);

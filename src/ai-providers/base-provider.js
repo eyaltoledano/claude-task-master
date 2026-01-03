@@ -36,7 +36,13 @@ const SCHEMA_OBJECT_KEYS = [
 
 const SCHEMA_ARRAY_KEYS = ['allOf', 'anyOf', 'oneOf', 'prefixItems'];
 
-const SCHEMA_RECORD_KEYS = ['definitions', '$defs', 'dependentSchemas', 'patternProperties', 'properties'];
+const SCHEMA_RECORD_KEYS = [
+	'definitions',
+	'$defs',
+	'dependentSchemas',
+	'patternProperties',
+	'properties'
+];
 
 const isIntegerType = (type) => {
 	if (!type) {
