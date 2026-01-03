@@ -112,6 +112,7 @@ async function updateTaskById(
 			tag,
 			appendMode,
 			useResearch,
+			metadata,
 			isMCP,
 			outputFormat,
 			report
