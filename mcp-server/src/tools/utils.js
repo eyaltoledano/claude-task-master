@@ -886,10 +886,10 @@ export function validateMcpMetadata(metadataString, createErrorResponse) {
 		}
 
 		return { parsedMetadata };
-	} catch {
+	} catch (parseError) {
 		return {
 			error: createErrorResponse(
-				`Invalid metadata JSON: ${metadataString}. Provide a valid JSON object string.`
+				`Invalid metadata JSON: ${parseError.message}. Provide a valid JSON object string.`
 			)
 		};
 	}

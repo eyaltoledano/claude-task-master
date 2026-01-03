@@ -102,6 +102,7 @@ async function updateSubtaskById(
 			tag,
 			appendMode: true, // Subtask updates are always append mode
 			useResearch,
+			metadata,
 			isMCP,
 			outputFormat,
 			report
