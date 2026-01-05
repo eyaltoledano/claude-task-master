@@ -1,77 +1,93 @@
 {
 	"meta": {
-		"generatedAt": "2025-08-06T12:39:03.250Z",
-		"tasksAnalyzed": 8,
-		"totalTasks": 11,
-		"analysisCount": 8,
+		"generatedAt": "2026-01-05T15:00:41.764Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
 		"thresholdScore": 5,
 		"projectName": "Taskmaster",
-		"usedResearch": false
+		"usedResearch": true
 	},
 	"complexityAnalysis": [
 		{
-			"taskId": 118,
-			"taskTitle": "Create AI Provider Base Architecture",
-			"complexityScore": 7,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Break down the implementation of BaseProvider abstract TypeScript class into subtasks focusing on: 1) Converting existing JavaScript base-provider.js to TypeScript with proper interface definitions, 2) Implementing the Template Method pattern with abstract methods, 3) Adding comprehensive error handling and retry logic with exponential backoff, 4) Creating proper TypeScript types for all method signatures and options, 5) Setting up comprehensive unit tests with MockProvider. Consider that the existing codebase uses JavaScript ES modules and Vercel AI SDK, so the TypeScript implementation needs to maintain compatibility while adding type safety.",
-			"reasoning": "This task requires significant architectural work including converting existing JavaScript code to TypeScript, creating new interfaces, implementing design patterns, and ensuring backward compatibility. The existing base-provider.js already implements a sophisticated provider pattern using Vercel AI SDK, so the TypeScript conversion needs careful consideration of type definitions and maintaining existing functionality."
+			"taskId": 1,
+			"taskTitle": "Add getNextTasks method to TaskService",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "This is a foundational method addition. Implement the method signature with proper TypeScript typing, add JSDoc documentation following existing patterns, and ensure it throws NotImplementedError initially.",
+			"reasoning": "Low complexity task involving basic method addition with signature and documentation. No complex logic required, just following existing patterns and ensuring TypeScript compilation."
 		},
 		{
-			"taskId": 119,
-			"taskTitle": "Implement Provider Factory with Dynamic Imports",
-			"complexityScore": 5,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Break down the Provider Factory implementation into: 1) Creating the ProviderFactory class structure with proper TypeScript typing, 2) Implementing the switch statement for provider selection logic, 3) Adding dynamic imports for each provider to enable tree-shaking, 4) Handling provider instantiation with configuration passing, 5) Implementing comprehensive error handling for module loading failures. Note that the existing codebase already has a provider selection mechanism in the JavaScript files, so ensure the factory pattern integrates smoothly with existing infrastructure.",
-			"reasoning": "This is a moderate complexity task that involves creating a factory pattern with dynamic imports. The existing codebase already has provider management logic, so the main complexity is in creating a clean TypeScript implementation with proper dynamic imports while maintaining compatibility with the existing JavaScript module system."
+			"taskId": 2,
+			"taskTitle": "Implement concurrency parameter validation",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Implement comprehensive validation including type checking, bounds validation (>=1), max value clamping (<=10) with warning logging, and proper error messages using existing error handling patterns.",
+			"reasoning": "Low to moderate complexity validation logic. While it involves multiple validation rules and error scenarios, they are standard patterns. The warning mechanism adds slight complexity but overall remains straightforward."
 		},
 		{
-			"taskId": 120,
-			"taskTitle": "Implement Anthropic Provider",
-			"complexityScore": 6,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Implement the AnthropicProvider class in stages: 1) Set up the class structure extending BaseProvider with proper TypeScript imports and type definitions, 2) Implement constructor with Anthropic SDK client initialization and configuration handling, 3) Implement generateCompletion method with proper message format transformation and error handling, 4) Add token calculation methods and utility functions (getName, getModel, getDefaultModel), 5) Implement comprehensive error handling with custom error wrapping and type exports. The existing anthropic.js provider can serve as a reference but needs to be reimplemented to extend the new TypeScript BaseProvider.",
-			"reasoning": "This task involves integrating with an external SDK (@anthropic-ai/sdk) and implementing all abstract methods from BaseProvider. The existing JavaScript implementation provides a good reference, but the TypeScript version needs proper type definitions, error handling, and must work with the new abstract base class architecture."
-		},
-		{
-			"taskId": 121,
-			"taskTitle": "Create Prompt Builder and Task Parser",
+			"taskId": 3,
+			"taskTitle": "Implement core concurrent task selection algorithm",
 			"complexityScore": 8,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Implement PromptBuilder and TaskParser with focus on: 1) Creating PromptBuilder class with template methods for building structured prompts with JSON format instructions, 2) Implementing TaskParser class structure with dependency injection of IAIProvider and IConfiguration, 3) Implementing parsePRD method with file reading, prompt generation, and AI provider integration, 4) Adding task enrichment logic with metadata, validation, and structure verification, 5) Implementing comprehensive error handling for all failure scenarios including file I/O, AI provider errors, and JSON parsing. The existing parse-prd.js provides complex logic that needs to be reimplemented with proper TypeScript types and cleaner architecture.",
-			"reasoning": "This is a complex task that involves multiple components working together: file I/O, AI provider integration, JSON parsing, and data validation. The existing parse-prd.js implementation is quite sophisticated with Zod schemas and complex task processing logic that needs to be reimplemented in TypeScript with proper separation of concerns."
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break this down into: 1) Filter eligible tasks based on status, 2) Implement two-phase selection logic (subtasks from in-progress parents first), 3) Apply priority sorting and limit selection to concurrency. Each subtask should be tested independently.",
+			"reasoning": "High complexity algorithmic implementation involving multiple phases, priority sorting, dependency tracking, and business logic. The two-phase selection and priority sorting add significant complexity that benefits from being broken down."
 		},
 		{
-			"taskId": 122,
-			"taskTitle": "Implement Configuration Management",
-			"complexityScore": 6,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Create ConfigManager implementation focusing on: 1) Setting up Zod validation schema that matches the IConfiguration interface structure, 2) Implementing ConfigManager constructor with default values merging and storage initialization, 3) Creating validate method with Zod schema parsing and user-friendly error transformation, 4) Implementing type-safe get method using TypeScript generics and keyof operator, 5) Adding getAll method and ensuring proper immutability and module exports. The existing config-manager.js has complex configuration loading logic that can inform the TypeScript implementation but needs cleaner architecture.",
-			"reasoning": "This task involves creating a configuration management system with validation using Zod. The existing JavaScript config-manager.js is quite complex with multiple configuration sources, defaults, and validation logic. The TypeScript version needs to provide a cleaner API while maintaining the flexibility of the current system."
-		},
-		{
-			"taskId": 123,
-			"taskTitle": "Create Utility Functions and Error Handling",
-			"complexityScore": 4,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Implement utilities and error handling in stages: 1) Create ID generation module with generateTaskId and generateSubtaskId functions using proper random generation, 2) Implement base TaskMasterError class extending Error with proper TypeScript typing, 3) Add error sanitization methods to prevent sensitive data exposure in production, 4) Implement development-only logging with environment detection, 5) Create specialized error subclasses (FileNotFoundError, ParseError, ValidationError, APIError) with appropriate error codes and formatting.",
-			"reasoning": "This is a relatively straightforward task involving utility functions and error class hierarchies. The main complexity is in ensuring proper error sanitization for production use and creating a well-structured error hierarchy that can be used throughout the application."
-		},
-		{
-			"taskId": 124,
-			"taskTitle": "Implement TaskMasterCore Facade",
+			"taskId": 4,
+			"taskTitle": "Implement dependency validation between selected tasks",
 			"complexityScore": 7,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Build TaskMasterCore facade implementation: 1) Create class structure with proper TypeScript imports and type definitions for all subsystem interfaces, 2) Implement initialize method for lazy loading AI provider and parser instances based on configuration, 3) Create parsePRD method that coordinates parser, AI provider, and storage subsystems, 4) Implement getTasks and other facade methods for task retrieval and management, 5) Create createTaskMaster factory function and set up all module exports including type re-exports. Ensure proper ESM compatibility with .js extensions in imports.",
-			"reasoning": "This is a complex integration task that brings together all the other components into a cohesive facade. It requires understanding of the facade pattern, proper dependency management, lazy initialization, and careful module export structure for the public API."
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Split into: 1) Implement dependency ID normalization to full dotted notation, 2) Create validation algorithm that checks cross-type dependencies and ensures no circular references. Include comprehensive testing for mixed task/subtask scenarios.",
+			"reasoning": "High complexity due to cross-type dependency handling and normalization requirements. The O(n²) algorithm with edge cases for mixed dependencies benefits from being separated into normalization and validation phases."
 		},
 		{
-			"taskId": 125,
-			"taskTitle": "Create Placeholder Providers and Complete Testing",
-			"complexityScore": 5,
-			"recommendedSubtasks": 5,
-			"expansionPrompt": "Complete the implementation with placeholders and testing: 1) Create OpenAIProvider placeholder class extending BaseProvider with 'not yet implemented' errors, 2) Create GoogleProvider placeholder class with similar structure, 3) Implement MockProvider in tests/mocks directory with configurable responses and behavior simulation, 4) Write comprehensive unit tests for TaskParser covering all methods and edge cases, 5) Create integration tests for the complete parse-prd workflow ensuring 80% code coverage. Follow kebab-case naming convention for test files.",
-			"reasoning": "This task involves creating placeholder implementations and a comprehensive test suite. While the placeholder providers are simple, creating a good MockProvider and comprehensive tests requires understanding the entire system architecture and ensuring all edge cases are covered."
+			"taskId": 5,
+			"taskTitle": "Add --concurrency flag to CLI NextCommand",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Add the CLI flag following existing Commander.js patterns, update the options interface, and ensure proper help text. Verify flag accepts both short (-c) and long (--concurrency) formats.",
+			"reasoning": "Very low complexity standard CLI flag addition. Following existing patterns makes this straightforward boilerplate work with minimal logic involved."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Update CLI command to call new core method",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Implement conditional logic to route to getNextTasks() when concurrency > 1, otherwise use existing getNextTask(). Ensure backward compatibility and that all existing flags (--tag, --format, --silent, --project) work with both paths.",
+			"reasoning": "Moderate complexity due to branching logic and backward compatibility requirements. The routing logic is cohesive and should be implemented together to ensure all paths work correctly."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Update NextTaskResult interface and data flow",
+			"complexityScore": 4,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Update the interface to add tasks array and taskCount fields while keeping existing task field for compatibility. Modify result creation logic to populate all fields correctly based on the number of tasks returned.",
+			"reasoning": "Moderate complexity mainly around backward compatibility. The interface changes and data population are tightly coupled and should be implemented together to ensure consistency."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Update text output for multiple tasks",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Modify displayResults to handle multiple tasks with numbered headers, separators, and count display. Ensure single task display remains unchanged for backward compatibility. Focus on clear formatting and consistent styling.",
+			"reasoning": "Low to moderate complexity presentation layer changes. The formatting logic is cohesive and should be implemented as a single unit to ensure consistent output."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Support JSON output for multiple tasks",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "Update JSON formatter to include tasks array and taskCount while maintaining existing structure. Ensure backward compatibility by keeping all existing fields and populating them appropriately for 0, 1, and multiple task scenarios.",
+			"reasoning": "Low to moderate complexity similar to task 8 but for JSON output. The structure changes are cohesive and should be implemented together to ensure consistent API contract."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Handle edge cases and add comprehensive tests",
+			"complexityScore": 6,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Separate into: 1) Implement edge case handling logic for scenarios (no tasks, all completed, fewer than requested, etc.), 2) Add comprehensive test suite including unit tests, integration tests, and performance tests covering EC-001 to EC-006.",
+			"reasoning": "Moderate to high complexity due to breadth of coverage required. The implementation and testing phases are distinct and benefit from separation to ensure comprehensive coverage without mixing concerns."
 		}
 	]
 }
