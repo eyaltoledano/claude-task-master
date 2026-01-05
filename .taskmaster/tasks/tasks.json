@@ -166,7 +166,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -174,9 +174,10 @@
             "description": "Filter eligible tasks based on pending/in-progress status for the getNextTasks method",
             "dependencies": [],
             "details": "Create filtering logic in getNextTasks method to identify tasks that are eligible for selection. Tasks must have status of 'pending' or 'in-progress' to be considered. Reuse existing status validation patterns from TaskService.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify filtering returns correct eligible tasks, excludes completed/cancelled tasks, handles empty task list",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:55:53.030Z"
           },
           {
             "id": 2,
@@ -186,9 +187,10 @@
               1
             ],
             "details": "Implement logic to build and maintain a completed tasks set from existing task data. This set will be used to determine task readiness and dependencies. Ensure efficient lookup using Set data structure.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify completed tasks set is built correctly, handles various task states, maintains consistency with task data",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:55:56.914Z"
           },
           {
             "id": 3,
@@ -198,9 +200,10 @@
               2
             ],
             "details": "Implement two-phase selection logic: Phase 1 collects subtasks from in-progress parent tasks, Phase 2 collects remaining eligible tasks. Ensure proper ordering between phases and maintain candidate pool for sorting.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify two-phase selection priority, subtasks from in-progress parents are selected first, handles mixed task types",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:56:02.550Z"
           },
           {
             "id": 4,
@@ -210,9 +213,10 @@
               3
             ],
             "details": "Implement sorting logic using existing sortByPriority helper as base. Add secondary sort criteria: dependency count (ascending), then ID (ascending). Ensure stable sorting for consistent results.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify priority ordering works correctly, dependency count secondary sort, ID tertiary sort, handles equal priority scenarios",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:56:05.680Z"
           },
           {
             "id": 5,
@@ -222,11 +226,13 @@
               4
             ],
             "details": "Implement final selection logic that returns up to the concurrency limit from sorted candidates. Add comprehensive unit tests covering all scenarios: empty results, priority ordering, insufficient candidates, two-phase behavior, various concurrency values.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify respects concurrency limit, returns fewer when insufficient candidates, maintains priority order, two-phase selection behavior, edge cases",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:56:09.805Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-01-05T15:56:09.805Z"
       },
       {
         "id": "4",
@@ -238,7 +244,7 @@
         "dependencies": [
           "3"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -246,9 +252,10 @@
             "description": "Create the basic structure for dependency validation in TaskService, identify existing helpers, and establish the validation method signature",
             "dependencies": [],
             "details": "Add validateTaskDependencies method to TaskService, locate and catalog existing dependency validation helpers, establish data structures for tracking selected tasks and their dependencies, prepare method signature that accepts task candidates and returns validation results",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify method exists, signature is correct, and can access existing validation helpers without errors",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:18:46.402Z"
           },
           {
             "id": 2,
@@ -258,9 +265,10 @@
               1
             ],
             "details": "Build normalizeDependencyId helper function that converts short IDs (e.g., '123') to full dotted notation (e.g., 'task.123'), handle task and subtask ID formats, ensure consistent ID format across all dependency checks, reuse existing ID parsing utilities if available",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests cover normalization of task IDs, subtask IDs, already-normalized IDs, and edge cases",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:19:48.913Z"
           },
           {
             "id": 3,
@@ -270,9 +278,10 @@
               2
             ],
             "details": "Implement nested loop to compare each candidate against selected tasks, use normalized IDs for comparison, check if any selected task appears in candidate's dependencies, filter out dependent tasks from selection, ensure O(n²) complexity requirement is met",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verify dependency detection between tasks, algorithm returns correct filtered results, and complexity measurements confirm O(n²) behavior",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:20:25.163Z"
           },
           {
             "id": 4,
@@ -282,9 +291,10 @@
               3
             ],
             "details": "Add special handling for task↔subtask dependency relationships, implement logic to resolve parent-child relationships between tasks and subtasks, ensure subtask dependencies on parent tasks are handled correctly, handle cases where tasks depend on subtasks and vice versa",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for cross-type scenarios: task depends on selected subtask, subtask depends on selected task, and mixed dependency chains",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:21:11.173Z"
           },
           {
             "id": 5,
@@ -294,11 +304,13 @@
               4
             ],
             "details": "Call validateTaskDependencies from the main selection algorithm, ensure validation results are properly applied to filter candidates, handle validation errors gracefully, add logging for dependency conflicts found, verify the complete integration works with the two-phase selection from Task 3",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests verify complete selection process with dependency validation, test with various task sets and dependency configurations, ensure performance meets requirements",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:21:48.528Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-01-05T16:21:48.528Z"
       },
       {
         "id": "5",
@@ -736,9 +748,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-05T15:43:29.419Z",
+      "lastModified": "2026-01-05T16:21:48.528Z",
       "taskCount": 10,
-      "completedCount": 2,
+      "completedCount": 4,
       "tags": [
         "master"
       ]
