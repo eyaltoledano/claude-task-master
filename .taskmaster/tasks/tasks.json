@@ -2,14 +2,14 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Add getNextTasks method to TaskService",
         "description": "Create the foundational getNextTasks method in TaskService class with basic structure and parameter definition",
         "details": "Add `getNextTasks(concurrency: number, tag?: string): Promise<Task[]>` method to `packages/tm-core/src/modules/tasks/services/task-service.ts`. The method should initially throw 'NotImplemented' error and include JSDoc documentation. Reuse existing task filtering logic from getNextTask() method. Ensure method exists and TypeScript compiles successfully.",
         "testStrategy": "Unit test verifies method exists, accepts correct parameters, returns Promise<Task[]>, and throws NotImplementedError. Test that method signature matches requirement FR-001.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -17,8 +17,10 @@
             "description": "Create the foundational getNextTasks method in TaskService class with correct signature and JSDoc",
             "dependencies": [],
             "details": "Add `getNextTasks(concurrency: number, tag?: string): Promise<Task[]>` method to `packages/tm-core/src/modules/tasks/services/task-service.ts`. Include comprehensive JSDoc documentation explaining parameters, return type, and purpose. Method should initially throw 'NotImplemented' error. Ensure TypeScript compilation succeeds with no type errors.",
-            "status": "pending",
-            "testStrategy": "Unit test verifies method exists, accepts correct parameters, returns Promise<Task[]>, and throws NotImplementedError."
+            "status": "done",
+            "testStrategy": "Unit test verifies method exists, accepts correct parameters, returns Promise<Task[]>, and throws NotImplementedError.",
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:15:43.824Z"
           },
           {
             "id": 2,
@@ -28,8 +30,10 @@
               1
             ],
             "details": "Implement validation logic in getNextTasks method: check if concurrency is a number, throw error if concurrency < 1, clamp to maximum of 10 with warning, and validate type. Use existing error handling patterns in TaskService. Implement warning mechanism for values > 10 that gets logged but doesn't fail the operation.",
-            "status": "pending",
-            "testStrategy": "Unit tests for: concurrency < 1 throws error, non-numeric values throw error, concurrency > 10 shows warning but clamps to 10, normal values pass through unchanged."
+            "status": "done",
+            "testStrategy": "Unit tests for: concurrency < 1 throws error, non-numeric values throw error, concurrency > 10 shows warning but clamps to 10, normal values pass through unchanged.",
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:21:57.767Z"
           },
           {
             "id": 3,
@@ -39,8 +43,10 @@
               1
             ],
             "details": "Extract and adapt the task filtering logic from getNextTask() method to be reused in getNextTasks. Create helper functions if needed to filter eligible tasks based on status (pending/in-progress), tag matching (if provided), and other existing criteria. Ensure this logic maintains consistency with single task selection.",
-            "status": "pending",
-            "testStrategy": "Unit tests verify that filtering logic works correctly with various task states and tag combinations. Test that filtered task sets match expected results."
+            "status": "done",
+            "testStrategy": "Unit tests verify that filtering logic works correctly with various task states and tag combinations. Test that filtered task sets match expected results.",
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:22:00.658Z"
           },
           {
             "id": 4,
@@ -51,8 +57,10 @@
               3
             ],
             "details": "Implement the core selection algorithm in getNextTasks: use the filtering logic to get eligible tasks, sort by priority (critical→high→medium→low) then dependency count then ID, and select up to concurrency limit. Ensure task independence is maintained (no circular dependencies). Return array of selected tasks.",
-            "status": "pending",
-            "testStrategy": "Unit tests verify: returns empty array when no eligible tasks, respects priority ordering, returns fewer tasks when insufficient candidates, maintains task independence."
+            "status": "done",
+            "testStrategy": "Unit tests verify: returns empty array when no eligible tasks, respects priority ordering, returns fewer tasks when insufficient candidates, maintains task independence.",
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:22:03.789Z"
           },
           {
             "id": 5,
@@ -62,20 +70,23 @@
               4
             ],
             "details": "Add comprehensive unit tests covering: method signature validation, concurrency parameter validation, task filtering logic, concurrent selection algorithm, and edge cases (no tasks, fewer tasks than requested, single task with flag, complex dependency chains). Verify TypeScript compilation and error handling patterns.",
-            "status": "pending",
-            "testStrategy": "Unit tests for each functionality aspect, integration tests with real task.json files, verify deterministic task selection with same inputs, and ensure <500ms response time for <100 task projects."
+            "status": "done",
+            "testStrategy": "Unit tests for each functionality aspect, integration tests with real task.json files, verify deterministic task selection with same inputs, and ensure <500ms response time for <100 task projects.",
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T15:22:05.966Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-01-05T15:22:05.966Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Implement concurrency parameter validation",
         "description": "Add robust validation for the concurrency parameter including type checking, minimum/maximum bounds",
         "details": "Implement validation logic in getNextTasks method: check if concurrency is a number, throw error if concurrency < 1, clamp to maximum of 10 with warning, and validate type. Use existing error handling patterns in TaskService. Implement warning mechanism for values > 10 that gets logged but doesn't fail the operation.",
         "testStrategy": "Unit tests for: concurrency < 1 throws error, non-numeric values throw error, concurrency > 10 shows warning but clamps to 10, normal values pass through unchanged. Verify error messages match EM-001, EM-002, EM-003.",
         "priority": "high",
         "dependencies": [
-          1
+          "1"
         ],
         "status": "pending",
         "subtasks": [
@@ -86,7 +97,8 @@
             "dependencies": [],
             "details": "Create a new validation module in TaskService for concurrency parameter. Implement basic type checking to verify concurrency is a number. Set up error handling framework following existing patterns and prepare for additional validation rules.",
             "status": "pending",
-            "testStrategy": "Unit tests to verify type checking throws appropriate error for non-numeric values including strings, arrays, objects, and null/undefined"
+            "testStrategy": "Unit tests to verify type checking throws appropriate error for non-numeric values including strings, arrays, objects, and null/undefined",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -97,7 +109,8 @@
             ],
             "details": "Implement validation logic that throws error when concurrency < 1. Use existing TaskService error patterns and ensure error message matches EM-001 specification. Handle edge cases like 0, negative numbers, and floating point values below 1.",
             "status": "pending",
-            "testStrategy": "Unit tests for concurrency values of 0, -1, 0.5, and other invalid minimum values. Verify error messages and exception types match EM-001 format"
+            "testStrategy": "Unit tests for concurrency values of 0, -1, 0.5, and other invalid minimum values. Verify error messages and exception types match EM-001 format",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -108,7 +121,8 @@
             ],
             "details": "Create warning mechanism that logs when concurrency > 10 but allows operation to continue by clamping to 10. Implement logger integration following existing patterns. Ensure warning is clearly communicated to user without interrupting workflow.",
             "status": "pending",
-            "testStrategy": "Unit tests for concurrency values of 11, 100, and other values >10. Verify clamping behavior, warning message content, and successful operation continuation"
+            "testStrategy": "Unit tests for concurrency values of 11, 100, and other values >10. Verify clamping behavior, warning message content, and successful operation continuation",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -119,7 +133,8 @@
             ],
             "details": "Modify getNextTasks method in TaskService to call the validation module before processing. Ensure proper integration with existing parameter handling and maintain backwards compatibility. Handle validation failures appropriately in the method flow.",
             "status": "pending",
-            "testStrategy": "Integration tests calling getNextTasks with various concurrency values to ensure validation works end-to-end and properly controls method execution"
+            "testStrategy": "Integration tests calling getNextTasks with various concurrency values to ensure validation works end-to-end and properly controls method execution",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -130,19 +145,20 @@
             ],
             "details": "Write unit tests covering: non-numeric values (EM-002), concurrency < 1 (EM-001), concurrency > 10 with clamping (EM-003), and normal values passing through. Test boundary conditions, error messages, and warning logging. Achieve full code coverage.",
             "status": "pending",
-            "testStrategy": "Comprehensive unit test suite with 100% coverage of validation logic. Test all error codes EM-001, EM-002, EM-003 scenarios and verify error message format matches specification"
+            "testStrategy": "Comprehensive unit test suite with 100% coverage of validation logic. Test all error codes EM-001, EM-002, EM-003 scenarios and verify error message format matches specification",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Implement core concurrent task selection algorithm",
         "description": "Implement the main algorithm to select up to N independent tasks with priority sorting",
         "details": "Implement selection algorithm in getNextTasks: filter eligible tasks (pending/in-progress status), build completed tasks set, collect candidates maintaining two-phase selection (subtasks from in-progress parents first), sort by priority (critical→high→medium→low) then dependency count then ID, and select up to concurrency limit. Reuse existing helper functions like sortByPriority.",
         "testStrategy": "Unit tests verify: returns empty array when no eligible tasks, respects priority ordering, returns fewer tasks when insufficient candidates, maintains two-phase selection behavior. Test with various concurrency values and task sets.",
         "priority": "high",
         "dependencies": [
-          2
+          "2"
         ],
         "status": "pending",
         "subtasks": [
@@ -153,7 +169,8 @@
             "dependencies": [],
             "details": "Create filtering logic in getNextTasks method to identify tasks that are eligible for selection. Tasks must have status of 'pending' or 'in-progress' to be considered. Reuse existing status validation patterns from TaskService.",
             "status": "pending",
-            "testStrategy": "Unit tests verify filtering returns correct eligible tasks, excludes completed/cancelled tasks, handles empty task list"
+            "testStrategy": "Unit tests verify filtering returns correct eligible tasks, excludes completed/cancelled tasks, handles empty task list",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -164,7 +181,8 @@
             ],
             "details": "Implement logic to build and maintain a completed tasks set from existing task data. This set will be used to determine task readiness and dependencies. Ensure efficient lookup using Set data structure.",
             "status": "pending",
-            "testStrategy": "Unit tests verify completed tasks set is built correctly, handles various task states, maintains consistency with task data"
+            "testStrategy": "Unit tests verify completed tasks set is built correctly, handles various task states, maintains consistency with task data",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -175,7 +193,8 @@
             ],
             "details": "Implement two-phase selection logic: Phase 1 collects subtasks from in-progress parent tasks, Phase 2 collects remaining eligible tasks. Ensure proper ordering between phases and maintain candidate pool for sorting.",
             "status": "pending",
-            "testStrategy": "Unit tests verify two-phase selection priority, subtasks from in-progress parents are selected first, handles mixed task types"
+            "testStrategy": "Unit tests verify two-phase selection priority, subtasks from in-progress parents are selected first, handles mixed task types",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -186,7 +205,8 @@
             ],
             "details": "Implement sorting logic using existing sortByPriority helper as base. Add secondary sort criteria: dependency count (ascending), then ID (ascending). Ensure stable sorting for consistent results.",
             "status": "pending",
-            "testStrategy": "Unit tests verify priority ordering works correctly, dependency count secondary sort, ID tertiary sort, handles equal priority scenarios"
+            "testStrategy": "Unit tests verify priority ordering works correctly, dependency count secondary sort, ID tertiary sort, handles equal priority scenarios",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -197,19 +217,20 @@
             ],
             "details": "Implement final selection logic that returns up to the concurrency limit from sorted candidates. Add comprehensive unit tests covering all scenarios: empty results, priority ordering, insufficient candidates, two-phase behavior, various concurrency values.",
             "status": "pending",
-            "testStrategy": "Unit tests verify respects concurrency limit, returns fewer when insufficient candidates, maintains priority order, two-phase selection behavior, edge cases"
+            "testStrategy": "Unit tests verify respects concurrency limit, returns fewer when insufficient candidates, maintains priority order, two-phase selection behavior, edge cases",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Implement dependency validation between selected tasks",
         "description": "Ensure no returned task depends on any other returned task and handle mixed task/subtask dependencies",
         "details": "Implement dependency checking algorithm: normalize all dependency IDs to full dotted notation, iterate through candidates checking against already-selected tasks, ensure no selected task depends on another selected task. Handle cross-type dependencies (task↔subtask). Reuse existing dependency validation helpers. Ensure algorithm complexity is O(n²) as acceptable per NFR-003.",
         "testStrategy": "Unit tests for mixed dependency scenarios: Task depends on another selected task, subtask depends on another selected subtask, cross-type dependencies. Verify normalization works correctly and that dependent tasks are properly excluded from selection.",
         "priority": "high",
         "dependencies": [
-          3
+          "3"
         ],
         "status": "pending",
         "subtasks": [
@@ -220,7 +241,8 @@
             "dependencies": [],
             "details": "Add validateTaskDependencies method to TaskService, locate and catalog existing dependency validation helpers, establish data structures for tracking selected tasks and their dependencies, prepare method signature that accepts task candidates and returns validation results",
             "status": "pending",
-            "testStrategy": "Unit tests verify method exists, signature is correct, and can access existing validation helpers without errors"
+            "testStrategy": "Unit tests verify method exists, signature is correct, and can access existing validation helpers without errors",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -231,7 +253,8 @@
             ],
             "details": "Build normalizeDependencyId helper function that converts short IDs (e.g., '123') to full dotted notation (e.g., 'task.123'), handle task and subtask ID formats, ensure consistent ID format across all dependency checks, reuse existing ID parsing utilities if available",
             "status": "pending",
-            "testStrategy": "Unit tests cover normalization of task IDs, subtask IDs, already-normalized IDs, and edge cases"
+            "testStrategy": "Unit tests cover normalization of task IDs, subtask IDs, already-normalized IDs, and edge cases",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -242,7 +265,8 @@
             ],
             "details": "Implement nested loop to compare each candidate against selected tasks, use normalized IDs for comparison, check if any selected task appears in candidate's dependencies, filter out dependent tasks from selection, ensure O(n²) complexity requirement is met",
             "status": "pending",
-            "testStrategy": "Unit tests verify dependency detection between tasks, algorithm returns correct filtered results, and complexity measurements confirm O(n²) behavior"
+            "testStrategy": "Unit tests verify dependency detection between tasks, algorithm returns correct filtered results, and complexity measurements confirm O(n²) behavior",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -253,7 +277,8 @@
             ],
             "details": "Add special handling for task↔subtask dependency relationships, implement logic to resolve parent-child relationships between tasks and subtasks, ensure subtask dependencies on parent tasks are handled correctly, handle cases where tasks depend on subtasks and vice versa",
             "status": "pending",
-            "testStrategy": "Unit tests for cross-type scenarios: task depends on selected subtask, subtask depends on selected task, and mixed dependency chains"
+            "testStrategy": "Unit tests for cross-type scenarios: task depends on selected subtask, subtask depends on selected task, and mixed dependency chains",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -264,12 +289,13 @@
             ],
             "details": "Call validateTaskDependencies from the main selection algorithm, ensure validation results are properly applied to filter candidates, handle validation errors gracefully, add logging for dependency conflicts found, verify the complete integration works with the two-phase selection from Task 3",
             "status": "pending",
-            "testStrategy": "Integration tests verify complete selection process with dependency validation, test with various task sets and dependency configurations, ensure performance meets requirements"
+            "testStrategy": "Integration tests verify complete selection process with dependency validation, test with various task sets and dependency configurations, ensure performance meets requirements",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Add --concurrency flag to CLI NextCommand",
         "description": "Add the CLI flag with proper Commander.js configuration and help text",
         "details": "Update `apps/cli/src/commands/next.command.ts`: add `concurrency?: number` to NextCommandOptions interface, add `.option('-c, --concurrency <number>', 'Number of tasks to retrieve (default: 1, max: 10)')` to command builder, ensure flag is optional with default undefined. Follow existing CLI patterns for consistency.",
@@ -285,7 +311,8 @@
             "dependencies": [],
             "details": "Add `concurrency?: number` to NextCommandOptions interface in apps/cli/src/commands/next.command.ts following existing property patterns",
             "status": "pending",
-            "testStrategy": "TypeScript compilation should pass without errors, interface should accept optional number values"
+            "testStrategy": "TypeScript compilation should pass without errors, interface should accept optional number values",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -296,7 +323,8 @@
             ],
             "details": "Add `.option('-c, --concurrency <number>', 'Number of tasks to retrieve (default: 1, max: 10)')` to the command builder chain",
             "status": "pending",
-            "testStrategy": "Test CLI help text includes new flag with correct description, verify both short (-c) and long (--concurrency) forms are recognized"
+            "testStrategy": "Test CLI help text includes new flag with correct description, verify both short (-c) and long (--concurrency) forms are recognized",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -307,7 +335,8 @@
             ],
             "details": "Test that the concurrency property remains undefined when flag is not provided, and follows existing CLI option patterns for optional flags",
             "status": "pending",
-            "testStrategy": "Test command execution without flag to ensure no errors occur, verify options object structure matches expected pattern"
+            "testStrategy": "Test command execution without flag to ensure no errors occur, verify options object structure matches expected pattern",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -318,7 +347,8 @@
             ],
             "details": "Test various input formats: --concurrency 3, -c 5, ensure values are parsed as numbers, handle string inputs gracefully",
             "status": "pending",
-            "testStrategy": "Integration tests with different flag formats, verify parsed values are correct type, test edge cases like non-numeric inputs"
+            "testStrategy": "Integration tests with different flag formats, verify parsed values are correct type, test edge cases like non-numeric inputs",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -329,20 +359,21 @@
             ],
             "details": "Review and align flag implementation with other CLI options in the project, check naming conventions, help text formatting, and option chain placement",
             "status": "pending",
-            "testStrategy": "Code review comparing with existing flags, ensure consistent styling and behavior across all CLI options"
+            "testStrategy": "Code review comparing with existing flags, ensure consistent styling and behavior across all CLI options",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Update CLI command to call new core method",
         "description": "Modify CLI executeCommand to use getNextTasks when concurrency > 1, maintain backward compatibility",
         "details": "Update executeCommand method in NextCommand: check if concurrency parameter exists and > 1, call tmCore.tasks.getNextTasks(concurrency, tag) for multi-task scenario, call existing tmCore.tasks.getNext(tag) for single-task scenario, ensure tag parameter is passed correctly to both paths. Maintain all existing flag behavior (--tag, --format, --silent, --project).",
         "testStrategy": "Integration tests verify: no flag uses existing getNextTask, --concurrency 1 uses getNextTask, --concurrency >1 uses getNextTasks, tag parameter works with both paths, all existing flags still function correctly.",
         "priority": "medium",
         "dependencies": [
-          4,
-          5
+          "4",
+          "5"
         ],
         "status": "pending",
         "subtasks": [
@@ -353,7 +384,8 @@
             "dependencies": [],
             "details": "Review the current executeCommand method in NextCommand class, document existing parameter handling for --tag, --format, --silent, --project flags, identify where getNext is currently called, and understand the current method signature and return flow",
             "status": "pending",
-            "testStrategy": "Code review to ensure complete understanding of existing implementation patterns and parameter handling"
+            "testStrategy": "Code review to ensure complete understanding of existing implementation patterns and parameter handling",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -364,7 +396,8 @@
             ],
             "details": "Add logic to check if concurrency parameter exists in command options, validate that it's a positive integer, and store it for use in conditional logic. Ensure this doesn't interfere with existing parameter processing for other flags",
             "status": "pending",
-            "testStrategy": "Unit tests verify concurrency parameter detection with various inputs (missing, 0, 1, >1, invalid values)"
+            "testStrategy": "Unit tests verify concurrency parameter detection with various inputs (missing, 0, 1, >1, invalid values)",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -375,7 +408,8 @@
             ],
             "details": "Add if/else logic in executeCommand: if concurrency exists and > 1, call tmCore.tasks.getNextTasks(concurrency, tag), otherwise call existing tmCore.tasks.getNext(tag). Ensure both methods return compatible data structures for downstream processing",
             "status": "pending",
-            "testStrategy": "Integration tests verify correct method is called based on concurrency value (no flag, --concurrency 1, --concurrency >1)"
+            "testStrategy": "Integration tests verify correct method is called based on concurrency value (no flag, --concurrency 1, --concurrency >1)",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -386,7 +420,8 @@
             ],
             "details": "Test and fix tag parameter flow: ensure tag is extracted correctly from command options, passed as second parameter to both getNextTasks(concurrency, tag) and getNext(tag), and handle undefined tag cases consistently in both paths",
             "status": "pending",
-            "testStrategy": "Unit tests with various tag scenarios (no tag, valid tag, invalid tag) for both execution paths"
+            "testStrategy": "Unit tests with various tag scenarios (no tag, valid tag, invalid tag) for both execution paths",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -397,19 +432,20 @@
             ],
             "details": "Run comprehensive integration tests combining concurrency parameter with each existing flag individually and in combinations. Ensure flag behaviors remain unchanged and output formats are consistent regardless of execution path taken",
             "status": "pending",
-            "testStrategy": "Integration test matrix covering all flag combinations with and without concurrency parameter, comparing outputs against baseline"
+            "testStrategy": "Integration test matrix covering all flag combinations with and without concurrency parameter, comparing outputs against baseline",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Update NextTaskResult interface and data flow",
         "description": "Modify result type to support both single and multiple tasks while maintaining backward compatibility",
         "details": "Update NextTaskResult interface: keep existing `task: Task | null` for backward compatibility, add `tasks: Task[]` array field, add `taskCount: number` field, ensure both `task` and `tasks` are populated when results exist, set `found` boolean based on taskCount > 0. Update result creation logic in executeCommand to populate all fields correctly.",
         "testStrategy": "Unit tests verify interface structure, test data population for 0 tasks, 1 task, multiple tasks. Verify backward compatibility: existing JSON consumers still work with new format. Test that `task` contains first task when tasks exist, `tasks` contains all tasks, `taskCount` matches array length.",
         "priority": "medium",
         "dependencies": [
-          6
+          "6"
         ],
         "status": "pending",
         "subtasks": [
@@ -420,7 +456,8 @@
             "dependencies": [],
             "details": "Add `tasks: Task[]`, `taskCount: number`, and `found: boolean` fields to the NextTaskResult interface while keeping the existing `task: Task | null` field. Ensure proper TypeScript types and JSDoc documentation.",
             "status": "pending",
-            "testStrategy": "Compile TypeScript to verify interface changes, test that existing code using `task` field still compiles"
+            "testStrategy": "Compile TypeScript to verify interface changes, test that existing code using `task` field still compiles",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -431,7 +468,8 @@
             ],
             "details": "Create a function that takes an array of tasks and returns a properly formatted NextTaskResult with all fields populated: `task` (first task or null), `tasks` (full array), `taskCount` (array length), and `found` (true if count > 0)",
             "status": "pending",
-            "testStrategy": "Unit tests verify correct population for 0 tasks, 1 task, and multiple tasks scenarios"
+            "testStrategy": "Unit tests verify correct population for 0 tasks, 1 task, and multiple tasks scenarios",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -442,7 +480,8 @@
             ],
             "details": "Update the executeCommand method where it calls tmCore.tasks.getNext() to use the new helper function, ensuring the existing `task` field is populated alongside new `tasks`, `taskCount`, and `found` fields",
             "status": "pending",
-            "testStrategy": "Integration tests verify single task results have both `task` and `tasks` populated correctly"
+            "testStrategy": "Integration tests verify single task results have both `task` and `tasks` populated correctly",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -453,7 +492,8 @@
             ],
             "details": "Update the executeCommand method where it calls tmCore.tasks.getNextTasks() to use the new helper function, ensuring proper population of all fields for multi-task scenarios",
             "status": "pending",
-            "testStrategy": "Integration tests verify multiple task results have correct `task` (first item), `tasks` (full array), `taskCount` and `found` values"
+            "testStrategy": "Integration tests verify multiple task results have correct `task` (first item), `tasks` (full array), `taskCount` and `found` values",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -464,19 +504,20 @@
             ],
             "details": "Write unit tests that verify: interface structure, field population for 0/1/multiple tasks, backward compatibility with existing `task` field consumers, and correct boolean logic for `found` field based on taskCount",
             "status": "pending",
-            "testStrategy": "Unit tests cover all scenarios with assertions for field values and types, ensure existing test suites still pass"
+            "testStrategy": "Unit tests cover all scenarios with assertions for field values and types, ensure existing test suites still pass",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Update text output for multiple tasks",
         "description": "Modify CLI text display to show multiple tasks clearly with proper formatting",
         "details": "Update displayResults method for text format: add header showing count (e.g., \"Found 3 ready tasks:\"), loop through tasks array using existing displayTaskDetails component, add separator lines between tasks, add numbered headers (e.g., \"Task 1 of 3: #5 - Implement auth\"), maintain existing header/storageType/tag display. Ensure single task display remains unchanged for backward compatibility.",
         "testStrategy": "Visual verification of output format with 0, 1, and multiple tasks. Test that numbering is correct, separators are present, and formatting matches existing style. Verify single task display unchanged.",
         "priority": "medium",
         "dependencies": [
-          7
+          "7"
         ],
         "status": "pending",
         "subtasks": [
@@ -487,7 +528,8 @@
             "dependencies": [],
             "details": "Review the current displayResults method in the CLI module, document the existing flow for single task display, identify the displayTaskDetails component usage, and understand how header/storageType/tag are currently displayed",
             "status": "pending",
-            "testStrategy": "Manual code review and documentation of existing structure"
+            "testStrategy": "Manual code review and documentation of existing structure",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -498,7 +540,8 @@
             ],
             "details": "Modify displayResults method to check if taskCount > 1 and add header text like 'Found 3 ready tasks:' at the beginning of the output. Ensure this only appears for multiple tasks scenarios",
             "status": "pending",
-            "testStrategy": "Verify header appears correctly for 2+ tasks, doesn't appear for 0 or 1 task"
+            "testStrategy": "Verify header appears correctly for 2+ tasks, doesn't appear for 0 or 1 task",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -509,7 +552,8 @@
             ],
             "details": "Create loop structure in displayResults to process each task from the tasks array, call existing displayTaskDetails for each task, and add separator lines (e.g., '---') between tasks except after the last one",
             "status": "pending",
-            "testStrategy": "Verify correct separator placement between tasks, no separator after last task"
+            "testStrategy": "Verify correct separator placement between tasks, no separator after last task",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -520,7 +564,8 @@
             ],
             "details": "Add numbered headers before each task display using format 'Task {current} of {total}: #{taskId} - {taskTitle}'. Ensure numbering starts from 1 and matches the total task count accurately",
             "status": "pending",
-            "testStrategy": "Test numbering accuracy with various task counts, verify format matches specification"
+            "testStrategy": "Test numbering accuracy with various task counts, verify format matches specification",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -531,19 +576,20 @@
             ],
             "details": "Test displayResults with single task scenarios to ensure no count header, no numbered headers, and no separators appear. Maintain existing header/storageType/tag display format exactly as before",
             "status": "pending",
-            "testStrategy": "Compare output before and after changes for single task, ensure identical formatting"
+            "testStrategy": "Compare output before and after changes for single task, ensure identical formatting",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Support JSON output for multiple tasks",
         "description": "Ensure JSON output is backwards compatible while supporting multiple tasks",
         "details": "Update JSON output formatting: ensure JSON object contains `{ task, tasks, found, taskCount, tag, storageType, hasAnyTasks }`, verify `task` contains first task or null, verify `tasks` contains array of all tasks, verify `taskCount` is length of tasks array, verify `found` is true when taskCount > 0. Ensure no breaking changes to existing JSON consumers.",
         "testStrategy": "Integration tests with --format json flag: verify structure matches exactly, test with 0, 1, and multiple tasks, ensure existing JSON consumers can still parse output, verify all required fields are present and correct.",
         "priority": "medium",
         "dependencies": [
-          7
+          "7"
         ],
         "status": "pending",
         "subtasks": [
@@ -554,7 +600,8 @@
             "dependencies": [],
             "details": "Create a TypeScript interface defining the JSON object structure with properties: task (first task or null), tasks (array of all tasks), found (boolean), taskCount (number), tag, storageType, hasAnyTasks. Ensure type safety for backwards compatibility.",
             "status": "pending",
-            "testStrategy": "Unit test to verify interface compiles correctly and validates expected data shapes"
+            "testStrategy": "Unit test to verify interface compiles correctly and validates expected data shapes",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -565,7 +612,8 @@
             ],
             "details": "Modify the existing JSON formatter to handle the tasks array, set task property to first element or null, calculate taskCount from array length, set found based on taskCount > 0, and preserve existing tag/storageType/hasAnyTasks logic.",
             "status": "pending",
-            "testStrategy": "Unit tests with 0, 1, and multiple tasks to verify all fields are correctly populated"
+            "testStrategy": "Unit tests with 0, 1, and multiple tasks to verify all fields are correctly populated",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -576,7 +624,8 @@
             ],
             "details": "Modify the CLI command to use the new JSON formatter when --format json flag is used. Ensure the tasks array from the core algorithm is properly passed to the formatter without data loss or transformation.",
             "status": "pending",
-            "testStrategy": "Integration test running CLI with --format json flag and various task counts"
+            "testStrategy": "Integration test running CLI with --format json flag and various task counts",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -587,7 +636,8 @@
             ],
             "details": "Test the JSON output with existing consumers to verify the task field still contains the expected structure for single tasks. Validate that new fields (tasks, taskCount) don't break existing parsers that ignore unknown properties.",
             "status": "pending",
-            "testStrategy": "Test with existing JSON parsing code and verify no breaking changes occur"
+            "testStrategy": "Test with existing JSON parsing code and verify no breaking changes occur",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -598,20 +648,21 @@
             ],
             "details": "Write integration tests covering: 0 tasks (task: null, tasks: [], taskCount: 0, found: false), 1 task (task: object, tasks: [object], taskCount: 1, found: true), multiple tasks (task: first object, tasks: [all objects], taskCount: N, found: true), and verify all required fields are present and correctly typed.",
             "status": "pending",
-            "testStrategy": "Automated integration tests using the CLI with --format json flag and asserting exact JSON structure"
+            "testStrategy": "Automated integration tests using the CLI with --format json flag and asserting exact JSON structure",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Handle edge cases and add comprehensive tests",
         "description": "Ensure graceful handling of edge cases and complete test coverage",
         "details": "Implement edge case handling: no tasks in project, all tasks completed, fewer tasks than requested, single task with flag, complex dependency chains. Update both core and CLI code to handle these scenarios gracefully. Add comprehensive unit and integration tests covering all edge cases from EC-001 to EC-006. Ensure appropriate user messages and return values for each scenario.",
         "testStrategy": "Unit tests for each edge case scenario, integration tests with real task.json files, performance tests for <100 task projects to verify <500ms response time, verify circular dependency protection still works, test deterministic task selection with same inputs.",
         "priority": "medium",
         "dependencies": [
-          8,
-          9
+          "8",
+          "9"
         ],
         "status": "pending",
         "subtasks": [
@@ -622,7 +673,8 @@
             "dependencies": [],
             "details": "Update getNextTasks method in TaskService to handle all edge cases gracefully. Add conditional logic for each scenario (EC-001 to EC-006) with appropriate return values and error handling. Ensure deterministic behavior for edge cases.",
             "status": "pending",
-            "testStrategy": "Unit tests for each edge case scenario, verify correct return values and no exceptions thrown"
+            "testStrategy": "Unit tests for each edge case scenario, verify correct return values and no exceptions thrown",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -633,7 +685,8 @@
             ],
             "details": "Modify CLI output handlers to show meaningful messages for edge cases: 'No tasks available', 'All tasks completed', 'Only X tasks available', etc. Ensure consistent formatting with normal task output.",
             "status": "pending",
-            "testStrategy": "Integration tests with CLI commands to verify proper message display and formatting"
+            "testStrategy": "Integration tests with CLI commands to verify proper message display and formatting",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -644,7 +697,8 @@
             ],
             "details": "Create test files for each edge case scenario. Test with different concurrency values, tag filters, and task states. Verify deterministic task selection with same inputs and circular dependency protection.",
             "status": "pending",
-            "testStrategy": "Unit tests with mock data for each edge case, verify isolation and correctness of edge case handling"
+            "testStrategy": "Unit tests with mock data for each edge case, verify isolation and correctness of edge case handling",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -656,7 +710,8 @@
             ],
             "details": "Set up test task.json files representing each edge case scenario. Test CLI and core integration with real files. Verify JSON output structure matches requirements and maintains backwards compatibility.",
             "status": "pending",
-            "testStrategy": "Integration tests with real task files, verify complete workflow from input to output"
+            "testStrategy": "Integration tests with real task files, verify complete workflow from input to output",
+            "parentId": "undefined"
           },
           {
             "id": 5,
@@ -667,15 +722,20 @@
             ],
             "details": "Create performance tests for projects with <100 tasks to ensure <500ms response time. Test complex dependency chains under load. Verify all edge cases work correctly with various input sizes and combinations.",
             "status": "pending",
-            "testStrategy": "Performance benchmarks with varying project sizes, verify response times and edge case behavior"
+            "testStrategy": "Performance benchmarks with varying project sizes, verify response times and edge case behavior",
+            "parentId": "undefined"
           }
         ]
       }
     ],
     "metadata": {
-      "created": "2026-01-05T14:59:33.768Z",
-      "updated": "2026-01-05T14:59:33.769Z",
-      "description": "Tasks for tm-core-phase-1 context"
+      "version": "1.0.0",
+      "lastModified": "2026-01-05T15:22:05.967Z",
+      "taskCount": 10,
+      "completedCount": 1,
+      "tags": [
+        "master"
+      ]
     }
   }
 }

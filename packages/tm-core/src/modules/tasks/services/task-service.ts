@@ -293,6 +293,192 @@ export class TaskService {
 	}
 
 	/**
+	 * Get next available tasks to work on
+	 * Returns up to `concurrency` independent tasks that can be worked on in parallel
+	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
+	 *
+	 * @param concurrency - Maximum number of tasks to return (must be >= 1, capped at 10)
+	 * @param tag - Optional tag to filter tasks
+	 * @returns Promise resolving to array of independent tasks (empty if none available)
+	 *
+	 * @throws {Error} If concurrency < 1
+	 *
+	 * Algorithm:
+	 * 1. Validate concurrency parameter
+	 * 2. Get all tasks with status [pending, in-progress, done]
+	 * 3. Build set of completed task/subtask IDs
+	 * 4. Collect eligible candidates:
+	 *    a. Subtasks from in-progress parents (with satisfied dependencies)
+	 *    b. Top-level tasks (with satisfied dependencies)
+	 * 5. Sort candidates by: priority (desc) → dep count (asc) → ID (asc)
+	 * 6. Select up to N tasks, ensuring no selected task depends on another selected task
+	 *
+	 * Example:
+	 * ```typescript
+	 * // Get 2 independent tasks
+	 * const tasks = await taskService.getNextTasks(2);
+	 * // Returns: [{ id: '1', ... }, { id: '3', ... }]
+	 * // Task 3 is NOT returned if it depends on Task 1
+	 * ```
+	 */
+	async getNextTasks(concurrency: number, tag?: string): Promise<Task[]> {
+		// Validate concurrency parameter
+		if (typeof concurrency !== 'number' || Number.isNaN(concurrency)) {
+			throw new Error(
+				`Invalid concurrency value: '${concurrency}'. Concurrency must be a positive integer.`
+			);
+		}
+		if (concurrency < 1) {
+			throw new Error(`Concurrency must be at least 1. Got: ${concurrency}`);
+		}
+
+		// Cap at 10 with warning (FR-003)
+		const maxConcurrency = 10;
+		let effectiveConcurrency = concurrency;
+		if (concurrency > maxConcurrency) {
+			this.logger.warn(
+				`Concurrency capped at maximum of ${maxConcurrency}. Requested: ${concurrency}, using: ${maxConcurrency}`
+			);
+			effectiveConcurrency = maxConcurrency;
+		}
+
+		// Get all tasks with relevant statuses
+		const result = await this.getTaskList({
+			tag,
+			filter: {
+				status: ['pending', 'in-progress', 'done']
+			}
+		});
+
+		const allTasks = result.tasks;
+		const priorityValues = { critical: 4, high: 3, medium: 2, low: 1 };
+
+		// Helper to convert subtask dependencies to full dotted notation
+		const toFullSubId = (
+			parentId: string,
+			maybeDotId: string | number
+		): string => {
+			if (typeof maybeDotId === 'string' && maybeDotId.includes('.')) {
+				return maybeDotId;
+			}
+			return `${parentId}.${maybeDotId}`;
+		};
+
+		// Build completed IDs set (both tasks and subtasks)
+		const completedIds = new Set<string>();
+		allTasks.forEach((t) => {
+			if (t.status === 'done') {
+				completedIds.add(String(t.id));
+			}
+			if (Array.isArray(t.subtasks)) {
+				t.subtasks.forEach((st) => {
+					if (st.status === 'done') {
+						completedIds.add(`${t.id}.${st.id}`);
+					}
+				});
+			}
+		});
+
+		// Helper to check if all dependencies are satisfied
+		const areDepsSatisfied = (deps: string[] = []): boolean => {
+			return deps.length === 0 || deps.every((depId) => completedIds.has(String(depId)));
+		};
+
+		// Collect all eligible candidates
+		const candidates: Array<Task & { parentId?: string }> = [];
+
+		// Phase 1: Subtasks from in-progress parent tasks
+		allTasks
+			.filter((t) => t.status === 'in-progress' && Array.isArray(t.subtasks))
+			.forEach((parent) => {
+				parent.subtasks!.forEach((st) => {
+					const stStatus = (st.status || 'pending').toLowerCase();
+					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
+
+					const fullDeps =
+						st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ?? [];
+
+					if (areDepsSatisfied(fullDeps)) {
+						candidates.push({
+							id: `${parent.id}.${st.id}`,
+							title: st.title || `Subtask ${st.id}`,
+							status: st.status || 'pending',
+							priority: st.priority || parent.priority || 'medium',
+							dependencies: fullDeps,
+							parentId: String(parent.id),
+							description: st.description,
+							details: st.details,
+							testStrategy: st.testStrategy,
+							subtasks: []
+						} as Task & { parentId: string });
+					}
+				});
+			});
+
+		// Phase 2: Top-level tasks (exclude those with subtasks in Phase 1)
+		const tasksWithSubtasksInProgress = new Set<string>(
+			allTasks
+				.filter((t) => t.status === 'in-progress' && Array.isArray(t.subtasks) && t.subtasks.length > 0)
+				.map((t) => String(t.id))
+		);
+
+		allTasks.forEach((task) => {
+			const status = (task.status || 'pending').toLowerCase();
+			if (status !== 'pending' && status !== 'in-progress') return;
+
+			// Skip tasks that have subtasks (they're handled in Phase 1)
+			if (tasksWithSubtasksInProgress.has(String(task.id))) return;
+
+			const deps = task.dependencies ?? [];
+			if (areDepsSatisfied(deps)) {
+				candidates.push(task);
+			}
+		});
+
+		// Sort candidates by priority → dependency count → ID
+		candidates.sort((a, b) => {
+			const pa = priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
+			const pb = priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
+			if (pb !== pa) return pb - pa;
+
+			if (a.dependencies!.length !== b.dependencies!.length) {
+				return a.dependencies!.length - b.dependencies!.length;
+			}
+
+			return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+		});
+
+		// Select up to N tasks, ensuring no inter-task dependencies
+		const selectedTasks: Task[] = [];
+		const selectedIds = new Set<string>();
+
+		for (const candidate of candidates) {
+			if (selectedTasks.length >= effectiveConcurrency) break;
+
+			const candidateId = String(candidate.id);
+
+			// Check if candidate depends on any already-selected task
+			const candidateDeps = new Set(candidate.dependencies ?? []);
+			const hasConflict = [...selectedIds].some((selectedId) =>
+				candidateDeps.has(selectedId)
+			);
+
+			// Also check if any selected task depends on this candidate
+			const createsConflict = [...selectedIds].some((selectedId) => {
+				const selectedTask = selectedTasks.find((t) => String(t.id) === selectedId);
+				return selectedTask?.dependencies?.some((dep) => dep === candidateId);
+			});
+
+			if (!hasConflict && !createsConflict) {
+				selectedTasks.push(candidate);
+				selectedIds.add(candidateId);
+			}
+		}
+
+		return selectedTasks;
+	}
+
+	/**
 	 * Get next available task to work on
 	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
 	 */
