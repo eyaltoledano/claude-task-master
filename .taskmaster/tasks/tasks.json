@@ -320,7 +320,7 @@
         "testStrategy": "Test CLI help text includes new flag, verify flag accepts numeric values, verify default behavior when flag not provided. Integration test with various flag formats (--concurrency 3, -c 5).",
         "priority": "medium",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -328,9 +328,10 @@
             "description": "Add optional concurrency property to the TypeScript interface for NextCommand options",
             "dependencies": [],
             "details": "Add `concurrency?: number` to NextCommandOptions interface in apps/cli/src/commands/next.command.ts following existing property patterns",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "TypeScript compilation should pass without errors, interface should accept optional number values",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:29:40.262Z"
           },
           {
             "id": 2,
@@ -340,9 +341,10 @@
               1
             ],
             "details": "Add `.option('-c, --concurrency <number>', 'Number of tasks to retrieve (default: 1, max: 10)')` to the command builder chain",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test CLI help text includes new flag with correct description, verify both short (-c) and long (--concurrency) forms are recognized",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:29:56.911Z"
           },
           {
             "id": 3,
@@ -352,9 +354,10 @@
               2
             ],
             "details": "Test that the concurrency property remains undefined when flag is not provided, and follows existing CLI option patterns for optional flags",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test command execution without flag to ensure no errors occur, verify options object structure matches expected pattern",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:31:03.930Z"
           },
           {
             "id": 4,
@@ -364,9 +367,10 @@
               3
             ],
             "details": "Test various input formats: --concurrency 3, -c 5, ensure values are parsed as numbers, handle string inputs gracefully",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with different flag formats, verify parsed values are correct type, test edge cases like non-numeric inputs",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T16:31:39.785Z"
           },
           {
             "id": 5,
@@ -376,11 +380,13 @@
               4
             ],
             "details": "Review and align flag implementation with other CLI options in the project, check naming conventions, help text formatting, and option chain placement",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Code review comparing with existing flags, ensure consistent styling and behavior across all CLI options",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-05T17:48:17.062Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-01-05T17:48:17.062Z"
       },
       {
         "id": "6",
@@ -748,9 +754,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-05T16:21:48.528Z",
+      "lastModified": "2026-01-05T17:48:17.063Z",
       "taskCount": 10,
-      "completedCount": 4,
+      "completedCount": 5,
       "tags": [
         "master"
       ]
