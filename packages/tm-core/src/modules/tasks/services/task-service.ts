@@ -322,17 +322,35 @@ export class TaskService {
 	 * ```
 	 */
 	async getNextTasks(concurrency: number, tag?: string): Promise<Task[]> {
-		// Validate concurrency parameter
+		// Validate concurrency parameter type
 		if (typeof concurrency !== 'number' || Number.isNaN(concurrency)) {
-			throw new Error(
-				`Invalid concurrency value: '${concurrency}'. Concurrency must be a positive integer.`
+			throw new TaskMasterError(
+				`Invalid concurrency value: '${concurrency}'. Concurrency must be a positive integer.`,
+				ERROR_CODES.INVALID_INPUT,
+				{
+					operation: 'getNextTasks',
+					parameter: 'concurrency',
+					providedValue: concurrency,
+					expectedType: 'number'
+				}
 			);
 		}
+
+		// Validate minimum value
 		if (concurrency < 1) {
-			throw new Error(`Concurrency must be at least 1. Got: ${concurrency}`);
+			throw new TaskMasterError(
+				`Concurrency must be at least 1. Got: ${concurrency}`,
+				ERROR_CODES.INVALID_INPUT,
+				{
+					operation: 'getNextTasks',
+					parameter: 'concurrency',
+					providedValue: concurrency,
+					minimumValue: 1
+				}
+			);
 		}
 
-		// Cap at 10 with warning (FR-003)
+		// Cap at 10 with warning (FR-003, EM-003)
 		const maxConcurrency = 10;
 		let effectiveConcurrency = concurrency;
 		if (concurrency > maxConcurrency) {

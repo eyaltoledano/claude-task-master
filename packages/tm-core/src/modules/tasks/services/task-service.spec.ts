@@ -8,6 +8,7 @@ import { TaskService } from './task-service.js';
 import type { IStorage } from '../../../common/interfaces/storage.interface.js';
 import type { Task } from '../../../common/types/index.js';
 import type { ConfigManager } from '../../config/managers/config-manager.js';
+import { TaskMasterError } from '../../../common/errors/task-master-error.js';
 
 /**
  * Mock storage implementation for testing
@@ -131,6 +132,9 @@ describe('TaskService - getNextTasks', () => {
 
 	/**
 	 * FR-003: Validate concurrency parameter
+	 * EM-001: Invalid concurrency value (not a number)
+	 * EM-002: Concurrency less than 1
+	 * EM-003: Concurrency exceeds maximum
 	 */
 	describe('Concurrency parameter validation', () => {
 		beforeEach(async () => {
@@ -139,49 +143,260 @@ describe('TaskService - getNextTasks', () => {
 			await taskService.initialize();
 		});
 
-		it('should throw error if concurrency < 1', async () => {
-			await expect(taskService.getNextTasks(0)).rejects.toThrow(
-				'Concurrency must be at least 1'
-			);
-			await expect(taskService.getNextTasks(-1)).rejects.toThrow(
-				'Concurrency must be at least 1'
-			);
+		describe('Type validation (EM-001)', () => {
+			it('should throw TaskMasterError if concurrency is NaN', async () => {
+				// Act & Assert
+				await expect(taskService.getNextTasks(NaN as any)).rejects.toThrow(
+					TaskMasterError
+				);
+				await expect(taskService.getNextTasks(NaN as any)).rejects.toThrow(
+					"Invalid concurrency value: 'NaN'. Concurrency must be a positive integer."
+				);
+
+				// Verify error code
+				try {
+					await taskService.getNextTasks(NaN as any);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TaskMasterError);
+					if (error instanceof TaskMasterError) {
+						expect(error.code).toBe('INVALID_INPUT');
+						expect(error.context.operation).toBe('getNextTasks');
+						expect(error.context.parameter).toBe('concurrency');
+					}
+				}
+			});
+
+			it('should throw TaskMasterError if concurrency is a string', async () => {
+				// Act & Assert
+				await expect(taskService.getNextTasks('abc' as any)).rejects.toThrow(
+					TaskMasterError
+				);
+				await expect(taskService.getNextTasks('abc' as any)).rejects.toThrow(
+					"Invalid concurrency value: 'abc'. Concurrency must be a positive integer."
+				);
+
+				// Verify error details
+				try {
+					await taskService.getNextTasks('abc' as any);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TaskMasterError);
+					if (error instanceof TaskMasterError) {
+						expect(error.code).toBe('INVALID_INPUT');
+						expect(error.context.providedValue).toBe('abc');
+						expect(error.context.expectedType).toBe('number');
+					}
+				}
+			});
+
+			it('should throw TaskMasterError if concurrency is null or undefined', async () => {
+				await expect(taskService.getNextTasks(null as any)).rejects.toThrow(
+					TaskMasterError
+				);
+				await expect(taskService.getNextTasks(undefined as any)).rejects.toThrow(
+					TaskMasterError
+				);
+			});
+
+			it('should throw TaskMasterError if concurrency is an object', async () => {
+				await expect(taskService.getNextTasks({ value: 5 } as any)).rejects.toThrow(
+					TaskMasterError
+				);
+			});
 		});
 
-		it('should throw error if concurrency is not a number', async () => {
-			await expect(taskService.getNextTasks(NaN as any)).rejects.toThrow(
-				"Invalid concurrency value: 'NaN'"
-			);
-			await expect(taskService.getNextTasks('abc' as any)).rejects.toThrow(
-				"Invalid concurrency value: 'abc'"
-			);
+		describe('Minimum value validation (EM-002)', () => {
+			it('should throw TaskMasterError if concurrency is 0', async () => {
+				// Act & Assert
+				await expect(taskService.getNextTasks(0)).rejects.toThrow(
+					TaskMasterError
+				);
+				await expect(taskService.getNextTasks(0)).rejects.toThrow(
+					'Concurrency must be at least 1. Got: 0'
+				);
+
+				// Verify error code
+				try {
+					await taskService.getNextTasks(0);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TaskMasterError);
+					if (error instanceof TaskMasterError) {
+						expect(error.code).toBe('INVALID_INPUT');
+						expect(error.context.parameter).toBe('concurrency');
+						expect(error.context.providedValue).toBe(0);
+						expect(error.context.minimumValue).toBe(1);
+					}
+				}
+			});
+
+			it('should throw TaskMasterError if concurrency is negative', async () => {
+				// Act & Assert
+				await expect(taskService.getNextTasks(-1)).rejects.toThrow(
+					TaskMasterError
+				);
+				await expect(taskService.getNextTasks(-1)).rejects.toThrow(
+					'Concurrency must be at least 1. Got: -1'
+				);
+
+				await expect(taskService.getNextTasks(-100)).rejects.toThrow(
+					'Concurrency must be at least 1. Got: -100'
+				);
+
+				// Verify error details
+				try {
+					await taskService.getNextTasks(-5);
+				} catch (error) {
+					expect(error).toBeInstanceOf(TaskMasterError);
+					if (error instanceof TaskMasterError) {
+						expect(error.code).toBe('INVALID_INPUT');
+						expect(error.context.providedValue).toBe(-5);
+						expect(error.context.minimumValue).toBe(1);
+					}
+				}
+			});
+
+			it('should throw TaskMasterError if concurrency is a decimal between 0 and 1', async () => {
+				await expect(taskService.getNextTasks(0.5)).rejects.toThrow(
+					'Concurrency must be at least 1. Got: 0.5'
+				);
+				await expect(taskService.getNextTasks(0.99)).rejects.toThrow(
+					'Concurrency must be at least 1. Got: 0.99'
+				);
+			});
 		});
 
-		it('should cap concurrency at 10 with warning', async () => {
-			// Arrange
-			const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+		describe('Maximum value clamping (EM-003)', () => {
+			it('should cap concurrency at 10 with warning when value is 11', async () => {
+				// Arrange
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
 
-			// Act
-			const result = await taskService.getNextTasks(15);
+				// Act
+				const result = await taskService.getNextTasks(11);
 
-			// Assert
-			expect(result).toHaveLength(0); // No tasks available
-			expect(loggerWarnSpy).toHaveBeenCalledWith(
-				'Concurrency capped at maximum of 10. Requested: 15, using: 10'
-			);
+				// Assert
+				expect(result).toHaveLength(0); // No tasks available
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
+					'Concurrency capped at maximum of 10. Requested: 11, using: 10'
+				);
+			});
+
+			it('should cap concurrency at 10 with warning when value is 15', async () => {
+				// Arrange
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+
+				// Act
+				const result = await taskService.getNextTasks(15);
+
+				// Assert
+				expect(result).toHaveLength(0);
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
+					'Concurrency capped at maximum of 10. Requested: 15, using: 10'
+				);
+			});
+
+			it('should cap concurrency at 10 with warning when value is 100', async () => {
+				// Arrange
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+
+				// Act
+				const result = await taskService.getNextTasks(100);
+
+				// Assert
+				expect(result).toHaveLength(0);
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
+					'Concurrency capped at maximum of 10. Requested: 100, using: 10'
+				);
+			});
+
+			it('should return up to 10 tasks when concurrency > 10 and tasks are available', async () => {
+				// Arrange
+				const tasks: Task[] = Array.from({ length: 20 }, (_, i) => ({
+					id: String(i + 1),
+					title: `Task ${i + 1}`,
+					description: `Description ${i + 1}`,
+					status: 'pending' as const,
+					priority: 'medium' as const,
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
+				}));
+				mockStorage = createMockStorage(tasks);
+				(taskService as any).storage = mockStorage;
+
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+
+				// Act
+				const result = await taskService.getNextTasks(20);
+
+				// Assert
+				expect(result).toHaveLength(10); // Capped at 10
+				expect(loggerWarnSpy).toHaveBeenCalledWith(
+					'Concurrency capped at maximum of 10. Requested: 20, using: 10'
+				);
+			});
 		});
 
-		it('should accept concurrency = 1', async () => {
-			const result = await taskService.getNextTasks(1);
-			expect(Array.isArray(result)).toBe(true);
-		});
-
-		it('should accept valid concurrency values up to 10', async () => {
-			const values = [1, 2, 5, 10];
-			for (const concurrency of values) {
-				const result = await taskService.getNextTasks(concurrency);
+		describe('Valid concurrency values', () => {
+			it('should accept concurrency = 1', async () => {
+				const result = await taskService.getNextTasks(1);
 				expect(Array.isArray(result)).toBe(true);
-			}
+			});
+
+			it('should accept valid concurrency values up to 10', async () => {
+				const values = [1, 2, 5, 10];
+				for (const concurrency of values) {
+					const result = await taskService.getNextTasks(concurrency);
+					expect(Array.isArray(result)).toBe(true);
+				}
+			});
+
+			it('should accept decimal values >= 1', async () => {
+				// Arrange
+				const tasks: Task[] = [
+					{
+						id: '1',
+						title: 'Task 1',
+						description: 'Description for task 1',
+						status: 'pending',
+						priority: 'high',
+						dependencies: [],
+						details: '',
+						testStrategy: '',
+						subtasks: []
+					}
+				];
+				mockStorage = createMockStorage(tasks);
+				(taskService as any).storage = mockStorage;
+
+				// Act & Assert - decimals should be accepted (truncated in practice)
+				const result1 = await taskService.getNextTasks(1.5);
+				expect(Array.isArray(result1)).toBe(true);
+
+				const result2 = await taskService.getNextTasks(9.99);
+				expect(Array.isArray(result2)).toBe(true);
+			});
+
+			it('should not throw warning when concurrency is exactly 10', async () => {
+				// Arrange
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+
+				// Act
+				await taskService.getNextTasks(10);
+
+				// Assert
+				expect(loggerWarnSpy).not.toHaveBeenCalled();
+			});
+
+			it('should not throw warning when concurrency < 10', async () => {
+				// Arrange
+				const loggerWarnSpy = vi.spyOn((taskService as any).logger, 'warn');
+
+				// Act
+				await taskService.getNextTasks(5);
+
+				// Assert
+				expect(loggerWarnSpy).not.toHaveBeenCalled();
+			});
 		});
 	});
 
