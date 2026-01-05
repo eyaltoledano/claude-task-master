@@ -1,0 +1,36 @@
+name: Sync from Upstream
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch upstream repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/eyaltoledano/claude-task-master.git
+
+      - name: Fetch from upstream
+        run: git fetch upstream
+
+      - name: Merge upstream changes
+        run: |
+          git merge --no-edit upstream/main ||
+          git merge --strategy-option theirs --no-edit upstream/main
+
+      - name: Push to origin
+        run: git push origin main
