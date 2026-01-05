@@ -16,6 +16,7 @@ import { TaskEntity } from '../entities/task.entity.js';
 import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
 import { getLogger } from '../../../common/logger/factory.js';
 import type { ExpandTaskResult } from '../../integration/services/task-expansion.service.js';
+import { normalizeDisplayId } from '../../../common/schemas/task-id.schema.js';
 
 /**
  * Result returned by getTaskList
@@ -60,6 +61,168 @@ export class TaskService {
 
 		// Storage will be created during initialization
 		this.storage = null as any;
+	}
+
+	/**
+	 * Normalize a dependency ID to full dotted notation
+	 *
+	 * Handles:
+	 * - Numeric task IDs: "1" → "1"
+	 * - Dotted subtask IDs: "1.2" → "1.2"
+	 * - API display IDs: "ham1" → "HAM-1"
+	 *
+	 * When context is provided (parentId for subtasks), converts relative IDs:
+	 * - Relative subtask dep: "2" with parentId "1" → "1.2"
+	 *
+	 * @param depId - The dependency ID to normalize
+	 * @param parentId - Optional parent task ID (for subtask dependencies)
+	 * @returns Normalized dependency ID in full dotted notation
+	 *
+	 * @example
+	 * ```typescript
+	 * normalizeDependencyId("1");              // "1"
+	 * normalizeDependencyId("1.2");            // "1.2"
+	 * normalizeDependencyId("ham1");           // "HAM-1"
+	 * normalizeDependencyId("2", "1");         // "1.2" (subtask dep)
+	 * normalizeDependencyId("1.2", "5");       // "1.2" (already full)
+	 * ```
+	 */
+	private normalizeDependencyId(depId: string | number, parentId?: string): string {
+		const idStr = String(depId);
+
+		// If already dotted (subtask ID), normalize and return as-is
+		if (idStr.includes('.')) {
+			return normalizeDisplayId(idStr);
+		}
+
+		// If parentId provided and depId is numeric, treat as relative subtask dependency
+		if (parentId && /^\d+$/.test(idStr)) {
+			return `${parentId}.${idStr}`;
+		}
+
+		// Otherwise normalize API IDs or return numeric IDs as-is
+		return normalizeDisplayId(idStr);
+	}
+
+	/**
+	 * Normalize an array of dependency IDs to full dotted notation
+	 *
+	 * @param depIds - Array of dependency IDs to normalize
+	 * @param parentId - Optional parent task ID (for subtask dependencies)
+	 * @returns Array of normalized dependency IDs
+	 *
+	 * @example
+	 * ```typescript
+	 * normalizeDependencyIds(["1", "2"], "5");     // ["5.1", "5.2"]
+	 * normalizeDependencyIds(["1.2", "3.4"]);      // ["1.2", "3.4"]
+	 * normalizeDependencyIds(["ham1", "ham2"]);    // ["HAM-1", "HAM-2"]
+	 * ```
+	 */
+	private normalizeDependencyIds(
+		depIds: Array<string | number>,
+		parentId?: string
+	): string[] {
+		return depIds.map((depId) => this.normalizeDependencyId(depId, parentId));
+	}
+
+	/**
+	 * Check if a candidate task has a dependency conflict with already-selected tasks
+	 *
+	 * A conflict exists when:
+	 * 1. The candidate depends on a selected task, OR
+	 * 2. A selected task depends on the candidate, OR
+	 * 3. Cross-type dependency exists (e.g., task depends on subtask's parent or vice versa)
+	 * 4. Cross-hierarchy dependency (e.g., candidate depends on subtask that's child of selected)
+	 *
+	 * @param candidate - The candidate task being considered for selection
+	 * @param selectedTasks - Array of already-selected tasks
+	 * @returns True if there's a dependency conflict
+	 *
+	 * @example
+	 * ```typescript
+	 * // Candidate task 3 depends on selected task 1
+	 * hasDependencyConflict({ id: "3", dependencies: ["1"] }, [{ id: "1", ... }]);
+	 * // => true
+	 *
+	 * // Selected task 1 depends on candidate
+	 * hasDependencyConflict({ id: "3", dependencies: [] }, [{ id: "1", dependencies: ["3"] }]);
+	 * // => true
+	 *
+	 * // Task 3 depends on subtask 1.2, and task 1 (parent of 1.2) is selected
+	 * hasDependencyConflict({ id: "3", dependencies: ["1.2"] }, [{ id: "1", ... }]);
+	 * // => true
+	 *
+	 * // No dependencies
+	 * hasDependencyConflict({ id: "3", dependencies: [] }, [{ id: "1", dependencies: [] }]);
+	 * // => false
+	 * ```
+	 */
+	private hasDependencyConflict(
+		candidate: Task,
+		selectedTasks: Task[]
+	): boolean {
+		const candidateId = String(candidate.id);
+		const candidateDeps = new Set(
+			this.normalizeDependencyIds(candidate.dependencies ?? [])
+		);
+
+		// Check each selected task for conflicts
+		for (const selectedTask of selectedTasks) {
+			const selectedId = String(selectedTask.id);
+			const selectedDeps = new Set(
+				this.normalizeDependencyIds(selectedTask.dependencies ?? [])
+			);
+
+			// Check 1: Does candidate depend on selected task?
+			if (candidateDeps.has(selectedId)) {
+				return true;
+			}
+
+			// Check 2: Does selected task depend on candidate?
+			if (selectedDeps.has(candidateId)) {
+				return true;
+			}
+
+			// Check 3: Cross-type dependencies
+			// If candidate is a subtask (e.g., "1.2"), check if selected depends on parent (e.g., "1")
+			if (candidateId.includes('.')) {
+				const candidateParentId = candidateId.split('.')[0];
+				if (selectedDeps.has(candidateParentId)) {
+					return true;
+				}
+			}
+
+			// If selected is a subtask, check if candidate depends on its parent
+			if (selectedId.includes('.')) {
+				const selectedParentId = selectedId.split('.')[0];
+				if (candidateDeps.has(selectedParentId)) {
+					return true;
+				}
+			}
+
+			// Check 4: Cross-hierarchy dependencies
+			// If candidate depends on a subtask, check if the subtask's parent is being selected
+			for (const dep of candidateDeps) {
+				if (dep.includes('.')) {
+					const depParentId = dep.split('.')[0];
+					if (selectedId === depParentId) {
+						return true;
+					}
+				}
+			}
+
+			// If selected depends on a subtask, check if the subtask's parent is the candidate
+			for (const dep of selectedDeps) {
+				if (dep.includes('.')) {
+					const depParentId = dep.split('.')[0];
+					if (candidateId === depParentId) {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -293,6 +456,187 @@ export class TaskService {
 	}
 
 	/**
+	 * Get next available tasks to work on
+	 * Returns up to `concurrency` independent tasks that can be worked on in parallel
+	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
+	 *
+	 * @param concurrency - Maximum number of tasks to return (must be >= 1, capped at 10)
+	 * @param tag - Optional tag to filter tasks
+	 * @returns Promise resolving to array of independent tasks (empty if none available)
+	 *
+	 * @throws {Error} If concurrency < 1
+	 *
+	 * Algorithm:
+	 * 1. Validate concurrency parameter
+	 * 2. Get all tasks with status [pending, in-progress, done]
+	 * 3. Build set of completed task/subtask IDs
+	 * 4. Collect eligible candidates:
+	 *    a. Subtasks from in-progress parents (with satisfied dependencies)
+	 *    b. Top-level tasks (with satisfied dependencies)
+	 * 5. Sort candidates by: priority (desc) → dep count (asc) → ID (asc)
+	 * 6. Select up to N tasks, ensuring no selected task depends on another selected task
+	 *
+	 * Example:
+	 * ```typescript
+	 * // Get 2 independent tasks
+	 * const tasks = await taskService.getNextTasks(2);
+	 * // Returns: [{ id: '1', ... }, { id: '3', ... }]
+	 * // Task 3 is NOT returned if it depends on Task 1
+	 * ```
+	 */
+	async getNextTasks(concurrency: number, tag?: string): Promise<Task[]> {
+		// Validate concurrency parameter type
+		if (typeof concurrency !== 'number' || Number.isNaN(concurrency)) {
+			throw new TaskMasterError(
+				`Invalid concurrency value: '${concurrency}'. Concurrency must be a positive integer.`,
+				ERROR_CODES.INVALID_INPUT,
+				{
+					operation: 'getNextTasks',
+					parameter: 'concurrency',
+					providedValue: concurrency,
+					expectedType: 'number'
+				}
+			);
+		}
+
+		// Validate minimum value
+		if (concurrency < 1) {
+			throw new TaskMasterError(
+				`Concurrency must be at least 1. Got: ${concurrency}`,
+				ERROR_CODES.INVALID_INPUT,
+				{
+					operation: 'getNextTasks',
+					parameter: 'concurrency',
+					providedValue: concurrency,
+					minimumValue: 1
+				}
+			);
+		}
+
+		// Cap at 10 with warning (FR-003, EM-003)
+		const maxConcurrency = 10;
+		let effectiveConcurrency = concurrency;
+		if (concurrency > maxConcurrency) {
+			this.logger.warn(
+				`Concurrency capped at maximum of ${maxConcurrency}. Requested: ${concurrency}, using: ${maxConcurrency}`
+			);
+			effectiveConcurrency = maxConcurrency;
+		}
+
+		// Get all tasks with relevant statuses
+		const result = await this.getTaskList({
+			tag,
+			filter: {
+				status: ['pending', 'in-progress', 'done']
+			}
+		});
+
+		const allTasks = result.tasks;
+		const priorityValues = { critical: 4, high: 3, medium: 2, low: 1 };
+
+		// Build completed IDs set (both tasks and subtasks)
+		const completedIds = new Set<string>();
+		allTasks.forEach((t) => {
+			if (t.status === 'done') {
+				completedIds.add(String(t.id));
+			}
+			if (Array.isArray(t.subtasks)) {
+				t.subtasks.forEach((st) => {
+					if (st.status === 'done') {
+						completedIds.add(`${t.id}.${st.id}`);
+					}
+				});
+			}
+		});
+
+		// Helper to check if all dependencies are satisfied
+		const areDepsSatisfied = (deps: string[] = []): boolean => {
+			return deps.length === 0 || deps.every((depId) => completedIds.has(String(depId)));
+		};
+
+		// Collect all eligible candidates
+		const candidates: Array<Task & { parentId?: string }> = [];
+
+		// Phase 1: Subtasks from in-progress parent tasks
+		allTasks
+			.filter((t) => t.status === 'in-progress' && Array.isArray(t.subtasks))
+			.forEach((parent) => {
+				parent.subtasks!.forEach((st) => {
+					const stStatus = (st.status || 'pending').toLowerCase();
+					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
+
+					// Normalize subtask dependencies to full dotted notation
+					const fullDeps = this.normalizeDependencyIds(
+						st.dependencies ?? [],
+						String(parent.id)
+					);
+
+					if (areDepsSatisfied(fullDeps)) {
+						candidates.push({
+							id: `${parent.id}.${st.id}`,
+							title: st.title || `Subtask ${st.id}`,
+							status: st.status || 'pending',
+							priority: st.priority || parent.priority || 'medium',
+							dependencies: fullDeps,
+							parentId: String(parent.id),
+							description: st.description,
+							details: st.details,
+							testStrategy: st.testStrategy,
+							subtasks: []
+						} as Task & { parentId: string });
+					}
+				});
+			});
+
+		// Phase 2: Top-level tasks (exclude those with subtasks in Phase 1)
+		const tasksWithSubtasksInProgress = new Set<string>(
+			allTasks
+				.filter((t) => t.status === 'in-progress' && Array.isArray(t.subtasks) && t.subtasks.length > 0)
+				.map((t) => String(t.id))
+		);
+
+		allTasks.forEach((task) => {
+			const status = (task.status || 'pending').toLowerCase();
+			if (status !== 'pending' && status !== 'in-progress') return;
+
+			// Skip tasks that have subtasks (they're handled in Phase 1)
+			if (tasksWithSubtasksInProgress.has(String(task.id))) return;
+
+			const deps = task.dependencies ?? [];
+			if (areDepsSatisfied(deps)) {
+				candidates.push(task);
+			}
+		});
+
+		// Sort candidates by priority → dependency count → ID
+		candidates.sort((a, b) => {
+			const pa = priorityValues[a.priority as keyof typeof priorityValues] ?? 2;
+			const pb = priorityValues[b.priority as keyof typeof priorityValues] ?? 2;
+			if (pb !== pa) return pb - pa;
+
+			if (a.dependencies!.length !== b.dependencies!.length) {
+				return a.dependencies!.length - b.dependencies!.length;
+			}
+
+			return String(a.id).localeCompare(String(b.id), undefined, { numeric: true });
+		});
+
+		// Select up to N tasks, ensuring no inter-task dependencies
+		const selectedTasks: Task[] = [];
+
+		for (const candidate of candidates) {
+			if (selectedTasks.length >= effectiveConcurrency) break;
+
+			// Check if candidate has any dependency conflicts with already-selected tasks
+			if (!this.hasDependencyConflict(candidate, selectedTasks)) {
+				selectedTasks.push(candidate);
+			}
+		}
+
+		return selectedTasks;
+	}
+
+	/**
 	 * Get next available task to work on
 	 * Prioritizes eligible subtasks from in-progress parent tasks before falling back to top-level tasks
 	 */
@@ -306,17 +650,6 @@ export class TaskService {
 
 		const allTasks = result.tasks;
 		const priorityValues = { critical: 4, high: 3, medium: 2, low: 1 };
-
-		// Helper to convert subtask dependencies to full dotted notation
-		const toFullSubId = (
-			parentId: string,
-			maybeDotId: string | number
-		): string => {
-			if (typeof maybeDotId === 'string' && maybeDotId.includes('.')) {
-				return maybeDotId;
-			}
-			return `${parentId}.${maybeDotId}`;
-		};
 
 		// Build completed IDs set (both tasks and subtasks)
 		const completedIds = new Set<string>();
@@ -343,9 +676,11 @@ export class TaskService {
 					const stStatus = (st.status || 'pending').toLowerCase();
 					if (stStatus !== 'pending' && stStatus !== 'in-progress') return;
 
-					const fullDeps =
-						st.dependencies?.map((d) => toFullSubId(String(parent.id), d)) ??
-						[];
+					// Normalize subtask dependencies to full dotted notation
+					const fullDeps = this.normalizeDependencyIds(
+						st.dependencies ?? [],
+						String(parent.id)
+					);
 					const depsSatisfied =
 						fullDeps.length === 0 ||
 						fullDeps.every((depId) => completedIds.has(String(depId)));

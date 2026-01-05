@@ -154,6 +154,16 @@ export class TasksDomain {
 		return this.taskService.getNextTask(tag);
 	}
 
+	/**
+	 * Get next available tasks to work on with concurrency support
+	 * @param concurrency - Number of tasks to retrieve (1-10)
+	 * @param tag - Optional tag filter
+	 * @returns Array of independent tasks available to work on
+	 */
+	async getNextTasks(concurrency: number, tag?: string): Promise<Task[]> {
+		return this.taskService.getNextTasks(concurrency, tag);
+	}
+
 	// ========== Task Status Management ==========
 
 	/**

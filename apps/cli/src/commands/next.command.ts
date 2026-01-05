@@ -22,13 +22,14 @@ export interface NextCommandOptions {
 	format?: 'text' | 'json';
 	silent?: boolean;
 	project?: string;
+	concurrency?: number;
 }
 
 /**
  * Result type from next command
  */
 export interface NextTaskResult {
-	task: Task | null;
+	tasks: Task[];
 	found: boolean;
 	tag: string;
 	storageType: Exclude<StorageType, 'auto'>;
@@ -54,6 +55,10 @@ export class NextCommand extends Command {
 			.option(
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
+			)
+			.option(
+				'-c, --concurrency <number>',
+				'Number of tasks to retrieve (default: 1, max: 10)'
 			)
 			.action(async (options: NextCommandOptions) => {
 				await this.executeCommand(options);
@@ -119,7 +124,7 @@ export class NextCommand extends Command {
 	}
 
 	/**
-	 * Get next task from tm-core
+	 * Get next task(s) from tm-core
 	 */
 	private async getNextTask(
 		options: NextCommandOptions
@@ -128,8 +133,10 @@ export class NextCommand extends Command {
 			throw new Error('TmCore not initialized');
 		}
 
-		// Call tm-core to get next task
-		const task = await this.tmCore.tasks.getNext(options.tag);
+		// Call tm-core to get next task(s)
+		const tasks = options.concurrency
+			? await this.tmCore.tasks.getNextTasks(options.concurrency, options.tag)
+			: await this.tmCore.tasks.getNext(options.tag).then(task => task ? [task] : []);
 
 		// Get storage type and active tag
 		const storageType = this.tmCore.tasks.getStorageType();
@@ -141,8 +148,8 @@ export class NextCommand extends Command {
 		const hasAnyTasks = allTasks && allTasks.tasks.length > 0;
 
 		return {
-			task,
-			found: task !== null,
+			tasks,
+			found: tasks.length > 0,
 			tag: activeTag,
 			storageType,
 			hasAnyTasks
@@ -187,7 +194,7 @@ export class NextCommand extends Command {
 			storageType: result.storageType
 		});
 
-		if (!result.found || !result.task) {
+		if (!result.found || result.tasks.length === 0) {
 			// Only show warning box if there are literally NO tasks at all
 			if (!result.hasAnyTasks) {
 				console.log(
@@ -216,17 +223,23 @@ export class NextCommand extends Command {
 			return;
 		}
 
-		const task = result.task;
+		// Display each task
+		for (const task of result.tasks) {
+			// Display the task details using the same component as 'show' command
+			// with a custom header indicating this is the next task
+			const customHeader = `Next Task: #${task.id} - ${task.title}`;
+			displayTaskDetails(task, {
+				customHeader,
+				headerColor: 'green',
+				showSuggestedActions: true,
+				storageType: result.storageType
+			});
 
-		// Display the task details using the same component as 'show' command
-		// with a custom header indicating this is the next task
-		const customHeader = `Next Task: #${task.id} - ${task.title}`;
-		displayTaskDetails(task, {
-			customHeader,
-			headerColor: 'green',
-			showSuggestedActions: true,
-			storageType: result.storageType
-		});
+			// Add spacing between tasks if there are multiple
+			if (result.tasks.length > 1 && task !== result.tasks[result.tasks.length - 1]) {
+				console.log('\n' + '─'.repeat(80) + '\n');
+			}
+		}
 	}
 
 	/**
