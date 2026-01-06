@@ -1,0 +1,37 @@
+{
+	"name": "@tm/ai-tools",
+	"private": true,
+	"description": "AI SDK tools for Task Master - MCP integrations and AI utilities",
+	"type": "module",
+	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"exports": {
+		".": "./src/index.ts",
+		"./context7": "./src/context7/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"lint": "biome check --write",
+		"lint:check": "biome check",
+		"lint:fix": "biome check --fix --unsafe",
+		"format": "biome format --write",
+		"format:check": "biome format",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@ai-sdk/mcp": "^0.0.10",
+		"ai": "^5.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"@vitest/coverage-v8": "^4.0.10",
+		"typescript": "^5.9.2",
+		"vitest": "^4.0.10"
+	},
+	"files": ["src", "README.md", "CHANGELOG.md"],
+	"keywords": ["ai-sdk", "mcp", "context7", "task-master", "ai-tools"],
+	"author": "Task Master AI",
+	"version": ""
+}

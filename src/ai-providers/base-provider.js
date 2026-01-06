@@ -1,3 +1,4 @@
+// todo: migrate to new ai sdk v6 correctly, use streamText and generateText instead of streamObject and generateObject with the right parameters
 import {
 	JSONParseError,
 	NoObjectGeneratedError,
@@ -196,6 +197,7 @@ export class BaseAIProvider {
 
 	/**
 	 * Generates text using the provider's model
+	 * Supports tools parameter for MCP tool integration
 	 */
 	async generateText(params) {
 		try {
@@ -233,6 +235,7 @@ export class BaseAIProvider {
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
 					: {}),
+				...(params.tools ? { tools: params.tools } : {}),
 				...(telemetryConfig && { experimental_telemetry: telemetryConfig })
 			});
 
@@ -263,6 +266,7 @@ export class BaseAIProvider {
 
 	/**
 	 * Streams text using the provider's model
+	 * Supports tools parameter for MCP tool integration
 	 */
 	async streamText(params) {
 		try {
@@ -297,6 +301,7 @@ export class BaseAIProvider {
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
 					: {}),
+				...(params.tools ? { tools: params.tools } : {}),
 				...(telemetryConfig && { experimental_telemetry: telemetryConfig }),
 				...(params.experimental_transform && {
 					experimental_transform: params.experimental_transform
@@ -316,6 +321,7 @@ export class BaseAIProvider {
 
 	/**
 	 * Streams a structured object using the provider's model
+	 * Note: AI SDK v5 streamObject doesn't support tools - use streamText for tool support
 	 */
 	async streamObject(params) {
 		try {
@@ -350,6 +356,7 @@ export class BaseAIProvider {
 
 			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
+			// AI SDK v5: Use streamObject directly (no tool support)
 			const result = await streamObject({
 				model: client(params.modelId),
 				messages: params.messages,
@@ -368,7 +375,6 @@ export class BaseAIProvider {
 			);
 
 			// Return the stream result directly
-			// The stream result contains partialObjectStream and other properties
 			return result;
 		} catch (error) {
 			this.handleError('object streaming', error);
@@ -377,6 +383,7 @@ export class BaseAIProvider {
 
 	/**
 	 * Generates a structured object using the provider's model
+	 * Note: AI SDK v5 generateObject doesn't support tools - use generateText for tool support
 	 */
 	async generateObject(params) {
 		try {
@@ -414,6 +421,7 @@ export class BaseAIProvider {
 
 			const telemetryConfig = getAITelemetryConfig(functionId, metadata);
 
+			// AI SDK v5: Use generateObject directly (no tool support)
 			const result = await generateObject({
 				model: client(params.modelId),
 				messages: params.messages,

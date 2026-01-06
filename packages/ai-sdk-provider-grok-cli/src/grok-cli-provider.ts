@@ -84,7 +84,7 @@ export function createGrokCli(
 	provider.chat = createModel; // Alias for languageModel
 
 	// Add textEmbeddingModel method that throws NoSuchModelError
-	provider.textEmbeddingModel = (modelId: string) => {
+	provider.embeddingModel = (modelId: string) => {
 		throw new NoSuchModelError({
 			modelId,
 			modelType: 'textEmbeddingModel'

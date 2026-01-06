@@ -26,7 +26,7 @@ describe('createGrokCli', () => {
 		expect(typeof provider).toBe('function');
 		expect(typeof provider.languageModel).toBe('function');
 		expect(typeof provider.chat).toBe('function');
-		expect(typeof provider.textEmbeddingModel).toBe('function');
+		expect(typeof provider.embeddingModel).toBe('function');
 		expect(typeof provider.imageModel).toBe('function');
 	});
 
@@ -91,7 +91,7 @@ describe('createGrokCli', () => {
 	it('should throw NoSuchModelError for textEmbeddingModel', () => {
 		const provider = createGrokCli();
 		expect(() => {
-			provider.textEmbeddingModel('test-model');
+			provider.embeddingModel('test-model');
 		}).toThrow(NoSuchModelError);
 	});
 
