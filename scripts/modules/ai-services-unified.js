@@ -6,6 +6,9 @@
 // Vercel AI SDK functions are NOT called directly anymore.
 // import { generateText, streamText, generateObject } from 'ai';
 
+// --- MCP Tools Integration ---
+import { createMCPTools, isContext7Available } from '@tm/ai-tools';
+
 // --- Core Dependencies ---
 import {
 	MODEL_MAP,
@@ -58,6 +61,84 @@ import {
 
 // Import the provider registry
 import ProviderRegistry from '../../src/provider-registry/index.js';
+
+// --- MCP Tools Cache ---
+let _mcpToolsCache = null;
+let _mcpToolsPromise = null;
+
+/**
+ * Get or create MCP tools (singleton pattern for connection reuse)
+ * @returns {Promise<{tools: Record<string, unknown>, close: () => Promise<void>, enabledSources: string[]}>}
+ */
+async function _getMCPTools() {
+	// Return cached tools if available
+	if (_mcpToolsCache) {
+		return _mcpToolsCache;
+	}
+
+	// Return existing promise if tools are being created
+	if (_mcpToolsPromise) {
+		return _mcpToolsPromise;
+	}
+
+	// Check if any MCP tools are available
+	if (!isContext7Available()) {
+		return { tools: {}, close: async () => {}, enabledSources: [] };
+	}
+
+	// Create tools (this spawns MCP server subprocess)
+	_mcpToolsPromise = createMCPTools()
+		.then((result) => {
+			_mcpToolsCache = result;
+			_mcpToolsPromise = null;
+
+			if (result.enabledSources.length > 0) {
+				log('info', `MCP tools enabled: ${result.enabledSources.join(', ')}`);
+			}
+
+			return result;
+		})
+		.catch((error) => {
+			_mcpToolsPromise = null;
+			log('warn', `Failed to initialize MCP tools: ${error.message}`);
+			return { tools: {}, close: async () => {}, enabledSources: [] };
+		});
+
+	return _mcpToolsPromise;
+}
+
+/**
+ * Close MCP tools connections (call on process exit)
+ */
+async function closeMCPTools() {
+	if (_mcpToolsCache) {
+		try {
+			await _mcpToolsCache.close();
+			log('debug', 'MCP tools connections closed');
+		} catch (error) {
+			log('warn', `Error closing MCP tools: ${error.message}`);
+		}
+		_mcpToolsCache = null;
+	}
+}
+
+// Register cleanup on process exit
+process.on('exit', () => {
+	if (_mcpToolsCache) {
+		// Synchronous cleanup attempt - close() is async so may not complete
+		_mcpToolsCache.close().catch(() => {});
+	}
+});
+
+process.on('SIGINT', async () => {
+	await closeMCPTools();
+	process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+	await closeMCPTools();
+	process.exit(0);
+});
 
 // Create provider instances
 const PROVIDERS = {
@@ -544,6 +625,17 @@ async function _unifiedServiceRunner(serviceType, params) {
 	let lastCleanErrorMessage =
 		'AI service call failed for all configured roles.';
 
+	// Get MCP tools (cached singleton - won't recreate on each call)
+	const mcpTools = await _getMCPTools();
+	const hasTools = Object.keys(mcpTools.tools).length > 0;
+
+	if (hasTools && getDebugFlag()) {
+		log(
+			'debug',
+			`MCP tools available for AI call: ${mcpTools.enabledSources.join(', ')}`
+		);
+	}
+
 	for (const currentRole of sequence) {
 		let providerName;
 		let modelId;
@@ -676,6 +768,7 @@ async function _unifiedServiceRunner(serviceType, params) {
 				...(baseURL && { baseURL }),
 				...((serviceType === 'generateObject' ||
 					serviceType === 'streamObject') && { schema, objectName }),
+				...(hasTools && { tools: mcpTools.tools }),
 				...(commandName && { commandName }), // Pass commandName for Sentry telemetry functionId
 				...(outputType && { outputType }), // Pass outputType for Sentry telemetry metadata
 				...(projectRoot && { projectRoot }), // Pass projectRoot for Sentry telemetry hashing
@@ -951,5 +1044,6 @@ export {
 	streamTextService,
 	streamObjectService,
 	generateObjectService,
-	logAiUsage
+	logAiUsage,
+	closeMCPTools
 };

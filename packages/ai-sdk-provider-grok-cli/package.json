@@ -15,14 +15,14 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@ai-sdk/provider": "^2.0.0",
-		"@ai-sdk/provider-utils": "^3.0.10",
+		"@ai-sdk/provider": "^3.0.2",
+		"@ai-sdk/provider-utils": "^4.0.4",
 		"jsonc-parser": "^3.3.1"
 	},
 	"devDependencies": {
 		"@types/node": "^22.18.6",
-		"typescript": "^5.9.2",
-		"vitest": "^4.0.10"
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.16"
 	},
 	"engines": {
 		"node": ">=20"

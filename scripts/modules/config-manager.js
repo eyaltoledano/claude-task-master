@@ -1048,24 +1048,8 @@ function getAvailableModels() {
 					const sweScore = modelObj.swe_score;
 					const cost = modelObj.cost_per_1m_tokens;
 					const allowedRoles = modelObj.allowed_roles || ['main', 'fallback'];
-
-					// Use name from JSON if available, otherwise generate from ID
-					let name = modelObj.name;
-					if (!name) {
-						const nameParts = modelId
-							.split('-')
-							.map((p) => p.charAt(0).toUpperCase() + p.slice(1));
-						name = nameParts.join(' ');
-						// Handle specific known names better if needed
-						if (modelId === 'claude-3.5-sonnet-20240620')
-							name = 'Claude 3.5 Sonnet';
-						if (modelId === 'claude-3-7-sonnet-20250219')
-							name = 'Claude 3.7 Sonnet';
-						if (modelId === 'gpt-4o') name = 'GPT-4o';
-						if (modelId === 'gpt-4-turbo') name = 'GPT-4 Turbo';
-						if (modelId === 'sonar-pro') name = 'Perplexity Sonar Pro';
-						if (modelId === 'sonar-mini') name = 'Perplexity Sonar Mini';
-					}
+					// Use explicit name from model definition, otherwise use ID as-is
+					const name = modelObj.name || modelId;
 
 					available.push({
 						id: modelId,

@@ -60,6 +60,8 @@ export async function createContext7Tools(
 ): Promise<Context7ToolsResult> {
 	const apiKey = getApiKey(options?.config);
 
+	console.log('[Context7] Initializing MCP client...');
+
 	const transport = new Experimental_StdioMCPTransport({
 		command: 'npx',
 		args: ['-y', '@upstash/context7-mcp', '--api-key', apiKey]
@@ -69,14 +71,23 @@ export async function createContext7Tools(
 		transport
 	});
 
+	console.log('[Context7] MCP client connected successfully');
+
 	options?.onReady?.();
 
 	const tools = await client.tools();
+	const toolNames = Object.keys(tools);
+
+	console.log(
+		`[Context7] Tools available: ${toolNames.length > 0 ? toolNames.join(', ') : 'none'}`
+	);
 
 	return {
 		tools,
 		close: async () => {
+			console.log('[Context7] Closing MCP client connection...');
 			await client.close();
+			console.log('[Context7] MCP client disconnected');
 		}
 	};
 }
@@ -87,6 +98,7 @@ export async function createContext7Tools(
 export function isContext7Available(config?: Context7Config): boolean {
 	try {
 		getApiKey(config);
+		console.log('[Context7] API key detected - Context7 tools will be enabled');
 		return true;
 	} catch {
 		return false;
