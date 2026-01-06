@@ -27,7 +27,7 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 		parameters: ResumeWorkflowSchema,
 		annotations: {
 			title: 'Resume Autopilot Workflow',
-			readOnlyHint: true
+			readOnlyHint: false
 		},
 		execute: withToolContext(
 			'autopilot-resume',

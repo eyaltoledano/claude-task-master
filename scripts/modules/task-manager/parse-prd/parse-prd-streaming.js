@@ -574,10 +574,13 @@ async function processWithGenerateObject(context, logger) {
 	if (tasks && Array.isArray(tasks.tasks)) {
 		tasks.tasks = tasks.tasks.map((task) => ({
 			...task,
+			status: task.status ?? 'pending',
+			title: task.title ?? '',
+			description: task.description ?? '',
 			dependencies: task.dependencies ?? [],
-			priority: task.priority ?? null,
-			details: task.details ?? null,
-			testStrategy: task.testStrategy ?? null
+			priority: task.priority ?? context.defaultPriority ?? 'medium',
+			details: task.details ?? '',
+			testStrategy: task.testStrategy ?? ''
 		}));
 	}
 

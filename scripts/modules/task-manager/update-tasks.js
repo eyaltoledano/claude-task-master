@@ -20,7 +20,11 @@ import {
 
 import { COMMAND_SCHEMAS } from '../../../src/schemas/registry.js';
 import { generateObjectService } from '../ai-services-unified.js';
-import { getDebugFlag, hasCodebaseAnalysis } from '../config-manager.js';
+import {
+	getDebugFlag,
+	getDefaultPriority,
+	hasCodebaseAnalysis
+} from '../config-manager.js';
 import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
@@ -228,19 +232,23 @@ async function updateTasks(
 				stopLoadingIndicator(loadingIndicator, 'AI update complete.');
 
 			// With generateObject, we get structured data directly
+			const defaultPriority = getDefaultPriority(projectRoot) ?? 'medium';
 			const parsedUpdatedTasks = aiServiceResponse.mainResult.tasks.map(
 				(task) => ({
 					...task,
+					status: task.status ?? 'pending',
+					title: task.title ?? '',
+					description: task.description ?? '',
 					dependencies: task.dependencies ?? [],
-					priority: task.priority ?? null,
-					details: task.details ?? null,
-					testStrategy: task.testStrategy ?? null,
+					priority: task.priority ?? defaultPriority,
+					details: task.details ?? '',
+					testStrategy: task.testStrategy ?? '',
 					subtasks: task.subtasks
 						? task.subtasks.map((subtask) => ({
 								...subtask,
 								dependencies: subtask.dependencies ?? [],
 								status: subtask.status ?? 'pending',
-								testStrategy: subtask.testStrategy ?? null
+								testStrategy: subtask.testStrategy ?? ''
 							}))
 						: null
 				})

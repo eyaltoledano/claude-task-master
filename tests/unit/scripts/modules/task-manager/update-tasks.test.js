@@ -51,6 +51,7 @@ jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
 		getDebugFlag: jest.fn(() => false),
+		getDefaultPriority: jest.fn(() => 'medium'),
 		hasCodebaseAnalysis: jest.fn(() => false)
 	})
 );
