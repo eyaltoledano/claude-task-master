@@ -460,6 +460,7 @@ async function finalizeStreamingResults(state, context) {
 		);
 	}
 
+	// Note: Schema defaults are applied later by processTasks in parsePRDCore
 	return {
 		parsedTasks: lastPartialObject.tasks,
 		estimatedOutputTokens: finalOutputTokens,
@@ -570,19 +571,7 @@ async function processWithGenerateObject(context, logger) {
 	// Extract tasks from the result (handle both direct tasks and mainResult.tasks)
 	const tasks = result?.mainResult || result;
 
-	// Apply defaults to ensure all required fields are present
-	if (tasks && Array.isArray(tasks.tasks)) {
-		tasks.tasks = tasks.tasks.map((task) => ({
-			...task,
-			status: task.status ?? 'pending',
-			title: task.title ?? '',
-			description: task.description ?? '',
-			dependencies: task.dependencies ?? [],
-			priority: task.priority ?? context.defaultPriority ?? 'medium',
-			details: task.details ?? '',
-			testStrategy: task.testStrategy ?? ''
-		}));
-	}
+	// Note: Schema defaults are applied later by processTasks in parsePRDCore
 
 	// Process the generated tasks
 	if (tasks && Array.isArray(tasks.tasks)) {

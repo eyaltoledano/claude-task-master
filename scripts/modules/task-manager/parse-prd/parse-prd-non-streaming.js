@@ -71,6 +71,7 @@ export async function handleNonStreamingService(config, prompts) {
 			spinner.succeed('Tasks generated successfully!');
 		}
 
+		// Note: Schema defaults are applied later by processTasks in parsePRDCore
 		return {
 			parsedTasks: generatedData.tasks,
 			aiServiceResponse,

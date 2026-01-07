@@ -24,6 +24,57 @@ export function estimateTokens(text) {
 }
 
 /**
+ * Normalize a subtask by applying schema defaults for missing fields
+ * Subtasks have: id, title, description, status, dependencies, details
+ * (no testStrategy, no priority - those are task-only fields)
+ * @param {Object} subtask - Raw subtask object from AI response
+ * @returns {Object} Subtask with all required fields populated
+ */
+export function normalizeSubtask(subtask) {
+	return {
+		...subtask,
+		title: subtask.title ?? '',
+		description: subtask.description ?? '',
+		details: subtask.details ?? '',
+		dependencies: subtask.dependencies ?? [],
+		status: subtask.status ?? 'pending'
+	};
+}
+
+/**
+ * Normalize a task by applying schema defaults for missing fields
+ * @param {Object} task - Raw task object from AI response
+ * @param {string} defaultPriority - Default priority to use
+ * @returns {Object} Task with all required fields populated
+ */
+export function normalizeTask(task, defaultPriority = 'medium') {
+	return {
+		...task,
+		status: task.status ?? 'pending',
+		title: task.title ?? '',
+		description: task.description ?? '',
+		dependencies: task.dependencies ?? [],
+		priority: task.priority ?? defaultPriority,
+		details: task.details ?? '',
+		testStrategy: task.testStrategy ?? '',
+		subtasks: task.subtasks
+			? task.subtasks.map((subtask) => normalizeSubtask(subtask))
+			: undefined
+	};
+}
+
+/**
+ * Normalize an array of tasks by applying schema defaults
+ * @param {Array} tasks - Array of raw task objects
+ * @param {string} defaultPriority - Default priority to use
+ * @returns {Array} Tasks with all required fields populated
+ */
+export function normalizeTasks(tasks, defaultPriority = 'medium') {
+	if (!Array.isArray(tasks)) return [];
+	return tasks.map((task) => normalizeTask(task, defaultPriority));
+}
+
+/**
  * Read and validate PRD content
  * @param {string} prdPath - Path to PRD file
  * @returns {string} PRD content
@@ -139,23 +190,17 @@ export function processTasks(
 	let currentId = startId;
 	const taskMap = new Map();
 
-	// First pass: assign new IDs and create mapping
+	// First pass: normalize, assign new IDs, and create mapping
 	const processedTasks = rawTasks.map((task) => {
 		const newId = currentId++;
 		taskMap.set(task.id, newId);
 
+		// Apply schema defaults via normalizeTask, then override with new ID
+		const normalized = normalizeTask(task, defaultPriority);
 		return {
-			...task,
+			...normalized,
 			id: newId,
-			status: task.status || 'pending',
-			priority: task.priority || defaultPriority,
-			dependencies: Array.isArray(task.dependencies) ? task.dependencies : [],
-			subtasks: task.subtasks || [],
-			// Ensure all required fields have values
-			title: task.title || '',
-			description: task.description || '',
-			details: task.details || '',
-			testStrategy: task.testStrategy || ''
+			subtasks: normalized.subtasks || []
 		};
 	});
 

@@ -26,8 +26,7 @@ export function registerAutopilotResumeTool(server: FastMCP) {
 			'Resume a previously started TDD workflow from saved state. Restores the workflow state machine and continues from where it left off.',
 		parameters: ResumeWorkflowSchema,
 		annotations: {
-			title: 'Resume Autopilot Workflow',
-			readOnlyHint: false
+			title: 'Resume Autopilot Workflow'
 		},
 		execute: withToolContext(
 			'autopilot-resume',

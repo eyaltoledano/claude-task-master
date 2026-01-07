@@ -1,15 +1,8 @@
-import path from 'path';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 
-import {
-	log as consoleLog,
-	isSilentMode,
-	readJSON,
-	truncate,
-	writeJSON
-} from '../utils.js';
+import { log as consoleLog, readJSON, truncate, writeJSON } from '../utils.js';
 
 import {
 	displayAiUsageSummary,
@@ -29,7 +22,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
-import { getModelConfiguration } from './models.js';
+import { normalizeTasks } from './parse-prd/parse-prd-helpers.js';
 
 /**
  * Update tasks based on new context using the unified AI service.
@@ -233,25 +226,9 @@ async function updateTasks(
 
 			// With generateObject, we get structured data directly
 			const defaultPriority = getDefaultPriority(projectRoot) ?? 'medium';
-			const parsedUpdatedTasks = aiServiceResponse.mainResult.tasks.map(
-				(task) => ({
-					...task,
-					status: task.status ?? 'pending',
-					title: task.title ?? '',
-					description: task.description ?? '',
-					dependencies: task.dependencies ?? [],
-					priority: task.priority ?? defaultPriority,
-					details: task.details ?? '',
-					testStrategy: task.testStrategy ?? '',
-					subtasks: task.subtasks
-						? task.subtasks.map((subtask) => ({
-								...subtask,
-								dependencies: subtask.dependencies ?? [],
-								status: subtask.status ?? 'pending',
-								testStrategy: subtask.testStrategy ?? ''
-							}))
-						: null
-				})
+			const parsedUpdatedTasks = normalizeTasks(
+				aiServiceResponse.mainResult.tasks,
+				defaultPriority
 			);
 
 			// --- Update Tasks Data (Updated writeJSON call) ---

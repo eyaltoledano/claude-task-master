@@ -22,6 +22,7 @@ import { getPromptManager } from '../prompt-manager.js';
 import { findProjectRoot, flattenTasksWithSubtasks } from '../utils.js';
 import { ContextGatherer } from '../utils/contextGatherer.js';
 import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
+import { normalizeSubtask } from './parse-prd/parse-prd-helpers.js';
 
 /**
  * Expand a task into subtasks using the unified AI service (generateObjectService).
@@ -331,12 +332,9 @@ async function expandTask(
 			if (!mainResult || !Array.isArray(mainResult.subtasks)) {
 				throw new Error('AI response did not include a valid subtasks array.');
 			}
-			generatedSubtasks = mainResult.subtasks.map((subtask) => ({
-				...subtask,
-				dependencies: subtask.dependencies ?? [],
-				status: subtask.status ?? 'pending',
-				testStrategy: subtask.testStrategy ?? null
-			}));
+			generatedSubtasks = mainResult.subtasks.map((subtask) =>
+				normalizeSubtask(subtask)
+			);
 			logger.info(`Received ${generatedSubtasks.length} subtasks from AI.`);
 		} catch (error) {
 			if (loadingIndicator) stopLoadingIndicator(loadingIndicator);
