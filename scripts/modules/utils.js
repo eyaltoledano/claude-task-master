@@ -76,13 +76,19 @@ async function withFileLock(filepath, callback) {
  * @returns {*} Result of the callback
  */
 function withFileLockSync(filepath, callback) {
-	// Ensure the file exists before locking
-	if (!fs.existsSync(filepath)) {
-		const dir = path.dirname(filepath);
-		if (!fs.existsSync(dir)) {
-			fs.mkdirSync(dir, { recursive: true });
+	// Ensure the file exists before locking (atomic to prevent TOCTOU race)
+	const dir = path.dirname(filepath);
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir, { recursive: true });
+	}
+	try {
+		// Use 'wx' flag for atomic create - fails if file exists (prevents race)
+		fs.writeFileSync(filepath, '{}', { flag: 'wx' });
+	} catch (err) {
+		// EEXIST is expected if another process created the file - that's fine
+		if (err.code !== 'EEXIST') {
+			throw err;
 		}
-		fs.writeFileSync(filepath, '{}', 'utf8');
 	}
 
 	const lockPath = `${filepath}.lock`;

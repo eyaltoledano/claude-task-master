@@ -121,16 +121,20 @@ export class FileOperations {
 	}
 
 	/**
-	 * Ensure file exists for locking (proper-lockfile requires the file to exist)
+	 * Ensure file exists for locking (proper-lockfile requires the file to exist).
+	 * Uses atomic creation with 'wx' flag to prevent TOCTOU race conditions.
 	 */
 	private async ensureFileExists(filePath: string): Promise<void> {
+		const dir = path.dirname(filePath);
+		await fs.mkdir(dir, { recursive: true });
 		try {
-			await fs.access(filePath, constants.F_OK);
-		} catch {
-			// File doesn't exist, create it with empty JSON
-			const dir = path.dirname(filePath);
-			await fs.mkdir(dir, { recursive: true });
-			await fs.writeFile(filePath, '{}', 'utf-8');
+			// Use 'wx' flag for atomic create - fails if file exists (prevents race)
+			await fs.writeFile(filePath, '{}', { flag: 'wx' });
+		} catch (err: any) {
+			// EEXIST is expected if another process created the file - that's fine
+			if (err.code !== 'EEXIST') {
+				throw err;
+			}
 		}
 	}
 
