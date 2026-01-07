@@ -94,17 +94,23 @@ function withFileLockSync(filepath, callback) {
 	let acquired = false;
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			// Check for stale lock
-			if (fs.existsSync(lockPath)) {
+			// Check for stale lock - wrap in try-catch to handle race conditions
+			// where another process removes the lock between our check and stat
+			try {
 				const lockStat = fs.statSync(lockPath);
 				const age = Date.now() - lockStat.mtimeMs;
 				if (age > staleLockAge) {
-					// Stale lock - remove it
+					// Stale lock - try to remove it
 					try {
 						fs.unlinkSync(lockPath);
 					} catch {
 						// Ignore - another process may have removed it
 					}
+				}
+			} catch (staleCheckErr) {
+				// Lock doesn't exist or was removed - that's fine, continue to acquire
+				if (staleCheckErr.code !== 'ENOENT') {
+					throw staleCheckErr;
 				}
 			}
 
@@ -120,11 +126,12 @@ function withFileLockSync(filepath, callback) {
 			if (err.code === 'EEXIST') {
 				// Lock file exists, wait and retry
 				if (attempt < maxRetries - 1) {
-					// Simple sync sleep using busy wait (not ideal but works for sync context)
-					const end = Date.now() + retryDelay * Math.pow(1.5, attempt);
-					while (Date.now() < end) {
-						// Busy wait
-					}
+					// Synchronous sleep using Atomics.wait (proper non-busy wait)
+					// This is the most efficient way to sleep synchronously in Node.js
+					const waitMs = retryDelay * Math.pow(2, attempt);
+					const sharedBuffer = new SharedArrayBuffer(4);
+					const int32 = new Int32Array(sharedBuffer);
+					Atomics.wait(int32, 0, 0, waitMs);
 				}
 			} else {
 				throw err;

@@ -48,8 +48,9 @@ export class FileOperations {
 	}
 
 	/**
-	 * Write JSON file with atomic operation and cross-process locking
-	 * Uses proper-lockfile for cross-process safety
+	 * Write JSON file with atomic operation and cross-process locking.
+	 * WARNING: This replaces the entire file. For concurrent modifications,
+	 * use modifyJson() instead to prevent lost updates.
 	 */
 	async writeJson(
 		filePath: string,
@@ -63,6 +64,51 @@ export class FileOperations {
 		try {
 			release = await lockfile.lock(filePath, LOCK_OPTIONS);
 			await this.performAtomicWrite(filePath, data);
+		} finally {
+			if (release) {
+				try {
+					await release();
+				} catch {
+					// Ignore release errors - lock may have been released already
+				}
+			}
+		}
+	}
+
+	/**
+	 * Read-modify-write JSON file with cross-process locking.
+	 * Re-reads file inside lock to prevent lost updates from stale snapshots.
+	 * @param filePath - Path to the JSON file
+	 * @param modifier - Function that receives current data and returns modified data
+	 */
+	async modifyJson<T = any>(
+		filePath: string,
+		modifier: (currentData: T) => T | Promise<T>
+	): Promise<void> {
+		// Ensure file exists for locking (proper-lockfile requires this)
+		await this.ensureFileExists(filePath);
+
+		// Acquire cross-process lock
+		let release: (() => Promise<void>) | null = null;
+		try {
+			release = await lockfile.lock(filePath, LOCK_OPTIONS);
+
+			// Re-read file INSIDE lock to get current state
+			// This prevents lost updates from stale snapshots
+			let currentData: T;
+			try {
+				const content = await fs.readFile(filePath, 'utf-8');
+				currentData = JSON.parse(content);
+			} catch {
+				// File empty or invalid - start with empty object
+				currentData = {} as T;
+			}
+
+			// Apply modification
+			const newData = await modifier(currentData);
+
+			// Write atomically
+			await this.performAtomicWrite(filePath, newData);
 		} finally {
 			if (release) {
 				try {
