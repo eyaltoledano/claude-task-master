@@ -12,8 +12,7 @@ import {
 	beforeEach,
 	describe,
 	expect,
-	it,
-	jest
+	it
 } from '@jest/globals';
 
 const __filename = fileURLToPath(import.meta.url);
