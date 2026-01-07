@@ -1,15 +1,33 @@
 /**
- * @fileoverview File operations with atomic writes and locking
+ * @fileoverview File operations with atomic writes and cross-process locking
  */
 
 import { constants } from 'node:fs';
+import fsSync from 'node:fs';
 import fs from 'node:fs/promises';
+import path from 'node:path';
+import lockfile from 'proper-lockfile';
 import type { FileStorageData } from './format-handler.js';
 
 /**
- * Handles atomic file operations with locking mechanism
+ * File locking configuration for cross-process safety
+ */
+const LOCK_OPTIONS = {
+	stale: 10000, // Consider lock stale after 10 seconds
+	retries: {
+		retries: 5,
+		factor: 2,
+		minTimeout: 100,
+		maxTimeout: 1000
+	},
+	realpath: false // Don't resolve symlinks (faster)
+};
+
+/**
+ * Handles atomic file operations with cross-process locking mechanism
  */
 export class FileOperations {
+	// In-memory locks are kept as a fallback for cases where file locking fails
 	private fileLocks: Map<string, Promise<void>> = new Map();
 
 	/**
@@ -31,27 +49,43 @@ export class FileOperations {
 	}
 
 	/**
-	 * Write JSON file with atomic operation and locking
+	 * Write JSON file with atomic operation and cross-process locking
+	 * Uses proper-lockfile for cross-process safety
 	 */
 	async writeJson(
 		filePath: string,
 		data: FileStorageData | any
 	): Promise<void> {
-		// Use file locking to prevent concurrent writes
-		const lockKey = filePath;
-		const existingLock = this.fileLocks.get(lockKey);
+		// Ensure file exists for locking (proper-lockfile requires this)
+		await this.ensureFileExists(filePath);
 
-		if (existingLock) {
-			await existingLock;
-		}
-
-		const lockPromise = this.performAtomicWrite(filePath, data);
-		this.fileLocks.set(lockKey, lockPromise);
-
+		// Acquire cross-process lock
+		let release: (() => Promise<void>) | null = null;
 		try {
-			await lockPromise;
+			release = await lockfile.lock(filePath, LOCK_OPTIONS);
+			await this.performAtomicWrite(filePath, data);
 		} finally {
-			this.fileLocks.delete(lockKey);
+			if (release) {
+				try {
+					await release();
+				} catch {
+					// Ignore release errors - lock may have been released already
+				}
+			}
+		}
+	}
+
+	/**
+	 * Ensure file exists for locking (proper-lockfile requires the file to exist)
+	 */
+	private async ensureFileExists(filePath: string): Promise<void> {
+		try {
+			await fs.access(filePath, constants.F_OK);
+		} catch {
+			// File doesn't exist, create it with empty JSON
+			const dir = path.dirname(filePath);
+			await fs.mkdir(dir, { recursive: true });
+			await fs.writeFile(filePath, '{}', 'utf-8');
 		}
 	}
 
@@ -59,7 +93,7 @@ export class FileOperations {
 	 * Perform atomic write operation using temporary file
 	 */
 	private async performAtomicWrite(filePath: string, data: any): Promise<void> {
-		const tempPath = `${filePath}.tmp`;
+		const tempPath = `${filePath}.tmp.${process.pid}`;
 
 		try {
 			// Write to temp file first

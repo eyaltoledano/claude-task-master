@@ -34,12 +34,14 @@
 		"@supabase/supabase-js": "^2.57.4",
 		"date-fns": "^4.1.0",
 		"fs-extra": "^11.3.2",
+		"proper-lockfile": "^4.1.2",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
 		"@types/fs-extra": "^11.0.4",
+		"@types/proper-lockfile": "^4.1.4",
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^4.0.10",
 		"strip-literal": "3.1.0",
