@@ -3,7 +3,14 @@
  * Verifies that concurrent access to tasks.json is properly serialized
  */
 
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import {
+	jest,
+	describe,
+	it,
+	expect,
+	beforeEach,
+	afterEach
+} from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -26,12 +33,19 @@ describe('File Locking and Atomic Writes', () => {
 		testFilePath = path.join(tempDir, 'tasks.json');
 
 		// Initialize with empty tasks structure
-		fs.writeFileSync(testFilePath, JSON.stringify({
-			master: {
-				tasks: [],
-				metadata: { created: new Date().toISOString() }
-			}
-		}, null, 2));
+		fs.writeFileSync(
+			testFilePath,
+			JSON.stringify(
+				{
+					master: {
+						tasks: [],
+						metadata: { created: new Date().toISOString() }
+					}
+				},
+				null,
+				2
+			)
+		);
 
 		// Import utils fresh for each test
 		utils = await import(utilsPath + `?cachebust=${Date.now()}`);
@@ -124,7 +138,7 @@ describe('File Locking and Atomic Writes', () => {
 			utils.writeJSON(testFilePath, taggedData, null, null);
 
 			const files = fs.readdirSync(tempDir);
-			const tempFiles = files.filter(f => f.includes('.tmp'));
+			const tempFiles = files.filter((f) => f.includes('.tmp'));
 			expect(tempFiles).toHaveLength(0);
 		});
 
@@ -196,7 +210,11 @@ describe('File Locking and Atomic Writes', () => {
 				}
 
 				// Add a new task
-				currentData.master.tasks.push({ id: String(i + 1), title: `Task ${i + 1}`, status: 'pending' });
+				currentData.master.tasks.push({
+					id: String(i + 1),
+					title: `Task ${i + 1}`,
+					status: 'pending'
+				});
 
 				// Write with locking
 				utils.writeJSON(testFilePath, currentData, null, null);
@@ -219,9 +237,12 @@ describe('readJSON', () => {
 
 		// Create .taskmaster directory for state.json
 		fs.mkdirSync(path.join(tempDir, '.taskmaster'), { recursive: true });
-		fs.writeFileSync(path.join(tempDir, '.taskmaster', 'state.json'), JSON.stringify({
-			currentTag: 'master'
-		}));
+		fs.writeFileSync(
+			path.join(tempDir, '.taskmaster', 'state.json'),
+			JSON.stringify({
+				currentTag: 'master'
+			})
+		);
 
 		utils = await import(utilsPath + `?cachebust=${Date.now()}`);
 	});
@@ -275,10 +296,13 @@ describe('Lock file stale detection', () => {
 		const lockPath = `${testFilePath}.lock`;
 
 		// Create a lock file with old timestamp
-		fs.writeFileSync(lockPath, JSON.stringify({
-			pid: 99999, // Non-existent PID
-			timestamp: Date.now() - 20000 // 20 seconds ago
-		}));
+		fs.writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: 99999, // Non-existent PID
+				timestamp: Date.now() - 20000 // 20 seconds ago
+			})
+		);
 
 		// Touch the file to make it old
 		const pastTime = new Date(Date.now() - 20000);

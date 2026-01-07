@@ -133,7 +133,9 @@ function withFileLockSync(filepath, callback) {
 	}
 
 	if (!acquired) {
-		throw new Error(`Failed to acquire lock on ${filepath} after ${maxRetries} attempts`);
+		throw new Error(
+			`Failed to acquire lock on ${filepath} after ${maxRetries} attempts`
+		);
 	}
 
 	try {
@@ -872,7 +874,9 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 				} catch (readError) {
 					// File might be empty or invalid, start fresh
 					if (isDebug) {
-						console.log(`writeJSON: Could not read existing file, starting fresh: ${readError.message}`);
+						console.log(
+							`writeJSON: Could not read existing file, starting fresh: ${readError.message}`
+						);
 					}
 				}
 
@@ -901,7 +905,9 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 					// Fall back to _rawTaggedData if file can't be read
 					currentTaggedData = data._rawTaggedData;
 					if (isDebug) {
-						console.log(`writeJSON: Using _rawTaggedData as fallback: ${readError.message}`);
+						console.log(
+							`writeJSON: Using _rawTaggedData as fallback: ${readError.message}`
+						);
 					}
 				}
 
