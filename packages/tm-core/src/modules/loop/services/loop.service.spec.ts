@@ -2,7 +2,15 @@
  * @fileoverview Unit tests for LoopService
  */
 
-import { describe, expect, it } from 'vitest';
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+	type MockInstance
+} from 'vitest';
 import { LoopService, type LoopServiceOptions } from './loop.service.js';
 import { LoopCompletionService } from './loop-completion.service.js';
 import { LoopExecutorService } from './loop-executor.service.js';
@@ -128,6 +136,345 @@ describe('LoopService', () => {
 
 			// Progress service should use the provided projectRoot
 			expect(progressService.getDefaultProgressPath()).toContain(projectRoot);
+		});
+	});
+
+	describe('stop()', () => {
+		let service: LoopService;
+		let executorStopSpy: MockInstance;
+
+		beforeEach(() => {
+			service = new LoopService(defaultOptions);
+			executorStopSpy = vi
+				.spyOn(service.getExecutorService(), 'stop')
+				.mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it('should set isRunning to false', async () => {
+			// Simulate that a loop was running
+			// Access private field via any cast for testing
+			(service as unknown as { isRunning: boolean }).isRunning = true;
+			expect(service.getIsRunning()).toBe(true);
+
+			await service.stop();
+
+			expect(service.getIsRunning()).toBe(false);
+		});
+
+		it('should call executorService.stop()', async () => {
+			await service.stop();
+
+			expect(executorStopSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should call executorService.stop() even if already stopped', async () => {
+			// When not running, stop should still call executor stop for cleanup
+			expect(service.getIsRunning()).toBe(false);
+
+			await service.stop();
+
+			expect(executorStopSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should be safe to call multiple times', async () => {
+			await service.stop();
+			await service.stop();
+			await service.stop();
+
+			expect(executorStopSpy).toHaveBeenCalledTimes(3);
+			expect(service.getIsRunning()).toBe(false);
+		});
+	});
+
+	describe('sleep()', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should resolve after specified delay', async () => {
+			const service = new LoopService(defaultOptions);
+			// Access private sleep method via any cast
+			const sleepMethod = (
+				service as unknown as { sleep: (ms: number) => Promise<void> }
+			).sleep.bind(service);
+
+			let resolved = false;
+			const promise = sleepMethod(1000).then(() => {
+				resolved = true;
+			});
+
+			// Before advancing time, promise should not be resolved
+			expect(resolved).toBe(false);
+
+			// Advance time by 500ms - still not resolved
+			await vi.advanceTimersByTimeAsync(500);
+			expect(resolved).toBe(false);
+
+			// Advance to complete the delay
+			await vi.advanceTimersByTimeAsync(500);
+			await promise;
+
+			expect(resolved).toBe(true);
+		});
+
+		it('should resolve immediately for 0ms delay', async () => {
+			const service = new LoopService(defaultOptions);
+			const sleepMethod = (
+				service as unknown as { sleep: (ms: number) => Promise<void> }
+			).sleep.bind(service);
+
+			let resolved = false;
+			const promise = sleepMethod(0).then(() => {
+				resolved = true;
+			});
+
+			// 0ms sleep should resolve on next tick
+			await vi.advanceTimersByTimeAsync(0);
+			await promise;
+
+			expect(resolved).toBe(true);
+		});
+
+		it('should work with different delay values', async () => {
+			const service = new LoopService(defaultOptions);
+			const sleepMethod = (
+				service as unknown as { sleep: (ms: number) => Promise<void> }
+			).sleep.bind(service);
+
+			// Test 5 second delay
+			let resolved = false;
+			const promise = sleepMethod(5000).then(() => {
+				resolved = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(resolved).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1);
+			await promise;
+
+			expect(resolved).toBe(true);
+		});
+	});
+
+	describe('run() with stop() mid-loop', () => {
+		let service: LoopService;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			service = new LoopService(defaultOptions);
+
+			// Mock progress service methods
+			vi.spyOn(service.getProgressService(), 'initializeProgressFile').mockResolvedValue(
+				undefined
+			);
+			vi.spyOn(service.getProgressService(), 'appendProgress').mockResolvedValue(undefined);
+
+			// Mock prompt service
+			vi.spyOn(service.getPromptService(), 'generatePrompt').mockResolvedValue(
+				'test prompt'
+			);
+
+			// Mock executor stop
+			vi.spyOn(service.getExecutorService(), 'stop').mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+		});
+
+		it('should exit gracefully when stop() called between iterations', async () => {
+			let iterationCount = 0;
+
+			// Mock executor to complete normally, but call stop after first iteration
+			vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+				async (_prompt, iteration) => {
+					iterationCount++;
+					// Call stop after first iteration completes
+					if (iteration === 1) {
+						// Schedule stop to occur before next iteration starts
+						await service.stop();
+					}
+					return {
+						iteration: {
+							iteration,
+							status: 'success',
+							duration: 100
+						},
+						output: 'test output',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					};
+				}
+			);
+
+			const result = await service.run({
+				prompt: 'default',
+				iterations: 5,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			// Should have only run 1 iteration before stopping
+			expect(iterationCount).toBe(1);
+			expect(result.totalIterations).toBe(1);
+			expect(result.finalStatus).toBe('max_iterations');
+		});
+
+		it('should respect isRunning flag in loop condition', async () => {
+			// Set isRunning to false before starting
+			(service as unknown as { isRunning: boolean }).isRunning = false;
+
+			const executeSpy = vi
+				.spyOn(service.getExecutorService(), 'executeIteration')
+				.mockResolvedValue({
+					iteration: { iteration: 1, status: 'success', duration: 100 },
+					output: '',
+					completionCheck: { isComplete: false, isBlocked: false },
+					exitCode: 0
+				});
+
+			// Run sets isRunning to true, then loop checks condition
+			// We can't easily test "pre-stopped" state, but we can test that
+			// the condition is checked
+			const result = await service.run({
+				prompt: 'default',
+				iterations: 3,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			// Should run all iterations since run() sets isRunning = true at start
+			expect(executeSpy).toHaveBeenCalledTimes(3);
+			expect(result.totalIterations).toBe(3);
+		});
+
+		it('should complete current iteration when stop() called during execution', async () => {
+			let resolveExecute: (() => void) | undefined;
+
+			vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+				async (_prompt, iteration) => {
+					if (iteration === 1) {
+						// First iteration: simulate a long-running execution
+						// During which stop() is called
+						const executePromise = new Promise<void>((resolve) => {
+							resolveExecute = () => resolve();
+						});
+
+						// Start the stop in parallel
+						setTimeout(() => {
+							service.stop();
+						}, 10);
+
+						// Simulate work being done
+						await vi.advanceTimersByTimeAsync(10);
+						await executePromise;
+					}
+
+					return {
+						iteration: { iteration, status: 'success', duration: 100 },
+						output: 'test output',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					};
+				}
+			);
+
+			// Start run in background
+			const runPromise = service.run({
+				prompt: 'default',
+				iterations: 5,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			// Allow time to advance for the stop timeout
+			await vi.advanceTimersByTimeAsync(15);
+
+			// Resolve the execution
+			if (resolveExecute) resolveExecute();
+
+			// Allow promises to resolve
+			await vi.runAllTimersAsync();
+
+			const result = await runPromise;
+
+			// Stop was called, so loop should exit after current iteration completes
+			expect(service.getIsRunning()).toBe(false);
+			expect(result.totalIterations).toBeGreaterThanOrEqual(1);
+		});
+
+		it('should set isRunning to false on completion', async () => {
+			vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+				iteration: { iteration: 1, status: 'success', duration: 100 },
+				output: '',
+				completionCheck: { isComplete: false, isBlocked: false },
+				exitCode: 0
+			});
+
+			await service.run({
+				prompt: 'default',
+				iterations: 2,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			expect(service.getIsRunning()).toBe(false);
+		});
+
+		it('should set isRunning to false on early completion', async () => {
+			vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+				iteration: { iteration: 1, status: 'complete', duration: 100 },
+				output: '<loop-complete>ALL_DONE</loop-complete>',
+				completionCheck: {
+					isComplete: true,
+					isBlocked: false,
+					marker: { type: 'complete', reason: 'ALL_DONE' }
+				},
+				exitCode: 0
+			});
+
+			const result = await service.run({
+				prompt: 'default',
+				iterations: 5,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			expect(service.getIsRunning()).toBe(false);
+			expect(result.finalStatus).toBe('all_complete');
+		});
+
+		it('should set isRunning to false on blocked', async () => {
+			vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+				iteration: { iteration: 1, status: 'blocked', duration: 100 },
+				output: '<loop-blocked>STUCK</loop-blocked>',
+				completionCheck: {
+					isComplete: false,
+					isBlocked: true,
+					marker: { type: 'blocked', reason: 'STUCK' }
+				},
+				exitCode: 0
+			});
+
+			const result = await service.run({
+				prompt: 'default',
+				iterations: 5,
+				sleepSeconds: 0,
+				progressFile: '/test/progress.txt'
+			});
+
+			expect(service.getIsRunning()).toBe(false);
+			expect(result.finalStatus).toBe('blocked');
 		});
 	});
 });
