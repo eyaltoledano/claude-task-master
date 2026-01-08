@@ -27,3 +27,5 @@ export type { ProgressEntry } from './services/loop-progress.service.js';
 
 export { LoopCompletionService } from './services/loop-completion.service.js';
 export type { CompletionCheckResult } from './services/loop-completion.service.js';
+
+export { LoopPresetService } from './services/loop-preset.service.js';

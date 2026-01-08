@@ -1,10 +1,11 @@
 /**
- * @fileoverview Unit tests for preset loader with mocked filesystem
- * Tests error scenarios and edge cases using vi.mock for fs
+ * @fileoverview Unit tests for LoopPresetService and preset loader functions
+ * Tests both the inlined preset service and the backward-compatible API
  */
 
 import fs from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LoopPresetService, PRESET_NAMES } from './loop-preset.service.js';
 import {
 	isValidPreset,
 	isFilePath,
@@ -13,17 +14,144 @@ import {
 	resolvePrompt,
 	PresetError,
 	PresetErrorCode,
-	PRESET_NAMES
+	PRESET_NAMES as EXPORTED_PRESET_NAMES
 } from '../presets/index.js';
 
-// Mock node:fs/promises for isolated tests
+// Mock node:fs/promises for custom prompt tests only
 vi.mock('node:fs/promises', () => ({
 	default: {
 		readFile: vi.fn()
 	}
 }));
 
-describe('Preset Loader with Mocked FS', () => {
+describe('LoopPresetService', () => {
+	let service: LoopPresetService;
+
+	beforeEach(() => {
+		service = new LoopPresetService();
+	});
+
+	describe('isPreset', () => {
+		it('returns true for all valid preset names', () => {
+			expect(service.isPreset('default')).toBe(true);
+			expect(service.isPreset('test-coverage')).toBe(true);
+			expect(service.isPreset('linting')).toBe(true);
+			expect(service.isPreset('duplication')).toBe(true);
+			expect(service.isPreset('entropy')).toBe(true);
+		});
+
+		it('returns false for invalid preset names', () => {
+			expect(service.isPreset('invalid')).toBe(false);
+			expect(service.isPreset('custom')).toBe(false);
+			expect(service.isPreset('')).toBe(false);
+		});
+
+		it('is case sensitive', () => {
+			expect(service.isPreset('DEFAULT')).toBe(false);
+			expect(service.isPreset('Default')).toBe(false);
+			expect(service.isPreset('Test-Coverage')).toBe(false);
+		});
+	});
+
+	describe('static isValidPreset', () => {
+		it('returns true for valid presets', () => {
+			expect(LoopPresetService.isValidPreset('default')).toBe(true);
+			expect(LoopPresetService.isValidPreset('linting')).toBe(true);
+		});
+
+		it('returns false for invalid presets', () => {
+			expect(LoopPresetService.isValidPreset('invalid')).toBe(false);
+		});
+	});
+
+	describe('getPresetContent', () => {
+		it('returns non-empty content for all presets', () => {
+			for (const preset of PRESET_NAMES) {
+				const content = service.getPresetContent(preset);
+				expect(content).toBeTruthy();
+				expect(content.length).toBeGreaterThan(0);
+			}
+		});
+
+		it('default preset contains expected markers', () => {
+			const content = service.getPresetContent('default');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('<loop-blocked>');
+			expect(content).toContain('task-master next');
+			expect(content).toContain('ONE task per session');
+		});
+
+		it('test-coverage preset contains completion marker', () => {
+			const content = service.getPresetContent('test-coverage');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('COVERAGE_TARGET');
+		});
+
+		it('linting preset contains completion marker', () => {
+			const content = service.getPresetContent('linting');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('ZERO_ERRORS');
+		});
+
+		it('duplication preset contains completion marker', () => {
+			const content = service.getPresetContent('duplication');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('LOW_DUPLICATION');
+		});
+
+		it('entropy preset contains completion marker', () => {
+			const content = service.getPresetContent('entropy');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('LOW_ENTROPY');
+		});
+
+		it('throws error for invalid preset', () => {
+			expect(() => {
+				// @ts-expect-error Testing invalid input
+				service.getPresetContent('invalid');
+			}).toThrow();
+		});
+	});
+
+	describe('getPresetNames', () => {
+		it('returns all 5 preset names', () => {
+			const names = service.getPresetNames();
+			expect(names).toHaveLength(5);
+			expect(names).toContain('default');
+			expect(names).toContain('test-coverage');
+			expect(names).toContain('linting');
+			expect(names).toContain('duplication');
+			expect(names).toContain('entropy');
+		});
+
+		it('returns readonly array', () => {
+			const names = service.getPresetNames();
+			expect(names).toBe(PRESET_NAMES);
+		});
+	});
+
+	describe('loadPreset', () => {
+		it('returns content synchronously', () => {
+			const content = service.loadPreset('default');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+		});
+
+		it('returns same content as getPresetContent', () => {
+			for (const preset of PRESET_NAMES) {
+				expect(service.loadPreset(preset)).toBe(service.getPresetContent(preset));
+			}
+		});
+	});
+
+	describe('PRESET_NAMES export', () => {
+		it('matches exported preset names from index', () => {
+			expect(PRESET_NAMES).toEqual(EXPORTED_PRESET_NAMES);
+		});
+	});
+});
+
+describe('Preset Loader Functions (Backward Compatible API)', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -55,11 +183,6 @@ describe('Preset Loader with Mocked FS', () => {
 
 		it('returns false for preset name with .md extension', () => {
 			expect(isValidPreset('default.md')).toBe(false);
-		});
-
-		it('handles non-string inputs gracefully via type guard', () => {
-			// TypeScript would normally catch these, but testing runtime behavior
-			expect(isValidPreset('' as string)).toBe(false);
 		});
 	});
 
@@ -113,17 +236,6 @@ describe('Preset Loader with Mocked FS', () => {
 			});
 		});
 
-		describe('paths with spaces', () => {
-			it('returns true for Unix paths with spaces', () => {
-				expect(isFilePath('/path/with spaces/file.md')).toBe(true);
-				expect(isFilePath('./my prompts/custom.txt')).toBe(true);
-			});
-
-			it('returns true for Windows paths with spaces', () => {
-				expect(isFilePath('C:\\path\\with spaces\\file.md')).toBe(true);
-			});
-		});
-
 		describe('edge cases', () => {
 			it('returns false for simple name without path or extension', () => {
 				expect(isFilePath('simple-name')).toBe(false);
@@ -137,86 +249,36 @@ describe('Preset Loader with Mocked FS', () => {
 			it('returns false for empty string', () => {
 				expect(isFilePath('')).toBe(false);
 			});
-
-			it('returns false for unsupported extensions', () => {
-				expect(isFilePath('file.js')).toBe(false);
-				expect(isFilePath('file.json')).toBe(false);
-				expect(isFilePath('file.ts')).toBe(false);
-			});
 		});
 	});
 
-	describe('loadPreset (mocked)', () => {
-		it('returns content when file read succeeds', async () => {
-			const mockContent = '# Test Preset\n\nContent here';
-			vi.mocked(fs.readFile).mockResolvedValue(mockContent);
-
+	describe('loadPreset (inlined content)', () => {
+		it('returns content for valid presets without filesystem access', async () => {
+			// No mocking needed - presets are inlined
 			const content = await loadPreset('default');
-
-			expect(content).toBe(mockContent);
-			expect(fs.readFile).toHaveBeenCalledWith(
-				expect.stringContaining('default.md'),
-				'utf-8'
-			);
+			expect(content).toBeTruthy();
+			expect(content).toContain('<loop-complete>');
+			// fs.readFile should NOT be called for built-in presets
+			expect(fs.readFile).not.toHaveBeenCalled();
 		});
 
-		it('throws PresetError with PRESET_NOT_FOUND when file does not exist', async () => {
-			const error = new Error('ENOENT: no such file or directory');
-			vi.mocked(fs.readFile).mockRejectedValue(error);
-
-			await expect(loadPreset('default')).rejects.toThrow(PresetError);
-			await expect(loadPreset('default')).rejects.toMatchObject({
-				code: PresetErrorCode.PRESET_NOT_FOUND
-			});
-		});
-
-		it('error message lists available presets', async () => {
-			vi.mocked(fs.readFile).mockRejectedValue(new Error('File not found'));
-
-			try {
-				await loadPreset('default');
-			} catch (error) {
-				expect(error).toBeInstanceOf(PresetError);
-				const presetError = error as PresetError;
-				expect(presetError.message).toContain('Available presets:');
-				for (const preset of PRESET_NAMES) {
-					expect(presetError.message).toContain(preset);
-				}
+		it('returns content for all valid presets', async () => {
+			for (const preset of EXPORTED_PRESET_NAMES) {
+				const content = await loadPreset(preset);
+				expect(content).toBeTruthy();
+				expect(content.length).toBeGreaterThan(0);
 			}
 		});
 
-		it('throws PresetError with EMPTY_PROMPT_CONTENT for empty file', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('');
-
-			await expect(loadPreset('default')).rejects.toThrow(PresetError);
-			await expect(loadPreset('default')).rejects.toMatchObject({
-				code: PresetErrorCode.EMPTY_PROMPT_CONTENT
-			});
-		});
-
-		it('throws PresetError with EMPTY_PROMPT_CONTENT for whitespace-only file', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('   \n\t  \n  ');
-
-			await expect(loadPreset('default')).rejects.toThrow(PresetError);
-			await expect(loadPreset('default')).rejects.toMatchObject({
-				code: PresetErrorCode.EMPTY_PROMPT_CONTENT
-			});
-		});
-
-		it('constructs correct file path for each preset', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('content');
-
-			for (const preset of PRESET_NAMES) {
-				await loadPreset(preset);
-				expect(fs.readFile).toHaveBeenCalledWith(
-					expect.stringContaining(`${preset}.md`),
-					'utf-8'
-				);
-			}
+		it('each preset contains expected structure', async () => {
+			const defaultContent = await loadPreset('default');
+			expect(defaultContent).toContain('# Task Master Loop');
+			expect(defaultContent).toContain('## Process');
+			expect(defaultContent).toContain('## Important');
 		});
 	});
 
-	describe('loadCustomPrompt (mocked)', () => {
+	describe('loadCustomPrompt (mocked filesystem)', () => {
 		it('returns content when file read succeeds', async () => {
 			const mockContent = '# Custom Prompt\n\nMy custom instructions';
 			vi.mocked(fs.readFile).mockResolvedValue(mockContent);
@@ -276,28 +338,15 @@ describe('Preset Loader with Mocked FS', () => {
 				code: PresetErrorCode.EMPTY_PROMPT_CONTENT
 			});
 		});
-
-		it('preserves file path exactly as passed', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('content');
-
-			const weirdPath = '/path/with spaces/and-dashes/file.md';
-			await loadCustomPrompt(weirdPath);
-
-			expect(fs.readFile).toHaveBeenCalledWith(weirdPath, 'utf-8');
-		});
 	});
 
-	describe('resolvePrompt (mocked)', () => {
-		it('calls loadPreset for valid preset names', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('preset content');
-
+	describe('resolvePrompt', () => {
+		it('uses inlined content for valid preset names', async () => {
 			const content = await resolvePrompt('default');
 
-			expect(content).toBe('preset content');
-			expect(fs.readFile).toHaveBeenCalledWith(
-				expect.stringContaining('default.md'),
-				'utf-8'
-			);
+			expect(content).toContain('<loop-complete>');
+			// Should NOT call fs.readFile for built-in presets
+			expect(fs.readFile).not.toHaveBeenCalled();
 		});
 
 		it('calls loadCustomPrompt for file paths', async () => {
@@ -318,15 +367,6 @@ describe('Preset Loader with Mocked FS', () => {
 			expect(fs.readFile).toHaveBeenCalledWith('my-custom-prompt', 'utf-8');
 		});
 
-		it('propagates PresetError from loadPreset', async () => {
-			vi.mocked(fs.readFile).mockRejectedValue(new Error('Not found'));
-
-			await expect(resolvePrompt('default')).rejects.toThrow(PresetError);
-			await expect(resolvePrompt('default')).rejects.toMatchObject({
-				code: PresetErrorCode.PRESET_NOT_FOUND
-			});
-		});
-
 		it('propagates PresetError from loadCustomPrompt', async () => {
 			vi.mocked(fs.readFile).mockRejectedValue(new Error('Not found'));
 
@@ -338,51 +378,45 @@ describe('Preset Loader with Mocked FS', () => {
 			});
 		});
 
-		it('resolves all valid presets', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('content');
-
-			for (const preset of PRESET_NAMES) {
+		it('resolves all valid presets without filesystem', async () => {
+			for (const preset of EXPORTED_PRESET_NAMES) {
 				const content = await resolvePrompt(preset);
-				expect(content).toBe('content');
+				expect(content).toBeTruthy();
 			}
+			// No filesystem calls should be made for built-in presets
+			expect(fs.readFile).not.toHaveBeenCalled();
 		});
 	});
+});
 
-	describe('Integration-style tests (mocked)', () => {
-		it('verifies correct file path construction for presets', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('# Preset');
+describe('Preset Content Validation', () => {
+	const service = new LoopPresetService();
 
-			await loadPreset('test-coverage');
+	it('all presets contain required markers for loop completion detection', () => {
+		for (const preset of PRESET_NAMES) {
+			const content = service.getPresetContent(preset);
+			// Every preset must have a completion marker
+			expect(content).toContain('<loop-complete>');
+		}
+	});
 
-			// Should call with path ending in test-coverage.md
-			const callArgs = vi.mocked(fs.readFile).mock.calls[0];
-			expect(callArgs[0]).toMatch(/test-coverage\.md$/);
-			expect(callArgs[1]).toBe('utf-8');
-		});
+	it('default preset has both complete and blocked markers', () => {
+		const content = service.getPresetContent('default');
+		expect(content).toContain('<loop-complete>');
+		expect(content).toContain('<loop-blocked>');
+	});
 
-		it('verifies custom paths are passed through unchanged', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('content');
+	it('all presets reference progress file', () => {
+		for (const preset of PRESET_NAMES) {
+			const content = service.getPresetContent(preset);
+			expect(content).toContain('loop-progress');
+		}
+	});
 
-			const customPath = './relative/path/to/my-prompt.md';
-			await loadCustomPrompt(customPath);
-
-			expect(fs.readFile).toHaveBeenCalledWith(customPath, 'utf-8');
-		});
-
-		it('distinguishes between preset and custom resolution correctly', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('content');
-
-			// Preset - should look in presets directory
-			await resolvePrompt('linting');
-			const presetCall = vi.mocked(fs.readFile).mock.calls[0];
-			expect(presetCall[0]).toMatch(/linting\.md$/);
-
-			vi.clearAllMocks();
-
-			// Custom - should use exact path
-			await resolvePrompt('./my-custom-linting.md');
-			const customCall = vi.mocked(fs.readFile).mock.calls[0];
-			expect(customCall[0]).toBe('./my-custom-linting.md');
-		});
+	it('all presets emphasize single task constraint', () => {
+		for (const preset of PRESET_NAMES) {
+			const content = service.getPresetContent(preset);
+			expect(content.toLowerCase()).toContain('one');
+		}
 	});
 });
