@@ -679,19 +679,19 @@ export class FileStorage implements IStorage {
 		const filePath = this.pathResolver.getTasksPath();
 
 		try {
-			// First check if we need to delete the entire file (master tag in standard format)
-			const existingData = await this.fileOps.readJson(filePath);
-			if (
-				this.formatHandler.detectFormat(existingData) !== 'legacy' &&
-				tag === 'master'
-			) {
-				// Standard format - delete the entire file for master tag
-				await this.fileOps.deleteFile(filePath);
-				return;
-			}
+			// Use modifyJson to handle all cases atomically
+			let shouldDeleteFile = false;
 
-			// For legacy format, use modifyJson
 			await this.fileOps.modifyJson(filePath, (data: any) => {
+				if (
+					this.formatHandler.detectFormat(data) !== 'legacy' &&
+					tag === 'master'
+				) {
+					// Standard format - mark for file deletion after lock release
+					shouldDeleteFile = true;
+					return data; // Return unchanged, we'll delete the file after
+				}
+
 				if (this.formatHandler.detectFormat(data) === 'legacy') {
 					// Legacy format - remove the tag key
 					if (tag in data) {
@@ -704,6 +704,11 @@ export class FileStorage implements IStorage {
 					throw new Error(`Tag ${tag} not found in standard format`);
 				}
 			});
+
+			// Delete the file if we're removing master tag from standard format
+			if (shouldDeleteFile) {
+				await this.fileOps.deleteFile(filePath);
+			}
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				throw new Error(`Tag ${tag} not found - file doesn't exist`);
