@@ -2,6 +2,10 @@
  * @fileoverview Loop module exports
  */
 
+// Domain facade - primary public API
+export { LoopDomain } from './loop-domain.js';
+
+// Types
 export type {
 	LoopPreset,
 	LoopConfig,
