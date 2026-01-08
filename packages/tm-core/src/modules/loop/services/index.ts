@@ -12,3 +12,6 @@ export { LoopPresetService } from './loop-preset.service.js';
 
 export { LoopPromptService } from './loop-prompt.service.js';
 export type { PromptGenerationOptions } from './loop-prompt.service.js';
+
+export { LoopExecutorService } from './loop-executor.service.js';
+export type { ExecutionResult } from './loop-executor.service.js';
