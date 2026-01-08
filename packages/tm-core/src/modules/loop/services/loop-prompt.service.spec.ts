@@ -15,7 +15,8 @@ describe('LoopPromptService', () => {
 			isPreset: vi.fn().mockReturnValue(true),
 			getPresetContent: vi.fn().mockReturnValue('mock preset content'),
 			getPresetNames: vi.fn().mockReturnValue(['default']),
-			loadPreset: vi.fn().mockReturnValue('mock preset content')
+			loadPreset: vi.fn().mockReturnValue('mock preset content'),
+			resolvePrompt: vi.fn().mockResolvedValue('mock preset content')
 		} as unknown as LoopPresetService;
 	}
 
@@ -168,6 +169,182 @@ describe('LoopPromptService', () => {
 			const header = service.buildContextHeader(config, 1);
 
 			expect(header).toContain('# Loop Iteration 1 of 1');
+		});
+	});
+
+	describe('generatePrompt', () => {
+		it('should combine context header and base prompt with double newline', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 10,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 3,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			// Should contain header
+			expect(result).toContain('# Loop Iteration 3 of 10');
+			// Should contain base prompt
+			expect(result).toContain('mock preset content');
+			// Should have double newline separator between header and content
+			expect(result).toContain('## Context\n- Progress file');
+			expect(result).toContain('tasks.json\n\nmock preset content');
+		});
+
+		it('should call presetService.resolvePrompt with correct prompt', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: 'test-coverage' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			await service.generatePrompt(options);
+
+			expect(mockPresetService.resolvePrompt).toHaveBeenCalledWith('test-coverage', undefined);
+		});
+
+		it('should pass readFile function to presetService.resolvePrompt', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+			const mockReadFile = vi.fn().mockResolvedValue('custom file content');
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: '/custom/prompt.md' as string,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			await service.generatePrompt(options, mockReadFile);
+
+			expect(mockPresetService.resolvePrompt).toHaveBeenCalledWith('/custom/prompt.md', mockReadFile);
+		});
+
+		it('should include iteration number in output', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 20,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 15,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('# Loop Iteration 15 of 20');
+		});
+
+		it('should include file references with @ syntax', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/custom-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Progress file: @.taskmaster/custom-progress.txt');
+			expect(result).toContain('- Tasks file: @.taskmaster/tasks/tasks.json');
+		});
+
+		it('should include tag when config.tag is set', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5,
+					tag: 'feature-x'
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Tag filter: feature-x');
+		});
+
+		it('should not include tag when config.tag is undefined', async () => {
+			const mockPresetService = createMockPresetService();
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).not.toContain('Tag filter');
+		});
+
+		it('should work with different preset values', async () => {
+			const mockPresetService = {
+				...createMockPresetService(),
+				resolvePrompt: vi.fn().mockResolvedValue('# Linting preset\n\nFix lint errors.')
+			} as unknown as LoopPresetService;
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 3,
+					prompt: 'linting' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 2,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('# Loop Iteration 2 of 3');
+			expect(result).toContain('# Linting preset');
+			expect(result).toContain('Fix lint errors.');
 		});
 	});
 });

@@ -63,4 +63,27 @@ export class LoopPromptService {
 
 		return lines.join('\n');
 	}
+
+	/**
+	 * Generate the full prompt for a loop iteration
+	 * Combines preset content with iteration context header
+	 * @param options - Prompt generation options
+	 * @param readFile - Optional async function to read custom prompt files
+	 * @returns Promise resolving to the complete prompt string
+	 */
+	async generatePrompt(
+		options: PromptGenerationOptions,
+		readFile?: (path: string) => Promise<string>
+	): Promise<string> {
+		const { config, iteration } = options;
+
+		// Get base prompt from preset or custom file
+		const basePrompt = await this.presetService.resolvePrompt(config.prompt, readFile);
+
+		// Build context header
+		const contextHeader = this.buildContextHeader(config, iteration);
+
+		// Combine context header and base prompt with double newline separator
+		return `${contextHeader}\n\n${basePrompt}`;
+	}
 }

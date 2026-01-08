@@ -251,4 +251,37 @@ export class LoopPresetService {
 	loadPreset(preset: LoopPreset): string {
 		return this.getPresetContent(preset);
 	}
+
+	/**
+	 * Resolve a prompt string to its content
+	 * For preset names, returns the inlined content directly
+	 * For file paths, delegates to the provided file reader
+	 * @param prompt - Either a preset name or a file path
+	 * @param readFile - Optional async function to read file content (for custom prompts)
+	 * @returns Promise resolving to the prompt content string
+	 * @throws Error if the prompt cannot be resolved
+	 */
+	async resolvePrompt(
+		prompt: string,
+		readFile?: (path: string) => Promise<string>
+	): Promise<string> {
+		// Check if it's a valid preset name first
+		if (this.isPreset(prompt)) {
+			return this.loadPreset(prompt as LoopPreset);
+		}
+
+		// Otherwise treat it as a file path
+		if (!readFile) {
+			throw new Error(
+				`Cannot resolve custom prompt '${prompt}': no file reader provided. ` +
+					`Available presets: ${PRESET_NAMES.join(', ')}`
+			);
+		}
+
+		const content = await readFile(prompt);
+		if (!content.trim()) {
+			throw new Error(`Custom prompt file '${prompt}' has empty content`);
+		}
+		return content;
+	}
 }
