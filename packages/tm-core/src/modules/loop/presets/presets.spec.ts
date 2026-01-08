@@ -1,5 +1,5 @@
 /**
- * @fileoverview Tests for preset loader utilities
+ * @fileoverview Tests for preset loader utilities and preset file structure
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,6 +9,7 @@ import {
 	getPresetPath,
 	loadPreset
 } from './index.js';
+import type { LoopPreset } from '../types.js';
 
 describe('Preset Utilities', () => {
 	describe('PRESET_NAMES', () => {
@@ -101,9 +102,47 @@ describe('Preset Utilities', () => {
 	});
 
 	describe('loadPreset', () => {
-		it('throws error when preset file does not exist', async () => {
-			// Until preset markdown files are created, loadPreset should throw
-			await expect(loadPreset('default')).rejects.toThrow();
+		it('loads default preset successfully', async () => {
+			const content = await loadPreset('default');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('loads test-coverage preset successfully', async () => {
+			const content = await loadPreset('test-coverage');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('loads linting preset successfully', async () => {
+			const content = await loadPreset('linting');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('loads duplication preset successfully', async () => {
+			const content = await loadPreset('duplication');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('loads entropy preset successfully', async () => {
+			const content = await loadPreset('entropy');
+			expect(content).toBeTruthy();
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('returns non-empty string for each preset', async () => {
+			for (const preset of PRESET_NAMES) {
+				const content = await loadPreset(preset);
+				expect(content).toBeTruthy();
+				expect(content.trim().length).toBeGreaterThan(0);
+			}
 		});
 	});
 
@@ -127,5 +166,122 @@ describe('Preset Utilities', () => {
 			expect(loadPreset).toBeDefined();
 			expect(typeof loadPreset).toBe('function');
 		});
+	});
+});
+
+describe('Preset Snapshots', () => {
+	it('default preset matches snapshot', async () => {
+		const content = await loadPreset('default');
+		expect(content).toMatchSnapshot();
+	});
+
+	it('test-coverage preset matches snapshot', async () => {
+		const content = await loadPreset('test-coverage');
+		expect(content).toMatchSnapshot();
+	});
+
+	it('linting preset matches snapshot', async () => {
+		const content = await loadPreset('linting');
+		expect(content).toMatchSnapshot();
+	});
+
+	it('duplication preset matches snapshot', async () => {
+		const content = await loadPreset('duplication');
+		expect(content).toMatchSnapshot();
+	});
+
+	it('entropy preset matches snapshot', async () => {
+		const content = await loadPreset('entropy');
+		expect(content).toMatchSnapshot();
+	});
+});
+
+describe('Preset Structure Validation', () => {
+	describe('all presets contain required elements', () => {
+		const testPresetStructure = async (preset: LoopPreset) => {
+			const content = await loadPreset(preset);
+			return content;
+		};
+
+		it.each(PRESET_NAMES)('%s contains <loop-complete> marker', async (preset) => {
+			const content = await testPresetStructure(preset);
+			expect(content).toMatch(/<loop-complete>/);
+		});
+
+		it.each(PRESET_NAMES)('%s contains @ file reference pattern', async (preset) => {
+			const content = await testPresetStructure(preset);
+			// Check for @ file reference pattern (e.g., @.taskmaster/ or @./)
+			expect(content).toMatch(/@\.taskmaster\/|@\.\//);
+		});
+
+		it.each(PRESET_NAMES)('%s contains numbered process steps', async (preset) => {
+			const content = await testPresetStructure(preset);
+			// Check for numbered steps (e.g., "1. ", "2. ")
+			expect(content).toMatch(/^\d+\./m);
+		});
+
+		it.each(PRESET_NAMES)('%s contains Important or Completion section', async (preset) => {
+			const content = await testPresetStructure(preset);
+			// Check for Important section or Completion Criteria section
+			expect(content).toMatch(/## Important|## Completion/i);
+		});
+	});
+
+	describe('default preset specific requirements', () => {
+		it('contains <loop-blocked> marker', async () => {
+			const content = await loadPreset('default');
+			expect(content).toMatch(/<loop-blocked>/);
+		});
+
+		it('contains both loop markers', async () => {
+			const content = await loadPreset('default');
+			expect(content).toMatch(/<loop-complete>.*<\/loop-complete>/);
+			expect(content).toMatch(/<loop-blocked>.*<\/loop-blocked>/);
+		});
+	});
+});
+
+describe('Preset Content Consistency', () => {
+	it.each(PRESET_NAMES)('%s mentions single-task-per-iteration constraint', async (preset) => {
+		const content = await loadPreset(preset);
+		// Check for variations of the single-task constraint
+		const hasConstraint =
+			content.toLowerCase().includes('one task') ||
+			content.toLowerCase().includes('one test') ||
+			content.toLowerCase().includes('one fix') ||
+			content.toLowerCase().includes('one refactor') ||
+			content.toLowerCase().includes('one cleanup') ||
+			content.toLowerCase().includes('only one');
+		expect(hasConstraint).toBe(true);
+	});
+
+	it.each(PRESET_NAMES)('%s has progress file reference', async (preset) => {
+		const content = await loadPreset(preset);
+		// All presets should reference the progress file
+		expect(content).toMatch(/loop-progress|progress/i);
+	});
+
+	it('all presets have markdown headers', async () => {
+		for (const preset of PRESET_NAMES) {
+			const content = await loadPreset(preset);
+			// Check for at least one markdown header
+			expect(content).toMatch(/^#+ /m);
+		}
+	});
+
+	it('all presets have process section', async () => {
+		for (const preset of PRESET_NAMES) {
+			const content = await loadPreset(preset);
+			// Check for Process header
+			expect(content).toMatch(/## Process/);
+		}
+	});
+
+	it('all presets have files available section', async () => {
+		for (const preset of PRESET_NAMES) {
+			const content = await loadPreset(preset);
+			// Check for Files Available header
+			expect(content).toMatch(/## Files Available/);
+		}
 	});
 });
