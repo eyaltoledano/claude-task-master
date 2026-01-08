@@ -556,3 +556,24 @@ describe('LoopCommand', () => {
 		});
 	});
 });
+
+describe('LoopCommand exports', () => {
+	it('should be exported from @tm/cli package index', async () => {
+		// This test verifies the export is accessible via the package entry point
+		const cliExports = await import('../index.js');
+		expect(cliExports.LoopCommand).toBe(LoopCommand);
+	});
+
+	it('should be registered in CommandRegistry', async () => {
+		const { CommandRegistry } = await import('../command-registry.js');
+		expect(CommandRegistry.hasCommand('loop')).toBe(true);
+	});
+
+	it('should be in development category', async () => {
+		const { CommandRegistry } = await import('../command-registry.js');
+		const devCommands = CommandRegistry.getCommandsByCategory('development');
+		const loopCmd = devCommands.find((cmd) => cmd.name === 'loop');
+		expect(loopCmd).toBeDefined();
+		expect(loopCmd?.description).toContain('loop');
+	});
+});
