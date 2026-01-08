@@ -220,6 +220,7 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Save tasks for a specific tag in the single tasks.json file
+	 * Uses modifyJson for atomic read-modify-write to prevent lost updates
 	 */
 	async saveTasks(tasks: Task[], tag?: string): Promise<void> {
 		const filePath = this.pathResolver.getTasksPath();
@@ -227,17 +228,6 @@ export class FileStorage implements IStorage {
 
 		// Ensure directory exists
 		await this.fileOps.ensureDir(this.pathResolver.getTasksDir());
-
-		// Get existing data from the file
-		let existingData: any = {};
-		try {
-			existingData = await this.fileOps.readJson(filePath);
-		} catch (error: any) {
-			if (error.code !== 'ENOENT') {
-				throw new Error(`Failed to read existing tasks: ${error.message}`);
-			}
-			// File doesn't exist, start with empty data
-		}
 
 		// Create metadata for this tag
 		const metadata: TaskMetadata = {
@@ -251,43 +241,44 @@ export class FileStorage implements IStorage {
 		// Normalize tasks
 		const normalizedTasks = this.normalizeTaskIds(tasks);
 
-		// Update the specific tag in the existing data structure
-		if (
-			this.formatHandler.detectFormat(existingData) === 'legacy' ||
-			Object.keys(existingData).some(
-				(key) => key !== 'tasks' && key !== 'metadata'
-			)
-		) {
-			// Legacy format - update/add the tag
-			existingData[resolvedTag] = {
-				tasks: normalizedTasks,
-				metadata
-			};
-		} else if (resolvedTag === 'master') {
-			// Standard format for master tag
-			existingData = {
-				tasks: normalizedTasks,
-				metadata
-			};
-		} else {
-			// Convert to legacy format when adding non-master tags
-			const masterTasks = existingData.tasks || [];
-			const masterMetadata = existingData.metadata || metadata;
-
-			existingData = {
-				master: {
-					tasks: masterTasks,
-					metadata: masterMetadata
-				},
-				[resolvedTag]: {
+		// Use modifyJson for atomic read-modify-write
+		await this.fileOps.modifyJson(filePath, (existingData: any) => {
+			// Update the specific tag in the existing data structure
+			if (
+				this.formatHandler.detectFormat(existingData) === 'legacy' ||
+				Object.keys(existingData).some(
+					(key) => key !== 'tasks' && key !== 'metadata'
+				)
+			) {
+				// Legacy format - update/add the tag
+				existingData[resolvedTag] = {
 					tasks: normalizedTasks,
 					metadata
-				}
-			};
-		}
+				};
+				return existingData;
+			} else if (resolvedTag === 'master') {
+				// Standard format for master tag
+				return {
+					tasks: normalizedTasks,
+					metadata
+				};
+			} else {
+				// Convert to legacy format when adding non-master tags
+				const masterTasks = existingData.tasks || [];
+				const masterMetadata = existingData.metadata || metadata;
 
-		// Write the updated file
-		await this.fileOps.writeJson(filePath, existingData);
+				return {
+					master: {
+						tasks: masterTasks,
+						metadata: masterMetadata
+					},
+					[resolvedTag]: {
+						tasks: normalizedTasks,
+						metadata
+					}
+				};
+			}
+		});
 	}
 
 	/**
@@ -594,6 +585,7 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Create a new tag in the tasks.json file
+	 * Uses modifyJson for atomic read-modify-write to prevent lost updates
 	 */
 	async createTag(
 		tagName: string,
@@ -602,62 +594,33 @@ export class FileStorage implements IStorage {
 		const filePath = this.pathResolver.getTasksPath();
 
 		try {
-			const existingData = await this.fileOps.readJson(filePath);
-			const format = this.formatHandler.detectFormat(existingData);
+			await this.fileOps.modifyJson(filePath, (existingData: any) => {
+				const format = this.formatHandler.detectFormat(existingData);
 
-			if (format === 'legacy') {
-				// Legacy format - add new tag key
-				if (tagName in existingData) {
-					throw new TaskMasterError(
-						`Tag ${tagName} already exists`,
-						ERROR_CODES.VALIDATION_ERROR
-					);
-				}
-
-				// Get tasks to copy if specified
-				let tasksToCopy = [];
-				if (options?.copyFrom) {
-					if (
-						options.copyFrom in existingData &&
-						existingData[options.copyFrom].tasks
-					) {
-						tasksToCopy = JSON.parse(
-							JSON.stringify(existingData[options.copyFrom].tasks)
+				if (format === 'legacy') {
+					// Legacy format - add new tag key
+					if (tagName in existingData) {
+						throw new TaskMasterError(
+							`Tag ${tagName} already exists`,
+							ERROR_CODES.VALIDATION_ERROR
 						);
 					}
-				}
 
-				// Create new tag structure
-				existingData[tagName] = {
-					tasks: tasksToCopy,
-					metadata: {
-						created: new Date().toISOString(),
-						updatedAt: new Date().toISOString(),
-						description:
-							options?.description ||
-							`Tag created on ${new Date().toLocaleDateString()}`,
-						tags: [tagName]
+					// Get tasks to copy if specified
+					let tasksToCopy: any[] = [];
+					if (options?.copyFrom) {
+						if (
+							options.copyFrom in existingData &&
+							existingData[options.copyFrom].tasks
+						) {
+							tasksToCopy = JSON.parse(
+								JSON.stringify(existingData[options.copyFrom].tasks)
+							);
+						}
 					}
-				};
 
-				await this.fileOps.writeJson(filePath, existingData);
-			} else {
-				// Standard format - need to convert to legacy format first
-				const masterTasks = existingData.tasks || [];
-				const masterMetadata = existingData.metadata || {};
-
-				// Get tasks to copy (from master in this case)
-				let tasksToCopy = [];
-				if (options?.copyFrom === 'master' || !options?.copyFrom) {
-					tasksToCopy = JSON.parse(JSON.stringify(masterTasks));
-				}
-
-				const newData = {
-					master: {
-						tasks: masterTasks,
-						metadata: { ...masterMetadata, tags: ['master'] }
-					},
-					[tagName]: {
+					// Create new tag structure
+					existingData[tagName] = {
 						tasks: tasksToCopy,
 						metadata: {
 							created: new Date().toISOString(),
@@ -667,11 +630,39 @@ export class FileStorage implements IStorage {
 								`Tag created on ${new Date().toLocaleDateString()}`,
 							tags: [tagName]
 						}
-					}
-				};
+					};
 
-				await this.fileOps.writeJson(filePath, newData);
-			}
+					return existingData;
+				} else {
+					// Standard format - need to convert to legacy format first
+					const masterTasks = existingData.tasks || [];
+					const masterMetadata = existingData.metadata || {};
+
+					// Get tasks to copy (from master in this case)
+					let tasksToCopy: any[] = [];
+					if (options?.copyFrom === 'master' || !options?.copyFrom) {
+						tasksToCopy = JSON.parse(JSON.stringify(masterTasks));
+					}
+
+					return {
+						master: {
+							tasks: masterTasks,
+							metadata: { ...masterMetadata, tags: ['master'] }
+						},
+						[tagName]: {
+							tasks: tasksToCopy,
+							metadata: {
+								created: new Date().toISOString(),
+								updatedAt: new Date().toISOString(),
+								description:
+									options?.description ||
+									`Tag created on ${new Date().toLocaleDateString()}`,
+								tags: [tagName]
+							}
+						}
+					};
+				}
+			});
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				throw new Error('Tasks file not found - initialize project first');
@@ -682,27 +673,37 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Delete a tag from the single tasks.json file
+	 * Uses modifyJson for atomic read-modify-write to prevent lost updates
 	 */
 	async deleteTag(tag: string): Promise<void> {
 		const filePath = this.pathResolver.getTasksPath();
 
 		try {
+			// First check if we need to delete the entire file (master tag in standard format)
 			const existingData = await this.fileOps.readJson(filePath);
-
-			if (this.formatHandler.detectFormat(existingData) === 'legacy') {
-				// Legacy format - remove the tag key
-				if (tag in existingData) {
-					delete existingData[tag];
-					await this.fileOps.writeJson(filePath, existingData);
-				} else {
-					throw new Error(`Tag ${tag} not found`);
-				}
-			} else if (tag === 'master') {
+			if (
+				this.formatHandler.detectFormat(existingData) !== 'legacy' &&
+				tag === 'master'
+			) {
 				// Standard format - delete the entire file for master tag
 				await this.fileOps.deleteFile(filePath);
-			} else {
-				throw new Error(`Tag ${tag} not found in standard format`);
+				return;
 			}
+
+			// For legacy format, use modifyJson
+			await this.fileOps.modifyJson(filePath, (data: any) => {
+				if (this.formatHandler.detectFormat(data) === 'legacy') {
+					// Legacy format - remove the tag key
+					if (tag in data) {
+						delete data[tag];
+						return data;
+					} else {
+						throw new Error(`Tag ${tag} not found`);
+					}
+				} else {
+					throw new Error(`Tag ${tag} not found in standard format`);
+				}
+			});
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				throw new Error(`Tag ${tag} not found - file doesn't exist`);
@@ -713,44 +714,43 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Rename a tag within the single tasks.json file
+	 * Uses modifyJson for atomic read-modify-write to prevent lost updates
 	 */
 	async renameTag(oldTag: string, newTag: string): Promise<void> {
 		const filePath = this.pathResolver.getTasksPath();
 
 		try {
-			const existingData = await this.fileOps.readJson(filePath);
+			await this.fileOps.modifyJson(filePath, (existingData: any) => {
+				if (this.formatHandler.detectFormat(existingData) === 'legacy') {
+					// Legacy format - rename the tag key
+					if (oldTag in existingData) {
+						existingData[newTag] = existingData[oldTag];
+						delete existingData[oldTag];
 
-			if (this.formatHandler.detectFormat(existingData) === 'legacy') {
-				// Legacy format - rename the tag key
-				if (oldTag in existingData) {
-					existingData[newTag] = existingData[oldTag];
-					delete existingData[oldTag];
+						// Update metadata tags array
+						if (existingData[newTag].metadata) {
+							existingData[newTag].metadata.tags = [newTag];
+						}
 
-					// Update metadata tags array
-					if (existingData[newTag].metadata) {
-						existingData[newTag].metadata.tags = [newTag];
+						return existingData;
+					} else {
+						throw new Error(`Tag ${oldTag} not found`);
 					}
+				} else if (oldTag === 'master') {
+					// Convert standard format to legacy when renaming master
+					const masterTasks = existingData.tasks || [];
+					const masterMetadata = existingData.metadata || {};
 
-					await this.fileOps.writeJson(filePath, existingData);
+					return {
+						[newTag]: {
+							tasks: masterTasks,
+							metadata: { ...masterMetadata, tags: [newTag] }
+						}
+					};
 				} else {
-					throw new Error(`Tag ${oldTag} not found`);
+					throw new Error(`Tag ${oldTag} not found in standard format`);
 				}
-			} else if (oldTag === 'master') {
-				// Convert standard format to legacy when renaming master
-				const masterTasks = existingData.tasks || [];
-				const masterMetadata = existingData.metadata || {};
-
-				const newData = {
-					[newTag]: {
-						tasks: masterTasks,
-						metadata: { ...masterMetadata, tags: [newTag] }
-					}
-				};
-
-				await this.fileOps.writeJson(filePath, newData);
-			} else {
-				throw new Error(`Tag ${oldTag} not found in standard format`);
-			}
+			});
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				throw new Error(`Tag ${oldTag} not found - file doesn't exist`);
