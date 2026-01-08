@@ -448,6 +448,30 @@ describe('LoopCommand', () => {
 			vi.mocked(promisify).mockReturnValue(execAsyncMock);
 		});
 
+		it('should run on-complete when finalStatus is all_complete', async () => {
+			const result = createMockResult({ finalStatus: 'all_complete' });
+			mockLoopRun.mockResolvedValue(result);
+
+			const executeLoop = (loopCommand as any).executeLoop.bind(loopCommand);
+			await executeLoop({ onComplete: 'echo done' });
+
+			// Check console output shows running the command
+			const allOutput = consoleLogSpy.mock.calls.flat().join(' ');
+			expect(allOutput).toContain('Running on-complete command');
+			expect(allOutput).toContain('echo done');
+		});
+
+		it('should NOT run on-complete when not specified even for all_complete', async () => {
+			const result = createMockResult({ finalStatus: 'all_complete' });
+			mockLoopRun.mockResolvedValue(result);
+
+			const executeLoop = (loopCommand as any).executeLoop.bind(loopCommand);
+			await executeLoop({}); // No onComplete option
+
+			const allOutput = consoleLogSpy.mock.calls.flat().join(' ');
+			expect(allOutput).not.toContain('Running on-complete command');
+		});
+
 		it('should NOT run on-complete when finalStatus is max_iterations', async () => {
 			const result = createMockResult({ finalStatus: 'max_iterations' });
 			mockLoopRun.mockResolvedValue(result);
@@ -481,6 +505,24 @@ describe('LoopCommand', () => {
 
 			const allOutput = consoleLogSpy.mock.calls.flat().join(' ');
 			expect(allOutput).not.toContain('Running on-complete command');
+		});
+
+		it('should log warning when on-complete command fails', async () => {
+			const result = createMockResult({ finalStatus: 'all_complete' });
+			mockLoopRun.mockResolvedValue(result);
+
+			// Mock execAsync to reject
+			const failingExec = vi.fn().mockRejectedValue(new Error('Command failed'));
+			vi.mocked(promisify).mockReturnValue(failingExec);
+
+			const executeLoop = (loopCommand as any).executeLoop.bind(loopCommand);
+			await executeLoop({ onComplete: 'failing-command' });
+
+			// Should log warning but not throw
+			const allErrorOutput = consoleErrorSpy.mock.calls.flat().join(' ');
+			expect(allErrorOutput).toContain('Warning');
+			expect(allErrorOutput).toContain('on-complete');
+			expect(allErrorOutput).toContain('failed');
 		});
 	});
 
