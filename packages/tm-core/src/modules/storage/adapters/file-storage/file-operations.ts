@@ -241,9 +241,14 @@ export class FileOperations {
 	}
 
 	/**
-	 * Clean up resources (no-op, kept for API compatibility)
+	 * Clean up resources - releases cached steno Writers
+	 * Call this when the FileOperations instance is no longer needed
+	 * to prevent memory leaks in long-running processes.
 	 */
 	async cleanup(): Promise<void> {
-		// No-op: file locks are released immediately after operations
+		// Clear cached Writers to allow garbage collection
+		// Note: steno Writers don't have explicit close methods;
+		// they handle file descriptor cleanup internally
+		this.writers.clear();
 	}
 }
