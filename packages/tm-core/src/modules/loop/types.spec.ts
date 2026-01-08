@@ -17,8 +17,12 @@ import type {
 	LoopConfig as BarrelLoopConfig,
 	LoopIteration as BarrelLoopIteration,
 	LoopResult as BarrelLoopResult,
-	LoopCompletionMarker as BarrelLoopCompletionMarker
+	LoopCompletionMarker as BarrelLoopCompletionMarker,
+	PromptGenerationOptions as BarrelPromptGenerationOptions
 } from './index.js';
+
+// Verify service exports from barrel
+import { LoopPromptService as BarrelLoopPromptService } from './index.js';
 
 describe('Loop Types', () => {
 	describe('LoopPreset', () => {
@@ -185,6 +189,30 @@ describe('Loop Types', () => {
 			expect(config.prompt).toBe('default');
 			expect(result.iterations).toHaveLength(1);
 			expect(marker.type).toBe('complete');
+		});
+
+		it('exports LoopPromptService class from barrel', () => {
+			// Verify LoopPromptService is exported from barrel
+			expect(BarrelLoopPromptService).toBeDefined();
+			expect(typeof BarrelLoopPromptService).toBe('function');
+		});
+
+		it('exports PromptGenerationOptions type from barrel', () => {
+			// Verify PromptGenerationOptions type is accessible
+			const options: BarrelPromptGenerationOptions = {
+				config: {
+					iterations: 5,
+					prompt: 'default',
+					progressFile: '/progress.txt',
+					sleepSeconds: 2
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			expect(options.config.iterations).toBe(5);
+			expect(options.iteration).toBe(1);
+			expect(options.projectRoot).toBe('/test/project');
 		});
 	});
 });

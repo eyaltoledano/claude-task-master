@@ -29,3 +29,6 @@ export { LoopCompletionService } from './services/loop-completion.service.js';
 export type { CompletionCheckResult } from './services/loop-completion.service.js';
 
 export { LoopPresetService } from './services/loop-preset.service.js';
+
+export { LoopPromptService } from './services/loop-prompt.service.js';
+export type { PromptGenerationOptions } from './services/loop-prompt.service.js';
