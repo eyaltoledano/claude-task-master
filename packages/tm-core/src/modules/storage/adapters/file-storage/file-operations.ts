@@ -26,9 +26,6 @@ const LOCK_OPTIONS = {
  * Handles atomic file operations with cross-process locking mechanism
  */
 export class FileOperations {
-	// In-memory locks are kept as a fallback for cases where file locking fails
-	private fileLocks: Map<string, Promise<void>> = new Map();
-
 	/**
 	 * Read and parse JSON file
 	 */
@@ -242,13 +239,9 @@ export class FileOperations {
 	}
 
 	/**
-	 * Clean up all pending file operations
+	 * Clean up resources (no-op, kept for API compatibility)
 	 */
 	async cleanup(): Promise<void> {
-		const locks = Array.from(this.fileLocks.values());
-		if (locks.length > 0) {
-			await Promise.all(locks);
-		}
-		this.fileLocks.clear();
+		// No-op: file locks are released immediately after operations
 	}
 }

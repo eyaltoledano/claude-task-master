@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
-import lockfile from 'proper-lockfile';
 import {
 	COMPLEXITY_REPORT_FILE,
 	LEGACY_COMPLEXITY_REPORT_FILE,
@@ -21,33 +20,33 @@ import * as gitUtils from './utils/git-utils.js';
 let silentMode = false;
 
 // File locking configuration for cross-process safety
-const LOCK_OPTIONS = {
-	stale: 10000, // Consider lock stale after 10 seconds
-	retries: {
-		retries: 5,
-		factor: 2,
-		minTimeout: 100,
-		maxTimeout: 1000
-	},
-	realpath: false // Don't resolve symlinks (faster)
+const LOCK_CONFIG = {
+	maxRetries: 5,
+	retryDelay: 100, // ms
+	staleLockAge: 10000 // 10 seconds
 };
 
 /**
+ * Async sleep helper
+ */
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * Acquires an exclusive lock on a file and executes a callback
- * Uses proper-lockfile for cross-process file locking
+ * Uses same lock file format as withFileLockSync for cross-process compatibility
  * @param {string} filepath - Path to the file to lock
  * @param {Function} callback - Async function to execute while holding the lock
  * @returns {Promise<*>} Result of the callback
  */
 async function withFileLock(filepath, callback) {
+	const fsPromises = fs.promises;
+
 	// Ensure the file exists before locking (atomic to prevent TOCTOU race)
 	const dir = path.dirname(filepath);
-	if (!fs.existsSync(dir)) {
-		fs.mkdirSync(dir, { recursive: true });
-	}
+	await fsPromises.mkdir(dir, { recursive: true });
 	try {
 		// Use 'wx' flag for atomic create - fails if file exists (prevents race)
-		fs.writeFileSync(filepath, '{}', { flag: 'wx' });
+		await fsPromises.writeFile(filepath, '{}', { flag: 'wx' });
 	} catch (err) {
 		// EEXIST is expected if another process created the file - that's fine
 		if (err.code !== 'EEXIST') {
@@ -55,19 +54,68 @@ async function withFileLock(filepath, callback) {
 		}
 	}
 
-	let release;
+	const lockPath = `${filepath}.lock`;
+	const { maxRetries, retryDelay, staleLockAge } = LOCK_CONFIG;
+
+	// Try to acquire lock with retries
+	let acquired = false;
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		try {
+			// Check for stale lock - wrap in try-catch to handle race conditions
+			try {
+				const lockStat = await fsPromises.stat(lockPath);
+				const age = Date.now() - lockStat.mtimeMs;
+				if (age > staleLockAge) {
+					// Stale lock - try to remove it
+					try {
+						await fsPromises.unlink(lockPath);
+					} catch {
+						// Ignore - another process may have removed it
+					}
+				}
+			} catch (staleCheckErr) {
+				// Lock doesn't exist or was removed - that's fine, continue to acquire
+				if (staleCheckErr.code !== 'ENOENT') {
+					throw staleCheckErr;
+				}
+			}
+
+			// Try to create lock file exclusively
+			const lockContent = JSON.stringify({
+				pid: process.pid,
+				timestamp: Date.now()
+			});
+			await fsPromises.writeFile(lockPath, lockContent, { flag: 'wx' });
+			acquired = true;
+			break;
+		} catch (err) {
+			if (err.code === 'EEXIST') {
+				// Lock file exists, wait and retry
+				if (attempt < maxRetries - 1) {
+					const waitMs = retryDelay * Math.pow(2, attempt);
+					await sleep(waitMs);
+				}
+			} else {
+				throw err;
+			}
+		}
+	}
+
+	if (!acquired) {
+		throw new Error(
+			`Failed to acquire lock on ${filepath} after ${maxRetries} attempts`
+		);
+	}
+
 	try {
-		release = await lockfile.lock(filepath, LOCK_OPTIONS);
 		return await callback();
 	} finally {
-		if (release) {
-			try {
-				await release();
-			} catch (releaseError) {
-				// Log but don't throw - lock may have been released already
-				if (process.env.TASKMASTER_DEBUG === 'true') {
-					console.log(`[DEBUG] Error releasing lock: ${releaseError.message}`);
-				}
+		// Release lock
+		try {
+			await fsPromises.unlink(lockPath);
+		} catch (releaseError) {
+			if (process.env.TASKMASTER_DEBUG === 'true') {
+				console.log(`[DEBUG] Error releasing lock: ${releaseError.message}`);
 			}
 		}
 	}
@@ -97,9 +145,7 @@ function withFileLockSync(filepath, callback) {
 	}
 
 	const lockPath = `${filepath}.lock`;
-	const maxRetries = 5; // Match LOCK_OPTIONS.retries.retries for consistency
-	const retryDelay = 100; // ms - matches LOCK_OPTIONS.retries.minTimeout
-	const staleLockAge = 10000; // 10 seconds - matches LOCK_OPTIONS.stale
+	const { maxRetries, retryDelay, staleLockAge } = LOCK_CONFIG;
 
 	// Try to acquire lock with retries
 	let acquired = false;
@@ -871,6 +917,7 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 
 			// If data represents resolved tag data but lost _rawTaggedData (edge-case observed in MCP path)
 			if (
+				data &&
 				!data._rawTaggedData &&
 				projectRoot &&
 				Array.isArray(data.tasks) &&
