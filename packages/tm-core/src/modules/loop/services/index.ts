@@ -15,3 +15,6 @@ export type { PromptGenerationOptions } from './loop-prompt.service.js';
 
 export { LoopExecutorService } from './loop-executor.service.js';
 export type { ExecutionResult } from './loop-executor.service.js';
+
+export { LoopService } from './loop.service.js';
+export type { LoopServiceOptions } from './loop.service.js';
