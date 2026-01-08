@@ -182,4 +182,106 @@ describe('LoopProgressService', () => {
 			expect(content).toContain('# Max Iterations: 20');
 		});
 	});
+
+	describe('appendProgress', () => {
+		let tempDir: string;
+
+		beforeEach(() => {
+			tempDir = mkdtempSync(path.join(tmpdir(), 'loop-progress-append-'));
+		});
+
+		afterEach(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it('should format line correctly with taskId', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const entry: ProgressEntry = {
+				timestamp: '2026-01-08T10:30:00Z',
+				iteration: 3,
+				taskId: '4.1',
+				note: 'Completed implementation'
+			};
+
+			await service.appendProgress(progressFile, entry);
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toBe(
+				'[2026-01-08T10:30:00Z] Iteration 3 (Task 4.1): Completed implementation\n'
+			);
+		});
+
+		it('should format line correctly without taskId', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const entry: ProgressEntry = {
+				timestamp: '2026-01-08T11:00:00Z',
+				iteration: 1,
+				note: 'Loop initialization complete'
+			};
+
+			await service.appendProgress(progressFile, entry);
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toBe(
+				'[2026-01-08T11:00:00Z] Iteration 1: Loop initialization complete\n'
+			);
+		});
+
+		it('should accumulate multiple appends correctly', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '# Header\n', 'utf-8');
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:00:00Z',
+				iteration: 1,
+				note: 'First entry'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:05:00Z',
+				iteration: 2,
+				taskId: '1.2',
+				note: 'Second entry with task'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:10:00Z',
+				iteration: 3,
+				note: 'Third entry'
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			const lines = content.split('\n');
+
+			expect(lines[0]).toBe('# Header');
+			expect(lines[1]).toBe('[2026-01-08T10:00:00Z] Iteration 1: First entry');
+			expect(lines[2]).toBe(
+				'[2026-01-08T10:05:00Z] Iteration 2 (Task 1.2): Second entry with task'
+			);
+			expect(lines[3]).toBe('[2026-01-08T10:10:00Z] Iteration 3: Third entry');
+			expect(lines[4]).toBe(''); // trailing newline
+		});
+
+		it('should include newline at end of each entry', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T12:00:00Z',
+				iteration: 5,
+				note: 'Testing newline'
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content.endsWith('\n')).toBe(true);
+		});
+	});
 });

@@ -3,7 +3,7 @@
  * Manages the progress.txt file for loop execution tracking
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
@@ -66,5 +66,19 @@ export class LoopProgressService {
 
 		const header = lines.join('\n');
 		await writeFile(progressFile, header, 'utf-8');
+	}
+
+	/**
+	 * Append a progress entry to the progress file
+	 * @param progressFile - Path to the progress file
+	 * @param entry - Progress entry to append
+	 */
+	async appendProgress(
+		progressFile: string,
+		entry: ProgressEntry
+	): Promise<void> {
+		const taskIdPart = entry.taskId ? ` (Task ${entry.taskId})` : '';
+		const line = `[${entry.timestamp}] Iteration ${entry.iteration}${taskIdPart}: ${entry.note}\n`;
+		await appendFile(progressFile, line, 'utf-8');
 	}
 }
