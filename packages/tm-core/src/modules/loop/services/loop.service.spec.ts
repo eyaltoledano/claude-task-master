@@ -477,4 +477,716 @@ describe('LoopService', () => {
 			expect(result.finalStatus).toBe('blocked');
 		});
 	});
+
+	describe('integration tests - termination scenarios', () => {
+		let service: LoopService;
+		let initializeProgressFileSpy: MockInstance;
+		let appendProgressSpy: MockInstance;
+		let generatePromptSpy: MockInstance;
+		let executeIterationSpy: MockInstance;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			service = new LoopService(defaultOptions);
+
+			// Set up spies on all services
+			initializeProgressFileSpy = vi
+				.spyOn(service.getProgressService(), 'initializeProgressFile')
+				.mockResolvedValue(undefined);
+			appendProgressSpy = vi
+				.spyOn(service.getProgressService(), 'appendProgress')
+				.mockResolvedValue(undefined);
+			generatePromptSpy = vi
+				.spyOn(service.getPromptService(), 'generatePrompt')
+				.mockResolvedValue('generated test prompt');
+			vi.spyOn(service.getExecutorService(), 'stop').mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			vi.restoreAllMocks();
+		});
+
+		describe('successful 3-iteration run', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => ({
+						iteration: {
+							iteration,
+							status: 'success',
+							duration: 100 + iteration * 10,
+							taskId: `task-${iteration}`
+						},
+						output: `Output for iteration ${iteration}`,
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					}));
+			});
+
+			it('should run all 3 iterations', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(3);
+				expect(executeIterationSpy).toHaveBeenCalledTimes(3);
+			});
+
+			it('should have 3 entries in iterations array', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.iterations).toHaveLength(3);
+				expect(result.iterations[0].iteration).toBe(1);
+				expect(result.iterations[1].iteration).toBe(2);
+				expect(result.iterations[2].iteration).toBe(3);
+			});
+
+			it('should count tasksCompleted = 3', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.tasksCompleted).toBe(3);
+			});
+
+			it('should return finalStatus = max_iterations', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.finalStatus).toBe('max_iterations');
+			});
+
+			it('should preserve task IDs in iterations', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.iterations[0].taskId).toBe('task-1');
+				expect(result.iterations[1].taskId).toBe('task-2');
+				expect(result.iterations[2].taskId).toBe('task-3');
+			});
+		});
+
+		describe('stop on completion marker', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => {
+						// Return completion on iteration 2
+						if (iteration === 2) {
+							return {
+								iteration: {
+									iteration,
+									status: 'complete',
+									duration: 150,
+									message: 'ALL_DONE'
+								},
+								output: '<loop-complete>ALL_DONE</loop-complete>',
+								completionCheck: {
+									isComplete: true,
+									isBlocked: false,
+									marker: { type: 'complete', reason: 'ALL_DONE' }
+								},
+								exitCode: 0
+							};
+						}
+						return {
+							iteration: {
+								iteration,
+								status: 'success',
+								duration: 100
+							},
+							output: `Iteration ${iteration} done`,
+							completionCheck: { isComplete: false, isBlocked: false },
+							exitCode: 0
+						};
+					});
+			});
+
+			it('should exit early with finalStatus = all_complete', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.finalStatus).toBe('all_complete');
+			});
+
+			it('should only record 2 iterations', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(2);
+				expect(result.iterations).toHaveLength(2);
+			});
+
+			it('should not execute iterations 3-5', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(executeIterationSpy).toHaveBeenCalledTimes(2);
+			});
+
+			it('should count tasksCompleted correctly (includes completion iteration)', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// tasksCompleted includes the completion iteration (+1 in buildResult)
+				expect(result.tasksCompleted).toBe(2);
+			});
+		});
+
+		describe('stop on blocked marker', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => {
+						// Return blocked on iteration 2
+						if (iteration === 2) {
+							return {
+								iteration: {
+									iteration,
+									status: 'blocked',
+									duration: 200,
+									message: 'Missing API key'
+								},
+								output: '<loop-blocked>Missing API key</loop-blocked>',
+								completionCheck: {
+									isComplete: false,
+									isBlocked: true,
+									marker: { type: 'blocked', reason: 'Missing API key' }
+								},
+								exitCode: 0
+							};
+						}
+						return {
+							iteration: {
+								iteration,
+								status: 'success',
+								duration: 100
+							},
+							output: `Iteration ${iteration} done`,
+							completionCheck: { isComplete: false, isBlocked: false },
+							exitCode: 0
+						};
+					});
+			});
+
+			it('should exit early with finalStatus = blocked', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.finalStatus).toBe('blocked');
+			});
+
+			it('should only record 2 iterations', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(2);
+				expect(result.iterations).toHaveLength(2);
+			});
+
+			it('should record tasksCompleted = 1 (success before blocked)', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Only iteration 1 was successful, iteration 2 was blocked
+				expect(result.tasksCompleted).toBe(1);
+			});
+
+			it('should not execute iterations 3-5', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(executeIterationSpy).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		describe('error handling during iteration', () => {
+			it('should continue loop if iteration has error status', async () => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => {
+						// Return error on iteration 2, but continue loop
+						if (iteration === 2) {
+							return {
+								iteration: {
+									iteration,
+									status: 'error',
+									duration: 50,
+									message: 'Process crashed'
+								},
+								output: '',
+								completionCheck: { isComplete: false, isBlocked: false },
+								exitCode: 1
+							};
+						}
+						return {
+							iteration: {
+								iteration,
+								status: 'success',
+								duration: 100
+							},
+							output: `Iteration ${iteration} done`,
+							completionCheck: { isComplete: false, isBlocked: false },
+							exitCode: 0
+						};
+					});
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// All 3 iterations should be recorded
+				expect(result.iterations).toHaveLength(3);
+				expect(result.iterations[1].status).toBe('error');
+				expect(result.finalStatus).toBe('max_iterations');
+			});
+
+			it('should not count error iteration as tasksCompleted', async () => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => ({
+						iteration: {
+							iteration,
+							status: iteration === 2 ? 'error' : 'success',
+							duration: 100
+						},
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: iteration === 2 ? 1 : 0
+					}));
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Iterations 1 and 3 success, iteration 2 error
+				expect(result.tasksCompleted).toBe(2);
+			});
+
+			it('should record error message in iteration', async () => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: {
+							iteration: 1,
+							status: 'error',
+							duration: 50,
+							message: 'Network timeout'
+						},
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 1
+					});
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.iterations[0].message).toBe('Network timeout');
+			});
+		});
+
+		describe('progress file updates', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockImplementation(async (_prompt, iteration) => ({
+						iteration: {
+							iteration,
+							status: 'success',
+							duration: 100,
+							taskId: `task-${iteration}`,
+							message: `Message ${iteration}`
+						},
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					}));
+			});
+
+			it('should call initializeProgressFile once at start', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(initializeProgressFileSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should pass correct config to initializeProgressFile', async () => {
+				await service.run({
+					prompt: 'test-coverage',
+					iterations: 5,
+					sleepSeconds: 1,
+					progressFile: '/custom/progress.txt',
+					tag: 'feature-x'
+				});
+
+				expect(initializeProgressFileSpy).toHaveBeenCalledWith('/custom/progress.txt', {
+					preset: 'test-coverage',
+					iterations: 5,
+					tag: 'feature-x'
+				});
+			});
+
+			it('should call appendProgress after each iteration', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(appendProgressSpy).toHaveBeenCalledTimes(3);
+			});
+
+			it('should pass correct data to appendProgress for each iteration', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Check first call (iteration 1)
+				expect(appendProgressSpy).toHaveBeenNthCalledWith(
+					1,
+					'/test/progress.txt',
+					expect.objectContaining({
+						iteration: 1,
+						taskId: 'task-1',
+						note: 'Message 1'
+					})
+				);
+
+				// Check second call (iteration 2)
+				expect(appendProgressSpy).toHaveBeenNthCalledWith(
+					2,
+					'/test/progress.txt',
+					expect.objectContaining({
+						iteration: 2,
+						taskId: 'task-2',
+						note: 'Message 2'
+					})
+				);
+
+				// Check third call (iteration 3)
+				expect(appendProgressSpy).toHaveBeenNthCalledWith(
+					3,
+					'/test/progress.txt',
+					expect.objectContaining({
+						iteration: 3,
+						taskId: 'task-3',
+						note: 'Message 3'
+					})
+				);
+			});
+
+			it('should include timestamp in progress entries', async () => {
+				const beforeRun = Date.now();
+
+				await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				const call = appendProgressSpy.mock.calls[0];
+				const entry = call[1];
+				expect(entry.timestamp).toBeDefined();
+
+				// Parse timestamp and verify it's valid ISO string
+				const timestamp = new Date(entry.timestamp).getTime();
+				expect(timestamp).toBeGreaterThanOrEqual(beforeRun);
+			});
+
+			it('should use default note when message is undefined', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: {
+						iteration: 1,
+						status: 'success',
+						duration: 100
+						// No message property
+					},
+					output: '',
+					completionCheck: { isComplete: false, isBlocked: false },
+					exitCode: 0
+				});
+
+				await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(appendProgressSpy).toHaveBeenCalledWith(
+					'/test/progress.txt',
+					expect.objectContaining({
+						note: 'Iteration completed'
+					})
+				);
+			});
+
+			it('should still log progress on early completion', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: {
+						iteration: 1,
+						status: 'complete',
+						duration: 100,
+						message: 'ALL_DONE'
+					},
+					output: '<loop-complete>ALL_DONE</loop-complete>',
+					completionCheck: {
+						isComplete: true,
+						isBlocked: false,
+						marker: { type: 'complete', reason: 'ALL_DONE' }
+					},
+					exitCode: 0
+				});
+
+				await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Progress should be logged even for the completion iteration
+				expect(appendProgressSpy).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('sleep between iterations', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: { iteration: 1, status: 'success', duration: 100 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					});
+			});
+
+			it('should sleep between iterations when sleepSeconds > 0', async () => {
+				const sleepSpy = vi.spyOn(service as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+
+				const runPromise = service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 2,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Advance through all timers
+				await vi.runAllTimersAsync();
+				await runPromise;
+
+				// Sleep should be called between iterations (not after last)
+				expect(sleepSpy).toHaveBeenCalledTimes(2);
+				expect(sleepSpy).toHaveBeenCalledWith(2000); // 2 seconds = 2000 ms
+			});
+
+			it('should not sleep when sleepSeconds = 0', async () => {
+				const sleepSpy = vi.spyOn(service as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+
+				await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(sleepSpy).not.toHaveBeenCalled();
+			});
+
+			it('should not sleep after last iteration', async () => {
+				const sleepSpy = vi.spyOn(service as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+
+				const runPromise = service.run({
+					prompt: 'default',
+					iterations: 2,
+					sleepSeconds: 5,
+					progressFile: '/test/progress.txt'
+				});
+
+				await vi.runAllTimersAsync();
+				await runPromise;
+
+				// Only 1 sleep between iteration 1 and 2
+				expect(sleepSpy).toHaveBeenCalledTimes(1);
+			});
+
+			it('should correctly convert sleepSeconds to milliseconds', async () => {
+				const sleepSpy = vi.spyOn(service as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+
+				const runPromise = service.run({
+					prompt: 'default',
+					iterations: 2,
+					sleepSeconds: 10,
+					progressFile: '/test/progress.txt'
+				});
+
+				await vi.runAllTimersAsync();
+				await runPromise;
+
+				expect(sleepSpy).toHaveBeenCalledWith(10000);
+			});
+
+			it('should not sleep on early completion', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: { iteration: 1, status: 'complete', duration: 100 },
+					output: '<loop-complete>ALL_DONE</loop-complete>',
+					completionCheck: {
+						isComplete: true,
+						isBlocked: false,
+						marker: { type: 'complete', reason: 'ALL_DONE' }
+					},
+					exitCode: 0
+				});
+
+				const sleepSpy = vi.spyOn(service as unknown as { sleep: (ms: number) => Promise<void> }, 'sleep');
+
+				await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 2,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Loop exits early, no sleep needed
+				expect(sleepSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('prompt generation', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: { iteration: 1, status: 'success', duration: 100 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					});
+			});
+
+			it('should call generatePrompt for each iteration', async () => {
+				await service.run({
+					prompt: 'default',
+					iterations: 3,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(generatePromptSpy).toHaveBeenCalledTimes(3);
+			});
+
+			it('should pass correct options to generatePrompt', async () => {
+				const config = {
+					prompt: 'test-coverage',
+					iterations: 2,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt',
+					tag: 'my-tag'
+				};
+
+				await service.run(config);
+
+				expect(generatePromptSpy).toHaveBeenNthCalledWith(1, {
+					config,
+					iteration: 1,
+					projectRoot: defaultOptions.projectRoot
+				});
+
+				expect(generatePromptSpy).toHaveBeenNthCalledWith(2, {
+					config,
+					iteration: 2,
+					projectRoot: defaultOptions.projectRoot
+				});
+			});
+
+			it('should pass generated prompt to executeIteration', async () => {
+				generatePromptSpy.mockResolvedValue('custom generated prompt');
+
+				await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(executeIterationSpy).toHaveBeenCalledWith(
+					'custom generated prompt',
+					1,
+					defaultOptions.projectRoot
+				);
+			});
+		});
+	});
 });
