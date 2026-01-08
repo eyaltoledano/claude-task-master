@@ -92,9 +92,9 @@ function withFileLockSync(filepath, callback) {
 	}
 
 	const lockPath = `${filepath}.lock`;
-	const maxRetries = 10;
-	const retryDelay = 100; // ms
-	const staleLockAge = 10000; // 10 seconds
+	const maxRetries = 5; // Match LOCK_OPTIONS.retries.retries for consistency
+	const retryDelay = 100; // ms - matches LOCK_OPTIONS.retries.minTimeout
+	const staleLockAge = 10000; // 10 seconds - matches LOCK_OPTIONS.stale
 
 	// Try to acquire lock with retries
 	let acquired = false;
@@ -897,9 +897,11 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 				finalData = {
 					...rawFullData,
 					[resolvedTag]: {
-						// Preserve existing tag metadata if it exists, otherwise use what's passed
-						...(rawFullData[resolvedTag]?.metadata || {}),
-						...(data.metadata ? { metadata: data.metadata } : {}),
+						// Preserve existing tag metadata, merged with any new metadata
+						metadata: {
+							...(rawFullData[resolvedTag]?.metadata || {}),
+							...(data.metadata || {})
+						},
 						tasks: data.tasks // The updated tasks array is the source of truth here
 					}
 				};
@@ -957,14 +959,22 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 							Array.isArray(value.tasks)
 						) {
 							// This is a tag object - clean up any rogue root-level properties
+							// Move created/description to metadata if they're at root level
 							const { created, description, ...cleanTagData } = value;
 
-							// Only keep the description if there's no metadata.description
-							if (
-								description &&
-								(!cleanTagData.metadata || !cleanTagData.metadata.description)
-							) {
-								cleanTagData.description = description;
+							// Ensure metadata object exists
+							if (!cleanTagData.metadata) {
+								cleanTagData.metadata = {};
+							}
+
+							// Preserve created timestamp in metadata if it exists at root level
+							if (created && !cleanTagData.metadata.created) {
+								cleanTagData.metadata.created = created;
+							}
+
+							// Preserve description in metadata if it exists at root level
+							if (description && !cleanTagData.metadata.description) {
+								cleanTagData.metadata.description = description;
 							}
 
 							finalCleanData[key] = cleanTagData;
