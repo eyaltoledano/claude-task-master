@@ -7,7 +7,12 @@ import {
 	PRESET_NAMES,
 	isValidPreset,
 	getPresetPath,
-	loadPreset
+	loadPreset,
+	isFilePath,
+	loadCustomPrompt,
+	resolvePrompt,
+	PresetError,
+	PresetErrorCode
 } from './index.js';
 import type { LoopPreset } from '../types.js';
 
@@ -283,5 +288,214 @@ describe('Preset Content Consistency', () => {
 			// Check for Files Available header
 			expect(content).toMatch(/## Files Available/);
 		}
+	});
+});
+
+describe('isFilePath', () => {
+	describe('Unix paths', () => {
+		it('returns true for absolute Unix paths', () => {
+			expect(isFilePath('/path/to/file.md')).toBe(true);
+		});
+
+		it('returns true for relative Unix paths', () => {
+			expect(isFilePath('./relative/path.txt')).toBe(true);
+			expect(isFilePath('../parent/file.md')).toBe(true);
+		});
+
+		it('returns true for paths without extension', () => {
+			expect(isFilePath('folder/prompt')).toBe(true);
+			expect(isFilePath('./custom-prompt')).toBe(true);
+		});
+	});
+
+	describe('Windows paths', () => {
+		it('returns true for Windows absolute paths', () => {
+			expect(isFilePath('C:\\path\\file.md')).toBe(true);
+		});
+
+		it('returns true for Windows relative paths', () => {
+			expect(isFilePath('.\\relative\\path.txt')).toBe(true);
+		});
+	});
+
+	describe('file extensions', () => {
+		it('returns true for .md extension', () => {
+			expect(isFilePath('prompt.md')).toBe(true);
+		});
+
+		it('returns true for .txt extension', () => {
+			expect(isFilePath('prompt.txt')).toBe(true);
+		});
+
+		it('returns true for .markdown extension', () => {
+			expect(isFilePath('prompt.markdown')).toBe(true);
+		});
+
+		it('handles case insensitivity for extensions', () => {
+			expect(isFilePath('PROMPT.MD')).toBe(true);
+			expect(isFilePath('prompt.TXT')).toBe(true);
+		});
+	});
+
+	describe('paths with spaces', () => {
+		it('returns true for Unix paths with spaces', () => {
+			expect(isFilePath('/path/with spaces/file.md')).toBe(true);
+		});
+
+		it('returns true for Windows paths with spaces', () => {
+			expect(isFilePath('C:\\path\\with spaces\\file.md')).toBe(true);
+		});
+	});
+
+	describe('non-file-path strings', () => {
+		it('returns false for preset names', () => {
+			expect(isFilePath('default')).toBe(false);
+			expect(isFilePath('test-coverage')).toBe(false);
+			expect(isFilePath('linting')).toBe(false);
+		});
+
+		it('returns false for simple strings without path/extension', () => {
+			expect(isFilePath('simple-name')).toBe(false);
+			expect(isFilePath('prompt')).toBe(false);
+		});
+
+		it('returns false for empty string', () => {
+			expect(isFilePath('')).toBe(false);
+		});
+
+		it('returns false for other extensions', () => {
+			expect(isFilePath('file.js')).toBe(false);
+			expect(isFilePath('file.json')).toBe(false);
+		});
+	});
+});
+
+describe('loadCustomPrompt', () => {
+	it('throws PresetError for non-existent file', async () => {
+		await expect(loadCustomPrompt('/non/existent/file.md')).rejects.toThrow(
+			PresetError
+		);
+		await expect(loadCustomPrompt('/non/existent/file.md')).rejects.toMatchObject(
+			{
+				code: PresetErrorCode.CUSTOM_PROMPT_NOT_FOUND
+			}
+		);
+	});
+
+	it('error message includes the file path', async () => {
+		const filePath = '/some/custom/path.md';
+		try {
+			await loadCustomPrompt(filePath);
+		} catch (error) {
+			expect(error).toBeInstanceOf(PresetError);
+			expect((error as PresetError).message).toContain(filePath);
+		}
+	});
+});
+
+describe('resolvePrompt', () => {
+	describe('preset resolution', () => {
+		it('resolves valid preset names to content', async () => {
+			const content = await resolvePrompt('default');
+			expect(content).toBeTruthy();
+			expect(content.length).toBeGreaterThan(0);
+		});
+
+		it('resolves all valid presets', async () => {
+			for (const preset of PRESET_NAMES) {
+				const content = await resolvePrompt(preset);
+				expect(content).toBeTruthy();
+			}
+		});
+	});
+
+	describe('custom file resolution', () => {
+		it('throws PresetError for non-existent custom file', async () => {
+			await expect(resolvePrompt('/non/existent/prompt.md')).rejects.toThrow(
+				PresetError
+			);
+		});
+
+		it('prefers preset over file path with same name', async () => {
+			// 'default' is a valid preset, so it should load the preset
+			// even though it could theoretically be a filename
+			const content = await resolvePrompt('default');
+			expect(content).toBeTruthy();
+			expect(content.length).toBeGreaterThan(100); // Preset content is substantial
+		});
+	});
+});
+
+describe('PresetError', () => {
+	it('has correct name', () => {
+		const error = new PresetError(
+			PresetErrorCode.PRESET_NOT_FOUND,
+			'Test message'
+		);
+		expect(error.name).toBe('PresetError');
+	});
+
+	it('stores error code', () => {
+		const error = new PresetError(
+			PresetErrorCode.CUSTOM_PROMPT_NOT_FOUND,
+			'File not found'
+		);
+		expect(error.code).toBe(PresetErrorCode.CUSTOM_PROMPT_NOT_FOUND);
+	});
+
+	it('stores message', () => {
+		const message = 'Custom error message';
+		const error = new PresetError(PresetErrorCode.EMPTY_PROMPT_CONTENT, message);
+		expect(error.message).toBe(message);
+	});
+
+	it('is instance of Error', () => {
+		const error = new PresetError(PresetErrorCode.INVALID_PRESET, 'Invalid');
+		expect(error).toBeInstanceOf(Error);
+	});
+});
+
+describe('PresetErrorCode', () => {
+	it('has PRESET_NOT_FOUND code', () => {
+		expect(PresetErrorCode.PRESET_NOT_FOUND).toBe('PRESET_NOT_FOUND');
+	});
+
+	it('has CUSTOM_PROMPT_NOT_FOUND code', () => {
+		expect(PresetErrorCode.CUSTOM_PROMPT_NOT_FOUND).toBe('CUSTOM_PROMPT_NOT_FOUND');
+	});
+
+	it('has EMPTY_PROMPT_CONTENT code', () => {
+		expect(PresetErrorCode.EMPTY_PROMPT_CONTENT).toBe('EMPTY_PROMPT_CONTENT');
+	});
+
+	it('has INVALID_PRESET code', () => {
+		expect(PresetErrorCode.INVALID_PRESET).toBe('INVALID_PRESET');
+	});
+});
+
+describe('Barrel exports for new functions', () => {
+	it('exports isFilePath function', () => {
+		expect(isFilePath).toBeDefined();
+		expect(typeof isFilePath).toBe('function');
+	});
+
+	it('exports loadCustomPrompt function', () => {
+		expect(loadCustomPrompt).toBeDefined();
+		expect(typeof loadCustomPrompt).toBe('function');
+	});
+
+	it('exports resolvePrompt function', () => {
+		expect(resolvePrompt).toBeDefined();
+		expect(typeof resolvePrompt).toBe('function');
+	});
+
+	it('exports PresetError class', () => {
+		expect(PresetError).toBeDefined();
+		expect(typeof PresetError).toBe('function');
+	});
+
+	it('exports PresetErrorCode', () => {
+		expect(PresetErrorCode).toBeDefined();
+		expect(typeof PresetErrorCode).toBe('object');
 	});
 });

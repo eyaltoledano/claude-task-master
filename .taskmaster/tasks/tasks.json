@@ -10873,7 +10873,7 @@
         "testStrategy": "Unit tests verifying type exports compile correctly. Create `packages/tm-core/src/modules/loop/types.spec.ts` with tests that import all types and verify they can be instantiated with valid data and reject invalid data using TypeScript compile-time checks.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10935,15 +10935,16 @@
               4
             ],
             "details": "Add export statements for all types (LoopPreset, LoopConfig, LoopIteration, LoopResult, LoopCompletionMarker) in types.ts. Create `packages/tm-core/src/modules/loop/index.ts` that re-exports from types.ts, following the pattern used in other modules like workflow and execution.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Import all types from the loop module index and verify they are accessible. Run TypeScript compiler to ensure no export errors.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T21:49:59.115Z"
           }
         ],
         "complexity": 2,
         "recommendedSubtasks": 0,
         "expansionPrompt": "No expansion needed - this is a straightforward type definition task.",
-        "updatedAt": "2026-01-08T21:35:38.439Z"
+        "updatedAt": "2026-01-08T21:49:59.115Z"
       },
       {
         "id": "2",
@@ -10953,7 +10954,7 @@
         "testStrategy": "Snapshot tests to verify preset content structure. Integration test loading each preset and verifying it contains required markers (`<loop-complete>`, `<loop-blocked>`) and @ file references.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -10961,9 +10962,10 @@
             "description": "Create the `packages/tm-core/src/modules/loop/presets/` directory structure with an `index.ts` file that exports preset names and provides utilities for loading bundled preset files.",
             "dependencies": [],
             "details": "1. Create directory `packages/tm-core/src/modules/loop/presets/`\n2. Create `index.ts` with:\n   - `PRESET_NAMES` constant array: `['default', 'test-coverage', 'linting', 'duplication', 'entropy']`\n   - `isValidPreset(name: string): name is LoopPreset` type guard function\n   - `getPresetPath(preset: LoopPreset): string` function returning relative path to preset markdown file\n   - `loadPreset(preset: LoopPreset): Promise<string>` async function that reads and returns preset content using `fs/promises`\n   - Re-export preset type from loop types if needed\n3. Use `import.meta.url` and `fileURLToPath` for ESM-compatible path resolution to locate bundled markdown files relative to the compiled module",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test `isValidPreset()` with valid preset names (returns true), invalid names (returns false), and file paths (returns false). Test `getPresetPath()` returns correct relative paths. Test `loadPreset()` successfully loads each preset file and returns non-empty string content.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T21:53:23.312Z"
           },
           {
             "id": 2,
@@ -10973,9 +10975,10 @@
               1
             ],
             "details": "Create markdown files in `packages/tm-core/src/modules/loop/presets/`:\n\n1. **default.md** - Standard task completion workflow:\n   - @ file references: `@.taskmaster/tasks/tasks.json`, `@.taskmaster/loop-progress.txt`\n   - 7-step process: next task → show → implement → quality checks → set-status → commit → append progress\n   - Completion markers: `<loop-complete>ALL_TASKS_DONE</loop-complete>`, `<loop-blocked>REASON</loop-blocked>`\n   - Important notes: ONE task per session, keep changes small\n\n2. **test-coverage.md** - Test coverage workflow per PRD spec\n3. **linting.md** - Lint/type error fixing per PRD spec\n4. **duplication.md** - Code duplication refactoring per PRD spec\n5. **entropy.md** - Code smell cleanup per PRD spec\n\nEach preset must include:\n- Clear header with workflow name\n- Files Available section with @ syntax references\n- Numbered process steps (5-7 steps)\n- Completion criteria with `<loop-complete>` marker\n- Important notes about single-task-per-iteration constraint",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Snapshot tests comparing each preset file content against expected structure. Test that each preset contains required elements: @ file reference pattern, <loop-complete> marker, <loop-blocked> marker (where applicable), numbered process steps, and single-task-per-iteration constraint note.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T21:56:55.796Z"
           },
           {
             "id": 3,
@@ -10986,14 +10989,16 @@
               2
             ],
             "details": "Create `packages/tm-core/src/modules/loop/presets/presets.spec.ts` with:\n\n1. **Snapshot tests** for each preset:\n   - Load each preset using `loadPreset()` function\n   - Use `toMatchSnapshot()` to verify content stability\n\n2. **Structure validation tests** for each preset:\n   - Contains `<loop-complete>` marker with valid completion reason\n   - Contains @ file reference pattern (`@.taskmaster/` or `@./`)\n   - Contains numbered process steps (regex: `/^\\d+\\./m`)\n   - Contains 'Important' or 'Completion Criteria' section\n   - For default preset: contains `<loop-blocked>` marker\n\n3. **Index.ts function tests**:\n   - `isValidPreset()` returns true for all 5 preset names\n   - `isValidPreset()` returns false for invalid names and file paths\n   - `loadPreset()` returns non-empty string for each preset\n   - `getPresetPath()` returns paths ending in `.md`\n\n4. **Content consistency tests**:\n   - All presets mention single-task-per-iteration constraint\n   - All presets have progress file reference",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run tests with `npm test -w @tm/core -- --testPathPattern=presets.spec.ts`. Verify snapshot files are created in `__snapshots__/` directory. Tests should achieve 100% coverage of the preset index.ts exports.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:06:11.126Z"
           }
         ],
         "complexity": 4,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Break down into: 1) Create preset directory structure and index.ts export file, 2) Write the 5 markdown preset files (default, test-coverage, linting, duplication, entropy) with proper completion markers and @ syntax, 3) Write snapshot tests to verify preset structure and required markers"
+        "expansionPrompt": "Break down into: 1) Create preset directory structure and index.ts export file, 2) Write the 5 markdown preset files (default, test-coverage, linting, duplication, entropy) with proper completion markers and @ syntax, 3) Write snapshot tests to verify preset structure and required markers",
+        "updatedAt": "2026-01-08T22:06:11.126Z"
       },
       {
         "id": "3",
@@ -11006,7 +11011,7 @@
           "1",
           "2"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -11014,9 +11019,10 @@
             "description": "Create the LoopPresetService class in tm-core that provides isPreset(), isFilePath(), and resolvePrompt() methods with comprehensive error handling for file operations.",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-preset.service.ts` following existing service patterns. Implement:\n\n1. **Constructor**: Initialize presetsDir path relative to bundled location and validPresets Set\n2. **isPreset(prompt: string)**: Type guard that checks if prompt is a valid preset name from the validPresets Set\n3. **isFilePath(prompt: string)**: Detect file paths by checking for path separators (/, \\) or common extensions (.md, .txt, .markdown)\n4. **resolvePrompt(prompt: LoopPreset | string)**: Main method that delegates to loadPreset() or loadCustomPrompt() based on isPreset() check\n5. **loadPreset(preset: LoopPreset)**: Read preset file from presetsDir, throw descriptive error if not found\n6. **loadCustomPrompt(filePath: string)**: Read custom file, throw descriptive error if not found\n\nError handling requirements:\n- File not found: Throw TaskMasterError with code 'PRESET_NOT_FOUND' or 'CUSTOM_PROMPT_NOT_FOUND'\n- Invalid preset name: Throw TaskMasterError with code 'INVALID_PRESET' listing valid presets\n- Empty content: Throw TaskMasterError with code 'EMPTY_PROMPT_CONTENT'\n\nExport service from module index file and add appropriate JSDoc comments.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:35:33.799Z"
           },
           {
             "id": 2,
@@ -11033,7 +11039,8 @@
         ],
         "complexity": 4,
         "recommendedSubtasks": 2,
-        "expansionPrompt": "Break down into: 1) Implement LoopPresetService with isPreset(), isFilePath(), and resolvePrompt() methods including error handling, 2) Write comprehensive unit tests for all methods including edge cases (paths with spaces, various extensions, missing files)"
+        "expansionPrompt": "Break down into: 1) Implement LoopPresetService with isPreset(), isFilePath(), and resolvePrompt() methods including error handling, 2) Write comprehensive unit tests for all methods including edge cases (paths with spaces, various extensions, missing files)",
+        "updatedAt": "2026-01-08T22:35:33.799Z"
       },
       {
         "id": "4",
@@ -11045,7 +11052,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11053,9 +11060,10 @@
             "description": "Create the base service file with constructor accepting projectRoot and implement getDefaultProgressPath() method.",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-progress.service.ts`. Import `node:fs/promises` and `node:path`. Define the `ProgressEntry` interface with fields: timestamp (string), iteration (number), taskId (optional string), note (string). Create the class with private `projectRoot` field, constructor, and `getDefaultProgressPath()` that returns `path.join(this.projectRoot, '.taskmaster', 'loop-progress.txt')`.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test that verifies getDefaultProgressPath() returns correct path for various projectRoot values (absolute paths, relative paths, paths with spaces).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:17:59.845Z"
           },
           {
             "id": 2,
@@ -11065,9 +11073,10 @@
               1
             ],
             "details": "Implement `async initializeProgressFile(progressFile: string, config: { preset: string; iterations: number; tag?: string }): Promise<void>`. Build header string with markdown comments showing start time (ISO format), preset name, max iterations, and optional tag line. Use `writeFile` from node:fs/promises. Ensure parent directory exists before writing using `mkdir` with recursive option.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests: verify header format contains all config values, verify tag line only appears when tag is provided, verify timestamp is valid ISO format, test with mock filesystem using vi.mock('node:fs/promises').",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:20:41.879Z"
           },
           {
             "id": 3,
@@ -11077,9 +11086,10 @@
               1
             ],
             "details": "Implement `async appendProgress(progressFile: string, entry: ProgressEntry): Promise<void>`. Format each entry as `[{timestamp}] Iteration {iteration}{ (Task {taskId})}: {note}\\n`. The taskId portion is optional - only include if entry.taskId is defined. Use `appendFile` from node:fs/promises.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests: verify line format with taskId, verify line format without taskId, verify multiple appends accumulate correctly, verify newline is included at end of each entry.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:23:06.841Z"
           },
           {
             "id": 4,
@@ -11089,9 +11099,10 @@
               1
             ],
             "details": "Implement `async readProgress(progressFile: string): Promise<string>` - returns file content or empty string if file doesn't exist (catch any error and return ''). Implement `async exists(progressFile: string): Promise<boolean>` - uses `access` from node:fs/promises, returns true if accessible, false on any error. Both methods should handle missing files gracefully without throwing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests: readProgress returns content for existing file, readProgress returns empty string for missing file, exists returns true for existing file, exists returns false for missing file, handle permission errors gracefully.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:25:03.756Z"
           },
           {
             "id": 5,
@@ -11104,14 +11115,16 @@
               4
             ],
             "details": "Create or update `packages/tm-core/src/modules/loop/index.ts` to export `LoopProgressService` and `ProgressEntry`. Create `packages/tm-core/src/modules/loop/services/loop-progress.service.spec.ts` with tests using temp directories (follow pattern from task-file-generator.service.spec.ts). Test full workflow: initialize file, append multiple entries, read back, verify format. Use `os.tmpdir()` and `fs.mkdtempSync` for test isolation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with real filesystem: create temp directory, initialize progress file, append 3-5 entries with various combinations (with/without taskId), read back and verify full content structure, clean up temp directory in afterEach.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:28:05.277Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "No expansion needed - this is a focused file I/O service with clear implementation."
+        "expansionPrompt": "No expansion needed - this is a focused file I/O service with clear implementation.",
+        "updatedAt": "2026-01-08T22:28:05.277Z"
       },
       {
         "id": "5",
@@ -11123,7 +11136,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11131,9 +11144,10 @@
             "description": "Create the types.ts file in packages/tm-core/src/modules/loop/ defining LoopCompletionMarker and related types used by the completion service.",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/types.ts` with:\n\n```typescript\nexport type LoopPreset = 'default' | 'test-coverage' | 'linting' | 'duplication' | 'entropy';\n\nexport interface LoopCompletionMarker {\n  type: 'complete' | 'blocked';\n  reason: string;\n}\n```\n\nThis provides the LoopCompletionMarker type needed by LoopCompletionService.parseOutput() return value. The type distinguishes between completion markers (`<loop-complete>`) and blocked markers (`<loop-blocked>`).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Type-only file - no runtime tests needed. TypeScript compiler will validate type correctness when the service imports and uses these types.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:33:15.898Z"
           },
           {
             "id": 2,
@@ -11143,9 +11157,10 @@
               1
             ],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-completion.service.ts` with the implementation from the task details. Key implementation points:\n\n1. Define CompletionCheckResult interface with isComplete, isBlocked, marker?, and rawMatch? properties\n2. Store regex patterns as private readonly properties using /i flag for case insensitivity\n3. parseOutput() method checks for `<loop-complete>` first, then `<loop-blocked>`, returning first match found\n4. extractCompletionReason() helper method to get reason string from marker\n\nThe regex patterns `/<loop-complete>([^<]+)<\\/loop-complete>/i` and `/<loop-blocked>([^<]+)<\\/loop-blocked>/i` handle the tag content extraction.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for: valid complete markers with various reasons (ALL_TASKS_DONE, COVERAGE_TARGET, ZERO_ERRORS), valid blocked markers, case insensitivity verification.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:31:45.449Z"
           },
           {
             "id": 3,
@@ -11155,9 +11170,10 @@
               2
             ],
             "details": "Verify and test edge case handling in LoopCompletionService:\n\n1. **Multiple markers**: The current regex with .match() returns first match - verify this is correct behavior\n2. **Malformed markers**: Unclosed tags like `<loop-complete>reason` should not match (regex already handles this)\n3. **Empty/whitespace content**: `<loop-complete>  </loop-complete>` should return trimmed empty reason\n4. **No markers**: Return `{ isComplete: false, isBlocked: false }` \n5. **Null/undefined input**: Add defensive check at start of parseOutput()\n6. **Very long output**: Regex should still work efficiently on large strings\n\nMay need to add input validation: `if (!output) return { isComplete: false, isBlocked: false };`",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for: output with both markers (first wins), malformed/unclosed tags, empty tag content, null/undefined input, output with no markers, large output strings.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:33:15.957Z"
           },
           {
             "id": 4,
@@ -11168,9 +11184,10 @@
               3
             ],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-completion.service.spec.ts` with test cases:\n\n```typescript\nimport { LoopCompletionService } from './loop-completion.service.js';\n\ndescribe('LoopCompletionService', () => {\n  let service: LoopCompletionService;\n  beforeEach(() => { service = new LoopCompletionService(); });\n\n  describe('parseOutput', () => {\n    it('detects <loop-complete> with ALL_TASKS_DONE reason', () => {...});\n    it('detects <loop-complete> with COVERAGE_TARGET reason', () => {...});\n    it('detects <loop-complete> with ZERO_ERRORS reason', () => {...});\n    it('detects <loop-blocked> with reason', () => {...});\n    it('returns false for output with no markers', () => {...});\n    it('handles case insensitivity', () => {...});\n    it('uses first marker when multiple present', () => {...});\n    it('ignores malformed/unclosed markers', () => {...});\n    it('trims whitespace from reasons', () => {...});\n    it('handles empty input', () => {...});\n  });\n\n  describe('extractCompletionReason', () => {...});\n});\n```",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npm test -w @tm/core -- --testPathPattern=loop-completion` to execute tests. All tests should pass with 100% coverage of the service.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:33:15.991Z"
           },
           {
             "id": 5,
@@ -11180,14 +11197,16 @@
               2
             ],
             "details": "Create `packages/tm-core/src/modules/loop/index.ts`:\n\n```typescript\nexport * from './types.js';\nexport * from './services/loop-completion.service.js';\n```\n\nAlso create `packages/tm-core/src/modules/loop/services/index.ts`:\n\n```typescript\nexport * from './loop-completion.service.js';\n```\n\nThis follows the existing module structure pattern seen in other tm-core modules (config, git, tasks, etc.) where each module has an index.ts that re-exports its public API. The service and types will be consumable as `import { LoopCompletionService, LoopCompletionMarker } from '@tm/core/modules/loop';`",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify exports work by checking TypeScript compilation and that the module can be imported from the package entrypoint. No dedicated tests needed for re-exports.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:33:16.024Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "No expansion needed - this is a focused regex parsing service with clear implementation."
+        "expansionPrompt": "No expansion needed - this is a focused regex parsing service with clear implementation.",
+        "updatedAt": "2026-01-08T22:33:16.024Z"
       },
       {
         "id": "6",
@@ -12009,9 +12028,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T21:35:38.450Z",
+      "lastModified": "2026-01-08T22:35:33.808Z",
       "taskCount": 18,
-      "completedCount": 0,
+      "completedCount": 4,
       "tags": [
         "loop"
       ]

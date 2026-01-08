@@ -14,7 +14,12 @@ export {
 	PRESET_NAMES,
 	isValidPreset,
 	getPresetPath,
-	loadPreset
+	loadPreset,
+	isFilePath,
+	loadCustomPrompt,
+	resolvePrompt,
+	PresetError,
+	PresetErrorCode
 } from './presets/index.js';
 
 export { LoopProgressService } from './services/loop-progress.service.js';
