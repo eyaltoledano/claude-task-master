@@ -3,6 +3,7 @@
  * Manages the progress.txt file for loop execution tracking
  */
 
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
@@ -34,5 +35,36 @@ export class LoopProgressService {
 	 */
 	getDefaultProgressPath(): string {
 		return path.join(this.projectRoot, '.taskmaster', 'loop-progress.txt');
+	}
+
+	/**
+	 * Initialize a new progress file with header information
+	 * @param progressFile - Path to the progress file
+	 * @param config - Configuration options for the progress header
+	 */
+	async initializeProgressFile(
+		progressFile: string,
+		config: { preset: string; iterations: number; tag?: string }
+	): Promise<void> {
+		// Ensure parent directory exists
+		const dir = path.dirname(progressFile);
+		await mkdir(dir, { recursive: true });
+
+		// Build header with configuration info
+		const lines = [
+			'# Task Master Loop Progress',
+			`# Started: ${new Date().toISOString()}`,
+			`# Preset: ${config.preset}`,
+			`# Max Iterations: ${config.iterations}`
+		];
+
+		if (config.tag) {
+			lines.push(`# Tag: ${config.tag}`);
+		}
+
+		lines.push('', '---', '');
+
+		const header = lines.join('\n');
+		await writeFile(progressFile, header, 'utf-8');
 	}
 }

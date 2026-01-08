@@ -2,8 +2,11 @@
  * @fileoverview Unit tests for LoopProgressService
  */
 
+import { mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LoopProgressService, ProgressEntry } from './loop-progress.service.js';
 
 describe('LoopProgressService', () => {
@@ -70,6 +73,113 @@ describe('LoopProgressService', () => {
 				note: 'Initialization complete'
 			};
 			expect(entry.taskId).toBeUndefined();
+		});
+	});
+
+	describe('initializeProgressFile', () => {
+		let tempDir: string;
+
+		beforeEach(() => {
+			tempDir = mkdtempSync(path.join(tmpdir(), 'loop-progress-test-'));
+		});
+
+		afterEach(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it('should create progress file with header containing all config values', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, '.taskmaster', 'loop-progress.txt');
+
+			await service.initializeProgressFile(progressFile, {
+				preset: 'default',
+				iterations: 10
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('# Task Master Loop Progress');
+			expect(content).toContain('# Preset: default');
+			expect(content).toContain('# Max Iterations: 10');
+			expect(content).toContain('---');
+		});
+
+		it('should include tag line only when tag is provided', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress-with-tag.txt');
+
+			await service.initializeProgressFile(progressFile, {
+				preset: 'test-coverage',
+				iterations: 5,
+				tag: 'feature-branch'
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('# Tag: feature-branch');
+		});
+
+		it('should not include tag line when tag is not provided', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress-no-tag.txt');
+
+			await service.initializeProgressFile(progressFile, {
+				preset: 'linting',
+				iterations: 3
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).not.toContain('# Tag:');
+		});
+
+		it('should include valid ISO timestamp in Started field', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress-timestamp.txt');
+
+			const beforeTime = new Date();
+			await service.initializeProgressFile(progressFile, {
+				preset: 'default',
+				iterations: 1
+			});
+			const afterTime = new Date();
+
+			const content = await readFile(progressFile, 'utf-8');
+			const match = content.match(/# Started: (.+)/);
+			expect(match).not.toBeNull();
+
+			const timestamp = new Date(match![1]);
+			expect(timestamp.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
+			expect(timestamp.getTime()).toBeLessThanOrEqual(afterTime.getTime());
+		});
+
+		it('should create parent directories if they do not exist', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'nested', 'dir', 'progress.txt');
+
+			await service.initializeProgressFile(progressFile, {
+				preset: 'default',
+				iterations: 1
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('# Task Master Loop Progress');
+		});
+
+		it('should overwrite existing progress file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'existing-progress.txt');
+
+			// Create existing file
+			await mkdir(path.dirname(progressFile), { recursive: true });
+			await writeFile(progressFile, 'Old content', 'utf-8');
+
+			await service.initializeProgressFile(progressFile, {
+				preset: 'new-preset',
+				iterations: 20
+			});
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).not.toContain('Old content');
+			expect(content).toContain('# Preset: new-preset');
+			expect(content).toContain('# Max Iterations: 20');
 		});
 	});
 });
