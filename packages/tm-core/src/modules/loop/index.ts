@@ -16,3 +16,6 @@ export {
 	getPresetPath,
 	loadPreset
 } from './presets/index.js';
+
+export { LoopProgressService } from './services/loop-progress.service.js';
+export type { ProgressEntry } from './services/loop-progress.service.js';

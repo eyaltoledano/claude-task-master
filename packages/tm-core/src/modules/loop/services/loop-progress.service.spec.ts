@@ -8,8 +8,28 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LoopProgressService, ProgressEntry } from './loop-progress.service.js';
+import {
+	LoopProgressService as BarrelLoopProgressService,
+	type ProgressEntry as BarrelProgressEntry
+} from '../index.js';
 
 describe('LoopProgressService', () => {
+	describe('barrel exports', () => {
+		it('should export LoopProgressService from loop module index', () => {
+			expect(BarrelLoopProgressService).toBe(LoopProgressService);
+		});
+
+		it('should export ProgressEntry type from loop module index', () => {
+			// Type check - if this compiles, the type is correctly exported
+			const entry: BarrelProgressEntry = {
+				timestamp: '2026-01-08T10:00:00Z',
+				iteration: 1,
+				note: 'Test entry'
+			};
+			expect(entry.timestamp).toBe('2026-01-08T10:00:00Z');
+		});
+	});
+
 	describe('constructor', () => {
 		it('should accept a project root path', () => {
 			const service = new LoopProgressService('/my/project');
@@ -373,6 +393,163 @@ describe('LoopProgressService', () => {
 			const result = await service.exists(progressFile);
 
 			expect(result).toBe(true);
+		});
+	});
+
+	describe('integration: full workflow', () => {
+		let tempDir: string;
+
+		beforeEach(() => {
+			tempDir = mkdtempSync(path.join(tmpdir(), 'loop-progress-integration-'));
+		});
+
+		afterEach(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it('should complete full workflow: initialize, append entries, read back', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = service.getDefaultProgressPath();
+
+			// Step 1: File should not exist initially
+			expect(await service.exists(progressFile)).toBe(false);
+
+			// Step 2: Initialize progress file
+			await service.initializeProgressFile(progressFile, {
+				preset: 'default',
+				iterations: 5,
+				tag: 'feature-test'
+			});
+
+			// Step 3: Verify file exists
+			expect(await service.exists(progressFile)).toBe(true);
+
+			// Step 4: Append multiple progress entries
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:00:00Z',
+				iteration: 1,
+				taskId: '4.1',
+				note: 'Started implementation of progress service'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:15:00Z',
+				iteration: 2,
+				note: 'Completed unit tests'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:30:00Z',
+				iteration: 3,
+				taskId: '4.2',
+				note: 'Added integration tests'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T10:45:00Z',
+				iteration: 4,
+				taskId: '4.3',
+				note: 'Refactored error handling'
+			});
+
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T11:00:00Z',
+				iteration: 5,
+				note: 'All tasks complete'
+			});
+
+			// Step 5: Read back and verify full content structure
+			const content = await service.readProgress(progressFile);
+
+			// Verify header
+			expect(content).toContain('# Task Master Loop Progress');
+			expect(content).toContain('# Preset: default');
+			expect(content).toContain('# Max Iterations: 5');
+			expect(content).toContain('# Tag: feature-test');
+			expect(content).toContain('---');
+
+			// Verify all entries are present
+			expect(content).toContain(
+				'[2026-01-08T10:00:00Z] Iteration 1 (Task 4.1): Started implementation of progress service'
+			);
+			expect(content).toContain(
+				'[2026-01-08T10:15:00Z] Iteration 2: Completed unit tests'
+			);
+			expect(content).toContain(
+				'[2026-01-08T10:30:00Z] Iteration 3 (Task 4.2): Added integration tests'
+			);
+			expect(content).toContain(
+				'[2026-01-08T10:45:00Z] Iteration 4 (Task 4.3): Refactored error handling'
+			);
+			expect(content).toContain(
+				'[2026-01-08T11:00:00Z] Iteration 5: All tasks complete'
+			);
+
+			// Verify entries are in correct order (line-by-line check)
+			const lines = content.split('\n');
+			const entryLines = lines.filter((line) => line.startsWith('['));
+			expect(entryLines).toHaveLength(5);
+			expect(entryLines[0]).toContain('Iteration 1');
+			expect(entryLines[1]).toContain('Iteration 2');
+			expect(entryLines[2]).toContain('Iteration 3');
+			expect(entryLines[3]).toContain('Iteration 4');
+			expect(entryLines[4]).toContain('Iteration 5');
+		});
+
+		it('should work with default path from projectRoot', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = service.getDefaultProgressPath();
+
+			// Verify path is correctly constructed
+			expect(progressFile).toBe(
+				path.join(tempDir, '.taskmaster', 'loop-progress.txt')
+			);
+
+			// Initialize and verify it creates nested directories
+			await service.initializeProgressFile(progressFile, {
+				preset: 'test-coverage',
+				iterations: 3
+			});
+
+			expect(await service.exists(progressFile)).toBe(true);
+
+			// Verify the .taskmaster directory was created
+			const taskmasterDir = path.join(tempDir, '.taskmaster');
+			const { access: accessCheck } = await import('node:fs/promises');
+			await expect(accessCheck(taskmasterDir)).resolves.toBeUndefined();
+		});
+
+		it('should handle re-initialization (overwrite existing)', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+
+			// Initialize first time
+			await service.initializeProgressFile(progressFile, {
+				preset: 'linting',
+				iterations: 10
+			});
+
+			// Append some entries
+			await service.appendProgress(progressFile, {
+				timestamp: '2026-01-08T09:00:00Z',
+				iteration: 1,
+				note: 'First run entry'
+			});
+
+			// Re-initialize (simulating new loop run)
+			await service.initializeProgressFile(progressFile, {
+				preset: 'duplication',
+				iterations: 20,
+				tag: 'new-run'
+			});
+
+			// Verify old content is gone
+			const content = await service.readProgress(progressFile);
+			expect(content).not.toContain('First run entry');
+			expect(content).not.toContain('# Preset: linting');
+			expect(content).toContain('# Preset: duplication');
+			expect(content).toContain('# Max Iterations: 20');
+			expect(content).toContain('# Tag: new-run');
 		});
 	});
 });
