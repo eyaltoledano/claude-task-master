@@ -1,0 +1,157 @@
+{
+	"meta": {
+		"generatedAt": "2026-01-08T18:01:42.102Z",
+		"tasksAnalyzed": 18,
+		"totalTasks": 18,
+		"analysisCount": 18,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Define Loop Module Types and Interfaces",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a straightforward type definition task.",
+			"reasoning": "Very straightforward task following established patterns in workflow/types.ts and execution/types.ts. The types are already well-defined in the task details. Simply creating a single types.ts file with type/interface definitions. No business logic, no dependencies, just TypeScript type exports. The test strategy (compile-time checks) is also minimal."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Create Preset Markdown Files",
+			"complexityScore": 4,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into: 1) Create preset directory structure and index.ts export file, 2) Write the 5 markdown preset files (default, test-coverage, linting, duplication, entropy) with proper completion markers and @ syntax, 3) Write snapshot tests to verify preset structure and required markers",
+			"reasoning": "Content creation task requiring 5 markdown files with specific format requirements (completion markers, @ file references, numbered steps). Each preset needs careful design to work correctly with Claude. The index.ts export file is simple. Testing is straightforward with snapshot tests. Moderate complexity due to content design requirements rather than code complexity."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Implement Preset Resolution Service",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down into: 1) Implement LoopPresetService with isPreset(), isFilePath(), and resolvePrompt() methods including error handling, 2) Write comprehensive unit tests for all methods including edge cases (paths with spaces, various extensions, missing files)",
+			"reasoning": "Service follows existing patterns from workflow/services/. Core logic is simple (string matching, file reading) with clear implementation provided. Main complexity is in edge case handling and proper error messages. Dependencies on Task 1 (types) and Task 2 (presets) must be complete first. Testing is important but straightforward."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Implement Progress File Service",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a focused file I/O service with clear implementation.",
+			"reasoning": "Simple file I/O service using node:fs/promises. Implementation is largely provided in the task details. Methods are straightforward (initializeProgressFile, appendProgress, readProgress, exists). Error handling is simple (file not found returns empty string). No complex business logic. Testing with mock filesystem is standard practice. Very similar to existing file services in the codebase."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Implement Loop Completion Detection",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a focused regex parsing service with clear implementation.",
+			"reasoning": "Simple regex-based parsing service. Two patterns to match (<loop-complete>, <loop-blocked>). Implementation is fully provided in task details. Edge cases (multiple markers, malformed markers, case insensitivity) are well-defined. Testing is comprehensive but straightforward with clear test cases listed."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Implement Loop Prompt Generator",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a straightforward string composition service.",
+			"reasoning": "String composition service that combines preset content with context header. Dependencies on LoopPresetService (Task 3) for resolving presets. Implementation is provided. No complex logic - just building a formatted string with iteration number, file references, and optional tag. Testing includes snapshot tests for generated prompts."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Implement Loop Executor Service",
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down into: 1) Implement basic spawn mechanism with stdio handling following claude-executor.ts patterns, 2) Implement output capture and completion detection integration, 3) Implement process lifecycle management (stop, error handling, cleanup), 4) Write unit tests with mocked spawn for all scenarios (success, completion markers, errors, timeouts)",
+			"reasoning": "Most complex service in the loop module. Involves child process spawning with spawn(), stdout/stderr handling, process lifecycle management, and integration with LoopCompletionService. Follows patterns from packages/tm-core/src/modules/execution/executors/claude-executor.ts. Needs proper async handling, error recovery, and cleanup. Testing with mocked spawn requires careful setup."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Implement Loop Service (Main Orchestrator)",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down into: 1) Implement service constructor with DI for all sub-services, 2) Implement main run() loop with iteration tracking and completion detection, 3) Implement stop() functionality and sleep mechanism, 4) Write integration tests with mocked executor covering all termination scenarios (completion marker, blocked marker, max iterations, error)",
+			"reasoning": "Main orchestration service coordinating all other services. Has 6 dependencies (presets, progress, completion, prompt, executor). Complex state management across iterations. Needs to handle async operations, sleep between iterations, early termination conditions, and proper cleanup. Testing requires careful mocking of multiple services. Similar complexity to WorkflowService in the codebase."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Create Loop Domain Facade",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down into: 1) Implement LoopDomain class with config building, preset operations, and task completion checking, 2) Create index.ts exports and write unit/integration tests for domain facade",
+			"reasoning": "Follows established pattern from WorkflowDomain (157 lines). Thin facade over LoopService with config building, preset exposure, and TasksDomain integration. Dependency injection for TasksDomain via setTasksDomain(). Implementation details provided. Moderate complexity due to cross-domain integration requirements."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "Integrate Loop Domain into TmCore",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a straightforward integration task following existing patterns.",
+			"reasoning": "Very simple integration task. TmCore.ts shows exact pattern to follow (import, private property, getter, initialize in initialize()). Only requires: 1 import, 1 private property, 1 getter, ~3 lines in initialize(), and export updates in index.ts. Testing verifies domain is accessible. No complex logic."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Implement Loop CLI Command",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into: 1) Implement LoopCommand class extending Commander.Command with all options, 2) Implement executeLoop() with display logic and on-complete command execution, 3) Write unit tests for option parsing/validation and integration tests with mocked TmCore",
+			"reasoning": "CLI command following NextCommand pattern (264 lines). Multiple options to parse (-n, -p, --progress-file, --sleep, --on-complete, -t, --status, --project, --json). Needs display methods for different output formats. On-complete command execution with execAsync. Follows established CLI patterns but has more options than most commands."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Register Loop Command in CLI",
+			"complexityScore": 1,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a trivial registration task.",
+			"reasoning": "Trivial task. Add 1 import and 1 entry to the commands array in command-registry.ts (~8 lines). Add 1 export to index.ts. Verify with task-master --help. Pattern is clearly established with 15+ existing commands in the registry."
+		},
+		{
+			"taskId": 13,
+			"taskTitle": "Add Loop MCP Tool",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down into: 1) Implement loop_start and loop_presets tools following autopilot tool patterns with Zod schemas, 2) Register tools in MCP server and write unit tests with mocked TmCore",
+			"reasoning": "MCP tools follow clear pattern from apps/mcp/src/tools/autopilot/start.tool.ts. Two tools (loop_start, loop_presets). Zod schema definition, withToolContext wrapper, handleApiResult pattern. Registration in tool registry. Testing with mocked TmCore follows existing patterns."
+		},
+		{
+			"taskId": 14,
+			"taskTitle": "Write Unit Tests for Loop Module",
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Break down into: 1) Write tests for loop-preset.service.spec.ts, 2) Write tests for loop-progress.service.spec.ts, 3) Write tests for loop-completion.service.spec.ts, 4) Write tests for loop-prompt.service.spec.ts, 5) Write tests for loop.service.spec.ts with mocked sub-services",
+			"reasoning": "Comprehensive test suite for 5 services. Each service needs its own spec file. Testing patterns established in packages/tm-core/src/modules/**/*.spec.ts. Requires mocking filesystem operations, external processes, and coordinating mocks for the main orchestrator test. Target >80% coverage. Natural parallelism in writing tests for each service."
+		},
+		{
+			"taskId": 15,
+			"taskTitle": "Write Integration Tests for Loop CLI",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down into: 1) Set up test infrastructure following apps/cli/tests/integration patterns with temp directory setup and CLI execution helpers, 2) Write integration tests for help, preset listing, and basic loop execution scenarios",
+			"reasoning": "Integration tests follow clear pattern from apps/cli/tests/integration/commands/next.command.test.ts. Setup with temp directories, beforeEach/afterEach hooks, execSync for CLI execution. Main challenge is mocking Claude Code execution for CI. Limited scope due to external dependency on Claude."
+		},
+		{
+			"taskId": 16,
+			"taskTitle": "Add Documentation for Loop Command",
+			"complexityScore": 3,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a focused documentation task with clear structure.",
+			"reasoning": "Documentation following existing mdx patterns in apps/docs/. Clear sections defined: overview, examples, options table, presets, custom prompt guide, progress file format. Low technical complexity but requires clear writing. Examples should match actual implementation. Can reference existing docs for style."
+		},
+		{
+			"taskId": 17,
+			"taskTitle": "Bundle Presets with Package Distribution",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into: 1) Investigate current build setup (tsdown config, package.json files) and determine best bundling approach, 2) Implement chosen approach (either copy assets or inline content), 3) Test that presets are accessible in both development and after npm pack",
+			"reasoning": "Build configuration task with investigation required. Current package.json shows 'files': ['src', 'README.md', 'CHANGELOG.md']. Need to either: add presets to files array and update service to handle bundled paths, OR inline preset content as string constants. Requires understanding of how the monorepo builds and distributes packages. Testing must verify both dev and production paths work."
+		},
+		{
+			"taskId": 18,
+			"taskTitle": "Add Loop Tool to MCP Tool Tiers",
+			"complexityScore": 2,
+			"recommendedSubtasks": 0,
+			"expansionPrompt": "No expansion needed - this is a straightforward configuration update.",
+			"reasoning": "Simple configuration task. Add tool names to the TOOL_TIERS constant (likely in mcp-server/src/tools/). Update CLAUDE.md documentation table. Test with MCP inspector. Pattern is clearly established for existing tools. Minimal code changes."
+		}
+	]
+}

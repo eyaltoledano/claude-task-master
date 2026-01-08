@@ -1,5 +1,5 @@
 {
-	"currentTag": "tm-core-phase-1",
+	"currentTag": "loop",
 	"lastUpdated": "2025-11-28T02:21:32.160Z",
 	"metadata": {
 		"upgradePrompts": {
@@ -55,5 +55,7 @@
 			}
 		}
 	},
-	"migrationNoticeShown": true
+	"migrationNoticeShown": true,
+	"lastSwitched": "2026-01-08T17:48:52.356Z",
+	"branchTagMapping": {}
 }
