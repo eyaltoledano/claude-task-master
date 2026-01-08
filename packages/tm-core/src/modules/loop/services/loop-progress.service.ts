@@ -3,7 +3,7 @@
  * Manages the progress.txt file for loop execution tracking
  */
 
-import { appendFile, mkdir, writeFile } from 'node:fs/promises';
+import { access, appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 /**
@@ -80,5 +80,32 @@ export class LoopProgressService {
 		const taskIdPart = entry.taskId ? ` (Task ${entry.taskId})` : '';
 		const line = `[${entry.timestamp}] Iteration ${entry.iteration}${taskIdPart}: ${entry.note}\n`;
 		await appendFile(progressFile, line, 'utf-8');
+	}
+
+	/**
+	 * Read the contents of a progress file
+	 * @param progressFile - Path to the progress file
+	 * @returns File contents or empty string if file doesn't exist
+	 */
+	async readProgress(progressFile: string): Promise<string> {
+		try {
+			return await readFile(progressFile, 'utf-8');
+		} catch {
+			return '';
+		}
+	}
+
+	/**
+	 * Check if a progress file exists and is accessible
+	 * @param progressFile - Path to the progress file
+	 * @returns True if file exists and is accessible, false otherwise
+	 */
+	async exists(progressFile: string): Promise<boolean> {
+		try {
+			await access(progressFile);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 }

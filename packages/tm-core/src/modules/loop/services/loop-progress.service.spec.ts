@@ -284,4 +284,95 @@ describe('LoopProgressService', () => {
 			expect(content.endsWith('\n')).toBe(true);
 		});
 	});
+
+	describe('readProgress', () => {
+		let tempDir: string;
+
+		beforeEach(() => {
+			tempDir = mkdtempSync(path.join(tmpdir(), 'loop-progress-read-'));
+		});
+
+		afterEach(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it('should return content for existing file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			const expectedContent = '# Header\nSome progress content\n';
+			await writeFile(progressFile, expectedContent, 'utf-8');
+
+			const result = await service.readProgress(progressFile);
+
+			expect(result).toBe(expectedContent);
+		});
+
+		it('should return empty string for missing file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'nonexistent.txt');
+
+			const result = await service.readProgress(progressFile);
+
+			expect(result).toBe('');
+		});
+
+		it('should return empty string for missing directory', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'missing', 'dir', 'progress.txt');
+
+			const result = await service.readProgress(progressFile);
+
+			expect(result).toBe('');
+		});
+	});
+
+	describe('exists', () => {
+		let tempDir: string;
+
+		beforeEach(() => {
+			tempDir = mkdtempSync(path.join(tmpdir(), 'loop-progress-exists-'));
+		});
+
+		afterEach(async () => {
+			await rm(tempDir, { recursive: true, force: true });
+		});
+
+		it('should return true for existing file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, 'content', 'utf-8');
+
+			const result = await service.exists(progressFile);
+
+			expect(result).toBe(true);
+		});
+
+		it('should return false for missing file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'nonexistent.txt');
+
+			const result = await service.exists(progressFile);
+
+			expect(result).toBe(false);
+		});
+
+		it('should return false for missing directory', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'missing', 'dir', 'progress.txt');
+
+			const result = await service.exists(progressFile);
+
+			expect(result).toBe(false);
+		});
+
+		it('should return true for empty file', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'empty.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const result = await service.exists(progressFile);
+
+			expect(result).toBe(true);
+		});
+	});
 });
