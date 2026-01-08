@@ -88,6 +88,7 @@ export class TmCore {
 	private _git!: GitDomain;
 	private _config!: ConfigDomain;
 	private _integration!: IntegrationDomain;
+	private _loop!: LoopDomain;
 
 	// Public readonly getters
 	get tasks(): TasksDomain {
@@ -107,6 +108,9 @@ export class TmCore {
 	}
 	get integration(): IntegrationDomain {
 		return this._integration;
+	}
+	get loop(): LoopDomain {
+		return this._loop;
 	}
 	get logger(): Logger {
 		return this._logger;
