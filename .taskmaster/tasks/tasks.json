@@ -11011,7 +11011,7 @@
           "1",
           "2"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11032,15 +11032,16 @@
               1
             ],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-preset.service.spec.ts` following existing test patterns (vi.mock for fs, describe/it structure).\n\n**Test isPreset()**:\n- Valid preset names return true: 'default', 'test-coverage', 'linting', 'duplication', 'entropy'\n- Invalid names return false: 'invalid', 'DEFAULT' (case sensitive), 'default.md', ''\n- Non-string inputs handled gracefully\n\n**Test isFilePath()**:\n- Unix paths: '/path/to/file.md', './relative/path.txt', '../parent/file.md'\n- Windows paths: 'C:\\\\path\\\\file.md', '.\\\\relative\\\\path.txt'\n- Extension detection: 'prompt.md', 'prompt.txt', 'prompt.markdown'\n- Paths with spaces: '/path/with spaces/file.md'\n- Edge cases: 'simple-name' (no path/extension) returns false\n- Mixed: 'folder/prompt' (path but no extension) returns true\n\n**Test resolvePrompt()**:\n- Mock fs.readFile for successful preset loading\n- Mock fs.readFile for successful custom file loading\n- Error: preset file not found → specific error message\n- Error: custom file not found → specific error message with provided path\n- Error: file exists but is empty → empty content error\n- Error: invalid preset name passed directly\n\n**Integration-style tests**:\n- Verify correct file path construction for presets\n- Verify custom paths are passed through unchanged",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with mocked fs module following config-loader.service.spec.ts pattern. Test each public method independently with AAA structure. Cover boundary conditions, error paths, and typical usage scenarios. Use vi.mock for node:fs/promises to isolate from filesystem.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:39:21.258Z"
           }
         ],
         "complexity": 4,
         "recommendedSubtasks": 2,
         "expansionPrompt": "Break down into: 1) Implement LoopPresetService with isPreset(), isFilePath(), and resolvePrompt() methods including error handling, 2) Write comprehensive unit tests for all methods including edge cases (paths with spaces, various extensions, missing files)",
-        "updatedAt": "2026-01-08T22:35:33.799Z"
+        "updatedAt": "2026-01-08T22:39:21.258Z"
       },
       {
         "id": "4",
@@ -11220,7 +11221,7 @@
           "3",
           "4"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -11228,9 +11229,10 @@
             "description": "Create the LoopPromptService class file with TypeScript interface definitions and constructor that accepts LoopPresetService dependency.",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-prompt.service.ts` with:\n1. Import statements for LoopConfig type and LoopPresetService\n2. Define PromptGenerationOptions interface with config, iteration, and projectRoot fields\n3. Create LoopPromptService class with private readonly presetService field\n4. Implement constructor that accepts LoopPresetService instance via dependency injection",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test verifying constructor properly stores presetService reference. Test that service can be instantiated with mock LoopPresetService.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:00:09.920Z"
           },
           {
             "id": 2,
@@ -11240,9 +11242,10 @@
               1
             ],
             "details": "Add private buildContextHeader method that:\n1. Accepts LoopConfig and iteration number as parameters\n2. Generates header with iteration count (e.g., 'Loop Iteration 3 of 10')\n3. Adds context section with progress file reference using @ syntax\n4. Adds tasks.json file reference\n5. Conditionally includes tag filter if config.tag is specified\n6. Returns formatted string with proper newline separators",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests for: header includes correct iteration numbers, header includes file references with @ prefix, header includes tag when config.tag is set, header omits tag line when config.tag is undefined.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:02:17.655Z"
           },
           {
             "id": 3,
@@ -11289,7 +11292,8 @@
         ],
         "complexity": 3,
         "recommendedSubtasks": 0,
-        "expansionPrompt": "No expansion needed - this is a straightforward string composition service."
+        "expansionPrompt": "No expansion needed - this is a straightforward string composition service.",
+        "updatedAt": "2026-01-08T23:02:17.655Z"
       },
       {
         "id": "7",
@@ -11909,7 +11913,7 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11917,9 +11921,10 @@
             "description": "Analyze the existing tsdown configuration, package.json files structure, and how assets are bundled to determine the optimal approach for including preset markdown files.",
             "dependencies": [],
             "details": "Examine:\n1. Root `tsdown.config.ts` - already uses `copy: ['assets']` to copy root assets\n2. `packages/tm-core/package.json` - currently has `files: ['src', 'README.md', 'CHANGELOG.md']` but package is private and bundled via `noExternal: [/^@tm\\//]`\n3. Root `package.json` - published package with `files: ['dist/**', ...]`\n\nSince @tm/core is bundled into the root package, presets need to either:\n- Option A: Add presets to root `assets/` and use existing `copy` mechanism\n- Option B: Inline preset content as string constants in LoopPresetService\n\nOption B is recommended because:\n- No path resolution issues between dev/prod\n- Works regardless of how package is consumed\n- Simpler testing (no filesystem mocking needed)\n- Follows pattern used by other bundled template content",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Document findings in a decision record. Verify understanding by checking that `npm run build` produces expected output in `dist/` folder and that `assets/` contents are properly copied.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:49:36.138Z"
           },
           {
             "id": 2,
@@ -11929,9 +11934,10 @@
               1
             ],
             "details": "Create or update `packages/tm-core/src/modules/loop/services/loop-preset.service.ts`:\n\n```typescript\nimport type { LoopPreset } from '../types.js';\n\nconst PRESETS: Record<LoopPreset, string> = {\n  'default': `# Task Master Loop - Default Workflow\\n...`,\n  'test-coverage': `# Task Master Loop - Test Coverage\\n...`,\n  'linting': `# Task Master Loop - Linting\\n...`,\n  'duplication': `# Task Master Loop - Duplication\\n...`,\n  'entropy': `# Task Master Loop - Entropy\\n...`\n};\n\nexport class LoopPresetService {\n  isPreset(input: string): input is LoopPreset {\n    return input in PRESETS;\n  }\n  \n  getPresetContent(preset: LoopPreset): string {\n    return PRESETS[preset];\n  }\n}\n```\n\nThis approach:\n- Eliminates need for path resolution at runtime\n- Works identically in dev, build, and published contexts\n- Makes testing straightforward with no mocks needed",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verifying each preset can be retrieved by name, `isPreset()` correctly identifies valid/invalid presets, and `getPresetContent()` returns non-empty strings for all valid presets.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:54:15.152Z"
           },
           {
             "id": 3,
@@ -11941,14 +11947,16 @@
               2
             ],
             "details": "Testing steps:\n\n1. **Development mode test:**\n   - Import LoopPresetService in a test file\n   - Verify all presets are accessible via `getPresetContent()`\n   - Run `npm run test -w @tm/core` to execute unit tests\n\n2. **Build test:**\n   - Run `npm run build` from root\n   - Check that tm-core code is properly bundled in `dist/`\n   - Verify no runtime errors when importing the built module\n\n3. **Package distribution test:**\n   - Run `npm pack` from root to create tarball\n   - Extract tarball contents: `tar -xzf task-master-ai-*.tgz`\n   - Verify bundled code includes preset strings\n   - Test importing from extracted package works\n\n4. **Integration test:**\n   - Create integration test that instantiates LoopPresetService\n   - Verify it can load all 5 presets without errors\n   - Verify preset content contains expected markers (`<loop-complete>`, `<loop-blocked>`)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npm run build && npm pack` and extract tarball to verify preset content is embedded. Create integration test in `packages/tm-core/tests/integration/` that loads each preset and validates content structure. Test should pass in CI environment without any filesystem setup.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T22:57:45.565Z"
           }
         ],
         "complexity": 5,
         "recommendedSubtasks": 3,
-        "expansionPrompt": "Break down into: 1) Investigate current build setup (tsdown config, package.json files) and determine best bundling approach, 2) Implement chosen approach (either copy assets or inline content), 3) Test that presets are accessible in both development and after npm pack"
+        "expansionPrompt": "Break down into: 1) Investigate current build setup (tsdown config, package.json files) and determine best bundling approach, 2) Implement chosen approach (either copy assets or inline content), 3) Test that presets are accessible in both development and after npm pack",
+        "updatedAt": "2026-01-08T22:57:45.565Z"
       },
       {
         "id": "18",
@@ -12028,9 +12036,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T22:35:33.808Z",
+      "lastModified": "2026-01-08T23:02:17.674Z",
       "taskCount": 18,
-      "completedCount": 4,
+      "completedCount": 6,
       "tags": [
         "loop"
       ]

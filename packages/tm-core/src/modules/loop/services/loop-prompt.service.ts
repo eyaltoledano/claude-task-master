@@ -40,4 +40,27 @@ export class LoopPromptService {
 	protected getPresetService(): LoopPresetService {
 		return this.presetService;
 	}
+
+	/**
+	 * Build the context header for a loop iteration
+	 * Includes iteration count, file references, and optional tag filter
+	 * @param config - Loop configuration
+	 * @param iteration - Current iteration number (1-indexed)
+	 * @returns Formatted context header string
+	 */
+	buildContextHeader(config: LoopConfig, iteration: number): string {
+		const lines = [
+			`# Loop Iteration ${iteration} of ${config.iterations}`,
+			``,
+			`## Context`,
+			`- Progress file: @${config.progressFile}`,
+			`- Tasks file: @.taskmaster/tasks/tasks.json`
+		];
+
+		if (config.tag) {
+			lines.push(`- Tag filter: ${config.tag}`);
+		}
+
+		return lines.join('\n');
+	}
 }
