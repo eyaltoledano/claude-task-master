@@ -11221,7 +11221,7 @@
           "3",
           "4"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11256,9 +11256,10 @@
               2
             ],
             "details": "Add async generatePrompt method that:\n1. Accepts PromptGenerationOptions parameter\n2. Calls presetService.resolvePrompt() to get base prompt content\n3. Calls buildContextHeader() to get iteration context\n4. Combines context header and base prompt with double newline separator\n5. Returns the complete prompt string",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test with mock LoopPresetService that returns known prompt. Verify output combines header and base prompt correctly. Test with different iteration numbers and preset values.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:04:58.159Z"
           },
           {
             "id": 4,
@@ -11270,9 +11271,10 @@
               3
             ],
             "details": "1. Create or update `packages/tm-core/src/modules/loop/services/index.ts` to export LoopPromptService and PromptGenerationOptions\n2. Update `packages/tm-core/src/modules/loop/index.ts` to re-export from services\n3. Ensure proper TypeScript type exports for PromptGenerationOptions interface",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify exports are accessible from package entry points. Test that importing { LoopPromptService, PromptGenerationOptions } works from module index.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:06:59.106Z"
           },
           {
             "id": 5,
@@ -11285,15 +11287,16 @@
               4
             ],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-prompt.service.spec.ts` with:\n1. Mock LoopPresetService with jest.fn() or vi.fn()\n2. Test generatePrompt includes iteration number in output\n3. Test output includes file references with @ syntax\n4. Test tag is included when specified in config\n5. Test tag is omitted when not specified\n6. Snapshot tests for generated prompts from each preset (default, test-coverage, linting, duplication, entropy)\n7. Test proper combination of header and base prompt content",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `npm run test -w @tm/core` to execute tests. Verify all tests pass. Review snapshot files to ensure prompt formats match expected structure.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:09:45.708Z"
           }
         ],
         "complexity": 3,
         "recommendedSubtasks": 0,
         "expansionPrompt": "No expansion needed - this is a straightforward string composition service.",
-        "updatedAt": "2026-01-08T23:02:17.655Z"
+        "updatedAt": "2026-01-08T23:09:45.708Z"
       },
       {
         "id": "7",
@@ -11307,7 +11310,7 @@
           "5",
           "6"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -11315,9 +11318,10 @@
             "description": "Create LoopExecutorService with spawn() for Claude CLI following claude-executor.ts patterns, capturing stdout/stderr output.",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-executor.service.ts` with:\n\n1. Define `ExecutionResult` interface with fields: `iteration`, `output`, `completionCheck`, `exitCode`\n2. Create `LoopExecutorService` class with constructor accepting `LoopCompletionService` dependency\n3. Implement `executeIteration(prompt: string, iteration: number, projectRoot: string)` method:\n   - Use `spawn('claude', ['-p', prompt], { cwd: projectRoot, shell: false, stdio: ['ignore', 'pipe', 'pipe'] })`\n   - Attach data handlers to stdout/stderr to accumulate output in a buffer string\n   - Store process reference in `this.currentProcess` for lifecycle management\n4. Follow patterns from `packages/tm-core/src/modules/execution/executors/claude-executor.ts` (lines 96-100)",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:12:39.772Z"
           },
           {
             "id": 2,
@@ -11327,9 +11331,10 @@
               1
             ],
             "details": "Extend `executeIteration()` implementation:\n\n1. Track `startTime = Date.now()` at iteration start\n2. In 'close' event handler:\n   - Calculate `duration = Date.now() - startTime`\n   - Call `this.completionService.parseOutput(output)` to get `CompletionCheckResult`\n   - Build `LoopIteration` object with iteration number, status, duration, and message from marker reason\n   - Resolve Promise with `ExecutionResult` containing iteration, output, completionCheck, exitCode\n3. Implement private `determineStatus(code: number, check: CompletionCheckResult)` method:\n   - Return 'complete' if `check.isComplete`\n   - Return 'blocked' if `check.isBlocked`\n   - Return 'error' if `code !== 0`\n   - Return 'success' otherwise\n4. Import `LoopCompletionService` and `CompletionCheckResult` from `./loop-completion.service.js`",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:14:10.517Z"
           },
           {
             "id": 3,
@@ -11340,9 +11345,10 @@
               2
             ],
             "details": "Complete lifecycle management:\n\n1. Implement `async stop(): Promise<void>` method:\n   - Check if `this.currentProcess` is truthy\n   - Call `this.currentProcess.kill('SIGTERM')`\n   - Set `this.currentProcess = null`\n2. Add 'error' event handler in `executeIteration()`:\n   - Set `this.currentProcess = null`\n   - Resolve with error result: status='error', message=error.message, exitCode=1\n   - Include empty completionCheck: `{ isComplete: false, isBlocked: false }`\n3. Ensure `this.currentProcess = null` is set in both 'close' and 'error' handlers before resolving\n4. Export types: `ExecutionResult` interface for consumers\n5. Add proper type for currentProcess (`ChildProcess | null`) avoiding `any`",
-            "status": "pending",
+            "status": "done",
             "testStrategy": null,
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:15:31.790Z"
           },
           {
             "id": 4,
@@ -11354,14 +11360,16 @@
               3
             ],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop-executor.service.spec.ts`:\n\n1. Mock `child_process.spawn` using vi.mock\n2. Create mock EventEmitter-based process object with stdout/stderr streams\n3. Test cases:\n   - **Successful execution**: spawn returns exit code 0, no completion markers\n   - **Completion marker detection**: output contains `<loop-complete>`, verify completionCheck.isComplete=true\n   - **Blocked marker detection**: output contains `<loop-blocked>`, verify completionCheck.isBlocked=true\n   - **Non-zero exit code**: spawn returns exit code 1, verify status='error'\n   - **Process spawn error**: emit 'error' event, verify error result with message\n   - **Stop running process**: call stop() while process running, verify SIGTERM sent\n4. Mock LoopCompletionService.parseOutput() to return appropriate CompletionCheckResult\n5. Verify duration timing is captured (use fake timers)\n6. Test that currentProcess is properly cleaned up after completion/error",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests with mocked spawn: successful execution returning output, detecting completion markers in output, handling non-zero exit codes, handling process errors, verifying stop() kills process. Use vi.mock for child_process, EventEmitter mocks for process streams.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:16:59.635Z"
           }
         ],
         "complexity": 6,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Break down into: 1) Implement basic spawn mechanism with stdio handling following claude-executor.ts patterns, 2) Implement output capture and completion detection integration, 3) Implement process lifecycle management (stop, error handling, cleanup), 4) Write unit tests with mocked spawn for all scenarios (success, completion markers, errors, timeouts)"
+        "expansionPrompt": "Break down into: 1) Implement basic spawn mechanism with stdio handling following claude-executor.ts patterns, 2) Implement output capture and completion detection integration, 3) Implement process lifecycle management (stop, error handling, cleanup), 4) Write unit tests with mocked spawn for all scenarios (success, completion markers, errors, timeouts)",
+        "updatedAt": "2026-01-08T23:16:59.635Z"
       },
       {
         "id": "8",
@@ -11378,7 +11386,7 @@
           "6",
           "7"
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -11386,9 +11394,10 @@
             "description": "Create the LoopService class with constructor that accepts LoopServiceOptions and instantiates all required sub-services (LoopPresetService, LoopProgressService, LoopCompletionService, LoopPromptService, LoopExecutorService).",
             "dependencies": [],
             "details": "Create `packages/tm-core/src/modules/loop/services/loop.service.ts` with:\n\n1. Define `LoopServiceOptions` interface with `projectRoot: string`\n2. Create `LoopService` class with private readonly fields:\n   - `projectRoot: string`\n   - `presetService: LoopPresetService`\n   - `progressService: LoopProgressService`\n   - `completionService: LoopCompletionService`\n   - `promptService: LoopPromptService`\n   - `executorService: LoopExecutorService`\n   - `isRunning: boolean = false`\n3. Constructor instantiates all services with appropriate parameters:\n   - `LoopPresetService()` (no params)\n   - `LoopProgressService(projectRoot)`\n   - `LoopCompletionService()` (no params)\n   - `LoopPromptService(presetService)` (DI)\n   - `LoopExecutorService(completionService)` (DI)\n4. Export the class and interfaces from index.ts\n\nFollow the same DI pattern as `WorkflowService` in the workflow module.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit tests verifying: constructor creates all sub-service instances, services are accessible via private fields, options are stored correctly. Test with mock services to verify DI wiring.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:20:04.464Z"
           },
           {
             "id": 2,
@@ -11398,9 +11407,10 @@
               1
             ],
             "details": "Implement the `run()` method:\n\n1. Set `this.isRunning = true` at start\n2. Initialize empty `iterations: LoopIteration[]` array and `tasksCompleted = 0` counter\n3. Call `progressService.initializeProgressFile()` with config data (preset, iterations, tag)\n4. Loop from `i = 1` to `config.iterations` while `this.isRunning`:\n   a. Generate prompt via `promptService.generatePrompt({ config, iteration: i, projectRoot })`\n   b. Execute iteration via `executorService.executeIteration(prompt, i, projectRoot)`\n   c. Push `result.iteration` to iterations array\n   d. Log progress via `progressService.appendProgress()` with timestamp, iteration, taskId, note\n   e. Check completion: if `result.completionCheck.isComplete`, return early with `finalStatus: 'all_complete'`\n   f. Check blocked: if `result.completionCheck.isBlocked`, return early with `finalStatus: 'blocked'`\n   g. Increment `tasksCompleted` if iteration succeeded\n   h. Sleep between iterations (except last) using `config.sleepSeconds`\n5. Return final `LoopResult` with `finalStatus: 'max_iterations'`\n\nUse `buildResult()` private helper to construct LoopResult consistently.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Integration tests with mocked executor covering: 3 successful iterations, early exit on completion marker, early exit on blocked marker, hitting max iterations, proper progress logging after each iteration. Verify iterations array and tasksCompleted counter are accurate.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-01-08T23:21:46.801Z"
           },
           {
             "id": 3,
@@ -11431,7 +11441,8 @@
         ],
         "complexity": 7,
         "recommendedSubtasks": 4,
-        "expansionPrompt": "Break down into: 1) Implement service constructor with DI for all sub-services, 2) Implement main run() loop with iteration tracking and completion detection, 3) Implement stop() functionality and sleep mechanism, 4) Write integration tests with mocked executor covering all termination scenarios (completion marker, blocked marker, max iterations, error)"
+        "expansionPrompt": "Break down into: 1) Implement service constructor with DI for all sub-services, 2) Implement main run() loop with iteration tracking and completion detection, 3) Implement stop() functionality and sleep mechanism, 4) Write integration tests with mocked executor covering all termination scenarios (completion marker, blocked marker, max iterations, error)",
+        "updatedAt": "2026-01-08T23:21:46.801Z"
       },
       {
         "id": "9",
@@ -12036,9 +12047,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-01-08T23:02:17.674Z",
+      "lastModified": "2026-01-08T23:21:46.815Z",
       "taskCount": 18,
-      "completedCount": 6,
+      "completedCount": 8,
       "tags": [
         "loop"
       ]
