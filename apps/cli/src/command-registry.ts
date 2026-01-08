@@ -13,6 +13,7 @@ import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
+import { LoopCommand } from './commands/loop.command.js';
 import { LoginCommand } from './commands/login.command.js';
 import { LogoutCommand } from './commands/logout.command.js';
 import { NextCommand } from './commands/next.command.js';
@@ -87,6 +88,12 @@ export class CommandRegistry {
 			description:
 				'AI agent orchestration for TDD workflow (start, resume, next, complete, commit, status, abort)',
 			commandClass: AutopilotCommand as any,
+			category: 'development'
+		},
+		{
+			name: 'loop',
+			description: 'Run Claude Code in a loop, one task per iteration',
+			commandClass: LoopCommand as any,
 			category: 'development'
 		},
 
