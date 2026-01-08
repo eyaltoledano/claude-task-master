@@ -11,6 +11,15 @@ import type {
 	LoopCompletionMarker
 } from './types.js';
 
+// Also verify types are exported from the barrel
+import type {
+	LoopPreset as BarrelLoopPreset,
+	LoopConfig as BarrelLoopConfig,
+	LoopIteration as BarrelLoopIteration,
+	LoopResult as BarrelLoopResult,
+	LoopCompletionMarker as BarrelLoopCompletionMarker
+} from './index.js';
+
 describe('Loop Types', () => {
 	describe('LoopPreset', () => {
 		it('accepts valid preset values', () => {
@@ -145,6 +154,37 @@ describe('Loop Types', () => {
 			};
 			expect(marker.type).toBe('blocked');
 			expect(marker.reason).toBe('Missing API key');
+		});
+	});
+
+	describe('Barrel exports from index.ts', () => {
+		it('exports all types from barrel', () => {
+			// Verify types are accessible from barrel export
+			const preset: BarrelLoopPreset = 'default';
+			const config: BarrelLoopConfig = {
+				iterations: 5,
+				prompt: preset,
+				progressFile: '/progress.txt',
+				sleepSeconds: 2
+			};
+			const iteration: BarrelLoopIteration = {
+				iteration: 1,
+				status: 'success'
+			};
+			const result: BarrelLoopResult = {
+				iterations: [iteration],
+				totalIterations: 1,
+				tasksCompleted: 1,
+				finalStatus: 'all_complete'
+			};
+			const marker: BarrelLoopCompletionMarker = {
+				type: 'complete',
+				reason: 'Done'
+			};
+
+			expect(config.prompt).toBe('default');
+			expect(result.iterations).toHaveLength(1);
+			expect(marker.type).toBe('complete');
 		});
 	});
 });

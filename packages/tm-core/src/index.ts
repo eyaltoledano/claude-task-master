@@ -147,6 +147,15 @@ export type {
 	TaskComplexityData
 } from './modules/reports/types.js';
 
+// Loop types
+export type {
+	LoopPreset,
+	LoopConfig,
+	LoopIteration,
+	LoopResult,
+	LoopCompletionMarker
+} from './modules/loop/index.js';
+
 // Prompts types
 export type {
 	PromptAction,
