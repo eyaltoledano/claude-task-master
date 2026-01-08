@@ -61,26 +61,7 @@ async function withFileLock(filepath, callback) {
 	let acquired = false;
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			// Check for stale lock - wrap in try-catch to handle race conditions
-			try {
-				const lockStat = await fsPromises.stat(lockPath);
-				const age = Date.now() - lockStat.mtimeMs;
-				if (age > staleLockAge) {
-					// Stale lock - try to remove it
-					try {
-						await fsPromises.unlink(lockPath);
-					} catch {
-						// Ignore - another process may have removed it
-					}
-				}
-			} catch (staleCheckErr) {
-				// Lock doesn't exist or was removed - that's fine, continue to acquire
-				if (staleCheckErr.code !== 'ENOENT') {
-					throw staleCheckErr;
-				}
-			}
-
-			// Try to create lock file exclusively
+			// Try to create lock file exclusively first
 			const lockContent = JSON.stringify({
 				pid: process.pid,
 				timestamp: Date.now()
@@ -90,7 +71,38 @@ async function withFileLock(filepath, callback) {
 			break;
 		} catch (err) {
 			if (err.code === 'EEXIST') {
-				// Lock file exists, wait and retry
+				// Lock file exists - check if it's stale
+				try {
+					const lockStat = await fsPromises.stat(lockPath);
+					const age = Date.now() - lockStat.mtimeMs;
+					if (age > staleLockAge) {
+						// Stale lock - use atomic rename to safely take ownership
+						// This prevents race where we delete another process's fresh lock
+						const stalePath = `${lockPath}.stale.${process.pid}.${Date.now()}`;
+						try {
+							await fsPromises.rename(lockPath, stalePath);
+							// We successfully took ownership of the stale lock
+							// Clean it up and retry immediately
+							try {
+								await fsPromises.unlink(stalePath);
+							} catch {
+								// Ignore cleanup errors
+							}
+							continue; // Retry lock acquisition
+						} catch {
+							// Rename failed - another process handled it or lock was refreshed
+							// Just continue to retry
+						}
+					}
+				} catch (statErr) {
+					// Lock was removed between writeFile and stat - retry immediately
+					if (statErr.code === 'ENOENT') {
+						continue;
+					}
+					throw statErr;
+				}
+
+				// Lock exists and isn't stale (or we couldn't handle it), wait and retry
 				if (attempt < maxRetries - 1) {
 					const waitMs = retryDelay * Math.pow(2, attempt);
 					await sleep(waitMs);
@@ -151,27 +163,7 @@ function withFileLockSync(filepath, callback) {
 	let acquired = false;
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			// Check for stale lock - wrap in try-catch to handle race conditions
-			// where another process removes the lock between our check and stat
-			try {
-				const lockStat = fs.statSync(lockPath);
-				const age = Date.now() - lockStat.mtimeMs;
-				if (age > staleLockAge) {
-					// Stale lock - try to remove it
-					try {
-						fs.unlinkSync(lockPath);
-					} catch {
-						// Ignore - another process may have removed it
-					}
-				}
-			} catch (staleCheckErr) {
-				// Lock doesn't exist or was removed - that's fine, continue to acquire
-				if (staleCheckErr.code !== 'ENOENT') {
-					throw staleCheckErr;
-				}
-			}
-
-			// Try to create lock file exclusively
+			// Try to create lock file exclusively first
 			const lockContent = JSON.stringify({
 				pid: process.pid,
 				timestamp: Date.now()
@@ -181,10 +173,40 @@ function withFileLockSync(filepath, callback) {
 			break;
 		} catch (err) {
 			if (err.code === 'EEXIST') {
-				// Lock file exists, wait and retry
+				// Lock file exists - check if it's stale
+				try {
+					const lockStat = fs.statSync(lockPath);
+					const age = Date.now() - lockStat.mtimeMs;
+					if (age > staleLockAge) {
+						// Stale lock - use atomic rename to safely take ownership
+						// This prevents race where we delete another process's fresh lock
+						const stalePath = `${lockPath}.stale.${process.pid}.${Date.now()}`;
+						try {
+							fs.renameSync(lockPath, stalePath);
+							// We successfully took ownership of the stale lock
+							// Clean it up and retry immediately
+							try {
+								fs.unlinkSync(stalePath);
+							} catch {
+								// Ignore cleanup errors
+							}
+							continue; // Retry lock acquisition
+						} catch (renameErr) {
+							// Rename failed - another process handled it or lock was refreshed
+							// Just continue to retry
+						}
+					}
+				} catch (statErr) {
+					// Lock was removed between writeFile and stat - retry immediately
+					if (statErr.code === 'ENOENT') {
+						continue;
+					}
+					throw statErr;
+				}
+
+				// Lock exists and isn't stale (or we couldn't handle it), wait and retry
 				if (attempt < maxRetries - 1) {
 					// Synchronous sleep using Atomics.wait (proper non-busy wait)
-					// This is the most efficient way to sleep synchronously in Node.js
 					const waitMs = retryDelay * Math.pow(2, attempt);
 					const sharedBuffer = new SharedArrayBuffer(4);
 					const int32 = new Int32Array(sharedBuffer);
