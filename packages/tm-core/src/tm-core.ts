@@ -9,6 +9,7 @@ import { ConfigDomain } from './modules/config/config-domain.js';
 import { ConfigManager } from './modules/config/managers/config-manager.js';
 import { GitDomain } from './modules/git/git-domain.js';
 import { IntegrationDomain } from './modules/integration/integration-domain.js';
+import { LoopDomain } from './modules/loop/loop-domain.js';
 import { TasksDomain } from './modules/tasks/tasks-domain.js';
 import { WorkflowDomain } from './modules/workflow/workflow-domain.js';
 
