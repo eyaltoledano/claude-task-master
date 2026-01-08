@@ -1,11 +1,15 @@
 /**
  * @fileoverview File operations with atomic writes and cross-process locking
+ *
+ * Uses steno for atomic writes (same pattern as workflow-state-manager.ts)
+ * and proper-lockfile for cross-process locking to prevent lost updates.
  */
 
 import { constants } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import lockfile from 'proper-lockfile';
+import { Writer } from 'steno';
 import type { FileStorageData } from './format-handler.js';
 
 /**
@@ -26,6 +30,21 @@ const LOCK_OPTIONS = {
  * Handles atomic file operations with cross-process locking mechanism
  */
 export class FileOperations {
+	/** Map of file paths to steno Writers for reuse */
+	private writers = new Map<string, Writer>();
+
+	/**
+	 * Get or create a steno Writer for a file path
+	 */
+	private getWriter(filePath: string): Writer {
+		let writer = this.writers.get(filePath);
+		if (!writer) {
+			writer = new Writer(filePath);
+			this.writers.set(filePath, writer);
+		}
+		return writer;
+	}
+
 	/**
 	 * Read and parse JSON file
 	 */
@@ -46,6 +65,7 @@ export class FileOperations {
 
 	/**
 	 * Write JSON file with atomic operation and cross-process locking.
+	 * Uses steno for atomic writes and proper-lockfile for cross-process safety.
 	 * WARNING: This replaces the entire file. For concurrent modifications,
 	 * use modifyJson() instead to prevent lost updates.
 	 */
@@ -60,7 +80,11 @@ export class FileOperations {
 		let release: (() => Promise<void>) | null = null;
 		try {
 			release = await lockfile.lock(filePath, LOCK_OPTIONS);
-			await this.performAtomicWrite(filePath, data);
+
+			// Use steno Writer for atomic writes (same pattern as workflow-state-manager)
+			const content = JSON.stringify(data, null, 2);
+			const writer = this.getWriter(filePath);
+			await writer.write(content);
 		} finally {
 			if (release) {
 				try {
@@ -74,6 +98,7 @@ export class FileOperations {
 
 	/**
 	 * Read-modify-write JSON file with cross-process locking.
+	 * Uses steno for atomic writes and proper-lockfile for cross-process safety.
 	 * Re-reads file inside lock to prevent lost updates from stale snapshots.
 	 * @param filePath - Path to the JSON file
 	 * @param modifier - Function that receives current data and returns modified data
@@ -104,8 +129,10 @@ export class FileOperations {
 			// Apply modification
 			const newData = await modifier(currentData);
 
-			// Write atomically
-			await this.performAtomicWrite(filePath, newData);
+			// Write atomically using steno (same pattern as workflow-state-manager)
+			const content = JSON.stringify(newData, null, 2);
+			const writer = this.getWriter(filePath);
+			await writer.write(content);
 		} finally {
 			if (release) {
 				try {
@@ -132,31 +159,6 @@ export class FileOperations {
 			if (err.code !== 'EEXIST') {
 				throw err;
 			}
-		}
-	}
-
-	/**
-	 * Perform atomic write operation using temporary file
-	 */
-	private async performAtomicWrite(filePath: string, data: any): Promise<void> {
-		const tempPath = `${filePath}.tmp.${process.pid}`;
-
-		try {
-			// Write to temp file first
-			const content = JSON.stringify(data, null, 2);
-			await fs.writeFile(tempPath, content, 'utf-8');
-
-			// Atomic rename
-			await fs.rename(tempPath, filePath);
-		} catch (error: any) {
-			// Clean up temp file if it exists
-			try {
-				await fs.unlink(tempPath);
-			} catch {
-				// Ignore cleanup errors
-			}
-
-			throw new Error(`Failed to write file ${filePath}: ${error.message}`);
 		}
 	}
 
