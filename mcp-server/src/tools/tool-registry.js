@@ -122,7 +122,7 @@ export const coreTools = [
 ];
 
 /**
- * Standard tools array containing the 15 most commonly used tools
+ * Standard tools array containing the 16 most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [
@@ -133,7 +133,9 @@ export const standardTools = [
 	'add_subtask',
 	'remove_task',
 	'add_task',
-	'complexity_report'
+	'complexity_report',
+	'loop_start',
+	'loop_presets'
 ];
 
 /**
