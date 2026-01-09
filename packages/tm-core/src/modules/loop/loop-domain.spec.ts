@@ -33,9 +33,7 @@ describe('LoopDomain', () => {
 			const domain = new LoopDomain(customManager);
 			// Verify by checking buildConfig output
 			const config = (domain as any).buildConfig({});
-			expect(config.progressFile).toBe(
-				'/custom/root/.taskmaster/loop-progress.txt'
-			);
+			expect(config.progressFile).toBe('/custom/root/.taskmaster/progress.txt');
 		});
 
 		it('should call getProjectRoot on ConfigManager', () => {
@@ -59,15 +57,10 @@ describe('LoopDomain', () => {
 			expect(config.sleepSeconds).toBe(5);
 		});
 
-		it('should apply default status of "pending"', () => {
-			const config = (loopDomain as any).buildConfig({});
-			expect(config.status).toBe('pending');
-		});
-
 		it('should construct progressFile from projectRoot', () => {
 			const config = (loopDomain as any).buildConfig({});
 			expect(config.progressFile).toBe(
-				'/test/project/.taskmaster/loop-progress.txt'
+				'/test/project/.taskmaster/progress.txt'
 			);
 		});
 

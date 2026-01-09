@@ -280,7 +280,9 @@ describe('loop command', () => {
 		});
 
 		it('should accept multiple options together', () => {
-			const { output } = runLoop('-n 3 -p default --sleep 2 -t test --status pending');
+			const { output } = runLoop(
+				'-n 3 -p default --sleep 2 -t test --status pending'
+			);
 
 			// Should NOT contain validation errors
 			expect(output.toLowerCase()).not.toContain('invalid iterations');

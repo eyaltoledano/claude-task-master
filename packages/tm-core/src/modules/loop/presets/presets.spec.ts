@@ -206,11 +206,14 @@ describe('Preset Structure Validation', () => {
 			expect(content).toMatch(/^\d+\./m);
 		});
 
-		it.each(PRESET_NAMES)('%s contains Important or Completion section', (preset) => {
-			const content = getPreset(preset);
-			// Check for Important section or Completion Criteria section
-			expect(content).toMatch(/## Important|## Completion/i);
-		});
+		it.each(PRESET_NAMES)(
+			'%s contains Important or Completion section',
+			(preset) => {
+				const content = getPreset(preset);
+				// Check for Important section or Completion Criteria section
+				expect(content).toMatch(/## Important|## Completion/i);
+			}
+		);
 	});
 
 	describe('default preset specific requirements', () => {
@@ -226,18 +229,21 @@ describe('Preset Structure Validation', () => {
 });
 
 describe('Preset Content Consistency', () => {
-	it.each(PRESET_NAMES)('%s mentions single-task-per-iteration constraint', (preset) => {
-		const content = getPreset(preset);
-		// Check for variations of the single-task constraint
-		const hasConstraint =
-			content.toLowerCase().includes('one task') ||
-			content.toLowerCase().includes('one test') ||
-			content.toLowerCase().includes('one fix') ||
-			content.toLowerCase().includes('one refactor') ||
-			content.toLowerCase().includes('one cleanup') ||
-			content.toLowerCase().includes('only one');
-		expect(hasConstraint).toBe(true);
-	});
+	it.each(PRESET_NAMES)(
+		'%s mentions single-task-per-iteration constraint',
+		(preset) => {
+			const content = getPreset(preset);
+			// Check for variations of the single-task constraint
+			const hasConstraint =
+				content.toLowerCase().includes('one task') ||
+				content.toLowerCase().includes('one test') ||
+				content.toLowerCase().includes('one fix') ||
+				content.toLowerCase().includes('one refactor') ||
+				content.toLowerCase().includes('one cleanup') ||
+				content.toLowerCase().includes('only one');
+			expect(hasConstraint).toBe(true);
+		}
+	);
 
 	it.each(PRESET_NAMES)('%s has progress file reference', (preset) => {
 		const content = getPreset(preset);

@@ -4,13 +4,13 @@
  */
 
 import type { ConfigManager } from '../config/managers/config-manager.js';
-import { LoopService } from './services/loop.service.js';
 import {
+	PRESET_NAMES,
 	isPreset as checkIsPreset,
-	getPreset,
-	PRESET_NAMES
+	getPreset
 } from './presets/index.js';
-import type { LoopConfig, LoopResult, LoopPreset } from './types.js';
+import { LoopService } from './services/loop.service.js';
+import type { LoopConfig, LoopPreset, LoopResult } from './types.js';
 
 /**
  * Loop Domain - Unified API for loop operations
@@ -22,6 +22,26 @@ export class LoopDomain {
 
 	constructor(configManager: ConfigManager) {
 		this.projectRoot = configManager.getProjectRoot();
+	}
+
+	// ========== Sandbox Auth Operations ==========
+
+	/**
+	 * Check if Docker sandbox auth is ready
+	 * @returns true if ready, false if auth needed
+	 */
+	checkSandboxAuth(): boolean {
+		const service = new LoopService({ projectRoot: this.projectRoot });
+		return service.checkSandboxAuth();
+	}
+
+	/**
+	 * Run Docker sandbox session for user authentication
+	 * Blocks until user completes auth
+	 */
+	runInteractiveAuth(): void {
+		const service = new LoopService({ projectRoot: this.projectRoot });
+		service.runInteractiveAuth();
 	}
 
 	// ========== Loop Operations ==========
@@ -83,7 +103,9 @@ export class LoopDomain {
 			return getPreset(prompt);
 		}
 		if (!readFile) {
-			throw new Error(`Custom prompt file requires readFile callback: ${prompt}`);
+			throw new Error(
+				`Custom prompt file requires readFile callback: ${prompt}`
+			);
 		}
 		return readFile(prompt);
 	}
@@ -109,8 +131,7 @@ export class LoopDomain {
 			iterations: partial.iterations ?? 10,
 			prompt: partial.prompt ?? 'default',
 			progressFile:
-				partial.progressFile ??
-				`${this.projectRoot}/.taskmaster/progress.txt`,
+				partial.progressFile ?? `${this.projectRoot}/.taskmaster/progress.txt`,
 			sleepSeconds: partial.sleepSeconds ?? 5,
 			tag: partial.tag
 		};

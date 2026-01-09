@@ -155,6 +155,5 @@ describe('Loop Types', () => {
 			expect(config.prompt).toBe('default');
 			expect(result.iterations).toHaveLength(1);
 		});
-
 	});
 });

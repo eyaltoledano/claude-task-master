@@ -1,9 +1,8 @@
 /**
- * @fileoverview Loop Service - Simplified orchestrator for loop execution
- * All logic inlined: preset resolution, prompt generation, execution, progress tracking, completion detection
+ * @fileoverview Loop Service - Orchestrates running Claude Code in Docker sandbox iterations
  */
 
-import { type ChildProcess, spawn } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_PRESET } from '../presets/default.js';
@@ -18,163 +17,209 @@ import type {
 	LoopResult
 } from '../types.js';
 
-/**
- * Options for LoopService constructor
- */
 export interface LoopServiceOptions {
-	/** Absolute path to the project root directory */
 	projectRoot: string;
 }
 
-/**
- * LoopService - Simplified orchestrator for loop execution
- * All logic inlined: no sub-services required
- */
+/** Preset name to content mapping */
+const PRESETS: Record<LoopPreset, string> = {
+	default: DEFAULT_PRESET,
+	'test-coverage': TEST_COVERAGE_PRESET,
+	linting: LINTING_PRESET,
+	duplication: DUPLICATION_PRESET,
+	entropy: ENTROPY_PRESET
+};
+
 export class LoopService {
 	private readonly projectRoot: string;
 	private _isRunning = false;
-	private currentProcess: ChildProcess | null = null;
 
-	/**
-	 * Create a new LoopService
-	 * @param options - Service configuration options
-	 */
 	constructor(options: LoopServiceOptions) {
 		this.projectRoot = options.projectRoot;
 	}
 
-	/**
-	 * Get the project root directory
-	 */
 	getProjectRoot(): string {
 		return this.projectRoot;
 	}
 
-	/**
-	 * Check if a loop is currently running
-	 */
 	get isRunning(): boolean {
 		return this._isRunning;
 	}
 
-	/**
-	 * Run a loop with the given configuration
-	 * @param config - Loop configuration
-	 * @returns Promise resolving to the loop result
-	 */
+	/** Check if Docker sandbox auth is ready */
+	checkSandboxAuth(): boolean {
+		const result = spawnSync(
+			'docker',
+			['sandbox', 'run', 'claude', '-p', 'Say OK'],
+			{
+				cwd: this.projectRoot,
+				timeout: 30000,
+				encoding: 'utf-8',
+				stdio: ['inherit', 'pipe', 'pipe'] // stdin from terminal, capture stdout/stderr
+			}
+		);
+		const output = (result.stdout || '') + (result.stderr || '');
+		return output.toLowerCase().includes('ok');
+	}
+
+	/** Run interactive Docker sandbox session for user authentication */
+	runInteractiveAuth(): void {
+		spawnSync(
+			'docker',
+			[
+				'sandbox',
+				'run',
+				'claude',
+				"You're authenticated! Press Ctrl+C to continue."
+			],
+			{
+				cwd: this.projectRoot,
+				stdio: 'inherit'
+			}
+		);
+	}
+
+	/** Run a loop with the given configuration */
 	async run(config: LoopConfig): Promise<LoopResult> {
 		this._isRunning = true;
 		const iterations: LoopIteration[] = [];
 		let tasksCompleted = 0;
 
-		// Initialize progress file (AI will update it during execution)
 		await this.initProgressFile(config);
 
 		for (let i = 1; i <= config.iterations && this._isRunning; i++) {
-			// Generate prompt for this iteration using inlined method
+			// Show iteration header
+			console.log();
+			console.log(`━━━ Iteration ${i} of ${config.iterations} ━━━`);
+
 			const prompt = await this.buildPrompt(config, i);
+			const iteration = this.executeIteration(prompt, i);
+			iterations.push(iteration);
 
-			// Execute iteration using inlined method
-			const result = await this.executeIterationInline(prompt, i);
-
-			iterations.push(result.iteration);
-
-			// Check for completion
-			if (result.completionCheck.isComplete) {
-				this._isRunning = false;
-				const loopResult = this.buildResult(
+			// Check for early exit conditions
+			if (iteration.status === 'complete') {
+				return this.finalize(
+					config,
 					iterations,
 					tasksCompleted + 1,
 					'all_complete'
 				);
-				await this.appendFinalSummary(config.progressFile, loopResult);
-				return loopResult;
 			}
-
-			if (result.completionCheck.isBlocked) {
-				this._isRunning = false;
-				const loopResult = this.buildResult(
-					iterations,
-					tasksCompleted,
-					'blocked'
-				);
-				await this.appendFinalSummary(config.progressFile, loopResult);
-				return loopResult;
+			if (iteration.status === 'blocked') {
+				return this.finalize(config, iterations, tasksCompleted, 'blocked');
 			}
-
-			if (result.iteration.status === 'success') {
+			if (iteration.status === 'success') {
 				tasksCompleted++;
 			}
 
 			// Sleep between iterations (except last)
 			if (i < config.iterations && config.sleepSeconds > 0) {
-				await this.sleep(config.sleepSeconds * 1000);
+				await new Promise((r) => setTimeout(r, config.sleepSeconds * 1000));
 			}
 		}
 
-		this._isRunning = false;
-		const loopResult = this.buildResult(
-			iterations,
-			tasksCompleted,
-			'max_iterations'
-		);
-		await this.appendFinalSummary(config.progressFile, loopResult);
-		return loopResult;
+		return this.finalize(config, iterations, tasksCompleted, 'max_iterations');
 	}
 
-	/**
-	 * Stop the currently running loop
-	 * Signals the loop to stop after the current iteration completes
-	 */
+	/** Stop the loop after current iteration completes */
 	stop(): void {
 		this._isRunning = false;
-		this.stopProcess();
 	}
 
-	/**
-	 * Build a LoopResult from iterations and status
-	 */
-	private buildResult(
+	// ========== Private Helpers ==========
+
+	private async finalize(
+		config: LoopConfig,
 		iterations: LoopIteration[],
 		tasksCompleted: number,
 		finalStatus: LoopResult['finalStatus']
-	): LoopResult {
-		return {
+	): Promise<LoopResult> {
+		this._isRunning = false;
+		const result: LoopResult = {
 			iterations,
 			totalIterations: iterations.length,
 			tasksCompleted,
 			finalStatus
 		};
+		await this.appendFinalSummary(config.progressFile, result);
+		return result;
 	}
 
-	/**
-	 * Sleep for the specified duration
-	 * @param ms - Duration in milliseconds
-	 */
-	private sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
+	private async initProgressFile(config: LoopConfig): Promise<void> {
+		await mkdir(path.dirname(config.progressFile), { recursive: true });
+		const tagLine = config.tag ? `# Tag: ${config.tag}\n` : '';
+		await writeFile(
+			config.progressFile,
+			`# Task Master Loop Progress
+# Started: ${new Date().toISOString()}
+# Preset: ${config.prompt}
+# Max Iterations: ${config.iterations}
+${tagLine}
+---
+
+`,
+			'utf-8'
+		);
 	}
 
-	// === Inlined from LoopCompletionService (Phase 2 simplification) ===
+	private async appendFinalSummary(
+		file: string,
+		result: LoopResult
+	): Promise<void> {
+		await appendFile(
+			file,
+			`
+---
+# Loop Complete: ${new Date().toISOString()}
+- Total iterations: ${result.totalIterations}
+- Tasks completed: ${result.tasksCompleted}
+- Final status: ${result.finalStatus}
+`,
+			'utf-8'
+		);
+	}
 
-	private readonly completePattern = /<loop-complete>([^<]*)<\/loop-complete>/i;
-	private readonly blockedPattern = /<loop-blocked>([^<]*)<\/loop-blocked>/i;
+	private isPreset(name: string): name is LoopPreset {
+		return name in PRESETS;
+	}
 
-	/**
-	 * Parse Claude output for completion markers
-	 * @param output - The output string to parse
-	 * @param exitCode - The exit code from the process
-	 * @returns Status and optional message
-	 */
+	private async resolvePrompt(prompt: string): Promise<string> {
+		if (this.isPreset(prompt)) {
+			return PRESETS[prompt];
+		}
+		const content = await readFile(prompt, 'utf-8');
+		if (!content.trim()) {
+			throw new Error(`Custom prompt file '${prompt}' is empty`);
+		}
+		return content;
+	}
+
+	private buildContextHeader(config: LoopConfig, iteration: number): string {
+		const tagInfo = config.tag ? ` (tag: ${config.tag})` : '';
+		return `@${config.progressFile} @.taskmaster/tasks/tasks.json @CLAUDE.md
+
+Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
+	}
+
+	private async buildPrompt(
+		config: LoopConfig,
+		iteration: number
+	): Promise<string> {
+		const basePrompt = await this.resolvePrompt(config.prompt);
+		return `${this.buildContextHeader(config, iteration)}\n\n${basePrompt}`;
+	}
+
 	private parseCompletion(
 		output: string,
-		exitCode: number | null
+		exitCode: number
 	): { status: LoopIteration['status']; message?: string } {
-		const completeMatch = output.match(this.completePattern);
+		const completeMatch = output.match(
+			/<loop-complete>([^<]*)<\/loop-complete>/i
+		);
 		if (completeMatch)
 			return { status: 'complete', message: completeMatch[1].trim() };
 
-		const blockedMatch = output.match(this.blockedPattern);
+		const blockedMatch = output.match(/<loop-blocked>([^<]*)<\/loop-blocked>/i);
 		if (blockedMatch)
 			return { status: 'blocked', message: blockedMatch[1].trim() };
 
@@ -183,222 +228,37 @@ export class LoopService {
 		return { status: 'success' };
 	}
 
-	// === Inlined from LoopProgressService (Phase 2 simplification) ===
-
-	/**
-	 * Initialize a new progress file with header information
-	 * @param config - Loop configuration
-	 */
-	private async initProgressFile(config: LoopConfig): Promise<void> {
-		const dir = path.dirname(config.progressFile);
-		await mkdir(dir, { recursive: true });
-
-		const lines = [
-			'# Task Master Loop Progress',
-			`# Started: ${new Date().toISOString()}`,
-			`# Preset: ${config.prompt}`,
-			`# Max Iterations: ${config.iterations}`
-		];
-
-		if (config.tag) {
-			lines.push(`# Tag: ${config.tag}`);
-		}
-
-		lines.push('', '---', '');
-		await writeFile(config.progressFile, lines.join('\n'), 'utf-8');
-	}
-
-	/**
-	 * Append final summary to the progress file after loop completes
-	 * @param file - Path to the progress file
-	 * @param result - Final loop result
-	 */
-	private async appendFinalSummary(
-		file: string,
-		result: LoopResult
-	): Promise<void> {
-		const lines = [
-			'',
-			'---',
-			`# Loop Complete: ${new Date().toISOString()}`,
-			`- Total iterations: ${result.totalIterations}`,
-			`- Tasks completed: ${result.tasksCompleted}`,
-			`- Final status: ${result.finalStatus}`,
-			''
-		];
-		await appendFile(file, lines.join('\n'), 'utf-8');
-	}
-
-	// === Inlined from LoopPromptService (Phase 2 simplification) ===
-
-	/** Preset content map for inline resolution */
-	private readonly presetContent: Record<LoopPreset, string> = {
-		default: DEFAULT_PRESET,
-		'test-coverage': TEST_COVERAGE_PRESET,
-		linting: LINTING_PRESET,
-		duplication: DUPLICATION_PRESET,
-		entropy: ENTROPY_PRESET
-	};
-
-	/** List of valid preset names */
-	private readonly presetNames: readonly LoopPreset[] = [
-		'default',
-		'test-coverage',
-		'linting',
-		'duplication',
-		'entropy'
-	];
-
-	/**
-	 * Check if a string is a valid preset name
-	 * @param name - The name to check
-	 * @returns True if the name is a valid preset
-	 */
-	private isPreset(name: string): name is LoopPreset {
-		return this.presetNames.includes(name as LoopPreset);
-	}
-
-	/**
-	 * Resolve a prompt string to its content
-	 * Handles both preset names and custom file paths
-	 * @param prompt - Preset name or file path
-	 * @returns Promise resolving to the prompt content
-	 */
-	private async resolvePrompt(prompt: string): Promise<string> {
-		if (this.isPreset(prompt)) {
-			return this.presetContent[prompt];
-		}
-		// Treat as file path - read from filesystem
-		const content = await readFile(prompt, 'utf-8');
-		if (!content.trim()) {
-			throw new Error(`Custom prompt file '${prompt}' has empty content`);
-		}
-		return content;
-	}
-
-	/**
-	 * Build the context header for a loop iteration
-	 * @param config - Loop configuration
-	 * @param iteration - Current iteration number (1-indexed)
-	 * @returns Formatted context header string
-	 */
-	private buildContextHeader(config: LoopConfig, iteration: number): string {
-		const lines = [
-			`# Loop Iteration ${iteration} of ${config.iterations}`,
-			``,
-			`## Context`,
-			`- Progress file: @${config.progressFile}`,
-			`- Tasks file: @.taskmaster/tasks/tasks.json`
-		];
-
-		if (config.tag) {
-			lines.push(`- Tag filter: ${config.tag}`);
-		}
-
-		return lines.join('\n');
-	}
-
-	/**
-	 * Build the full prompt for a loop iteration
-	 * Combines context header with resolved preset/custom prompt
-	 * @param config - Loop configuration
-	 * @param iteration - Current iteration number (1-indexed)
-	 * @returns Promise resolving to the complete prompt string
-	 */
-	private async buildPrompt(
-		config: LoopConfig,
-		iteration: number
-	): Promise<string> {
-		const basePrompt = await this.resolvePrompt(config.prompt);
-		const contextHeader = this.buildContextHeader(config, iteration);
-		return `${contextHeader}\n\n${basePrompt}`;
-	}
-
-	// === Inlined from LoopExecutorService (Phase 2 simplification) ===
-
-	/**
-	 * Result of an iteration execution
-	 */
-	private executeIterationInline(
+	private executeIteration(
 		prompt: string,
-		iteration: number
-	): Promise<{
-		iteration: LoopIteration;
-		output: string;
-		completionCheck: {
-			isComplete: boolean;
-			isBlocked: boolean;
-			reason?: string;
-		};
-		exitCode: number;
-	}> {
+		iterationNum: number
+	): LoopIteration {
 		const startTime = Date.now();
-		let output = '';
 
-		return new Promise((resolve) => {
-			// Use claude -p for print mode (non-interactive)
-			this.currentProcess = spawn('docker run sandbox claude', ['-p', prompt], {
+		const result = spawnSync(
+			'docker',
+			['sandbox', 'run', 'claude', '-p', prompt],
+			{
 				cwd: this.projectRoot,
-				shell: false,
-				stdio: ['ignore', 'pipe', 'pipe']
-			});
+				encoding: 'utf-8',
+				maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+				stdio: 'inherit'
+			}
+		);
 
-			this.currentProcess.stdout?.on('data', (data: Buffer) => {
-				output += data.toString();
-			});
+		const output = (result.stdout || '') + (result.stderr || '');
 
-			this.currentProcess.stderr?.on('data', (data: Buffer) => {
-				output += data.toString();
-			});
+		// Print output to console (spawnSync with pipe captures but doesn't display)
+		if (output) console.log(output);
 
-			this.currentProcess.on('close', (code: number | null) => {
-				this.currentProcess = null;
-				const duration = Date.now() - startTime;
-				const exitCode = code ?? 1;
-
-				// Parse output for completion markers using inlined parseCompletion
-				const { status, message } = this.parseCompletion(output, exitCode);
-				const isComplete = status === 'complete';
-				const isBlocked = status === 'blocked';
-
-				const iterationResult: LoopIteration = {
-					iteration,
-					status,
-					duration,
-					message
-				};
-
-				resolve({
-					iteration: iterationResult,
-					output,
-					completionCheck: { isComplete, isBlocked, reason: message },
-					exitCode
-				});
-			});
-
-			this.currentProcess.on('error', (error: Error) => {
-				this.currentProcess = null;
-				resolve({
-					iteration: {
-						iteration,
-						status: 'error',
-						message: error.message
-					},
-					output,
-					completionCheck: { isComplete: false, isBlocked: false },
-					exitCode: 1
-				});
-			});
-		});
-	}
-
-	/**
-	 * Stop the currently running process (inlined)
-	 */
-	private stopProcess(): void {
-		if (this.currentProcess) {
-			this.currentProcess.kill('SIGTERM');
-			this.currentProcess = null;
-		}
+		const { status, message } = this.parseCompletion(
+			output,
+			result.status ?? 1
+		);
+		return {
+			iteration: iterationNum,
+			status,
+			duration: Date.now() - startTime,
+			message
+		};
 	}
 }

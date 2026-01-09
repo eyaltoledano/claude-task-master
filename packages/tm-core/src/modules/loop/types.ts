@@ -57,4 +57,3 @@ export interface LoopResult {
 	/** Final status of the loop */
 	finalStatus: 'all_complete' | 'max_iterations' | 'blocked' | 'error';
 }
-

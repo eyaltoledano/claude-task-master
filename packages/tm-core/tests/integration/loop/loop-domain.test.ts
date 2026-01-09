@@ -119,7 +119,9 @@ describe('LoopDomain Integration', () => {
 			expect(domain2.isPreset('default')).toBe(true);
 
 			// Each should have its own preset values
-			expect(domain1.getAvailablePresets()).toEqual(domain2.getAvailablePresets());
+			expect(domain1.getAvailablePresets()).toEqual(
+				domain2.getAvailablePresets()
+			);
 		});
 	});
 
@@ -184,10 +186,14 @@ describe('LoopDomain Integration', () => {
 		});
 
 		it('should resolve custom file path with provided readFile callback', async () => {
-			const customContent = '# My Custom Loop Prompt\n<loop-complete>CUSTOM</loop-complete>';
+			const customContent =
+				'# My Custom Loop Prompt\n<loop-complete>CUSTOM</loop-complete>';
 			const mockReadFile = vi.fn().mockResolvedValue(customContent);
 
-			const content = await domain.resolvePrompt('/path/to/custom.md', mockReadFile);
+			const content = await domain.resolvePrompt(
+				'/path/to/custom.md',
+				mockReadFile
+			);
 
 			expect(mockReadFile).toHaveBeenCalledWith('/path/to/custom.md');
 			expect(content).toBe(customContent);
@@ -195,12 +201,14 @@ describe('LoopDomain Integration', () => {
 
 		it('should throw for custom path without readFile callback', async () => {
 			await expect(domain.resolvePrompt('/path/to/custom.md')).rejects.toThrow(
-				'no file reader provided'
+				'Custom prompt file requires readFile callback'
 			);
 		});
 
 		it('should propagate readFile errors', async () => {
-			const mockReadFile = vi.fn().mockRejectedValue(new Error('File not found'));
+			const mockReadFile = vi
+				.fn()
+				.mockRejectedValue(new Error('File not found'));
 
 			await expect(
 				domain.resolvePrompt('/nonexistent/file.md', mockReadFile)

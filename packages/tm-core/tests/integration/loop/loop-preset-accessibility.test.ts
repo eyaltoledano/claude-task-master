@@ -116,8 +116,12 @@ describe('Preset Accessibility Integration', () => {
 	describe('Completion Marker Detection', () => {
 		// Simple regex-based completion marker detection (inlined from deleted LoopCompletionService)
 		const parseOutput = (output: string) => {
-			const completeMatch = output.match(/<loop-complete>([^<]*)<\/loop-complete>/i);
-			const blockedMatch = output.match(/<loop-blocked>([^<]*)<\/loop-blocked>/i);
+			const completeMatch = output.match(
+				/<loop-complete>([^<]*)<\/loop-complete>/i
+			);
+			const blockedMatch = output.match(
+				/<loop-blocked>([^<]*)<\/loop-blocked>/i
+			);
 
 			return {
 				isComplete: !!completeMatch,
@@ -208,7 +212,13 @@ No significant code smells remain in the codebase.
 
 	describe('isPreset Consistency', () => {
 		it('should return true for valid presets', () => {
-			const validPresets = ['default', 'test-coverage', 'linting', 'duplication', 'entropy'];
+			const validPresets = [
+				'default',
+				'test-coverage',
+				'linting',
+				'duplication',
+				'entropy'
+			];
 
 			for (const name of validPresets) {
 				expect(isPreset(name)).toBe(true);
@@ -216,7 +226,13 @@ No significant code smells remain in the codebase.
 		});
 
 		it('should return false for invalid presets', () => {
-			const invalidPresets = ['invalid', 'custom', '', 'DEFAULT', 'Test-Coverage'];
+			const invalidPresets = [
+				'invalid',
+				'custom',
+				'',
+				'DEFAULT',
+				'Test-Coverage'
+			];
 
 			for (const name of invalidPresets) {
 				expect(isPreset(name)).toBe(false);

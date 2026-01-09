@@ -13,15 +13,19 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to reduce noise in tests
-vi.mock('../../../src/common/logger/index.js', () => ({
-	createLogger: () => ({
+vi.mock('../../../src/common/logger/index.js', () => {
+	const mockLogger = {
 		debug: vi.fn(),
 		info: vi.fn(),
 		warn: vi.fn(),
 		error: vi.fn(),
 		child: vi.fn().mockReturnThis()
-	})
-}));
+	};
+	return {
+		createLogger: () => mockLogger,
+		getLogger: () => mockLogger
+	};
+});
 
 import { createTmCore, TmCore, LoopDomain } from '../../../src/index.js';
 
@@ -43,7 +47,11 @@ describe('LoopDomain Access via TmCore', () => {
 		// Create empty tasks.json for TasksDomain initialization
 		fs.writeFileSync(
 			path.join(tasksDir, 'tasks.json'),
-			JSON.stringify({ tasks: [], tags: { default: { tasks: [] } }, activeTag: 'default' }),
+			JSON.stringify({
+				tasks: [],
+				tags: { default: { tasks: [] } },
+				activeTag: 'default'
+			}),
 			'utf-8'
 		);
 

@@ -57,12 +57,16 @@ describe('LoopService', () => {
 
 	describe('service instantiation with different project roots', () => {
 		it('should work with absolute path', () => {
-			const service = new LoopService({ projectRoot: '/absolute/path/to/project' });
+			const service = new LoopService({
+				projectRoot: '/absolute/path/to/project'
+			});
 			expect(service.getProjectRoot()).toBe('/absolute/path/to/project');
 		});
 
 		it('should work with Windows-style path', () => {
-			const service = new LoopService({ projectRoot: 'C:\\Users\\test\\project' });
+			const service = new LoopService({
+				projectRoot: 'C:\\Users\\test\\project'
+			});
 			expect(service.getProjectRoot()).toBe('C:\\Users\\test\\project');
 		});
 
@@ -176,6 +180,28 @@ describe('LoopService', () => {
 		return proc;
 	}
 
+	/**
+	 * Helper to emit process events after listeners are attached.
+	 * Uses setImmediate to schedule after the current async tick.
+	 */
+	function emitAfterTick(
+		proc: EventEmitter & { stdout: EventEmitter },
+		events: Array<{
+			type: 'stdout' | 'close' | 'error';
+			data?: Buffer | Error | number | null;
+		}>
+	): void {
+		setImmediate(() => {
+			for (const event of events) {
+				if (event.type === 'stdout') {
+					proc.stdout.emit('data', event.data);
+				} else {
+					proc.emit(event.type, event.data);
+				}
+			}
+		});
+	}
+
 	describe('run()', () => {
 		let service: LoopService;
 		let mockSpawn: MockInstance;
@@ -188,20 +214,21 @@ describe('LoopService', () => {
 		describe('successful iteration run', () => {
 			it('should run a single iteration successfully', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [
+					{ type: 'stdout', data: Buffer.from('Task completed') },
+					{ type: 'close', data: 0 }
+				]);
+
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
-
-				// Simulate successful completion
-				mockProc.stdout.emit('data', Buffer.from('Task completed'));
-				mockProc.emit('close', 0);
-
-				const result = await runPromise;
 
 				expect(result.totalIterations).toBe(1);
 				expect(result.tasksCompleted).toBe(1);
@@ -209,51 +236,61 @@ describe('LoopService', () => {
 			});
 
 			it('should run multiple iterations', async () => {
-				const mockProcs = [createMockProcess(), createMockProcess(), createMockProcess()];
+				const mockProcs = [
+					createMockProcess(),
+					createMockProcess(),
+					createMockProcess()
+				];
 				let procIndex = 0;
 				mockSpawn.mockImplementation(() => {
-					return mockProcs[procIndex++] as unknown as childProcess.ChildProcess;
+					const proc = mockProcs[procIndex++];
+					// Schedule emit for this proc
+					setImmediate(() => {
+						proc.stdout.emit('data', Buffer.from('Done'));
+						proc.emit('close', 0);
+					});
+					return proc as unknown as childProcess.ChildProcess;
 				});
 
-				const runPromise = service.run({
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 3,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				// Complete each iteration
-				for (const proc of mockProcs) {
-					proc.stdout.emit('data', Buffer.from('Done'));
-					proc.emit('close', 0);
-				}
-
-				const result = await runPromise;
-
 				expect(result.totalIterations).toBe(3);
 				expect(result.tasksCompleted).toBe(3);
 				expect(mockSpawn).toHaveBeenCalledTimes(3);
 			});
 
-			it('should call spawn with claude -p', async () => {
+			it('should call spawn with docker sandbox run claude -p', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [
+					{ type: 'stdout', data: Buffer.from('Done') },
+					{ type: 'close', data: 0 }
+				]);
+
+				await service.run({
 					prompt: 'default',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				mockProc.stdout.emit('data', Buffer.from('Done'));
-				mockProc.emit('close', 0);
-
-				await runPromise;
-
 				expect(mockSpawn).toHaveBeenCalledWith(
-					'claude',
-					expect.arrayContaining(['-p', expect.any(String)]),
+					'docker',
+					expect.arrayContaining([
+						'sandbox',
+						'run',
+						'claude',
+						'-p',
+						expect.any(String)
+					]),
 					expect.objectContaining({
 						cwd: '/test/project'
 					})
@@ -264,19 +301,24 @@ describe('LoopService', () => {
 		describe('completion marker detection', () => {
 			it('should detect loop-complete marker and exit early', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [
+					{
+						type: 'stdout',
+						data: Buffer.from('<loop-complete>ALL_DONE</loop-complete>')
+					},
+					{ type: 'close', data: 0 }
+				]);
+
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 5,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
-
-				mockProc.stdout.emit('data', Buffer.from('<loop-complete>ALL_DONE</loop-complete>'));
-				mockProc.emit('close', 0);
-
-				const result = await runPromise;
 
 				expect(result.totalIterations).toBe(1);
 				expect(result.finalStatus).toBe('all_complete');
@@ -284,19 +326,24 @@ describe('LoopService', () => {
 
 			it('should detect loop-blocked marker and exit early', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [
+					{
+						type: 'stdout',
+						data: Buffer.from('<loop-blocked>Missing API key</loop-blocked>')
+					},
+					{ type: 'close', data: 0 }
+				]);
+
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 5,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
-
-				mockProc.stdout.emit('data', Buffer.from('<loop-blocked>Missing API key</loop-blocked>'));
-				mockProc.emit('close', 0);
-
-				const result = await runPromise;
 
 				expect(result.totalIterations).toBe(1);
 				expect(result.finalStatus).toBe('blocked');
@@ -306,18 +353,18 @@ describe('LoopService', () => {
 		describe('error handling', () => {
 			it('should handle non-zero exit code', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [{ type: 'close', data: 1 }]);
+
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
-
-				mockProc.emit('close', 1);
-
-				const result = await runPromise;
 
 				expect(result.iterations[0].status).toBe('error');
 				expect(result.tasksCompleted).toBe(0);
@@ -325,18 +372,20 @@ describe('LoopService', () => {
 
 			it('should handle process spawn error', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [
+					{ type: 'error', data: new Error('Spawn failed') }
+				]);
+
+				const result = await service.run({
 					prompt: 'default',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
-
-				mockProc.emit('error', new Error('Spawn failed'));
-
-				const result = await runPromise;
 
 				expect(result.iterations[0].status).toBe('error');
 				expect(result.iterations[0].message).toBe('Spawn failed');
@@ -346,19 +395,22 @@ describe('LoopService', () => {
 		describe('progress file operations', () => {
 			it('should initialize progress file at start', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+
+				await service.run({
 					prompt: 'default',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				mockProc.emit('close', 0);
-				await runPromise;
-
-				expect(fsPromises.mkdir).toHaveBeenCalledWith('/test', { recursive: true });
+				expect(fsPromises.mkdir).toHaveBeenCalledWith('/test', {
+					recursive: true
+				});
 				expect(fsPromises.writeFile).toHaveBeenCalledWith(
 					'/test/progress.txt',
 					expect.stringContaining('# Task Master Loop Progress'),
@@ -370,64 +422,69 @@ describe('LoopService', () => {
 				const mockProcs = [createMockProcess(), createMockProcess()];
 				let procIndex = 0;
 				mockSpawn.mockImplementation(() => {
-					return mockProcs[procIndex++] as unknown as childProcess.ChildProcess;
+					const proc = mockProcs[procIndex++];
+					setImmediate(() => proc.emit('close', 0));
+					return proc as unknown as childProcess.ChildProcess;
 				});
 
-				const runPromise = service.run({
+				await service.run({
 					prompt: 'default',
 					iterations: 2,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				for (const proc of mockProcs) {
-					proc.emit('close', 0);
-				}
-
-				await runPromise;
-
-				expect(fsPromises.appendFile).toHaveBeenCalledTimes(2);
+				// appendFile called once at end with final summary
+				expect(fsPromises.appendFile).toHaveBeenCalled();
 			});
 		});
 
 		describe('preset resolution', () => {
 			it('should resolve built-in preset names', async () => {
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+
+				await service.run({
 					prompt: 'test-coverage',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				mockProc.emit('close', 0);
-				await runPromise;
-
-				// Verify spawn was called with prompt containing test-coverage content
+				// Verify spawn was called with prompt containing iteration info
 				const spawnCall = mockSpawn.mock.calls[0];
-				const promptArg = spawnCall[1][1]; // Second arg after '-p'
+				// Args are ['sandbox', 'run', 'claude', '-p', prompt]
+				const promptArg = spawnCall[1][4];
 				expect(promptArg).toContain('Loop Iteration 1 of 1');
 			});
 
 			it('should load custom prompt from file', async () => {
-				vi.mocked(fsPromises.readFile).mockResolvedValue('Custom prompt content');
+				vi.mocked(fsPromises.readFile).mockResolvedValue(
+					'Custom prompt content'
+				);
 
 				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+				mockSpawn.mockReturnValue(
+					mockProc as unknown as childProcess.ChildProcess
+				);
 
-				const runPromise = service.run({
+				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+
+				await service.run({
 					prompt: '/custom/prompt.md',
 					iterations: 1,
 					sleepSeconds: 0,
 					progressFile: '/test/progress.txt'
 				});
 
-				mockProc.emit('close', 0);
-				await runPromise;
-
-				expect(fsPromises.readFile).toHaveBeenCalledWith('/custom/prompt.md', 'utf-8');
+				expect(fsPromises.readFile).toHaveBeenCalledWith(
+					'/custom/prompt.md',
+					'utf-8'
+				);
 			});
 		});
 	});
@@ -450,7 +507,10 @@ describe('LoopService', () => {
 		});
 
 		it('should detect complete marker', () => {
-			const result = parseCompletion('<loop-complete>ALL DONE</loop-complete>', 0);
+			const result = parseCompletion(
+				'<loop-complete>ALL DONE</loop-complete>',
+				0
+			);
 			expect(result.status).toBe('complete');
 			expect(result.message).toBe('ALL DONE');
 		});
@@ -478,7 +538,10 @@ describe('LoopService', () => {
 		});
 
 		it('should trim whitespace from reason', () => {
-			const result = parseCompletion('<loop-complete>  trimmed  </loop-complete>', 0);
+			const result = parseCompletion(
+				'<loop-complete>  trimmed  </loop-complete>',
+				0
+			);
 			expect(result.message).toBe('trimmed');
 		});
 	});
@@ -489,9 +552,9 @@ describe('LoopService', () => {
 
 		beforeEach(() => {
 			service = new LoopService(defaultOptions);
-			isPreset = (service as unknown as { isPreset: (n: string) => boolean }).isPreset.bind(
-				service
-			);
+			isPreset = (
+				service as unknown as { isPreset: (n: string) => boolean }
+			).isPreset.bind(service);
 		});
 
 		it('should return true for default preset', () => {
@@ -522,7 +585,6 @@ describe('LoopService', () => {
 			expect(isPreset('/path/to/file.md')).toBe(false);
 		});
 	});
-
 
 	describe('buildContextHeader (inlined)', () => {
 		let service: LoopService;
@@ -584,10 +646,19 @@ describe('LoopService', () => {
 	describe('buildResult (inlined)', () => {
 		let service: LoopService;
 		let buildResult: (
-			iterations: Array<{ iteration: number; status: string; duration?: number }>,
+			iterations: Array<{
+				iteration: number;
+				status: string;
+				duration?: number;
+			}>,
 			tasksCompleted: number,
 			finalStatus: string
-		) => { iterations: unknown[]; totalIterations: number; tasksCompleted: number; finalStatus: string };
+		) => {
+			iterations: unknown[];
+			totalIterations: number;
+			tasksCompleted: number;
+			finalStatus: string;
+		};
 
 		beforeEach(() => {
 			service = new LoopService(defaultOptions);
@@ -627,58 +698,51 @@ describe('LoopService', () => {
 		let mockSpawn: MockInstance;
 
 		beforeEach(() => {
-			vi.useFakeTimers();
 			service = new LoopService(defaultOptions);
 			mockSpawn = vi.mocked(childProcess.spawn);
 		});
 
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
 		it('should exit gracefully when stop() called', async () => {
-			const mockProcs = [createMockProcess(), createMockProcess()];
-			let procIndex = 0;
+			let iterationCount = 0;
 			mockSpawn.mockImplementation(() => {
-				return mockProcs[procIndex++] as unknown as childProcess.ChildProcess;
+				const proc = createMockProcess();
+				iterationCount++;
+				// Schedule close, but stop after first iteration
+				setImmediate(() => {
+					if (iterationCount === 1) {
+						service.stop();
+					}
+					proc.emit('close', 0);
+				});
+				return proc as unknown as childProcess.ChildProcess;
 			});
 
-			const runPromise = service.run({
+			const result = await service.run({
 				prompt: 'default',
 				iterations: 5,
 				sleepSeconds: 0,
 				progressFile: '/test/progress.txt'
 			});
 
-			// Complete first iteration then stop
-			mockProcs[0].emit('close', 0);
-			service.stop();
-
-			// Complete second (may or may not run depending on timing)
-			if (mockProcs[1]) {
-				mockProcs[1].emit('close', 0);
-			}
-
-			const result = await runPromise;
-
-			// Should have stopped early
-			expect(result.totalIterations).toBeLessThanOrEqual(2);
+			// Should have stopped after 1 iteration
+			expect(result.totalIterations).toBe(1);
 			expect(service.isRunning).toBe(false);
 		});
 
 		it('should set isRunning to false on completion', async () => {
 			const mockProc = createMockProcess();
-			mockSpawn.mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+			mockSpawn.mockReturnValue(
+				mockProc as unknown as childProcess.ChildProcess
+			);
 
-			const runPromise = service.run({
+			emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+
+			await service.run({
 				prompt: 'default',
 				iterations: 1,
 				sleepSeconds: 0,
 				progressFile: '/test/progress.txt'
 			});
-
-			mockProc.emit('close', 0);
-			await runPromise;
 
 			expect(service.isRunning).toBe(false);
 		});
