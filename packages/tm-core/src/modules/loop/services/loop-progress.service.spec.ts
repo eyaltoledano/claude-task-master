@@ -303,6 +303,67 @@ describe('LoopProgressService', () => {
 			const content = await readFile(progressFile, 'utf-8');
 			expect(content.endsWith('\n')).toBe(true);
 		});
+
+		it('should handle special characters in notes', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const entry: ProgressEntry = {
+				timestamp: '2026-01-08T14:00:00Z',
+				iteration: 1,
+				note: 'Fixed bug with <loop-complete> marker & special chars: "quotes", \'apostrophes\', $vars, `backticks`'
+			};
+
+			await service.appendProgress(progressFile, entry);
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('<loop-complete>');
+			expect(content).toContain('&');
+			expect(content).toContain('"quotes"');
+			expect(content).toContain("'apostrophes'");
+			expect(content).toContain('$vars');
+			expect(content).toContain('`backticks`');
+		});
+
+		it('should handle unicode characters in notes', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const entry: ProgressEntry = {
+				timestamp: '2026-01-08T15:00:00Z',
+				iteration: 2,
+				taskId: '日本語',
+				note: 'Unicode: 你好世界 🚀 émojis — fancy–dashes'
+			};
+
+			await service.appendProgress(progressFile, entry);
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('你好世界');
+			expect(content).toContain('🚀');
+			expect(content).toContain('émojis');
+			expect(content).toContain('日本語');
+		});
+
+		it('should handle multiline notes by preserving them as-is', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'progress.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const multilineNote = 'First line\nSecond line\nThird line';
+			const entry: ProgressEntry = {
+				timestamp: '2026-01-08T16:00:00Z',
+				iteration: 3,
+				note: multilineNote
+			};
+
+			await service.appendProgress(progressFile, entry);
+
+			const content = await readFile(progressFile, 'utf-8');
+			expect(content).toContain('First line\nSecond line\nThird line');
+		});
 	});
 
 	describe('readProgress', () => {
@@ -343,6 +404,26 @@ describe('LoopProgressService', () => {
 			const result = await service.readProgress(progressFile);
 
 			expect(result).toBe('');
+		});
+
+		it('should handle empty file gracefully', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'empty.txt');
+			await writeFile(progressFile, '', 'utf-8');
+
+			const result = await service.readProgress(progressFile);
+
+			expect(result).toBe('');
+		});
+
+		it('should handle file with only whitespace', async () => {
+			const service = new LoopProgressService(tempDir);
+			const progressFile = path.join(tempDir, 'whitespace.txt');
+			await writeFile(progressFile, '   \n\t\n   ', 'utf-8');
+
+			const result = await service.readProgress(progressFile);
+
+			expect(result).toBe('   \n\t\n   ');
 		});
 	});
 
