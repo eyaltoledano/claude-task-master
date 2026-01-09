@@ -98,10 +98,118 @@ Example progress file content:
 **`--on-complete` runs only on success:**
 The shell command only executes when `finalStatus` is `all_complete`, meaning an agent output the `<loop-complete>` marker. It does not run on `max_iterations`, `blocked`, or `error` outcomes.
 
-## Next Steps
+## Built-in Presets
 
-- Learn about [Built-in Presets](/capabilities/loop#built-in-presets) for common workflows
-- Create [Custom Prompts](/capabilities/loop#custom-prompts) for specialized tasks
+The loop command includes five built-in presets for common development workflows. Each preset guides agents to complete ONE focused task per iteration.
+
+| Preset | Purpose | Completion Marker |
+| ------ | ------- | ----------------- |
+| `default` | Complete tasks from Task Master backlog | `ALL_TASKS_DONE` |
+| `test-coverage` | Write meaningful tests for uncovered code | `COVERAGE_TARGET` |
+| `linting` | Fix lint and type errors one by one | `ZERO_ERRORS` |
+| `duplication` | Refactor duplicated code into shared utilities | `LOW_DUPLICATION` |
+| `entropy` | Clean up code smells (long functions, deep nesting) | `LOW_ENTROPY` |
+
+### default
+
+The standard task completion workflow. Agents work through your Task Master backlog, completing one task per iteration.
+
+```bash
+task-master loop -n 10 --prompt default
+```
+
+**What it does:**
+1. Runs `task-master next` to get the highest priority available task
+2. Reads task details with `task-master show <id>`
+3. Implements the task with the smallest possible change
+4. Runs tests and type checks to verify quality
+5. Marks the task complete with `task-master set-status --id=<id> --status=done`
+6. Commits work with a descriptive message
+
+**Completion criteria:** All pending tasks are complete.
+
+### test-coverage
+
+Improves test coverage by writing meaningful tests for user-facing behavior - not just chasing coverage numbers.
+
+```bash
+task-master loop -n 10 --prompt test-coverage
+```
+
+**What it does:**
+1. Runs the coverage command (`npm run coverage`, etc.)
+2. Identifies the most important user-facing feature lacking tests
+3. Writes ONE meaningful test validating real behavior
+4. Verifies coverage increased as a side effect
+5. Commits with message: `test(<file>): <describe user behavior tested>`
+
+**Philosophy:** Don't write tests just to increase coverage. Use coverage as a guide to find untested user-facing behavior. Prioritize error handling, CLI commands, API endpoints, and file parsing over internal utilities.
+
+**Completion criteria:** Coverage reaches target or 100%.
+
+### linting
+
+Cleans up lint errors and type errors systematically, one fix per iteration.
+
+```bash
+task-master loop -n 20 --prompt linting
+```
+
+**What it does:**
+1. Runs lint command (`npm run lint`, `eslint .`, etc.)
+2. Runs type check (`tsc --noEmit`, etc.)
+3. Picks ONE error to fix, prioritizing:
+   - Type errors (breaks builds)
+   - Security-related lint errors
+   - Errors in frequently-changed files
+4. Fixes with minimal changes - no surrounding refactoring
+5. Commits with message: `fix(<file>): <describe error fixed>`
+
+**Completion criteria:** Zero lint errors and zero type errors.
+
+### duplication
+
+Finds duplicated code using detection tools and refactors into shared utilities.
+
+```bash
+task-master loop -n 10 --prompt duplication
+```
+
+**What it does:**
+1. Runs duplication detection (`npx jscpd .` or similar)
+2. Reviews the report and picks ONE clone to refactor, prioritizing:
+   - Larger clones (more lines = more maintenance burden)
+   - Clones in frequently-changed files
+   - Clones with slight variations
+3. Extracts duplicated code into a shared utility
+4. Updates all clone locations to use the shared utility
+5. Runs tests to verify behavior is preserved
+
+**Completion criteria:** Duplication below threshold (e.g., <3%).
+
+### entropy
+
+Targets code smells that increase cognitive load and maintenance burden.
+
+```bash
+task-master loop -n 10 --prompt entropy
+```
+
+**Code smells targeted:**
+- Long functions (>60 lines) → extract into smaller functions
+- Deep nesting (>3 levels) → use early returns, extract conditions
+- Large files (>500 lines) → split into focused modules
+- Magic numbers → extract into named constants
+- Complex conditionals → extract into well-named functions
+- God classes → split responsibilities
+
+**What it does:**
+1. Scans codebase for code smells (uses judgment or tools like `complexity-report`)
+2. Picks ONE smell to fix, prioritizing smells in critical paths
+3. Refactors with minimal changes - no over-engineering
+4. Runs tests to verify behavior is preserved
+
+**Completion criteria:** No significant code smells remain.
 
 ---
 
