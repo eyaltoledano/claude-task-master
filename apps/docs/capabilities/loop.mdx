@@ -360,7 +360,81 @@ And instruct agents to append notes:
 
 This creates a chain of context that helps each iteration build on previous work.
 
+## Real-World Examples
+
+Here are practical scenarios for using the loop command in your development workflow.
+
+### Weekend Automation
+
+Run a loop overnight or over the weekend to clear your task backlog while you're away:
+
+```bash
+task-master loop -n 50 --prompt default --on-complete 'notify-send "Loop complete!"'
+```
+
+This runs up to 50 iterations, completing tasks one by one. When all tasks are done, you'll get a desktop notification.
+
+### Test Coverage Sprint
+
+Push your test coverage from 60% to 80% systematically:
+
+```bash
+task-master loop -n 20 --prompt test-coverage --on-complete 'echo "Coverage target reached!"'
+```
+
+Each iteration identifies the most important untested user-facing behavior and writes a meaningful test. The agent prioritizes error handling, API endpoints, and CLI commands over internal utilities.
+
+### Tech Debt Day
+
+Dedicate a day to cleaning up lint errors across your codebase:
+
+```bash
+task-master loop -n 30 --prompt linting --sleep 3
+```
+
+With `--sleep 3`, iterations run faster for quick fixes. The agent systematically addresses type errors first (they break builds), then security-related lint errors, then others.
+
+### Code Review Prep
+
+Reduce code duplication before opening a PR:
+
+```bash
+task-master loop -n 10 --prompt duplication --tag backend
+```
+
+The `--tag backend` flag focuses the loop on backend code only. Each iteration finds and refactors one instance of duplicated code into a shared utility.
+
+### Multi-Tag Workflow
+
+Process different parts of your codebase in sequence:
+
+```bash
+# First, handle critical backend tasks
+task-master loop -n 10 --tag backend --status pending
+
+# Then, address frontend tasks
+task-master loop -n 10 --tag frontend --status pending
+```
+
+### Custom Migration Script
+
+For complex migrations, create a custom prompt and run it:
+
+```bash
+# Create custom-migration.md with your specific steps
+task-master loop -n 20 --prompt ./custom-migration.md --progress-file ./migration-progress.txt
+```
+
+Use a separate progress file to track migration-specific notes.
+
 ---
+
+<Note>
+**Related documentation:**
+- [CLI Root Commands](/capabilities/cli-root-commands) - Full command reference
+- [TDD Workflow](/tdd-workflow/quickstart) - Structured test-driven development
+- [Task Structure](/capabilities/task-structure) - Understanding task organization
+</Note>
 
 <Tip>
 The loop command is perfect for "overnight automation" - start a loop before leaving and return to a cleaned-up codebase.

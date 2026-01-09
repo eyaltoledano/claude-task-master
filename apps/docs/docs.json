@@ -50,7 +50,8 @@
 						"pages": [
 							"capabilities/mcp",
 							"capabilities/cli-root-commands",
-							"capabilities/task-structure"
+							"capabilities/task-structure",
+							"capabilities/loop"
 						]
 					},
 					{
