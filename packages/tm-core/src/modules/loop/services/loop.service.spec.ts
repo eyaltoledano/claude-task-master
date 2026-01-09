@@ -1188,5 +1188,314 @@ describe('LoopService', () => {
 				);
 			});
 		});
+
+		describe('single iteration edge case', () => {
+			it('should handle iterations = 1 correctly', async () => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: { iteration: 1, status: 'success', duration: 50 },
+						output: 'Single iteration output',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					});
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 5, // Should not sleep since no next iteration
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(1);
+				expect(result.tasksCompleted).toBe(1);
+				expect(result.finalStatus).toBe('max_iterations');
+				expect(result.iterations).toHaveLength(1);
+			});
+
+			it('should not sleep with single iteration', async () => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: { iteration: 1, status: 'success', duration: 50 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					});
+
+				const sleepSpy = vi.spyOn(
+					service as unknown as { sleep: (ms: number) => Promise<void> },
+					'sleep'
+				);
+
+				await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 10,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(sleepSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('error handling from sub-services', () => {
+			it('should propagate error if promptService.generatePrompt throws', async () => {
+				generatePromptSpy.mockRejectedValue(new Error('Preset not found'));
+
+				await expect(
+					service.run({
+						prompt: 'invalid-preset',
+						iterations: 1,
+						sleepSeconds: 0,
+						progressFile: '/test/progress.txt'
+					})
+				).rejects.toThrow('Preset not found');
+			});
+
+			it('should propagate error if progressService.initializeProgressFile throws', async () => {
+				initializeProgressFileSpy.mockRejectedValue(new Error('Cannot write file'));
+
+				await expect(
+					service.run({
+						prompt: 'default',
+						iterations: 1,
+						sleepSeconds: 0,
+						progressFile: '/readonly/progress.txt'
+					})
+				).rejects.toThrow('Cannot write file');
+			});
+
+			it('should propagate error if executorService.executeIteration throws', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockRejectedValue(
+					new Error('Process spawn failed')
+				);
+
+				await expect(
+					service.run({
+						prompt: 'default',
+						iterations: 1,
+						sleepSeconds: 0,
+						progressFile: '/test/progress.txt'
+					})
+				).rejects.toThrow('Process spawn failed');
+			});
+
+			it('should propagate error if appendProgress throws', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: { iteration: 1, status: 'success', duration: 100 },
+					output: '',
+					completionCheck: { isComplete: false, isBlocked: false },
+					exitCode: 0
+				});
+				appendProgressSpy.mockRejectedValue(new Error('Disk full'));
+
+				await expect(
+					service.run({
+						prompt: 'default',
+						iterations: 1,
+						sleepSeconds: 0,
+						progressFile: '/test/progress.txt'
+					})
+				).rejects.toThrow('Disk full');
+			});
+		});
+
+		describe('buildResult structure verification', () => {
+			beforeEach(() => {
+				executeIterationSpy = vi
+					.spyOn(service.getExecutorService(), 'executeIteration')
+					.mockResolvedValue({
+						iteration: { iteration: 1, status: 'success', duration: 100 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					});
+			});
+
+			it('should return LoopResult with all required fields', async () => {
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result).toHaveProperty('iterations');
+				expect(result).toHaveProperty('totalIterations');
+				expect(result).toHaveProperty('tasksCompleted');
+				expect(result).toHaveProperty('finalStatus');
+			});
+
+			it('should return correctly typed finalStatus values', async () => {
+				// Test max_iterations
+				let result = await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+				expect(['max_iterations', 'all_complete', 'blocked', 'stopped']).toContain(
+					result.finalStatus
+				);
+
+				// Test all_complete
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: { iteration: 1, status: 'complete', duration: 100 },
+					output: '<loop-complete>DONE</loop-complete>',
+					completionCheck: {
+						isComplete: true,
+						isBlocked: false,
+						marker: { type: 'complete', reason: 'DONE' }
+					},
+					exitCode: 0
+				});
+
+				result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+				expect(result.finalStatus).toBe('all_complete');
+			});
+
+			it('should accurately count iterations in totalIterations', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+					async (_prompt, iteration) => ({
+						iteration: { iteration, status: 'success', duration: 50 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					})
+				);
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 7,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(7);
+				expect(result.iterations.length).toBe(result.totalIterations);
+			});
+		});
+
+		describe('undefined taskId handling', () => {
+			it('should handle iteration without taskId gracefully', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockResolvedValue({
+					iteration: {
+						iteration: 1,
+						status: 'success',
+						duration: 100
+						// No taskId
+					},
+					output: 'Output without task ID',
+					completionCheck: { isComplete: false, isBlocked: false },
+					exitCode: 0
+				});
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 1,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.iterations[0].taskId).toBeUndefined();
+				// appendProgress should be called with undefined taskId
+				expect(appendProgressSpy).toHaveBeenCalledWith(
+					'/test/progress.txt',
+					expect.objectContaining({
+						taskId: undefined
+					})
+				);
+			});
+		});
+
+		describe('large iteration count', () => {
+			it('should handle large iteration count correctly', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+					async (_prompt, iteration) => ({
+						iteration: { iteration, status: 'success', duration: 10 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					})
+				);
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 100,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				expect(result.totalIterations).toBe(100);
+				expect(result.tasksCompleted).toBe(100);
+				expect(result.iterations).toHaveLength(100);
+				expect(generatePromptSpy).toHaveBeenCalledTimes(100);
+				expect(appendProgressSpy).toHaveBeenCalledTimes(100);
+			});
+
+			it('should correctly handle iteration numbers in large runs', async () => {
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+					async (_prompt, iteration) => ({
+						iteration: { iteration, status: 'success', duration: 10 },
+						output: '',
+						completionCheck: { isComplete: false, isBlocked: false },
+						exitCode: 0
+					})
+				);
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 50,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Verify first, middle, and last iteration numbers
+				expect(result.iterations[0].iteration).toBe(1);
+				expect(result.iterations[24].iteration).toBe(25);
+				expect(result.iterations[49].iteration).toBe(50);
+			});
+		});
+
+		describe('mixed success and failure iterations', () => {
+			it('should correctly count tasksCompleted with mixed results', async () => {
+				let callCount = 0;
+				vi.spyOn(service.getExecutorService(), 'executeIteration').mockImplementation(
+					async (_prompt, iteration) => {
+						callCount++;
+						// Pattern: success, error, success, error, success
+						const isSuccess = iteration % 2 === 1;
+						return {
+							iteration: {
+								iteration,
+								status: isSuccess ? 'success' : 'error',
+								duration: 50
+							},
+							output: '',
+							completionCheck: { isComplete: false, isBlocked: false },
+							exitCode: isSuccess ? 0 : 1
+						};
+					}
+				);
+
+				const result = await service.run({
+					prompt: 'default',
+					iterations: 5,
+					sleepSeconds: 0,
+					progressFile: '/test/progress.txt'
+				});
+
+				// Iterations 1, 3, 5 are success; 2, 4 are error
+				expect(result.tasksCompleted).toBe(3);
+				expect(result.iterations.filter((i) => i.status === 'success')).toHaveLength(3);
+				expect(result.iterations.filter((i) => i.status === 'error')).toHaveLength(2);
+			});
+		});
 	});
 });
