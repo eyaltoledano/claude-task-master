@@ -77,6 +77,38 @@ describe('LoopCompletionService', () => {
 					'All 15 tasks have been completed successfully'
 				);
 			});
+
+			it('detects <loop-complete> at start of output', () => {
+				const output = '<loop-complete>DONE</loop-complete> followed by more text';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
+
+			it('detects <loop-complete> at end of output', () => {
+				const output = 'Preceding text <loop-complete>DONE</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
+
+			it('detects <loop-complete> in middle of output', () => {
+				const output = 'Before <loop-complete>DONE</loop-complete> After';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
+
+			it('detects <loop-complete> with surrounding whitespace', () => {
+				const output = '   <loop-complete>DONE</loop-complete>   ';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
 		});
 
 		describe('blocked markers', () => {
@@ -110,6 +142,38 @@ describe('LoopCompletionService', () => {
 
 				expect(result.isBlocked).toBe(true);
 				expect(result.marker?.reason).toBe('Waiting on external dependency');
+			});
+
+			it('detects <loop-blocked> at start of output', () => {
+				const output = '<loop-blocked>STUCK</loop-blocked> followed by more text';
+				const result = service.parseOutput(output);
+
+				expect(result.isBlocked).toBe(true);
+				expect(result.marker?.reason).toBe('STUCK');
+			});
+
+			it('detects <loop-blocked> at end of output', () => {
+				const output = 'Preceding text <loop-blocked>STUCK</loop-blocked>';
+				const result = service.parseOutput(output);
+
+				expect(result.isBlocked).toBe(true);
+				expect(result.marker?.reason).toBe('STUCK');
+			});
+
+			it('detects <loop-blocked> in middle of output', () => {
+				const output = 'Before <loop-blocked>STUCK</loop-blocked> After';
+				const result = service.parseOutput(output);
+
+				expect(result.isBlocked).toBe(true);
+				expect(result.marker?.reason).toBe('STUCK');
+			});
+
+			it('detects <loop-blocked> with DEPENDENCY_MISSING reason', () => {
+				const output = '<loop-blocked>DEPENDENCY_MISSING</loop-blocked>';
+				const result = service.parseOutput(output);
+
+				expect(result.isBlocked).toBe(true);
+				expect(result.marker?.reason).toBe('DEPENDENCY_MISSING');
 			});
 		});
 
@@ -155,6 +219,22 @@ describe('LoopCompletionService', () => {
 				expect(result.isComplete).toBe(false);
 				expect(result.isBlocked).toBe(false);
 			});
+
+			it('handles nested/malformed markers gracefully', () => {
+				const output = '<loop-complete><loop-complete>NESTED</loop-complete></loop-complete>';
+				const result = service.parseOutput(output);
+
+				// Should still parse the first valid match
+				expect(result.isComplete).toBe(true);
+			});
+
+			it('returns false for markers with only opening tag', () => {
+				const output = '<loop-complete>orphan tag';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(false);
+				expect(result.isBlocked).toBe(false);
+			});
 		});
 
 		describe('case insensitivity', () => {
@@ -188,6 +268,14 @@ describe('LoopCompletionService', () => {
 
 				expect(result.isBlocked).toBe(true);
 				expect(result.marker?.reason).toBe('Blocked');
+			});
+
+			it('handles camelCase tag variation', () => {
+				const output = '<LOOP-complete>Mixed</loop-COMPLETE>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('Mixed');
 			});
 		});
 
@@ -304,6 +392,78 @@ more output`;
 				// Should not match because of < in content
 				expect(result.isComplete).toBe(false);
 			});
+
+			it('handles special characters in reason text', () => {
+				const output = '<loop-complete>Done! Task #42 - 100% complete</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('Done! Task #42 - 100% complete');
+			});
+
+			it('handles unicode characters in reason text', () => {
+				const output = '<loop-complete>Tâches terminées avec succès</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('Tâches terminées avec succès');
+			});
+
+			it('handles emoji in reason text', () => {
+				const output = '<loop-complete>All done! 🎉✅</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('All done! 🎉✅');
+			});
+
+			it('handles reason with quotes', () => {
+				const output = '<loop-complete>Task "important" is complete</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('Task "important" is complete');
+			});
+
+			it('handles reason with single quotes', () => {
+				const output = "<loop-complete>Task 'urgent' finished</loop-complete>";
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe("Task 'urgent' finished");
+			});
+
+			it('handles output with tabs', () => {
+				const output = '\t\t<loop-complete>DONE</loop-complete>\t\t';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
+
+			it('handles output with carriage returns', () => {
+				const output = 'Line1\r\n<loop-complete>DONE</loop-complete>\r\nLine2';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('DONE');
+			});
+
+			it('handles reason with numbers only', () => {
+				const output = '<loop-complete>12345</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('12345');
+			});
+
+			it('handles reason with underscores and dashes', () => {
+				const output = '<loop-complete>TASK_COMPLETE-100</loop-complete>';
+				const result = service.parseOutput(output);
+
+				expect(result.isComplete).toBe(true);
+				expect(result.marker?.reason).toBe('TASK_COMPLETE-100');
+			});
 		});
 	});
 
@@ -327,6 +487,13 @@ more output`;
 			const reason = service.extractCompletionReason(marker);
 
 			expect(reason).toBe('');
+		});
+
+		it('extracts reason with special characters', () => {
+			const marker = { type: 'complete' as const, reason: 'Done! 🎉 100%' };
+			const reason = service.extractCompletionReason(marker);
+
+			expect(reason).toBe('Done! 🎉 100%');
 		});
 	});
 
