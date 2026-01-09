@@ -617,4 +617,200 @@ describe('LoopPromptService Snapshot Tests', () => {
 			expect(result).toContain('- Progress file: @custom/path/progress.txt');
 		});
 	});
+
+	describe('edge cases', () => {
+		it('handles empty base prompt from custom file', async () => {
+			const mockPresetService = {
+				isPreset: vi.fn().mockReturnValue(false),
+				resolvePrompt: vi.fn().mockResolvedValue('')
+			} as unknown as LoopPresetServiceType;
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: '/custom/empty.md' as string,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			// Should still contain context header even with empty base prompt
+			expect(result).toContain('# Loop Iteration 1 of 5');
+			expect(result).toContain('## Context');
+			// Content after double newline should be empty
+			expect(result.endsWith('tasks.json\n\n')).toBe(true);
+		});
+
+		it('handles very long prompts without truncation', async () => {
+			const longContent = 'A'.repeat(10000) + '\n## Process\nDo the thing.';
+			const mockPresetService = {
+				isPreset: vi.fn().mockReturnValue(false),
+				resolvePrompt: vi.fn().mockResolvedValue(longContent)
+			} as unknown as LoopPresetServiceType;
+			const service = new LoopPromptService(mockPresetService);
+
+			const options = {
+				config: {
+					iterations: 5,
+					prompt: '/custom/long.md' as string,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5
+				},
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			// Should preserve all content without truncation
+			expect(result).toContain('A'.repeat(10000));
+			expect(result).toContain('## Process');
+			expect(result.length).toBeGreaterThan(10000);
+		});
+
+		it('handles special characters in tag names', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const config: LoopConfig = {
+				iterations: 5,
+				prompt: 'default',
+				progressFile: '.taskmaster/loop-progress.txt',
+				sleepSeconds: 5,
+				tag: 'feature/login-v2.1_test'
+			};
+
+			const options = {
+				config,
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Tag filter: feature/login-v2.1_test');
+		});
+
+		it('handles unicode characters in tag names', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const config: LoopConfig = {
+				iterations: 5,
+				prompt: 'default',
+				progressFile: '.taskmaster/loop-progress.txt',
+				sleepSeconds: 5,
+				tag: '功能-测试'
+			};
+
+			const options = {
+				config,
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Tag filter: 功能-测试');
+		});
+
+		it('handles emoji in tag names', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const config: LoopConfig = {
+				iterations: 5,
+				prompt: 'default',
+				progressFile: '.taskmaster/loop-progress.txt',
+				sleepSeconds: 5,
+				tag: '🚀-release'
+			};
+
+			const options = {
+				config,
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Tag filter: 🚀-release');
+		});
+
+		it('produces output with no unresolved template placeholders', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const options = {
+				config: {
+					iterations: 10,
+					prompt: 'default' as const,
+					progressFile: '.taskmaster/loop-progress.txt',
+					sleepSeconds: 5,
+					tag: 'my-tag'
+				},
+				iteration: 5,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			// Should not contain common template placeholder patterns
+			expect(result).not.toMatch(/\{\{[^}]+\}\}/); // {{ placeholder }}
+			expect(result).not.toMatch(/\$\{[^}]+\}/); // ${ placeholder }
+			expect(result).not.toMatch(/%[a-zA-Z_]+%/); // %PLACEHOLDER%
+			expect(result).not.toMatch(/<[A-Z_]+>/); // <PLACEHOLDER> (but not HTML/XML tags)
+		});
+
+		it('handles progress file path with spaces', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const config: LoopConfig = {
+				iterations: 5,
+				prompt: 'default',
+				progressFile: 'path with spaces/progress file.txt',
+				sleepSeconds: 5
+			};
+
+			const options = {
+				config,
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			expect(result).toContain('- Progress file: @path with spaces/progress file.txt');
+		});
+
+		it('handles empty tag as falsy value', async () => {
+			const realPresetService = new LoopPresetService();
+			const service = new LoopPromptService(realPresetService);
+
+			const config: LoopConfig = {
+				iterations: 5,
+				prompt: 'default',
+				progressFile: '.taskmaster/loop-progress.txt',
+				sleepSeconds: 5,
+				tag: ''
+			};
+
+			const options = {
+				config,
+				iteration: 1,
+				projectRoot: '/test/project'
+			};
+
+			const result = await service.generatePrompt(options);
+
+			// Empty string tag should not add the tag filter line
+			expect(result).not.toContain('Tag filter');
+		});
+	});
 });
