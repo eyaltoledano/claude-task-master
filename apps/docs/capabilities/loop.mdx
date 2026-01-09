@@ -75,9 +75,31 @@ Example progress file content:
 [10:40:18] Iteration 3: All pending test tasks complete
 ```
 
+## CLI Options
+
+| Option                   | Type   | Default                         | Description                                                                                                   |
+| ------------------------ | ------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `-n, --iterations`       | number | `10`                            | Maximum number of iterations to run.                                                                          |
+| `-p, --prompt`           | string | `default`                       | Preset name or path to a custom prompt file. Accepts: `default`, `test-coverage`, `linting`, `duplication`, `entropy`, or a file path like `./my-prompt.md`. |
+| `--progress-file`        | string | `.taskmaster/loop-progress.txt` | Path to the progress log file where iteration notes are appended.                                             |
+| `--sleep`                | number | `5`                             | Seconds to wait between iterations. Gives the system time to settle before spawning the next agent.          |
+| `--on-complete`          | string | -                               | Shell command to run when all tasks complete (status becomes `all_complete`). Example: `--on-complete 'notify-send "Done!"'` |
+| `-t, --tag`              | string | -                               | Filter to only work on tasks with this tag.                                                                   |
+| `--status`               | string | `pending`                       | Filter to only work on tasks with this status.                                                                |
+| `--project`              | string | -                               | Project root directory. Auto-detected if not provided.                                                        |
+| `--json`                 | flag   | -                               | Output results as JSON instead of formatted text.                                                             |
+
+### Option Details
+
+**`--prompt` accepts two types of values:**
+- **Preset names**: Use built-in presets like `default`, `test-coverage`, `linting`, `duplication`, or `entropy`
+- **File paths**: Provide a path to a custom prompt file (e.g., `./my-custom-loop.md`)
+
+**`--on-complete` runs only on success:**
+The shell command only executes when `finalStatus` is `all_complete`, meaning an agent output the `<loop-complete>` marker. It does not run on `max_iterations`, `blocked`, or `error` outcomes.
+
 ## Next Steps
 
-- See [CLI Options Reference](/capabilities/loop#cli-options) for all available flags
 - Learn about [Built-in Presets](/capabilities/loop#built-in-presets) for common workflows
 - Create [Custom Prompts](/capabilities/loop#custom-prompts) for specialized tasks
 
