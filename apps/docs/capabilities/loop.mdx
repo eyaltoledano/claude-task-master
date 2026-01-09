@@ -1,0 +1,88 @@
+---
+title: Loop Command
+sidebarTitle: "Loop Command"
+description: "Run Claude Code in autonomous loops for batch task completion"
+---
+
+# Loop Command
+
+The `loop` command runs Claude Code in autonomous loops, spawning fresh agent sessions for each iteration. This approach, known as the "Ralph Wiggum pattern" (credited to Jeffrey Huntley, popularized by Matt Pocock), maintains context quality by avoiding long-running sessions that accumulate context fatigue.
+
+## Overview
+
+Instead of a single long-running agent session that degrades over time, the loop command:
+
+1. **Spawns fresh sessions** - Each iteration starts with a clean context
+2. **Uses preset prompts** - Built-in or custom prompts guide each iteration
+3. **Tracks progress** - A progress file persists notes across sessions
+4. **Detects completion** - Special markers signal when work is done or blocked
+
+This pattern is ideal for batch operations like clearing task backlogs, improving test coverage, or fixing lint errors across a codebase.
+
+## Basic Usage
+
+Run 10 iterations with the default task-completion preset:
+
+```bash
+task-master loop -n 10
+```
+
+Run 5 iterations with the test-coverage preset:
+
+```bash
+task-master loop -n 5 --prompt test-coverage
+```
+
+Run iterations with a custom prompt file:
+
+```bash
+task-master loop -n 10 --prompt ./my-custom-prompt.md
+```
+
+Filter to specific task tag:
+
+```bash
+task-master loop -n 10 --tag backend
+```
+
+## How It Works
+
+Each loop iteration:
+
+1. Generates a prompt combining context header + preset content
+2. Spawns `claude -p <prompt>` as a fresh subprocess
+3. Captures output and checks for completion markers
+4. Appends progress notes to the progress file
+5. Sleeps before the next iteration (configurable)
+
+The loop exits early when:
+- An agent outputs `<loop-complete>REASON</loop-complete>` - all work done
+- An agent outputs `<loop-blocked>REASON</loop-blocked>` - cannot proceed
+- Maximum iterations reached
+
+## Progress File
+
+Each iteration's agent has access to a shared progress file (default: `.taskmaster/loop-progress.txt`) via the `@` file reference syntax. Agents append notes about what they completed, allowing subsequent iterations to build on previous work.
+
+Example progress file content:
+
+```
+# Loop Progress - Started 2025-01-09 10:30:00
+# Preset: test-coverage | Iterations: 10
+
+[10:30:45] Iteration 1 (Task 5.2): Added unit tests for UserService
+[10:35:22] Iteration 2 (Task 5.3): Added integration tests for auth flow
+[10:40:18] Iteration 3: All pending test tasks complete
+```
+
+## Next Steps
+
+- See [CLI Options Reference](/capabilities/loop#cli-options) for all available flags
+- Learn about [Built-in Presets](/capabilities/loop#built-in-presets) for common workflows
+- Create [Custom Prompts](/capabilities/loop#custom-prompts) for specialized tasks
+
+---
+
+<Tip>
+The loop command is perfect for "overnight automation" - start a loop before leaving and return to a cleaned-up codebase.
+</Tip>
