@@ -53,13 +53,9 @@ describe('Loop Types', () => {
 				prompt: 'test-coverage',
 				progressFile: '/progress.txt',
 				sleepSeconds: 3,
-				onComplete: 'npm run build',
-				tag: 'feature-branch',
-				status: 'pending'
+				tag: 'feature-branch'
 			};
-			expect(config.onComplete).toBe('npm run build');
 			expect(config.tag).toBe('feature-branch');
-			expect(config.status).toBe('pending');
 		});
 
 		it('accepts custom prompt string', () => {

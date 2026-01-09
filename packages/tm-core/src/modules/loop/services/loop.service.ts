@@ -3,15 +3,20 @@
  * All logic inlined: preset resolution, prompt generation, execution, progress tracking, completion detection
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { LoopConfig, LoopIteration, LoopPreset, LoopResult } from '../types.js';
 import { DEFAULT_PRESET } from '../presets/default.js';
 import { DUPLICATION_PRESET } from '../presets/duplication.js';
 import { ENTROPY_PRESET } from '../presets/entropy.js';
 import { LINTING_PRESET } from '../presets/linting.js';
 import { TEST_COVERAGE_PRESET } from '../presets/test-coverage.js';
+import type {
+	LoopConfig,
+	LoopIteration,
+	LoopPreset,
+	LoopResult
+} from '../types.js';
 
 /**
  * Options for LoopService constructor
@@ -62,7 +67,7 @@ export class LoopService {
 		const iterations: LoopIteration[] = [];
 		let tasksCompleted = 0;
 
-		// Initialize progress file using inlined method
+		// Initialize progress file (AI will update it during execution)
 		await this.initProgressFile(config);
 
 		for (let i = 1; i <= config.iterations && this._isRunning; i++) {
@@ -74,18 +79,27 @@ export class LoopService {
 
 			iterations.push(result.iteration);
 
-			// Log progress using inlined method
-			await this.appendProgress(config.progressFile, i, result.iteration);
-
 			// Check for completion
 			if (result.completionCheck.isComplete) {
 				this._isRunning = false;
-				return this.buildResult(iterations, tasksCompleted + 1, 'all_complete');
+				const loopResult = this.buildResult(
+					iterations,
+					tasksCompleted + 1,
+					'all_complete'
+				);
+				await this.appendFinalSummary(config.progressFile, loopResult);
+				return loopResult;
 			}
 
 			if (result.completionCheck.isBlocked) {
 				this._isRunning = false;
-				return this.buildResult(iterations, tasksCompleted, 'blocked');
+				const loopResult = this.buildResult(
+					iterations,
+					tasksCompleted,
+					'blocked'
+				);
+				await this.appendFinalSummary(config.progressFile, loopResult);
+				return loopResult;
 			}
 
 			if (result.iteration.status === 'success') {
@@ -99,7 +113,13 @@ export class LoopService {
 		}
 
 		this._isRunning = false;
-		return this.buildResult(iterations, tasksCompleted, 'max_iterations');
+		const loopResult = this.buildResult(
+			iterations,
+			tasksCompleted,
+			'max_iterations'
+		);
+		await this.appendFinalSummary(config.progressFile, loopResult);
+		return loopResult;
 	}
 
 	/**
@@ -151,12 +171,15 @@ export class LoopService {
 		exitCode: number | null
 	): { status: LoopIteration['status']; message?: string } {
 		const completeMatch = output.match(this.completePattern);
-		if (completeMatch) return { status: 'complete', message: completeMatch[1].trim() };
+		if (completeMatch)
+			return { status: 'complete', message: completeMatch[1].trim() };
 
 		const blockedMatch = output.match(this.blockedPattern);
-		if (blockedMatch) return { status: 'blocked', message: blockedMatch[1].trim() };
+		if (blockedMatch)
+			return { status: 'blocked', message: blockedMatch[1].trim() };
 
-		if (exitCode !== 0) return { status: 'error', message: `Exit code ${exitCode}` };
+		if (exitCode !== 0)
+			return { status: 'error', message: `Exit code ${exitCode}` };
 		return { status: 'success' };
 	}
 
@@ -186,19 +209,24 @@ export class LoopService {
 	}
 
 	/**
-	 * Append a progress entry to the progress file
+	 * Append final summary to the progress file after loop completes
 	 * @param file - Path to the progress file
-	 * @param iteration - Iteration number
-	 * @param result - Loop iteration result
+	 * @param result - Final loop result
 	 */
-	private async appendProgress(
+	private async appendFinalSummary(
 		file: string,
-		iteration: number,
-		result: LoopIteration
+		result: LoopResult
 	): Promise<void> {
-		const taskIdPart = result.taskId ? ` (Task ${result.taskId})` : '';
-		const entry = `[${new Date().toISOString()}] Iteration ${iteration}${taskIdPart}: ${result.message || 'Iteration completed'}\n`;
-		await appendFile(file, entry, 'utf-8');
+		const lines = [
+			'',
+			'---',
+			`# Loop Complete: ${new Date().toISOString()}`,
+			`- Total iterations: ${result.totalIterations}`,
+			`- Tasks completed: ${result.tasksCompleted}`,
+			`- Final status: ${result.finalStatus}`,
+			''
+		];
+		await appendFile(file, lines.join('\n'), 'utf-8');
 	}
 
 	// === Inlined from LoopPromptService (Phase 2 simplification) ===
@@ -277,7 +305,10 @@ export class LoopService {
 	 * @param iteration - Current iteration number (1-indexed)
 	 * @returns Promise resolving to the complete prompt string
 	 */
-	private async buildPrompt(config: LoopConfig, iteration: number): Promise<string> {
+	private async buildPrompt(
+		config: LoopConfig,
+		iteration: number
+	): Promise<string> {
 		const basePrompt = await this.resolvePrompt(config.prompt);
 		const contextHeader = this.buildContextHeader(config, iteration);
 		return `${contextHeader}\n\n${basePrompt}`;
@@ -294,7 +325,11 @@ export class LoopService {
 	): Promise<{
 		iteration: LoopIteration;
 		output: string;
-		completionCheck: { isComplete: boolean; isBlocked: boolean; reason?: string };
+		completionCheck: {
+			isComplete: boolean;
+			isBlocked: boolean;
+			reason?: string;
+		};
 		exitCode: number;
 	}> {
 		const startTime = Date.now();
@@ -302,7 +337,7 @@ export class LoopService {
 
 		return new Promise((resolve) => {
 			// Use claude -p for print mode (non-interactive)
-			this.currentProcess = spawn('claude', ['-p', prompt], {
+			this.currentProcess = spawn('docker run sandbox claude', ['-p', prompt], {
 				cwd: this.projectRoot,
 				shell: false,
 				stdio: ['ignore', 'pipe', 'pipe']

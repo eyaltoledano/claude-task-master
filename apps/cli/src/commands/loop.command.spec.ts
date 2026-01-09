@@ -200,32 +200,8 @@ describe('LoopCommand', () => {
 			expect(() => validateOptions(options)).toThrow('Invalid iterations');
 		});
 
-		it('should throw error for invalid sleep (negative)', async () => {
-			const options: LoopCommandOptions = { sleep: '-1' };
-
-			const validateOptions = (loopCommand as any).validateOptions.bind(loopCommand);
-
-			expect(() => validateOptions(options)).toThrow('Invalid sleep');
-		});
-
-		it('should throw error for invalid sleep (non-numeric)', async () => {
-			const options: LoopCommandOptions = { sleep: 'abc' };
-
-			const validateOptions = (loopCommand as any).validateOptions.bind(loopCommand);
-
-			expect(() => validateOptions(options)).toThrow('Invalid sleep');
-		});
-
 		it('should allow valid iterations', () => {
 			const options: LoopCommandOptions = { iterations: '5' };
-
-			const validateOptions = (loopCommand as any).validateOptions.bind(loopCommand);
-
-			expect(() => validateOptions(options)).not.toThrow();
-		});
-
-		it('should allow zero sleep', () => {
-			const options: LoopCommandOptions = { sleep: '0' };
 
 			const validateOptions = (loopCommand as any).validateOptions.bind(loopCommand);
 

@@ -110,11 +110,9 @@ export class LoopDomain {
 			prompt: partial.prompt ?? 'default',
 			progressFile:
 				partial.progressFile ??
-				`${this.projectRoot}/.taskmaster/loop-progress.txt`,
+				`${this.projectRoot}/.taskmaster/progress.txt`,
 			sleepSeconds: partial.sleepSeconds ?? 5,
-			onComplete: partial.onComplete,
-			tag: partial.tag,
-			status: partial.status ?? 'pending'
+			tag: partial.tag
 		};
 	}
 }

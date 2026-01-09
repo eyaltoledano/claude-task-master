@@ -24,12 +24,8 @@ export interface LoopConfig {
 	progressFile: string;
 	/** Seconds to sleep between iterations */
 	sleepSeconds: number;
-	/** Command to run on completion (optional) */
-	onComplete?: string;
 	/** Tag context to operate on (optional) */
 	tag?: string;
-	/** Task status filter (optional) */
-	status?: string;
 }
 
 /**

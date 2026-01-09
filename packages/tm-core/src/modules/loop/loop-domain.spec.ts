@@ -100,27 +100,13 @@ describe('LoopDomain', () => {
 			expect(config.tag).toBe('my-tag');
 		});
 
-		it('should respect provided status', () => {
-			const config = (loopDomain as any).buildConfig({ status: 'in-progress' });
-			expect(config.status).toBe('in-progress');
-		});
-
-		it('should respect provided onComplete', () => {
-			const config = (loopDomain as any).buildConfig({
-				onComplete: 'echo done'
-			});
-			expect(config.onComplete).toBe('echo done');
-		});
-
 		it('should handle all options combined', () => {
 			const fullConfig: Partial<LoopConfig> = {
 				iterations: 5,
 				prompt: 'linting',
 				progressFile: '/my/progress.txt',
 				sleepSeconds: 2,
-				onComplete: 'notify-send "Done"',
-				tag: 'feature-branch',
-				status: 'done'
+				tag: 'feature-branch'
 			};
 			const config = (loopDomain as any).buildConfig(fullConfig);
 			expect(config).toEqual(fullConfig);

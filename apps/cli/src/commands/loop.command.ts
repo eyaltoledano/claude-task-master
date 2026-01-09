@@ -13,13 +13,9 @@ import {
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
-
-const execAsync = promisify(exec);
 
 /**
  * CLI-specific options interface for the loop command
@@ -31,14 +27,8 @@ export interface LoopCommandOptions {
 	prompt?: string;
 	/** Path to progress log file */
 	progressFile?: string;
-	/** Seconds to sleep between iterations */
-	sleep?: string;
-	/** Command to run when all tasks complete */
-	onComplete?: string;
 	/** Filter by tag */
 	tag?: string;
-	/** Filter by task status */
-	status?: string;
 	/** Project root directory */
 	project?: string;
 	/** Output results as JSON */
@@ -64,14 +54,12 @@ export class LoopCommand extends Command {
 				'Preset name or path to prompt file',
 				'default'
 			)
-			.option('--progress-file <path>', 'Path to progress log file')
-			.option('--sleep <seconds>', 'Seconds between iterations', '5')
 			.option(
-				'--on-complete <command>',
-				'Command to run when all tasks complete'
+				'--progress-file <path>',
+				'Path to progress log file',
+				'.taskmaster/progress.txt'
 			)
 			.option('-t, --tag <tag>', 'Only work on tasks with this tag')
-			.option('--status <status>', 'Only work on tasks with this status', 'pending')
 			.option(
 				'--project <path>',
 				'Project root directory (auto-detected if not provided)'
@@ -113,15 +101,16 @@ export class LoopCommand extends Command {
 			const config: Partial<LoopConfig> = {
 				iterations: parseInt(options.iterations || '10', 10),
 				prompt: options.prompt || 'default',
-				progressFile: options.progressFile,
-				sleepSeconds: parseInt(options.sleep || '5', 10),
-				onComplete: options.onComplete,
-				tag: options.tag,
-				status: options.status
+				progressFile: options.progressFile || '.taskmaster/progress.txt',
+				tag: options.tag
 			};
 
+			if (!this.tmCore) {
+				throw new Error('TmCore not initialized');
+			}
+
 			// Execute loop via TmCore
-			const result = await this.tmCore!.loop.run(config);
+			const result = await this.tmCore.loop.run(config);
 
 			// Store result for programmatic access
 			this.lastResult = result;
@@ -131,20 +120,6 @@ export class LoopCommand extends Command {
 				console.log(JSON.stringify(result, null, 2));
 			} else {
 				this.displayResult(result);
-			}
-
-			// Run on-complete command if specified and all tasks completed
-			if (options.onComplete && result.finalStatus === 'all_complete') {
-				console.log(
-					chalk.dim(`\nRunning on-complete command: ${options.onComplete}`)
-				);
-				try {
-					await execAsync(options.onComplete);
-				} catch (cmdError: any) {
-					console.error(
-						chalk.yellow(`Warning: on-complete command failed: ${cmdError.message}`)
-					);
-				}
 			}
 		} catch (error: any) {
 			hasError = true;
@@ -170,16 +145,6 @@ export class LoopCommand extends Command {
 			if (isNaN(iterations) || iterations < 1) {
 				throw new Error(
 					`Invalid iterations: ${options.iterations}. Must be a positive integer.`
-				);
-			}
-		}
-
-		// Validate sleep
-		if (options.sleep) {
-			const sleep = parseInt(options.sleep, 10);
-			if (isNaN(sleep) || sleep < 0) {
-				throw new Error(
-					`Invalid sleep: ${options.sleep}. Must be a non-negative integer.`
 				);
 			}
 		}
