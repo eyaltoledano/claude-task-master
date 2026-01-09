@@ -211,6 +211,155 @@ task-master loop -n 10 --prompt entropy
 
 **Completion criteria:** No significant code smells remain.
 
+## Custom Prompts
+
+You can create custom prompt files for specialized workflows that aren't covered by the built-in presets.
+
+### Specifying a Custom Prompt
+
+Pass the file path to the `--prompt` option:
+
+```bash
+task-master loop -n 10 --prompt ./my-custom-loop.md
+```
+
+The path can be absolute or relative to the current directory.
+
+### Required Structure
+
+Custom prompts should follow this structure to work effectively with the loop system:
+
+```markdown
+# Your Loop Title
+
+Brief description of what this loop does.
+
+## Files Available
+
+- @.taskmaster/tasks/tasks.json - Your task backlog
+- @.taskmaster/loop-progress.txt - Progress log from previous iterations
+- @path/to/other/file.ts - Any other files the agent needs
+
+## Process
+
+1. Step one of the workflow
+2. Step two of the workflow
+3. ... more steps
+
+## Important
+
+- Complete ONLY ONE task per session
+- Keep changes small and focused
+- Do NOT start another task after completing one
+- If work is complete, output: <loop-complete>REASON</loop-complete>
+- If blocked, output: <loop-blocked>REASON</loop-blocked>
+```
+
+### File References with @ Syntax
+
+The `@` prefix makes files available to the agent. Claude Code will read these files when processing the prompt:
+
+```markdown
+## Files Available
+
+- @src/index.ts - Main entry point
+- @package.json - Dependencies and scripts
+- @.taskmaster/loop-progress.txt - Progress from previous iterations
+```
+
+Without the `@` prefix, file paths are just text. With `@`, the agent can actually read and reference the file contents.
+
+### Completion Markers
+
+The loop watches for two special markers in agent output:
+
+| Marker | Purpose | Example |
+| ------ | ------- | ------- |
+| `<loop-complete>REASON</loop-complete>` | Signal that all work is done | `<loop-complete>ALL_TESTS_PASSING</loop-complete>` |
+| `<loop-blocked>REASON</loop-blocked>` | Signal that work cannot proceed | `<loop-blocked>MISSING_API_KEY</loop-blocked>` |
+
+When either marker is detected, the loop exits early. The reason text is captured in the final result.
+
+**Example usage in a custom prompt:**
+
+```markdown
+## Important
+
+- If all migrations are complete, output: <loop-complete>MIGRATIONS_DONE</loop-complete>
+- If a migration fails with an unrecoverable error, output: <loop-blocked>MIGRATION_FAILED: describe error</loop-blocked>
+```
+
+### Best Practices
+
+1. **Be specific**: Clearly define what "done" means for your workflow
+2. **One task per iteration**: Instruct agents to complete exactly one unit of work
+3. **Use the progress file**: Reference `@.taskmaster/loop-progress.txt` so agents can see what previous iterations accomplished
+4. **Include quality checks**: Add steps for running tests or type checks before completing
+5. **Define completion criteria**: Tell agents exactly when to output `<loop-complete>`
+6. **Handle edge cases**: Define when to output `<loop-blocked>` to avoid infinite loops
+
+## Progress File
+
+The progress file is a shared log that persists notes across loop iterations. Since each iteration spawns a fresh agent session, this file provides continuity.
+
+### Default Location
+
+```
+.taskmaster/loop-progress.txt
+```
+
+Override with the `--progress-file` option:
+
+```bash
+task-master loop -n 10 --progress-file ./my-progress.txt
+```
+
+### How It Works
+
+1. **Initialization**: The loop creates the progress file at the start with a header
+2. **Each iteration**: Agents read the file via `@` reference and append notes about their work
+3. **Context continuity**: Subsequent agents see what previous iterations accomplished
+
+### File Format
+
+The progress file uses a simple timestamped format:
+
+```
+# Loop Progress - Started 2025-01-09 10:30:00
+# Preset: default | Iterations: 10 | Tag: backend
+
+[10:30:45] Iteration 1 (Task 5.2): Implemented user authentication endpoint
+[10:35:22] Iteration 2 (Task 5.3): Added input validation for login form
+[10:40:18] Iteration 3 (Task 5.4): Fixed edge case in token refresh logic
+[10:45:01] Iteration 4: All pending backend tasks complete
+```
+
+**Format breakdown:**
+- **Header**: Timestamp, preset name, max iterations, optional tag filter
+- **Entries**: `[HH:MM:SS] Iteration N (Task ID): Description`
+- **Task ID**: Optional - included when agent worked on a specific task
+
+### Using Progress in Custom Prompts
+
+Always include the progress file in your `## Files Available` section:
+
+```markdown
+## Files Available
+
+- @.taskmaster/loop-progress.txt - Progress log from previous iterations
+```
+
+And instruct agents to append notes:
+
+```markdown
+## Process
+
+...
+7. Append a brief note to the progress file about what was done
+```
+
+This creates a chain of context that helps each iteration build on previous work.
+
 ---
 
 <Tip>
