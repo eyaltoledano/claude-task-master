@@ -4,33 +4,24 @@
  */
 
 import type { ConfigManager } from '../config/managers/config-manager.js';
-import type { TasksDomain } from '../tasks/tasks-domain.js';
 import { LoopService } from './services/loop.service.js';
-import { LoopPresetService } from './services/loop-preset.service.js';
+import {
+	isPreset as checkIsPreset,
+	getPreset,
+	PRESET_NAMES
+} from './presets/index.js';
 import type { LoopConfig, LoopResult, LoopPreset } from './types.js';
 
 /**
  * Loop Domain - Unified API for loop operations
- * Coordinates LoopService with lazy instantiation and provides
- * cross-domain integration with TasksDomain for completion checking
+ * Coordinates LoopService with lazy instantiation
  */
 export class LoopDomain {
 	private loopService: LoopService | null = null;
 	private readonly projectRoot: string;
-	private readonly presetService: LoopPresetService;
-	private tasksDomain: TasksDomain | null = null;
 
 	constructor(configManager: ConfigManager) {
 		this.projectRoot = configManager.getProjectRoot();
-		this.presetService = new LoopPresetService();
-	}
-
-	/**
-	 * Set the TasksDomain for task completion checking
-	 * Called by TmCore after TasksDomain is initialized
-	 */
-	setTasksDomain(tasksDomain: TasksDomain): void {
-		this.tasksDomain = tasksDomain;
 	}
 
 	// ========== Loop Operations ==========
@@ -51,9 +42,9 @@ export class LoopDomain {
 	 * Stop the currently running loop
 	 * Signals the loop to stop and nulls the service reference
 	 */
-	async stop(): Promise<void> {
+	stop(): void {
 		if (this.loopService) {
-			await this.loopService.stop();
+			this.loopService.stop();
 			this.loopService = null;
 		}
 	}
@@ -61,8 +52,8 @@ export class LoopDomain {
 	/**
 	 * Check if a loop is currently running
 	 */
-	isRunning(): boolean {
-		return this.loopService?.getIsRunning() ?? false;
+	getIsRunning(): boolean {
+		return this.loopService?.isRunning ?? false;
 	}
 
 	// ========== Preset Operations ==========
@@ -73,7 +64,7 @@ export class LoopDomain {
 	 * @returns True if the prompt is a valid LoopPreset
 	 */
 	isPreset(prompt: string): prompt is LoopPreset {
-		return this.presetService.isPreset(prompt);
+		return checkIsPreset(prompt);
 	}
 
 	/**
@@ -88,7 +79,13 @@ export class LoopDomain {
 		prompt: LoopPreset | string,
 		readFile?: (path: string) => Promise<string>
 	): Promise<string> {
-		return this.presetService.resolvePrompt(prompt, readFile);
+		if (checkIsPreset(prompt)) {
+			return getPreset(prompt);
+		}
+		if (!readFile) {
+			throw new Error(`Custom prompt file requires readFile callback: ${prompt}`);
+		}
+		return readFile(prompt);
 	}
 
 	/**
@@ -96,26 +93,7 @@ export class LoopDomain {
 	 * @returns Array of available preset names
 	 */
 	getAvailablePresets(): LoopPreset[] {
-		return ['default', 'test-coverage', 'linting', 'duplication', 'entropy'];
-	}
-
-	// ========== Task Completion Check ==========
-
-	/**
-	 * Check if all tasks are complete or cancelled
-	 * Useful for loop completion conditions
-	 * @param options - Options including optional tag filter
-	 * @returns Promise resolving to true if all tasks are done or cancelled
-	 * @throws Error if TasksDomain is not set
-	 */
-	async checkAllTasksComplete(options: { tag?: string } = {}): Promise<boolean> {
-		if (!this.tasksDomain) {
-			throw new Error('TasksDomain not set. Call setTasksDomain first.');
-		}
-		const result = await this.tasksDomain.list({ tag: options.tag });
-		return result.tasks.every(
-			(t) => t.status === 'done' || t.status === 'cancelled'
-		);
+		return [...PRESET_NAMES];
 	}
 
 	// ========== Internal Helpers ==========

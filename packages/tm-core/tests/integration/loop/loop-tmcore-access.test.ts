@@ -2,7 +2,7 @@
  * @fileoverview Integration tests for LoopDomain access via TmCore
  *
  * Verifies that LoopDomain is properly accessible through TmCore.loop
- * and integrates correctly with TasksDomain.
+ * and methods work correctly.
  *
  * @integration
  */
@@ -93,77 +93,8 @@ describe('LoopDomain Access via TmCore', () => {
 			expect(typeof tmCore.loop.isPreset).toBe('function');
 			expect(typeof tmCore.loop.resolvePrompt).toBe('function');
 			expect(typeof tmCore.loop.getAvailablePresets).toBe('function');
-			expect(typeof tmCore.loop.isRunning).toBe('function');
+			expect(typeof tmCore.loop.getIsRunning).toBe('function');
 			expect(typeof tmCore.loop.stop).toBe('function');
-			expect(typeof tmCore.loop.checkAllTasksComplete).toBe('function');
-		});
-	});
-
-	describe('TasksDomain Integration', () => {
-		it('should have TasksDomain wired for checkAllTasksComplete()', async () => {
-			tmCore = await createTmCore({ projectPath: testProjectDir });
-
-			// Should not throw "TasksDomain not set" error
-			const result = await tmCore.loop.checkAllTasksComplete();
-
-			// Empty tasks list should be considered complete
-			expect(result).toBe(true);
-		});
-
-		it('should detect pending tasks as incomplete', async () => {
-			// Create tasks.json with a pending task
-			const tasksPath = path.join(testProjectDir, '.taskmaster', 'tasks', 'tasks.json');
-			fs.writeFileSync(
-				tasksPath,
-				JSON.stringify({
-					tasks: [
-						{ id: 1, title: 'Test Task', status: 'pending' }
-					],
-					tags: {
-						default: {
-							tasks: [
-								{ id: 1, title: 'Test Task', status: 'pending' }
-							]
-						}
-					},
-					activeTag: 'default'
-				}),
-				'utf-8'
-			);
-
-			tmCore = await createTmCore({ projectPath: testProjectDir });
-			const isComplete = await tmCore.loop.checkAllTasksComplete();
-
-			expect(isComplete).toBe(false);
-		});
-
-		it('should detect all done/cancelled tasks as complete', async () => {
-			// Create tasks.json with completed tasks
-			const tasksPath = path.join(testProjectDir, '.taskmaster', 'tasks', 'tasks.json');
-			fs.writeFileSync(
-				tasksPath,
-				JSON.stringify({
-					tasks: [
-						{ id: 1, title: 'Done Task', status: 'done' },
-						{ id: 2, title: 'Cancelled Task', status: 'cancelled' }
-					],
-					tags: {
-						default: {
-							tasks: [
-								{ id: 1, title: 'Done Task', status: 'done' },
-								{ id: 2, title: 'Cancelled Task', status: 'cancelled' }
-							]
-						}
-					},
-					activeTag: 'default'
-				}),
-				'utf-8'
-			);
-
-			tmCore = await createTmCore({ projectPath: testProjectDir });
-			const isComplete = await tmCore.loop.checkAllTasksComplete();
-
-			expect(isComplete).toBe(true);
 		});
 	});
 
@@ -204,14 +135,15 @@ describe('LoopDomain Access via TmCore', () => {
 		it('should report not running initially', async () => {
 			tmCore = await createTmCore({ projectPath: testProjectDir });
 
-			expect(tmCore.loop.isRunning()).toBe(false);
+			expect(tmCore.loop.getIsRunning()).toBe(false);
 		});
 
 		it('should handle stop() when not running', async () => {
 			tmCore = await createTmCore({ projectPath: testProjectDir });
 
-			await expect(tmCore.loop.stop()).resolves.not.toThrow();
-			expect(tmCore.loop.isRunning()).toBe(false);
+			// stop() is now synchronous and should not throw
+			expect(() => tmCore!.loop.stop()).not.toThrow();
+			expect(tmCore.loop.getIsRunning()).toBe(false);
 		});
 	});
 });

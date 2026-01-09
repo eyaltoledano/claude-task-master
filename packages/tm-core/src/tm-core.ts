@@ -182,7 +182,6 @@ export class TmCore {
 			this._config = new ConfigDomain(this._configManager);
 			this._integration = new IntegrationDomain(this._configManager);
 			this._loop = new LoopDomain(this._configManager);
-			this._loop.setTasksDomain(this._tasks);
 
 			// Initialize domains that need async setup
 			await this._tasks.initialize();

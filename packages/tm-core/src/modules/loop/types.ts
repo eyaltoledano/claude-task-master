@@ -62,12 +62,3 @@ export interface LoopResult {
 	finalStatus: 'all_complete' | 'max_iterations' | 'blocked' | 'error';
 }
 
-/**
- * Marker detected from Claude output indicating loop completion
- */
-export interface LoopCompletionMarker {
-	/** Type of completion marker */
-	type: 'complete' | 'blocked';
-	/** Reason for completion or blocking */
-	reason: string;
-}

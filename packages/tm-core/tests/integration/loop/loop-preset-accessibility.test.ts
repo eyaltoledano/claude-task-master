@@ -1,5 +1,5 @@
 /**
- * @fileoverview Integration tests for LoopPresetService accessibility
+ * @fileoverview Integration tests for preset accessibility
  *
  * Tests that preset content is accessible without filesystem dependencies,
  * validating that the inlined preset approach works correctly for both
@@ -9,33 +9,27 @@
  * - All 5 presets can be loaded without filesystem access
  * - Preset content contains required markers for loop completion detection
  * - Preset content structure is valid and usable by the loop system
- * - The service works identically in any environment (dev, build, npm pack)
  *
  * @integration
  */
 
 import { describe, expect, it } from 'vitest';
 import {
-	LoopPresetService,
+	PRESETS,
 	PRESET_NAMES,
-	loadPreset,
-	isValidPreset,
-	resolvePrompt,
-	LoopCompletionService,
+	getPreset,
+	isPreset,
 	type LoopPreset
 } from '../../../src/modules/loop/index.js';
 
-describe('LoopPresetService Integration', () => {
-	const service = new LoopPresetService();
-	const completionService = new LoopCompletionService();
-
+describe('Preset Accessibility Integration', () => {
 	describe('Preset Accessibility', () => {
 		it('should load all 5 presets without filesystem access', () => {
 			// This test verifies that presets are inlined and don't require fs
 			expect(PRESET_NAMES).toHaveLength(5);
 
 			for (const presetName of PRESET_NAMES) {
-				const content = service.getPresetContent(presetName);
+				const content = getPreset(presetName);
 				expect(content).toBeTruthy();
 				expect(typeof content).toBe('string');
 				expect(content.length).toBeGreaterThan(100);
@@ -52,23 +46,22 @@ describe('LoopPresetService Integration', () => {
 			];
 
 			for (const preset of expectedPresets) {
-				expect(service.isPreset(preset)).toBe(true);
-				expect(isValidPreset(preset)).toBe(true);
+				expect(isPreset(preset)).toBe(true);
 			}
 		});
 
-		it('should work with async loadPreset API', async () => {
-			for (const presetName of PRESET_NAMES) {
-				const content = await loadPreset(presetName);
-				expect(content).toBeTruthy();
-				expect(content).toBe(service.getPresetContent(presetName));
-			}
+		it('should have PRESETS record with all presets', () => {
+			expect(Object.keys(PRESETS)).toHaveLength(5);
+			expect(PRESETS['default']).toBeTruthy();
+			expect(PRESETS['test-coverage']).toBeTruthy();
+			expect(PRESETS['linting']).toBeTruthy();
+			expect(PRESETS['duplication']).toBeTruthy();
+			expect(PRESETS['entropy']).toBeTruthy();
 		});
 
-		it('should work with resolvePrompt for preset names', async () => {
+		it('should have getPreset return same content as PRESETS record', () => {
 			for (const presetName of PRESET_NAMES) {
-				const content = await resolvePrompt(presetName);
-				expect(content).toBe(service.getPresetContent(presetName));
+				expect(getPreset(presetName)).toBe(PRESETS[presetName]);
 			}
 		});
 	});
@@ -76,27 +69,27 @@ describe('LoopPresetService Integration', () => {
 	describe('Preset Content Structure', () => {
 		it('all presets should contain loop-complete marker', () => {
 			for (const presetName of PRESET_NAMES) {
-				const content = service.getPresetContent(presetName);
+				const content = getPreset(presetName);
 				expect(content).toContain('<loop-complete>');
 			}
 		});
 
 		it('default preset should contain both complete and blocked markers', () => {
-			const content = service.getPresetContent('default');
+			const content = getPreset('default');
 			expect(content).toContain('<loop-complete>');
 			expect(content).toContain('<loop-blocked>');
 		});
 
 		it('all presets should reference progress file', () => {
 			for (const presetName of PRESET_NAMES) {
-				const content = service.getPresetContent(presetName);
+				const content = getPreset(presetName);
 				expect(content).toContain('loop-progress');
 			}
 		});
 
 		it('all presets should emphasize single-task constraint', () => {
 			for (const presetName of PRESET_NAMES) {
-				const content = service.getPresetContent(presetName);
+				const content = getPreset(presetName);
 				// All presets should mention completing ONE task/test/fix per session
 				expect(content).toMatch(/\bONE\b/i);
 			}
@@ -106,7 +99,7 @@ describe('LoopPresetService Integration', () => {
 			const completionReasons = new Set<string>();
 
 			for (const presetName of PRESET_NAMES) {
-				const content = service.getPresetContent(presetName);
+				const content = getPreset(presetName);
 				// Extract the completion reason from <loop-complete>REASON</loop-complete>
 				const match = content.match(/<loop-complete>([^<]+)<\/loop-complete>/);
 				expect(match).toBeTruthy();
@@ -120,7 +113,23 @@ describe('LoopPresetService Integration', () => {
 		});
 	});
 
-	describe('Integration with LoopCompletionService', () => {
+	describe('Completion Marker Detection', () => {
+		// Simple regex-based completion marker detection (inlined from deleted LoopCompletionService)
+		const parseOutput = (output: string) => {
+			const completeMatch = output.match(/<loop-complete>([^<]*)<\/loop-complete>/i);
+			const blockedMatch = output.match(/<loop-blocked>([^<]*)<\/loop-blocked>/i);
+
+			return {
+				isComplete: !!completeMatch,
+				isBlocked: !!blockedMatch,
+				marker: completeMatch
+					? { type: 'complete' as const, reason: completeMatch[1] }
+					: blockedMatch
+						? { type: 'blocked' as const, reason: blockedMatch[1] }
+						: null
+			};
+		};
+
 		it('should detect completion markers from preset content', () => {
 			// Simulate agent output containing the completion marker from default preset
 			const agentOutput = `
@@ -129,7 +138,7 @@ I have completed all the tasks in the backlog. There are no more pending tasks t
 <loop-complete>ALL_TASKS_DONE</loop-complete>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isComplete).toBe(true);
 			expect(result.marker?.type).toBe('complete');
 			expect(result.marker?.reason).toBe('ALL_TASKS_DONE');
@@ -142,7 +151,7 @@ I cannot proceed because the API key is not configured.
 <loop-blocked>MISSING_API_KEY</loop-blocked>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isBlocked).toBe(true);
 			expect(result.marker?.type).toBe('blocked');
 			expect(result.marker?.reason).toBe('MISSING_API_KEY');
@@ -155,7 +164,7 @@ Coverage has reached 95% which exceeds our target of 80%.
 <loop-complete>COVERAGE_TARGET</loop-complete>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isComplete).toBe(true);
 			expect(result.marker?.reason).toBe('COVERAGE_TARGET');
 		});
@@ -167,7 +176,7 @@ All lint errors and type errors have been fixed.
 <loop-complete>ZERO_ERRORS</loop-complete>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isComplete).toBe(true);
 			expect(result.marker?.reason).toBe('ZERO_ERRORS');
 		});
@@ -179,7 +188,7 @@ Code duplication is now at 2.5%, below the 3% threshold.
 <loop-complete>LOW_DUPLICATION</loop-complete>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isComplete).toBe(true);
 			expect(result.marker?.reason).toBe('LOW_DUPLICATION');
 		});
@@ -191,46 +200,26 @@ No significant code smells remain in the codebase.
 <loop-complete>LOW_ENTROPY</loop-complete>
 `;
 
-			const result = completionService.parseOutput(agentOutput);
+			const result = parseOutput(agentOutput);
 			expect(result.isComplete).toBe(true);
 			expect(result.marker?.reason).toBe('LOW_ENTROPY');
 		});
 	});
 
-	describe('Service Consistency', () => {
-		it('loadPreset and getPresetContent should return identical content', () => {
-			for (const presetName of PRESET_NAMES) {
-				const fromService = service.getPresetContent(presetName);
-				const fromLoader = service.loadPreset(presetName);
-				expect(fromService).toBe(fromLoader);
-			}
-		});
-
-		it('static and instance isPreset methods should be consistent', () => {
+	describe('isPreset Consistency', () => {
+		it('should return true for valid presets', () => {
 			const validPresets = ['default', 'test-coverage', 'linting', 'duplication', 'entropy'];
-			const invalidPresets = ['invalid', 'custom', '', 'DEFAULT', 'Test-Coverage'];
 
 			for (const name of validPresets) {
-				expect(service.isPreset(name)).toBe(true);
-				expect(LoopPresetService.isValidPreset(name)).toBe(true);
-				expect(isValidPreset(name)).toBe(true);
-			}
-
-			for (const name of invalidPresets) {
-				expect(service.isPreset(name)).toBe(false);
-				expect(LoopPresetService.isValidPreset(name)).toBe(false);
-				expect(isValidPreset(name)).toBe(false);
+				expect(isPreset(name)).toBe(true);
 			}
 		});
 
-		it('multiple service instances should return same content', () => {
-			const service1 = new LoopPresetService();
-			const service2 = new LoopPresetService();
+		it('should return false for invalid presets', () => {
+			const invalidPresets = ['invalid', 'custom', '', 'DEFAULT', 'Test-Coverage'];
 
-			for (const presetName of PRESET_NAMES) {
-				expect(service1.getPresetContent(presetName)).toBe(
-					service2.getPresetContent(presetName)
-				);
+			for (const name of invalidPresets) {
+				expect(isPreset(name)).toBe(false);
 			}
 		});
 	});

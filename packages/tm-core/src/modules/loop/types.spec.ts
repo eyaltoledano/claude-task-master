@@ -7,8 +7,7 @@ import type {
 	LoopPreset,
 	LoopConfig,
 	LoopIteration,
-	LoopResult,
-	LoopCompletionMarker
+	LoopResult
 } from './types.js';
 
 // Also verify types are exported from the barrel
@@ -16,13 +15,8 @@ import type {
 	LoopPreset as BarrelLoopPreset,
 	LoopConfig as BarrelLoopConfig,
 	LoopIteration as BarrelLoopIteration,
-	LoopResult as BarrelLoopResult,
-	LoopCompletionMarker as BarrelLoopCompletionMarker,
-	PromptGenerationOptions as BarrelPromptGenerationOptions
+	LoopResult as BarrelLoopResult
 } from './index.js';
-
-// Verify service exports from barrel
-import { LoopPromptService as BarrelLoopPromptService } from './index.js';
 
 describe('Loop Types', () => {
 	describe('LoopPreset', () => {
@@ -141,26 +135,6 @@ describe('Loop Types', () => {
 		});
 	});
 
-	describe('LoopCompletionMarker', () => {
-		it('accepts complete marker', () => {
-			const marker: LoopCompletionMarker = {
-				type: 'complete',
-				reason: 'All tasks done'
-			};
-			expect(marker.type).toBe('complete');
-			expect(marker.reason).toBe('All tasks done');
-		});
-
-		it('accepts blocked marker', () => {
-			const marker: LoopCompletionMarker = {
-				type: 'blocked',
-				reason: 'Missing API key'
-			};
-			expect(marker.type).toBe('blocked');
-			expect(marker.reason).toBe('Missing API key');
-		});
-	});
-
 	describe('Barrel exports from index.ts', () => {
 		it('exports all types from barrel', () => {
 			// Verify types are accessible from barrel export
@@ -181,38 +155,10 @@ describe('Loop Types', () => {
 				tasksCompleted: 1,
 				finalStatus: 'all_complete'
 			};
-			const marker: BarrelLoopCompletionMarker = {
-				type: 'complete',
-				reason: 'Done'
-			};
 
 			expect(config.prompt).toBe('default');
 			expect(result.iterations).toHaveLength(1);
-			expect(marker.type).toBe('complete');
 		});
 
-		it('exports LoopPromptService class from barrel', () => {
-			// Verify LoopPromptService is exported from barrel
-			expect(BarrelLoopPromptService).toBeDefined();
-			expect(typeof BarrelLoopPromptService).toBe('function');
-		});
-
-		it('exports PromptGenerationOptions type from barrel', () => {
-			// Verify PromptGenerationOptions type is accessible
-			const options: BarrelPromptGenerationOptions = {
-				config: {
-					iterations: 5,
-					prompt: 'default',
-					progressFile: '/progress.txt',
-					sleepSeconds: 2
-				},
-				iteration: 1,
-				projectRoot: '/test/project'
-			};
-
-			expect(options.config.iterations).toBe(5);
-			expect(options.iteration).toBe(1);
-			expect(options.projectRoot).toBe('/test/project');
-		});
 	});
 });

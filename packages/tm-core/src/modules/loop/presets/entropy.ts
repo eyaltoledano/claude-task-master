@@ -1,4 +1,8 @@
-# Task Master Loop - Entropy (Code Smells)
+/**
+ * @fileoverview Entropy (Code Smells) preset for loop module
+ */
+
+export const ENTROPY_PRESET = `# Task Master Loop - Entropy (Code Smells)
 
 Find code smells and clean them up. ONE cleanup per session.
 
@@ -17,14 +21,14 @@ Find code smells and clean them up. ONE cleanup per session.
 
 ## Process
 
-1. Scan the codebase for code smells (use your judgment or tools like `complexity-report`)
+1. Scan the codebase for code smells (use your judgment or tools like \`complexity-report\`)
 2. Pick ONE smell to fix - prioritize:
    - Smells in frequently-changed files
    - Smells that hurt readability the most
    - Smells in critical paths (authentication, payments, etc.)
 3. Refactor with minimal changes - don't over-engineer
 4. Run tests to ensure behavior is preserved
-5. Commit with message: `refactor(<file>): <describe the cleanup>`
+5. Commit with message: \`refactor(<file>): <describe the cleanup>\`
 6. Append to progress file: what was cleaned, smell type
 
 ## Important
@@ -36,3 +40,4 @@ Find code smells and clean them up. ONE cleanup per session.
 ## Completion Criteria
 
 - If no significant smells remain, output: <loop-complete>LOW_ENTROPY</loop-complete>
+`;

@@ -1,4 +1,7 @@
-# Task Master Loop - Duplication
+/**
+ * Duplication preset for Task Master loop - code deduplication
+ */
+export const DUPLICATION_PRESET = `# Task Master Loop - Duplication
 
 Find duplicated code and refactor into shared utilities. ONE refactor per session.
 
@@ -8,7 +11,7 @@ Find duplicated code and refactor into shared utilities. ONE refactor per sessio
 
 ## Process
 
-1. Run duplication detection (`npx jscpd .`, or similar tool)
+1. Run duplication detection (\`npx jscpd .\`, or similar tool)
 2. Review the report and pick ONE clone to refactor - prioritize:
    - Larger clones (more lines = more maintenance burden)
    - Clones in frequently-changed files
@@ -16,7 +19,7 @@ Find duplicated code and refactor into shared utilities. ONE refactor per sessio
 3. Extract the duplicated code into a shared utility/function
 4. Update all clone locations to use the shared utility
 5. Run tests to ensure behavior is preserved
-6. Commit with message: `refactor(<file>): extract <utility> to reduce duplication`
+6. Commit with message: \`refactor(<file>): extract <utility> to reduce duplication\`
 7. Append to progress file: what was refactored, new duplication %
 
 ## Important
@@ -28,3 +31,4 @@ Find duplicated code and refactor into shared utilities. ONE refactor per sessio
 ## Completion Criteria
 
 - If duplication below threshold (e.g., <3%), output: <loop-complete>LOW_DUPLICATION</loop-complete>
+`;

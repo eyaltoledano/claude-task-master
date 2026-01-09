@@ -15,8 +15,7 @@ import {
 	type LoopPreset,
 	type LoopConfig,
 	type LoopIteration,
-	type LoopResult,
-	type LoopCompletionMarker
+	type LoopResult
 } from '../../../src/index.js';
 import type { ConfigManager } from '../../../src/modules/config/managers/config-manager.js';
 
@@ -133,21 +132,6 @@ describe('Loop Exports from @tm/core', () => {
 			expect(finalStatuses).toContain('error');
 		});
 
-		it('should export LoopCompletionMarker type (compile-time verification)', () => {
-			const completeMarker: LoopCompletionMarker = {
-				type: 'complete',
-				reason: 'ALL_TASKS_DONE'
-			};
-			expect(completeMarker.type).toBe('complete');
-			expect(completeMarker.reason).toBe('ALL_TASKS_DONE');
-
-			const blockedMarker: LoopCompletionMarker = {
-				type: 'blocked',
-				reason: 'DEPENDENCY_ISSUE'
-			};
-			expect(blockedMarker.type).toBe('blocked');
-			expect(blockedMarker.reason).toBe('DEPENDENCY_ISSUE');
-		});
 	});
 
 	describe('Export Usability', () => {
@@ -165,7 +149,7 @@ describe('Loop Exports from @tm/core', () => {
 			expect(typeof domain.isPreset).toBe('function');
 			expect(typeof domain.resolvePrompt).toBe('function');
 			expect(typeof domain.getAvailablePresets).toBe('function');
-			expect(typeof domain.isRunning).toBe('function');
+			expect(typeof domain.getIsRunning).toBe('function');
 			expect(typeof domain.stop).toBe('function');
 		});
 	});

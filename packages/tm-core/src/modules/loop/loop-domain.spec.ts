@@ -5,7 +5,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoopDomain } from './loop-domain.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
-import type { TasksDomain } from '../tasks/tasks-domain.js';
 import type { LoopConfig } from './types.js';
 
 // Mock ConfigManager
@@ -13,15 +12,6 @@ function createMockConfigManager(projectRoot = '/test/project'): ConfigManager {
 	return {
 		getProjectRoot: vi.fn().mockReturnValue(projectRoot)
 	} as unknown as ConfigManager;
-}
-
-// Mock TasksDomain
-function createMockTasksDomain(
-	tasks: Array<{ status: string }> = []
-): TasksDomain {
-	return {
-		list: vi.fn().mockResolvedValue({ tasks })
-	} as unknown as TasksDomain;
 }
 
 describe('LoopDomain', () => {
@@ -50,17 +40,6 @@ describe('LoopDomain', () => {
 
 		it('should call getProjectRoot on ConfigManager', () => {
 			expect(mockConfigManager.getProjectRoot).toHaveBeenCalled();
-		});
-	});
-
-	describe('setTasksDomain', () => {
-		it('should store TasksDomain reference', () => {
-			const mockTasksDomain = createMockTasksDomain();
-			loopDomain.setTasksDomain(mockTasksDomain);
-			// Verify it's stored by checking checkAllTasksComplete works
-			expect(
-				loopDomain.checkAllTasksComplete()
-			).resolves.not.toThrow();
 		});
 	});
 
@@ -218,7 +197,7 @@ describe('LoopDomain', () => {
 		it('should throw for custom path without readFile', async () => {
 			await expect(
 				loopDomain.resolvePrompt('/custom/prompt.md')
-			).rejects.toThrow('no file reader provided');
+			).rejects.toThrow('readFile callback');
 		});
 
 		it('should use readFile for custom paths', async () => {
@@ -232,111 +211,26 @@ describe('LoopDomain', () => {
 		});
 	});
 
-	describe('checkAllTasksComplete', () => {
-		it('should throw error when TasksDomain not set', async () => {
-			await expect(loopDomain.checkAllTasksComplete()).rejects.toThrow(
-				'TasksDomain not set'
-			);
-		});
-
-		it('should return true when all tasks are done', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'done' },
-				{ status: 'done' },
-				{ status: 'done' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(true);
-		});
-
-		it('should return true when all tasks are cancelled', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'cancelled' },
-				{ status: 'cancelled' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(true);
-		});
-
-		it('should return true when tasks are mix of done and cancelled', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'done' },
-				{ status: 'cancelled' },
-				{ status: 'done' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(true);
-		});
-
-		it('should return false when any task is pending', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'done' },
-				{ status: 'pending' },
-				{ status: 'done' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(false);
-		});
-
-		it('should return false when any task is in-progress', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'done' },
-				{ status: 'in-progress' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(false);
-		});
-
-		it('should return false when any task is blocked', async () => {
-			const mockTasksDomain = createMockTasksDomain([
-				{ status: 'done' },
-				{ status: 'blocked' }
-			]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(false);
-		});
-
-		it('should return true for empty task list', async () => {
-			const mockTasksDomain = createMockTasksDomain([]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			const result = await loopDomain.checkAllTasksComplete();
-			expect(result).toBe(true);
-		});
-
-		it('should pass tag option to list', async () => {
-			const mockTasksDomain = createMockTasksDomain([{ status: 'done' }]);
-			loopDomain.setTasksDomain(mockTasksDomain);
-			await loopDomain.checkAllTasksComplete({ tag: 'my-tag' });
-			expect(mockTasksDomain.list).toHaveBeenCalledWith({ tag: 'my-tag' });
-		});
-	});
-
-	describe('isRunning', () => {
+	describe('getIsRunning', () => {
 		it('should return false when no loop is running', () => {
-			expect(loopDomain.isRunning()).toBe(false);
+			expect(loopDomain.getIsRunning()).toBe(false);
 		});
 
-		it('should return false after stop() when no loop was started', async () => {
-			await loopDomain.stop();
-			expect(loopDomain.isRunning()).toBe(false);
+		it('should return false after stop() when no loop was started', () => {
+			loopDomain.stop();
+			expect(loopDomain.getIsRunning()).toBe(false);
 		});
 	});
 
 	describe('stop', () => {
-		it('should not throw when called without starting a loop', async () => {
-			await expect(loopDomain.stop()).resolves.not.toThrow();
+		it('should not throw when called without starting a loop', () => {
+			expect(() => loopDomain.stop()).not.toThrow();
 		});
 
-		it('should be callable multiple times', async () => {
-			await loopDomain.stop();
-			await loopDomain.stop();
-			expect(loopDomain.isRunning()).toBe(false);
+		it('should be callable multiple times', () => {
+			loopDomain.stop();
+			loopDomain.stop();
+			expect(loopDomain.getIsRunning()).toBe(false);
 		});
 	});
 });

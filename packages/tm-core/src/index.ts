@@ -152,8 +152,7 @@ export type {
 	LoopPreset,
 	LoopConfig,
 	LoopIteration,
-	LoopResult,
-	LoopCompletionMarker
+	LoopResult
 } from './modules/loop/index.js';
 export { LoopDomain } from './modules/loop/index.js';
 
