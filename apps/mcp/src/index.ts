@@ -4,7 +4,6 @@
  */
 
 export * from './tools/autopilot/index.js';
-export * from './tools/loop/index.js';
 export * from './tools/tasks/index.js';
 // TODO: Re-enable when TypeScript dependency tools are implemented
 // export * from './tools/dependencies/index.js';

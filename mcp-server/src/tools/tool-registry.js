@@ -49,8 +49,6 @@ import {
 	registerGenerateTool,
 	registerGetTaskTool,
 	registerGetTasksTool,
-	registerLoopPresetsTool,
-	registerLoopStartTool,
 	registerSetTaskStatusTool
 } from '@tm/mcp';
 
@@ -102,9 +100,7 @@ export const toolRegistry = {
 	autopilot_commit: registerAutopilotCommitTool,
 	autopilot_finalize: registerAutopilotFinalizeTool,
 	autopilot_abort: registerAutopilotAbortTool,
-	generate: registerGenerateTool,
-	loop_start: registerLoopStartTool,
-	loop_presets: registerLoopPresetsTool
+	generate: registerGenerateTool
 };
 
 /**
@@ -122,7 +118,7 @@ export const coreTools = [
 ];
 
 /**
- * Standard tools array containing the 16 most commonly used tools
+ * Standard tools array containing the 14 most commonly used tools
  * Includes all core tools plus frequently used additional tools
  */
 export const standardTools = [
@@ -133,9 +129,7 @@ export const standardTools = [
 	'add_subtask',
 	'remove_task',
 	'add_task',
-	'complexity_report',
-	'loop_start',
-	'loop_presets'
+	'complexity_report'
 ];
 
 /**
