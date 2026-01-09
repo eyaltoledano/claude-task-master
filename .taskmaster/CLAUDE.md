@@ -114,12 +114,12 @@ Task Master uses tiered tool loading to optimize context window usage:
 | Tier | Tools | Use Case |
 |------|-------|----------|
 | `core` | 7 | Minimal daily workflow tools (default) |
-| `standard` | 14 | Common task management |
+| `standard` | 16 | Common task management |
 | `all` | 44+ | Full suite with research, autopilot, dependencies |
 
 **Core tools (7):** `get_tasks`, `next_task`, `get_task`, `set_task_status`, `update_subtask`, `parse_prd`, `expand_task`
 
-**Standard adds (7 more):** `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report`
+**Standard adds (9 more):** `initialize_project`, `analyze_project_complexity`, `expand_all`, `add_subtask`, `remove_task`, `add_task`, `complexity_report`, `loop_start`, `loop_presets`
 
 **All tier adds:** Dependency management, tag management, research, autopilot TDD workflow, scope up/down, models, rules
 
@@ -149,6 +149,10 @@ update; // = task-master update
 // Analysis
 analyze_project_complexity; // = task-master analyze-complexity
 complexity_report; // = task-master complexity-report
+
+// Loop automation
+loop_start; // = task-master loop
+loop_presets; // = list available loop presets
 ```
 
 ## Claude Code Workflow Integration
