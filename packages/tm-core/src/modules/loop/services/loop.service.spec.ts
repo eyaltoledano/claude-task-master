@@ -1,6 +1,6 @@
 /**
  * @fileoverview Unit tests for simplified LoopService
- * Tests the inlined logic: presets, progress, execution, completion detection
+ * Tests the synchronous spawnSync-based implementation
  */
 
 import {
@@ -15,7 +15,6 @@ import {
 import { LoopService, type LoopServiceOptions } from './loop.service.js';
 import * as childProcess from 'node:child_process';
 import * as fsPromises from 'node:fs/promises';
-import { EventEmitter } from 'node:events';
 
 // Mock child_process and fs/promises
 vi.mock('node:child_process');
@@ -26,16 +25,26 @@ describe('LoopService', () => {
 		projectRoot: '/test/project'
 	};
 
+	let mockSpawnSync: MockInstance;
+	let consoleSpy: MockInstance;
+
 	beforeEach(() => {
 		vi.resetAllMocks();
 		// Default fs mocks
 		vi.mocked(fsPromises.mkdir).mockResolvedValue(undefined);
 		vi.mocked(fsPromises.writeFile).mockResolvedValue(undefined);
 		vi.mocked(fsPromises.appendFile).mockResolvedValue(undefined);
+
+		// Default spawnSync mock
+		mockSpawnSync = vi.mocked(childProcess.spawnSync);
+
+		// Suppress console output in tests
+		consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+		consoleSpy.mockRestore();
 	});
 
 	describe('constructor', () => {
@@ -114,114 +123,106 @@ describe('LoopService', () => {
 		});
 	});
 
-	describe('sleep()', () => {
-		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		it('should resolve after specified delay', async () => {
-			const service = new LoopService(defaultOptions);
-			const sleepMethod = (
-				service as unknown as { sleep: (ms: number) => Promise<void> }
-			).sleep.bind(service);
-
-			let resolved = false;
-			const promise = sleepMethod(1000).then(() => {
-				resolved = true;
+	describe('checkSandboxAuth()', () => {
+		it('should return true when output contains ok', () => {
+			mockSpawnSync.mockReturnValue({
+				stdout: 'OK',
+				stderr: '',
+				status: 0,
+				signal: null,
+				pid: 123,
+				output: []
 			});
 
-			expect(resolved).toBe(false);
+			const service = new LoopService(defaultOptions);
+			const result = service.checkSandboxAuth();
 
-			await vi.advanceTimersByTimeAsync(500);
-			expect(resolved).toBe(false);
-
-			await vi.advanceTimersByTimeAsync(500);
-			await promise;
-
-			expect(resolved).toBe(true);
+			expect(result).toBe(true);
+			expect(mockSpawnSync).toHaveBeenCalledWith(
+				'docker',
+				['sandbox', 'run', 'claude', '-p', 'Say OK'],
+				expect.objectContaining({
+					cwd: '/test/project',
+					timeout: 30000
+				})
+			);
 		});
 
-		it('should resolve immediately for 0ms delay', async () => {
-			const service = new LoopService(defaultOptions);
-			const sleepMethod = (
-				service as unknown as { sleep: (ms: number) => Promise<void> }
-			).sleep.bind(service);
-
-			let resolved = false;
-			const promise = sleepMethod(0).then(() => {
-				resolved = true;
+		it('should return false when output does not contain ok', () => {
+			mockSpawnSync.mockReturnValue({
+				stdout: 'Error: not authenticated',
+				stderr: '',
+				status: 1,
+				signal: null,
+				pid: 123,
+				output: []
 			});
 
-			await vi.advanceTimersByTimeAsync(0);
-			await promise;
+			const service = new LoopService(defaultOptions);
+			const result = service.checkSandboxAuth();
 
-			expect(resolved).toBe(true);
+			expect(result).toBe(false);
+		});
+
+		it('should check stderr as well as stdout', () => {
+			mockSpawnSync.mockReturnValue({
+				stdout: '',
+				stderr: 'OK response',
+				status: 0,
+				signal: null,
+				pid: 123,
+				output: []
+			});
+
+			const service = new LoopService(defaultOptions);
+			const result = service.checkSandboxAuth();
+
+			expect(result).toBe(true);
 		});
 	});
 
-	// Helper to create mock process
-	function createMockProcess(): EventEmitter & {
-		stdout: EventEmitter;
-		stderr: EventEmitter;
-		kill: MockInstance;
-	} {
-		const proc = new EventEmitter() as EventEmitter & {
-			stdout: EventEmitter;
-			stderr: EventEmitter;
-			kill: MockInstance;
-		};
-		proc.stdout = new EventEmitter();
-		proc.stderr = new EventEmitter();
-		proc.kill = vi.fn();
-		return proc;
-	}
+	describe('runInteractiveAuth()', () => {
+		it('should spawn interactive docker session', () => {
+			mockSpawnSync.mockReturnValue({
+				stdout: '',
+				stderr: '',
+				status: 0,
+				signal: null,
+				pid: 123,
+				output: []
+			});
 
-	/**
-	 * Helper to emit process events after listeners are attached.
-	 * Uses setImmediate to schedule after the current async tick.
-	 */
-	function emitAfterTick(
-		proc: EventEmitter & { stdout: EventEmitter },
-		events: Array<{
-			type: 'stdout' | 'close' | 'error';
-			data?: Buffer | Error | number | null;
-		}>
-	): void {
-		setImmediate(() => {
-			for (const event of events) {
-				if (event.type === 'stdout') {
-					proc.stdout.emit('data', event.data);
-				} else {
-					proc.emit(event.type, event.data);
-				}
-			}
+			const service = new LoopService(defaultOptions);
+			service.runInteractiveAuth();
+
+			expect(mockSpawnSync).toHaveBeenCalledWith(
+				'docker',
+				expect.arrayContaining(['sandbox', 'run', 'claude']),
+				expect.objectContaining({
+					cwd: '/test/project',
+					stdio: 'inherit'
+				})
+			);
 		});
-	}
+	});
 
 	describe('run()', () => {
 		let service: LoopService;
-		let mockSpawn: MockInstance;
 
 		beforeEach(() => {
 			service = new LoopService(defaultOptions);
-			mockSpawn = vi.mocked(childProcess.spawn);
 		});
 
 		describe('successful iteration run', () => {
 			it('should run a single iteration successfully', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [
-					{ type: 'stdout', data: Buffer.from('Task completed') },
-					{ type: 'close', data: 0 }
-				]);
+				mockSpawnSync.mockReturnValue({
+					stdout: 'Task completed',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				const result = await service.run({
 					prompt: 'default',
@@ -236,20 +237,13 @@ describe('LoopService', () => {
 			});
 
 			it('should run multiple iterations', async () => {
-				const mockProcs = [
-					createMockProcess(),
-					createMockProcess(),
-					createMockProcess()
-				];
-				let procIndex = 0;
-				mockSpawn.mockImplementation(() => {
-					const proc = mockProcs[procIndex++];
-					// Schedule emit for this proc
-					setImmediate(() => {
-						proc.stdout.emit('data', Buffer.from('Done'));
-						proc.emit('close', 0);
-					});
-					return proc as unknown as childProcess.ChildProcess;
+				mockSpawnSync.mockReturnValue({
+					stdout: 'Done',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
 				});
 
 				const result = await service.run({
@@ -261,19 +255,18 @@ describe('LoopService', () => {
 
 				expect(result.totalIterations).toBe(3);
 				expect(result.tasksCompleted).toBe(3);
-				expect(mockSpawn).toHaveBeenCalledTimes(3);
+				expect(mockSpawnSync).toHaveBeenCalledTimes(3);
 			});
 
-			it('should call spawn with docker sandbox run claude -p', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [
-					{ type: 'stdout', data: Buffer.from('Done') },
-					{ type: 'close', data: 0 }
-				]);
+			it('should call spawnSync with docker sandbox run claude -p', async () => {
+				mockSpawnSync.mockReturnValue({
+					stdout: 'Done',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				await service.run({
 					prompt: 'default',
@@ -282,7 +275,7 @@ describe('LoopService', () => {
 					progressFile: '/test/progress.txt'
 				});
 
-				expect(mockSpawn).toHaveBeenCalledWith(
+				expect(mockSpawnSync).toHaveBeenCalledWith(
 					'docker',
 					expect.arrayContaining([
 						'sandbox',
@@ -300,18 +293,14 @@ describe('LoopService', () => {
 
 		describe('completion marker detection', () => {
 			it('should detect loop-complete marker and exit early', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [
-					{
-						type: 'stdout',
-						data: Buffer.from('<loop-complete>ALL_DONE</loop-complete>')
-					},
-					{ type: 'close', data: 0 }
-				]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '<loop-complete>ALL_DONE</loop-complete>',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				const result = await service.run({
 					prompt: 'default',
@@ -325,18 +314,14 @@ describe('LoopService', () => {
 			});
 
 			it('should detect loop-blocked marker and exit early', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [
-					{
-						type: 'stdout',
-						data: Buffer.from('<loop-blocked>Missing API key</loop-blocked>')
-					},
-					{ type: 'close', data: 0 }
-				]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '<loop-blocked>Missing API key</loop-blocked>',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				const result = await service.run({
 					prompt: 'default',
@@ -352,12 +337,14 @@ describe('LoopService', () => {
 
 		describe('error handling', () => {
 			it('should handle non-zero exit code', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [{ type: 'close', data: 1 }]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: 'Error occurred',
+					status: 1,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				const result = await service.run({
 					prompt: 'default',
@@ -370,15 +357,15 @@ describe('LoopService', () => {
 				expect(result.tasksCompleted).toBe(0);
 			});
 
-			it('should handle process spawn error', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [
-					{ type: 'error', data: new Error('Spawn failed') }
-				]);
+			it('should handle null status as error', async () => {
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: '',
+					status: null,
+					signal: 'SIGTERM',
+					pid: 123,
+					output: []
+				});
 
 				const result = await service.run({
 					prompt: 'default',
@@ -388,18 +375,19 @@ describe('LoopService', () => {
 				});
 
 				expect(result.iterations[0].status).toBe('error');
-				expect(result.iterations[0].message).toBe('Spawn failed');
 			});
 		});
 
 		describe('progress file operations', () => {
 			it('should initialize progress file at start', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				await service.run({
 					prompt: 'default',
@@ -418,13 +406,14 @@ describe('LoopService', () => {
 				);
 			});
 
-			it('should append progress after each iteration', async () => {
-				const mockProcs = [createMockProcess(), createMockProcess()];
-				let procIndex = 0;
-				mockSpawn.mockImplementation(() => {
-					const proc = mockProcs[procIndex++];
-					setImmediate(() => proc.emit('close', 0));
-					return proc as unknown as childProcess.ChildProcess;
+			it('should append final summary at end', async () => {
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
 				});
 
 				await service.run({
@@ -434,19 +423,24 @@ describe('LoopService', () => {
 					progressFile: '/test/progress.txt'
 				});
 
-				// appendFile called once at end with final summary
-				expect(fsPromises.appendFile).toHaveBeenCalled();
+				expect(fsPromises.appendFile).toHaveBeenCalledWith(
+					'/test/progress.txt',
+					expect.stringContaining('# Loop Complete'),
+					'utf-8'
+				);
 			});
 		});
 
 		describe('preset resolution', () => {
 			it('should resolve built-in preset names', async () => {
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				await service.run({
 					prompt: 'test-coverage',
@@ -456,23 +450,24 @@ describe('LoopService', () => {
 				});
 
 				// Verify spawn was called with prompt containing iteration info
-				const spawnCall = mockSpawn.mock.calls[0];
+				const spawnCall = mockSpawnSync.mock.calls[0];
 				// Args are ['sandbox', 'run', 'claude', '-p', prompt]
 				const promptArg = spawnCall[1][4];
-				expect(promptArg).toContain('Loop Iteration 1 of 1');
+				expect(promptArg).toContain('iteration 1 of 1');
 			});
 
 			it('should load custom prompt from file', async () => {
 				vi.mocked(fsPromises.readFile).mockResolvedValue(
 					'Custom prompt content'
 				);
-
-				const mockProc = createMockProcess();
-				mockSpawn.mockReturnValue(
-					mockProc as unknown as childProcess.ChildProcess
-				);
-
-				emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+				mockSpawnSync.mockReturnValue({
+					stdout: '',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				});
 
 				await service.run({
 					prompt: '/custom/prompt.md',
@@ -486,6 +481,19 @@ describe('LoopService', () => {
 					'utf-8'
 				);
 			});
+
+			it('should throw on empty custom prompt file', async () => {
+				vi.mocked(fsPromises.readFile).mockResolvedValue('   ');
+
+				await expect(
+					service.run({
+						prompt: '/custom/empty.md',
+						iterations: 1,
+						sleepSeconds: 0,
+						progressFile: '/test/progress.txt'
+					})
+				).rejects.toThrow('empty');
+			});
 		});
 	});
 
@@ -493,7 +501,7 @@ describe('LoopService', () => {
 		let service: LoopService;
 		let parseCompletion: (
 			output: string,
-			exitCode: number | null
+			exitCode: number
 		) => { status: string; message?: string };
 
 		beforeEach(() => {
@@ -607,7 +615,7 @@ describe('LoopService', () => {
 				{ iterations: 5, progressFile: '/test/progress.txt' },
 				2
 			);
-			expect(header).toContain('Loop Iteration 2 of 5');
+			expect(header).toContain('iteration 2 of 5');
 		});
 
 		it('should include progress file reference', () => {
@@ -631,111 +639,58 @@ describe('LoopService', () => {
 				{ iterations: 1, progressFile: '/test/progress.txt', tag: 'feature-x' },
 				1
 			);
-			expect(header).toContain('Tag filter: feature-x');
+			expect(header).toContain('tag: feature-x');
 		});
 
-		it('should not include tag line when not provided', () => {
+		it('should not include tag when not provided', () => {
 			const header = buildContextHeader(
 				{ iterations: 1, progressFile: '/test/progress.txt' },
 				1
 			);
-			expect(header).not.toContain('Tag filter');
+			expect(header).not.toContain('tag:');
 		});
 	});
 
-	describe('buildResult (inlined)', () => {
+	describe('integration: stop during run', () => {
 		let service: LoopService;
-		let buildResult: (
-			iterations: Array<{
-				iteration: number;
-				status: string;
-				duration?: number;
-			}>,
-			tasksCompleted: number,
-			finalStatus: string
-		) => {
-			iterations: unknown[];
-			totalIterations: number;
-			tasksCompleted: number;
-			finalStatus: string;
-		};
 
 		beforeEach(() => {
 			service = new LoopService(defaultOptions);
-			buildResult = (
-				service as unknown as { buildResult: typeof buildResult }
-			).buildResult.bind(service);
 		});
 
-		it('should include iterations array', () => {
-			const iterations = [{ iteration: 1, status: 'success', duration: 100 }];
-			const result = buildResult(iterations, 1, 'max_iterations');
-			expect(result.iterations).toEqual(iterations);
-		});
-
-		it('should count totalIterations correctly', () => {
-			const iterations = [
-				{ iteration: 1, status: 'success' },
-				{ iteration: 2, status: 'success' }
-			];
-			const result = buildResult(iterations, 2, 'max_iterations');
-			expect(result.totalIterations).toBe(2);
-		});
-
-		it('should include tasksCompleted', () => {
-			const result = buildResult([], 5, 'max_iterations');
-			expect(result.tasksCompleted).toBe(5);
-		});
-
-		it('should include finalStatus', () => {
-			const result = buildResult([], 0, 'blocked');
-			expect(result.finalStatus).toBe('blocked');
-		});
-	});
-
-	describe('integration: run with stop', () => {
-		let service: LoopService;
-		let mockSpawn: MockInstance;
-
-		beforeEach(() => {
-			service = new LoopService(defaultOptions);
-			mockSpawn = vi.mocked(childProcess.spawn);
-		});
-
-		it('should exit gracefully when stop() called', async () => {
-			let iterationCount = 0;
-			mockSpawn.mockImplementation(() => {
-				const proc = createMockProcess();
-				iterationCount++;
-				// Schedule close, but stop after first iteration
-				setImmediate(() => {
-					if (iterationCount === 1) {
-						service.stop();
-					}
-					proc.emit('close', 0);
-				});
-				return proc as unknown as childProcess.ChildProcess;
+		it('should set isRunning to true during run', async () => {
+			let capturedIsRunning = false;
+			mockSpawnSync.mockImplementation(() => {
+				capturedIsRunning = service.isRunning;
+				return {
+					stdout: '',
+					stderr: '',
+					status: 0,
+					signal: null,
+					pid: 123,
+					output: []
+				};
 			});
 
-			const result = await service.run({
+			await service.run({
 				prompt: 'default',
-				iterations: 5,
+				iterations: 1,
 				sleepSeconds: 0,
 				progressFile: '/test/progress.txt'
 			});
 
-			// Should have stopped after 1 iteration
-			expect(result.totalIterations).toBe(1);
-			expect(service.isRunning).toBe(false);
+			expect(capturedIsRunning).toBe(true);
 		});
 
 		it('should set isRunning to false on completion', async () => {
-			const mockProc = createMockProcess();
-			mockSpawn.mockReturnValue(
-				mockProc as unknown as childProcess.ChildProcess
-			);
-
-			emitAfterTick(mockProc, [{ type: 'close', data: 0 }]);
+			mockSpawnSync.mockReturnValue({
+				stdout: '',
+				stderr: '',
+				status: 0,
+				signal: null,
+				pid: 123,
+				output: []
+			});
 
 			await service.run({
 				prompt: 'default',

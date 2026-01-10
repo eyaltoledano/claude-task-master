@@ -51,8 +51,18 @@ export class LoopDomain {
 	 * Creates a new LoopService instance and runs it
 	 * @param config - Partial loop configuration (defaults will be applied)
 	 * @returns Promise resolving to the loop result
+	 * @throws Error if a loop is already running
 	 */
 	async run(config: Partial<LoopConfig>): Promise<LoopResult> {
+		// Prevent orphaning a previous running LoopService
+		if (this.loopService?.isRunning) {
+			try {
+				this.loopService.stop();
+			} catch {
+				// Ignore stop errors, proceed with new service
+			}
+		}
+
 		const fullConfig = this.buildConfig(config);
 		this.loopService = new LoopService({ projectRoot: this.projectRoot });
 		return this.loopService.run(fullConfig);

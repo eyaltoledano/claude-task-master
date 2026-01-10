@@ -1,35 +1,27 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Preset Snapshots > default preset matches snapshot 1`] = `
-"# Task Master Loop - Default Task Completion
+"SETUP: If task-master command not found, run: npm i -g task-master-ai
 
-You are completing tasks from a Task Master backlog. Complete ONE task per session.
+TASK: Implement ONE task/subtask from the Task Master backlog.
 
-## Files Available
+PROCESS:
+1. Run task-master next (or use MCP) to get the next available task/subtask.
+2. Read task details with task-master show <id>.
+3. Implement following codebase patterns.
+4. Write tests alongside implementation.
+5. Run npm run turbo:typecheck to verify types.
+6. Run npm test -w <package> to verify tests pass.
+7. Mark complete: task-master set-status --id=<id> --status=done
+8. Commit with message: feat(<scope>): <what was implemented>
+9. Append super-concise notes to progress file: task ID, what was done, any learnings.
 
-- @.taskmaster/tasks/tasks.json - Your task backlog
-- @.taskmaster/loop-progress.txt - Progress log from previous iterations
-
-## Process
-
-1. Run \`task-master next\` to get the highest priority available task
-2. Read the task details carefully with \`task-master show <id>\`
-3. Implement the task, focusing on the smallest possible change
-4. Ensure quality:
-   - Run tests if they exist
-   - Run type check if applicable
-   - Verify the implementation works as expected
-5. Update the task status: \`task-master set-status --id=<id> --status=done\`
-6. Commit your work with a descriptive message referencing the task ID
-7. Append a brief note to the progress file about what was done
-
-## Important
-
-- Complete ONLY ONE task per session
-- Keep changes small and focused
-- Do NOT start another task after completing one
-- If all tasks are complete, output: <loop-complete>ALL_TASKS_DONE</loop-complete>
-- If you cannot complete the task, output: <loop-blocked>REASON</loop-blocked>
+IMPORTANT:
+- Complete ONLY ONE task per iteration.
+- Keep changes small and focused.
+- Do NOT start another task after completing one.
+- If all tasks are done, output <loop-complete>ALL_DONE</loop-complete>.
+- If blocked, output <loop-blocked>REASON</loop-blocked>.
 "
 `;
 

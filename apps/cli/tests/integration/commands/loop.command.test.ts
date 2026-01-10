@@ -144,13 +144,6 @@ describe('loop command', () => {
 			expect(output).toContain('--tag');
 		});
 
-		it('should show --sleep option in help', () => {
-			const { output, exitCode } = runHelp();
-
-			expect(exitCode).toBe(0);
-			expect(output).toContain('--sleep');
-		});
-
 		it('should show --json option in help', () => {
 			const { output, exitCode } = runHelp();
 
@@ -163,20 +156,6 @@ describe('loop command', () => {
 
 			expect(exitCode).toBe(0);
 			expect(output).toContain('--progress-file');
-		});
-
-		it('should show --on-complete option in help', () => {
-			const { output, exitCode } = runHelp();
-
-			expect(exitCode).toBe(0);
-			expect(output).toContain('--on-complete');
-		});
-
-		it('should show --status option in help', () => {
-			const { output, exitCode } = runHelp();
-
-			expect(exitCode).toBe(0);
-			expect(output).toContain('--status');
 		});
 
 		it('should show --project option in help', () => {
@@ -210,22 +189,6 @@ describe('loop command', () => {
 			expect(output.toLowerCase()).toContain('invalid');
 			expect(output.toLowerCase()).toContain('iterations');
 		});
-
-		it('should reject invalid sleep (negative)', () => {
-			const { output, exitCode } = runLoop('--sleep -1');
-
-			expect(exitCode).toBe(1);
-			expect(output.toLowerCase()).toContain('invalid');
-			expect(output.toLowerCase()).toContain('sleep');
-		});
-
-		it('should reject invalid sleep (non-numeric)', () => {
-			const { output, exitCode } = runLoop('--sleep xyz');
-
-			expect(exitCode).toBe(1);
-			expect(output.toLowerCase()).toContain('invalid');
-			expect(output.toLowerCase()).toContain('sleep');
-		});
 	});
 
 	describe('option parsing', () => {
@@ -235,13 +198,6 @@ describe('loop command', () => {
 
 			// Should NOT contain validation error for iterations
 			expect(output.toLowerCase()).not.toContain('invalid iterations');
-		});
-
-		it('should accept zero sleep', () => {
-			const { output } = runLoop('--sleep 0');
-
-			// Should NOT contain validation error for sleep
-			expect(output.toLowerCase()).not.toContain('invalid sleep');
 		});
 
 		it('should accept custom prompt preset', () => {
@@ -258,13 +214,6 @@ describe('loop command', () => {
 			expect(output.toLowerCase()).not.toContain('invalid tag');
 		});
 
-		it('should accept status filter', () => {
-			const { output } = runLoop('--status in-progress');
-
-			// Should NOT contain validation error for status
-			expect(output.toLowerCase()).not.toContain('invalid status');
-		});
-
 		it('should accept progress-file option', () => {
 			const { output } = runLoop('--progress-file /tmp/test-progress.txt');
 
@@ -272,21 +221,11 @@ describe('loop command', () => {
 			expect(output.toLowerCase()).not.toContain('invalid progress');
 		});
 
-		it('should accept on-complete option', () => {
-			const { output } = runLoop('--on-complete "echo done"');
-
-			// Should NOT contain validation error for on-complete
-			expect(output.toLowerCase()).not.toContain('invalid on-complete');
-		});
-
 		it('should accept multiple options together', () => {
-			const { output } = runLoop(
-				'-n 3 -p default --sleep 2 -t test --status pending'
-			);
+			const { output } = runLoop('-n 3 -p default -t test');
 
 			// Should NOT contain validation errors
 			expect(output.toLowerCase()).not.toContain('invalid iterations');
-			expect(output.toLowerCase()).not.toContain('invalid sleep');
 		});
 	});
 
@@ -298,14 +237,6 @@ describe('loop command', () => {
 			// Should mention what's wrong and what's expected
 			expect(output.toLowerCase()).toContain('iterations');
 			expect(output.toLowerCase()).toContain('positive');
-		});
-
-		it('should show helpful error for invalid sleep', () => {
-			const { output, exitCode } = runLoop('--sleep invalid');
-
-			expect(exitCode).toBe(1);
-			// Should mention what's wrong
-			expect(output.toLowerCase()).toContain('sleep');
 		});
 	});
 

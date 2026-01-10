@@ -83,7 +83,8 @@ describe('Preset Accessibility Integration', () => {
 		it('all presets should reference progress file', () => {
 			for (const presetName of PRESET_NAMES) {
 				const content = getPreset(presetName);
-				expect(content).toContain('loop-progress');
+				// Default uses "progress file", others use "loop-progress"
+				expect(content).toMatch(/loop-progress|progress file/i);
 			}
 		});
 

@@ -160,7 +160,7 @@ describe('LoopDomain', () => {
 	describe('resolvePrompt', () => {
 		it('should resolve preset name to content', async () => {
 			const content = await loopDomain.resolvePrompt('default');
-			expect(content).toContain('Task Master Loop');
+			expect(content).toContain('task-master');
 			expect(content).toContain('<loop-complete>');
 		});
 

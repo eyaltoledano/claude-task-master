@@ -194,11 +194,15 @@ describe('Preset Structure Validation', () => {
 			expect(content).toMatch(/<loop-complete>/);
 		});
 
-		it.each(PRESET_NAMES)('%s contains @ file reference pattern', (preset) => {
-			const content = getPreset(preset);
-			// Check for @ file reference pattern (e.g., @.taskmaster/ or @./)
-			expect(content).toMatch(/@\.taskmaster\/|@\.\//);
-		});
+		it.each(PRESET_NAMES.filter((p) => p !== 'default'))(
+			'%s contains @ file reference pattern',
+			(preset) => {
+				const content = getPreset(preset);
+				// Check for @ file reference pattern (e.g., @.taskmaster/ or @./)
+				// Note: default preset uses context header injection instead
+				expect(content).toMatch(/@\.taskmaster\/|@\.\//);
+			}
+		);
 
 		it.each(PRESET_NAMES)('%s contains numbered process steps', (preset) => {
 			const content = getPreset(preset);
@@ -210,8 +214,8 @@ describe('Preset Structure Validation', () => {
 			'%s contains Important or Completion section',
 			(preset) => {
 				const content = getPreset(preset);
-				// Check for Important section or Completion Criteria section
-				expect(content).toMatch(/## Important|## Completion/i);
+				// Check for Important section (markdown or plain text) or Completion section
+				expect(content).toMatch(/## Important|## Completion|^IMPORTANT:/im);
 			}
 		);
 	});
@@ -251,8 +255,10 @@ describe('Preset Content Consistency', () => {
 		expect(content).toMatch(/loop-progress|progress/i);
 	});
 
-	it('all presets have markdown headers', () => {
-		for (const preset of PRESET_NAMES) {
+	it('specialized presets have markdown headers', () => {
+		// Default preset uses plain text sections (SETUP:, TASK:, PROCESS:, IMPORTANT:)
+		// Other presets use markdown headers
+		for (const preset of PRESET_NAMES.filter((p) => p !== 'default')) {
 			const content = getPreset(preset);
 			// Check for at least one markdown header
 			expect(content).toMatch(/^#+ /m);
@@ -262,13 +268,14 @@ describe('Preset Content Consistency', () => {
 	it('all presets have process section', () => {
 		for (const preset of PRESET_NAMES) {
 			const content = getPreset(preset);
-			// Check for Process header
-			expect(content).toMatch(/## Process/);
+			// Check for Process header (markdown ## or plain text PROCESS:)
+			expect(content).toMatch(/## Process|^PROCESS:/m);
 		}
 	});
 
-	it('all presets have files available section', () => {
-		for (const preset of PRESET_NAMES) {
+	it('specialized presets have files available section', () => {
+		// Default preset doesn't have files available section - context is injected at runtime
+		for (const preset of PRESET_NAMES.filter((p) => p !== 'default')) {
 			const content = getPreset(preset);
 			// Check for Files Available header
 			expect(content).toMatch(/## Files Available/);
