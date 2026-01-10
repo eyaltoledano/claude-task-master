@@ -12,7 +12,7 @@ import {
 	it,
 	vi
 } from 'vitest';
-import { LoopCommand, type LoopCommandOptions } from './loop.command.js';
+import { LoopCommand } from './loop.command.js';
 
 // Mock @tm/core
 vi.mock('@tm/core', () => ({
@@ -71,11 +71,19 @@ describe('LoopCommand', () => {
 			loop: {
 				run: mockLoopRun,
 				checkSandboxAuth: vi.fn().mockReturnValue(true),
-				runInteractiveAuth: vi.fn()
+				runInteractiveAuth: vi.fn(),
+				resolveIterations: vi.fn().mockImplementation((opts) => {
+					// Mirror the real implementation logic for accurate testing
+					if (opts.userIterations !== undefined) return opts.userIterations;
+					if (opts.preset === 'default' && opts.pendingTaskCount > 0)
+						return opts.pendingTaskCount;
+					return 10;
+				})
 			},
 			tasks: {
 				getStorageType: vi.fn().mockReturnValue('local'),
-				getNext: vi.fn().mockResolvedValue({ id: '1', title: 'Test Task' })
+				getNext: vi.fn().mockResolvedValue({ id: '1', title: 'Test Task' }),
+				getCount: vi.fn().mockResolvedValue(0)
 			}
 		};
 
@@ -116,9 +124,9 @@ describe('LoopCommand', () => {
 	});
 
 	describe('option parsing', () => {
-		it('should have default iterations of 10', () => {
+		it('should have no default for iterations (determined at runtime)', () => {
 			const option = loopCommand.options.find((o) => o.long === '--iterations');
-			expect(option?.defaultValue).toBe('10');
+			expect(option?.defaultValue).toBeUndefined();
 		});
 
 		it('should have default prompt of "default"', () => {
@@ -341,9 +349,11 @@ describe('LoopCommand', () => {
 			expect(processExitSpy).toHaveBeenCalledWith(1);
 		});
 
-		it('should use default values when options not provided', async () => {
+		it('should use default values when options not provided and no pending tasks', async () => {
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
+			// Mock empty pending tasks count
+			mockTmCore.tasks.getCount.mockResolvedValue(0);
 
 			const execute = (loopCommand as any).execute.bind(loopCommand);
 			await execute({});
@@ -352,6 +362,56 @@ describe('LoopCommand', () => {
 				expect.objectContaining({
 					iterations: 10,
 					prompt: 'default'
+				})
+			);
+		});
+
+		it('should use pending task count as iterations for default preset', async () => {
+			const result = createMockResult();
+			mockLoopRun.mockResolvedValue(result);
+			// Mock 5 pending items (3 tasks + 2 pending subtasks)
+			mockTmCore.tasks.getCount.mockResolvedValue(5);
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+			await execute({});
+
+			expect(mockLoopRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					iterations: 5,
+					prompt: 'default'
+				})
+			);
+		});
+
+		it('should use explicit iterations even for default preset', async () => {
+			const result = createMockResult();
+			mockLoopRun.mockResolvedValue(result);
+			// Mock pending tasks (should be ignored when user provides explicit iterations)
+			mockTmCore.tasks.getCount.mockResolvedValue(10);
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+			await execute({ iterations: '3' });
+
+			expect(mockLoopRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					iterations: 3
+				})
+			);
+		});
+
+		it('should default to 10 iterations for non-default presets', async () => {
+			const result = createMockResult();
+			mockLoopRun.mockResolvedValue(result);
+
+			const execute = (loopCommand as any).execute.bind(loopCommand);
+			await execute({ prompt: 'test-coverage' });
+
+			// getCount should NOT be called for non-default presets
+			expect(mockTmCore.tasks.getCount).not.toHaveBeenCalled();
+			expect(mockLoopRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					iterations: 10,
+					prompt: 'test-coverage'
 				})
 			);
 		});

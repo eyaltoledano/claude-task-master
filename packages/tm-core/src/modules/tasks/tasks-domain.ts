@@ -154,6 +154,40 @@ export class TasksDomain {
 		return this.taskService.getNextTask(tag);
 	}
 
+	/**
+	 * Get count of tasks and their subtasks matching a status
+	 * Useful for determining work remaining, progress tracking, or setting loop iterations
+	 *
+	 * @param status - Task status to count (e.g., 'pending', 'done', 'in-progress')
+	 * @param tag - Optional tag to filter tasks
+	 * @returns Total count of matching tasks + matching subtasks
+	 */
+	async getCount(status: TaskStatus, tag?: string): Promise<number> {
+		// Fetch ALL tasks to ensure we count subtasks across all parent tasks
+		// (a parent task may have different status than its subtasks)
+		const result = await this.list({ tag });
+
+		let count = 0;
+		for (const task of result.tasks) {
+			// Count the task if it matches the status
+			if (task.status === status) {
+				count++;
+			}
+
+			// Count subtasks with matching status
+			if (task.subtasks && task.subtasks.length > 0) {
+				for (const subtask of task.subtasks) {
+					// For pending, also count subtasks without status (default to pending)
+					if (subtask.status === status || (status === 'pending' && !subtask.status)) {
+						count++;
+					}
+				}
+			}
+		}
+
+		return count;
+	}
+
 	// ========== Task Status Management ==========
 
 	/**

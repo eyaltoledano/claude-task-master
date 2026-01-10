@@ -212,4 +212,66 @@ describe('LoopDomain', () => {
 			expect(loopDomain.getIsRunning()).toBe(false);
 		});
 	});
+
+	describe('resolveIterations', () => {
+		it('should return userIterations when provided', () => {
+			const result = loopDomain.resolveIterations({
+				userIterations: 25,
+				preset: 'default',
+				pendingTaskCount: 10
+			});
+			expect(result).toBe(25);
+		});
+
+		it('should return pendingTaskCount for default preset when no userIterations', () => {
+			const result = loopDomain.resolveIterations({
+				preset: 'default',
+				pendingTaskCount: 15
+			});
+			expect(result).toBe(15);
+		});
+
+		it('should return 10 for default preset when pendingTaskCount is 0', () => {
+			const result = loopDomain.resolveIterations({
+				preset: 'default',
+				pendingTaskCount: 0
+			});
+			expect(result).toBe(10);
+		});
+
+		it('should return 10 for default preset when pendingTaskCount is undefined', () => {
+			const result = loopDomain.resolveIterations({
+				preset: 'default'
+			});
+			expect(result).toBe(10);
+		});
+
+		it('should return 10 for non-default presets regardless of pendingTaskCount', () => {
+			const presets = ['test-coverage', 'linting', 'duplication', 'entropy'];
+			for (const preset of presets) {
+				const result = loopDomain.resolveIterations({
+					preset,
+					pendingTaskCount: 50
+				});
+				expect(result).toBe(10);
+			}
+		});
+
+		it('should prioritize userIterations over pendingTaskCount for default preset', () => {
+			const result = loopDomain.resolveIterations({
+				userIterations: 5,
+				preset: 'default',
+				pendingTaskCount: 100
+			});
+			expect(result).toBe(5);
+		});
+
+		it('should prioritize userIterations for non-default presets', () => {
+			const result = loopDomain.resolveIterations({
+				userIterations: 30,
+				preset: 'linting'
+			});
+			expect(result).toBe(30);
+		});
+	});
 });

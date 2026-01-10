@@ -128,6 +128,46 @@ export class LoopDomain {
 		return [...PRESET_NAMES];
 	}
 
+	// ========== Iteration Resolution ==========
+
+	/**
+	 * Resolve the number of iterations to use based on preset and task count.
+	 * Business logic for determining iterations:
+	 * - If user provided explicit iterations, use that
+	 * - If preset is 'default' and pendingTaskCount > 0, use pending task count
+	 * - Otherwise, default to 10
+	 *
+	 * @param options - Options for resolving iterations
+	 * @param options.userIterations - User-provided iterations (takes priority)
+	 * @param options.preset - The preset name being used
+	 * @param options.pendingTaskCount - Count of pending tasks + subtasks (for default preset)
+	 * @returns The resolved number of iterations
+	 */
+	resolveIterations(options: {
+		userIterations?: number;
+		preset: string;
+		pendingTaskCount?: number;
+	}): number {
+		const { userIterations, preset, pendingTaskCount } = options;
+
+		// User explicitly provided iterations - use their value
+		if (userIterations !== undefined) {
+			return userIterations;
+		}
+
+		// For default preset, use pending task count if available
+		if (
+			preset === 'default' &&
+			pendingTaskCount !== undefined &&
+			pendingTaskCount > 0
+		) {
+			return pendingTaskCount;
+		}
+
+		// Default for non-default presets or when no pending tasks
+		return 10;
+	}
+
 	// ========== Internal Helpers ==========
 
 	/**

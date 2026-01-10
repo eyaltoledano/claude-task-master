@@ -31,10 +31,10 @@ export class LoopCommand extends Command {
 		super(name || 'loop');
 
 		this.description('Run Claude Code in a loop, one task per iteration')
-			.option('-n, --iterations <number>', 'Maximum iterations', '10')
+			.option('-n, --iterations <number>', 'Maximum iterations')
 			.option(
 				'-p, --prompt <preset|path>',
-				'Preset name or path to prompt file',
+				'Preset name (default, test-coverage, linting, duplication, entropy) or path to custom prompt file',
 				'default'
 			)
 			.option(
@@ -52,16 +52,29 @@ export class LoopCommand extends Command {
 	}
 
 	private async execute(options: LoopCommandOptions): Promise<void> {
-		// Commander provides defaults, so these are always defined
-		const iterations = options.iterations || '10';
 		const prompt = options.prompt || 'default';
 		const progressFile = options.progressFile || '.taskmaster/progress.txt';
 
 		try {
-			this.validateIterations(iterations);
-
 			const projectRoot = path.resolve(getProjectRoot(options.project));
 			this.tmCore = await createTmCore({ projectPath: projectRoot });
+
+			// Get pending task count for default preset iteration resolution
+			const pendingTaskCount =
+				prompt === 'default'
+					? await this.tmCore.tasks.getCount('pending', options.tag)
+					: undefined;
+
+			// Delegate iteration resolution logic to tm-core
+			const iterations = this.tmCore.loop.resolveIterations({
+				userIterations: options.iterations
+					? parseInt(options.iterations, 10)
+					: undefined,
+				preset: prompt,
+				pendingTaskCount
+			});
+
+			this.validateIterations(String(iterations));
 
 			if (!options.json) {
 				displayCommandHeader(this.tmCore, {
@@ -77,22 +90,24 @@ export class LoopCommand extends Command {
 				console.log(chalk.dim(`Preset: ${prompt}`));
 				console.log(chalk.dim(`Max iterations: ${iterations}`));
 
-				// Show next task to give user context
-				const nextTask = await this.tmCore.tasks.getNext(options.tag);
-				if (nextTask) {
-					console.log(
-						chalk.white(
-							`Next task to work on: ${chalk.white(nextTask.id)} - ${nextTask.title}`
-						)
-					);
-				} else {
-					console.log(chalk.yellow('No pending tasks found'));
+				// Show next task only for default preset (other presets don't use Task Master tasks)
+				if (prompt === 'default') {
+					const nextTask = await this.tmCore.tasks.getNext(options.tag);
+					if (nextTask) {
+						console.log(
+							chalk.white(
+								`Next task to work on: ${chalk.white(nextTask.id)} - ${nextTask.title}`
+							)
+						);
+					} else {
+						console.log(chalk.yellow('No pending tasks found'));
+					}
 				}
 				console.log();
 			}
 
 			const config: Partial<LoopConfig> = {
-				iterations: parseInt(iterations, 10),
+				iterations,
 				prompt,
 				progressFile,
 				tag: options.tag

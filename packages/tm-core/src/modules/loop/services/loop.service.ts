@@ -241,7 +241,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				cwd: this.projectRoot,
 				encoding: 'utf-8',
 				maxBuffer: 50 * 1024 * 1024, // 50MB buffer
-				stdio: 'inherit'
+				stdio: ['inherit', 'pipe', 'pipe']
 			}
 		);
 

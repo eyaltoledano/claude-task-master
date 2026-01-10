@@ -246,4 +246,38 @@ description: "A comprehensive reference of all available Task Master commands"
 
     The TDD workflow enforces RED → GREEN → COMMIT cycles for each subtask. See [AI Agent Integration](/tdd-workflow/ai-agent-integration) for details.
   </Accordion>
+
+  <Accordion title="Loop (Autonomous Batch Execution)">
+    ```bash
+    # Run 10 iterations with the default preset
+    task-master loop -n 10
+
+    # Use a specific preset
+    task-master loop -n 10 --prompt test-coverage
+    task-master loop -n 10 --prompt linting
+    task-master loop -n 10 --prompt duplication
+    task-master loop -n 10 --prompt entropy
+
+    # Use a custom prompt file
+    task-master loop -n 10 --prompt ./my-workflow.md
+
+    # Filter to tasks with a specific tag
+    task-master loop -n 10 --tag backend
+
+    # Custom progress file location
+    task-master loop -n 10 --progress-file ./my-progress.txt
+
+    # Output as JSON
+    task-master loop -n 10 --json
+    ```
+
+    **Built-in presets:**
+    - `default` - Complete tasks from Task Master backlog one at a time
+    - `test-coverage` - Write meaningful tests for untested user-facing behavior
+    - `linting` - Fix lint and type errors incrementally
+    - `duplication` - Refactor duplicated code into shared utilities
+    - `entropy` - Clean up code smells (long functions, deep nesting, etc.)
+
+    Each iteration spawns a fresh Claude Code session, avoiding context fatigue. See [Loop Command](/capabilities/loop) for full documentation.
+  </Accordion>
 </AccordionGroup>
