@@ -154,7 +154,7 @@ export type {
 	LoopIteration,
 	LoopResult
 } from './modules/loop/index.js';
-export { LoopDomain } from './modules/loop/index.js';
+export { LoopDomain, PRESET_NAMES } from './modules/loop/index.js';
 
 // Prompts types
 export type {

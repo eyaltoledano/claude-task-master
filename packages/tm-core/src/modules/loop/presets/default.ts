@@ -11,8 +11,8 @@ PROCESS:
 2. Read task details with task-master show <id>.
 3. Implement following codebase patterns.
 4. Write tests alongside implementation.
-5. Run npm run turbo:typecheck to verify types.
-6. Run npm test -w <package> to verify tests pass.
+5. Run type check (e.g., \`npm run typecheck\`, \`tsc --noEmit\`).
+6. Run tests (e.g., \`npm test\`, \`npm run test\`).
 7. Mark complete: task-master set-status --id=<id> --status=done
 8. Commit with message: feat(<scope>): <what was implemented>
 9. Append super-concise notes to progress file: task ID, what was done, any learnings.

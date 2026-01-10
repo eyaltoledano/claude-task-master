@@ -26,7 +26,6 @@ describe('LoopService', () => {
 	};
 
 	let mockSpawnSync: MockInstance;
-	let consoleSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -39,12 +38,11 @@ describe('LoopService', () => {
 		mockSpawnSync = vi.mocked(childProcess.spawnSync);
 
 		// Suppress console output in tests
-		consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'log').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
 		vi.restoreAllMocks();
-		consoleSpy.mockRestore();
 	});
 
 	describe('constructor', () => {

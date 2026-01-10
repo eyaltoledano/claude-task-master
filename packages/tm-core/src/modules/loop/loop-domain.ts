@@ -3,6 +3,8 @@
  * Public API for loop operations following the pattern of other domains
  */
 
+import path from 'node:path';
+import { getLogger } from '../../common/logger/index.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import {
 	PRESET_NAMES,
@@ -17,6 +19,7 @@ import type { LoopConfig, LoopPreset, LoopResult } from './types.js';
  * Coordinates LoopService with lazy instantiation
  */
 export class LoopDomain {
+	private readonly logger = getLogger('LoopDomain');
 	private loopService: LoopService | null = null;
 	private readonly projectRoot: string;
 
@@ -58,8 +61,9 @@ export class LoopDomain {
 		if (this.loopService?.isRunning) {
 			try {
 				this.loopService.stop();
-			} catch {
-				// Ignore stop errors, proceed with new service
+			} catch (error) {
+				// Log but don't block - stopping previous service is best-effort cleanup
+				this.logger.warn('Failed to stop previous loop service:', error);
 			}
 		}
 
@@ -181,7 +185,8 @@ export class LoopDomain {
 			iterations: partial.iterations ?? 10,
 			prompt: partial.prompt ?? 'default',
 			progressFile:
-				partial.progressFile ?? `${this.projectRoot}/.taskmaster/progress.txt`,
+				partial.progressFile ??
+				path.join(this.projectRoot, '.taskmaster', 'progress.txt'),
 			sleepSeconds: partial.sleepSeconds ?? 5,
 			tag: partial.tag
 		};

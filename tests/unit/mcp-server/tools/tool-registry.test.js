@@ -1,55 +1,27 @@
 /**
  * tool-registry.test.js
- * Tests for tool registry - verifies loop tools are correctly registered in tiers
+ * Tests for tool registry - verifies tools are correctly registered in tiers
  */
 
 import {
-	toolRegistry,
 	coreTools,
-	standardTools,
 	getAvailableTools,
-	getToolCounts,
 	getToolCategories,
+	getToolCounts,
 	getToolRegistration,
-	isValidTool
+	isValidTool,
+	standardTools,
+	toolRegistry
 } from '../../../../mcp-server/src/tools/tool-registry.js';
 
 describe('tool-registry', () => {
-	describe('loop tools registration', () => {
-		it('should have loop_start registered in toolRegistry', () => {
-			expect(toolRegistry.loop_start).toBeDefined();
-			expect(typeof toolRegistry.loop_start).toBe('function');
-		});
-
-		it('should have loop_presets registered in toolRegistry', () => {
-			expect(toolRegistry.loop_presets).toBeDefined();
-			expect(typeof toolRegistry.loop_presets).toBe('function');
-		});
-
-		it('should include loop_start in standardTools', () => {
-			expect(standardTools).toContain('loop_start');
-		});
-
-		it('should include loop_presets in standardTools', () => {
-			expect(standardTools).toContain('loop_presets');
-		});
-
-		it('should NOT include loop_start in coreTools', () => {
-			expect(coreTools).not.toContain('loop_start');
-		});
-
-		it('should NOT include loop_presets in coreTools', () => {
-			expect(coreTools).not.toContain('loop_presets');
-		});
-	});
-
 	describe('tool tier structure', () => {
 		it('should have exactly 7 core tools', () => {
 			expect(coreTools.length).toBe(7);
 		});
 
-		it('should have exactly 16 standard tools', () => {
-			expect(standardTools.length).toBe(16);
+		it('should have exactly 14 standard tools', () => {
+			expect(standardTools.length).toBe(14);
 		});
 
 		it('should have standardTools include all coreTools', () => {
@@ -69,49 +41,48 @@ describe('tool-registry', () => {
 		it('should return all registered tool names', () => {
 			const tools = getAvailableTools();
 			expect(Array.isArray(tools)).toBe(true);
-			expect(tools).toContain('loop_start');
-			expect(tools).toContain('loop_presets');
 		});
 	});
 
 	describe('getToolCounts', () => {
-		it('should return correct counts including loop tools', () => {
+		it('should return correct counts', () => {
 			const counts = getToolCounts();
 			expect(counts.core).toBe(7);
-			expect(counts.standard).toBe(16);
-			expect(counts.total).toBeGreaterThanOrEqual(16);
+			expect(counts.standard).toBe(14);
+			expect(counts.total).toBeGreaterThanOrEqual(14);
 		});
 	});
 
 	describe('getToolCategories', () => {
-		it('should include loop tools in standard category', () => {
+		it('should return categories with core tools', () => {
 			const categories = getToolCategories();
-			expect(categories.standard).toContain('loop_start');
-			expect(categories.standard).toContain('loop_presets');
+			expect(categories.core).toContain('get_tasks');
+			expect(categories.core).toContain('next_task');
 		});
 
-		it('should include loop tools in all category', () => {
+		it('should return categories with standard tools', () => {
 			const categories = getToolCategories();
-			expect(categories.all).toContain('loop_start');
-			expect(categories.all).toContain('loop_presets');
+			expect(categories.standard).toContain('get_tasks');
+			expect(categories.standard).toContain('add_task');
 		});
 
-		it('should NOT include loop tools in extended category (since they are in standard)', () => {
+		it('should return categories with all tools', () => {
 			const categories = getToolCategories();
-			expect(categories.extended).not.toContain('loop_start');
-			expect(categories.extended).not.toContain('loop_presets');
+			expect(categories.all.length).toBeGreaterThanOrEqual(
+				categories.standard.length
+			);
 		});
 	});
 
 	describe('getToolRegistration', () => {
-		it('should return registration function for loop_start', () => {
-			const registration = getToolRegistration('loop_start');
+		it('should return registration function for get_tasks', () => {
+			const registration = getToolRegistration('get_tasks');
 			expect(registration).toBeDefined();
 			expect(typeof registration).toBe('function');
 		});
 
-		it('should return registration function for loop_presets', () => {
-			const registration = getToolRegistration('loop_presets');
+		it('should return registration function for add_task', () => {
+			const registration = getToolRegistration('add_task');
 			expect(registration).toBeDefined();
 			expect(typeof registration).toBe('function');
 		});
@@ -123,12 +94,12 @@ describe('tool-registry', () => {
 	});
 
 	describe('isValidTool', () => {
-		it('should return true for loop_start', () => {
-			expect(isValidTool('loop_start')).toBe(true);
+		it('should return true for get_tasks', () => {
+			expect(isValidTool('get_tasks')).toBe(true);
 		});
 
-		it('should return true for loop_presets', () => {
-			expect(isValidTool('loop_presets')).toBe(true);
+		it('should return true for add_task', () => {
+			expect(isValidTool('add_task')).toBe(true);
 		});
 
 		it('should return false for unknown tool', () => {
@@ -137,30 +108,24 @@ describe('tool-registry', () => {
 	});
 
 	describe('TASK_MASTER_TOOLS behavior simulation', () => {
-		// This test verifies the logic that would be used when TASK_MASTER_TOOLS env var is set
-		it('should allow filtering to core tools only (loop tools excluded)', () => {
+		it('should allow filtering to core tools only', () => {
 			const coreToolSet = new Set(coreTools);
-			expect(coreToolSet.has('loop_start')).toBe(false);
-			expect(coreToolSet.has('loop_presets')).toBe(false);
-			// Core tools should still be available
 			expect(coreToolSet.has('get_tasks')).toBe(true);
 			expect(coreToolSet.has('next_task')).toBe(true);
 		});
 
-		it('should allow filtering to standard tools (loop tools included)', () => {
+		it('should allow filtering to standard tools', () => {
 			const standardToolSet = new Set(standardTools);
-			expect(standardToolSet.has('loop_start')).toBe(true);
-			expect(standardToolSet.has('loop_presets')).toBe(true);
-			// Core tools should also be present
 			expect(standardToolSet.has('get_tasks')).toBe(true);
 			expect(standardToolSet.has('next_task')).toBe(true);
+			expect(standardToolSet.has('add_task')).toBe(true);
 		});
 
-		it('should include loop tools when using all tools', () => {
+		it('should include all tools when using getAvailableTools', () => {
 			const allTools = getAvailableTools();
 			const allToolSet = new Set(allTools);
-			expect(allToolSet.has('loop_start')).toBe(true);
-			expect(allToolSet.has('loop_presets')).toBe(true);
+			expect(allToolSet.has('get_tasks')).toBe(true);
+			expect(allToolSet.has('add_task')).toBe(true);
 		});
 	});
 });

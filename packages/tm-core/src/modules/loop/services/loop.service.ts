@@ -5,11 +5,7 @@
 import { spawnSync } from 'node:child_process';
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { DEFAULT_PRESET } from '../presets/default.js';
-import { DUPLICATION_PRESET } from '../presets/duplication.js';
-import { ENTROPY_PRESET } from '../presets/entropy.js';
-import { LINTING_PRESET } from '../presets/linting.js';
-import { TEST_COVERAGE_PRESET } from '../presets/test-coverage.js';
+import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
 import type {
 	LoopConfig,
 	LoopIteration,
@@ -20,15 +16,6 @@ import type {
 export interface LoopServiceOptions {
 	projectRoot: string;
 }
-
-/** Preset name to content mapping */
-const PRESETS: Record<LoopPreset, string> = {
-	default: DEFAULT_PRESET,
-	'test-coverage': TEST_COVERAGE_PRESET,
-	linting: LINTING_PRESET,
-	duplication: DUPLICATION_PRESET,
-	entropy: ENTROPY_PRESET
-};
 
 export class LoopService {
 	private readonly projectRoot: string;
@@ -180,7 +167,7 @@ ${tagLine}
 	}
 
 	private isPreset(name: string): name is LoopPreset {
-		return name in PRESETS;
+		return checkIsPreset(name);
 	}
 
 	private async resolvePrompt(prompt: string): Promise<string> {

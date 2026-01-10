@@ -7,7 +7,8 @@ import {
 	type LoopConfig,
 	type LoopResult,
 	type TmCore,
-	createTmCore
+	createTmCore,
+	PRESET_NAMES
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -21,7 +22,6 @@ export interface LoopCommandOptions {
 	progressFile?: string;
 	tag?: string;
 	project?: string;
-	json?: boolean;
 }
 
 export class LoopCommand extends Command {
@@ -34,7 +34,7 @@ export class LoopCommand extends Command {
 			.option('-n, --iterations <number>', 'Maximum iterations')
 			.option(
 				'-p, --prompt <preset|path>',
-				'Preset name (default, test-coverage, linting, duplication, entropy) or path to custom prompt file',
+				`Preset name (${PRESET_NAMES.join(', ')}) or path to custom prompt file`,
 				'default'
 			)
 			.option(
@@ -47,7 +47,6 @@ export class LoopCommand extends Command {
 				'--project <path>',
 				'Project root directory (auto-detected if not provided)'
 			)
-			.option('--json', 'Output results as JSON')
 			.action((options: LoopCommandOptions) => this.execute(options));
 	}
 
@@ -76,35 +75,31 @@ export class LoopCommand extends Command {
 
 			this.validateIterations(String(iterations));
 
-			if (!options.json) {
-				displayCommandHeader(this.tmCore, {
-					tag: options.tag || 'master',
-					storageType: this.tmCore.tasks.getStorageType()
-				});
-			}
+			displayCommandHeader(this.tmCore, {
+				tag: options.tag || 'master',
+				storageType: this.tmCore.tasks.getStorageType()
+			});
 
-			this.handleSandboxAuth(options.json);
+			this.handleSandboxAuth();
 
-			if (!options.json) {
-				console.log(chalk.cyan('Starting Task Master Loop...'));
-				console.log(chalk.dim(`Preset: ${prompt}`));
-				console.log(chalk.dim(`Max iterations: ${iterations}`));
+			console.log(chalk.cyan('Starting Task Master Loop...'));
+			console.log(chalk.dim(`Preset: ${prompt}`));
+			console.log(chalk.dim(`Max iterations: ${iterations}`));
 
-				// Show next task only for default preset (other presets don't use Task Master tasks)
-				if (prompt === 'default') {
-					const nextTask = await this.tmCore.tasks.getNext(options.tag);
-					if (nextTask) {
-						console.log(
-							chalk.white(
-								`Next task to work on: ${chalk.white(nextTask.id)} - ${nextTask.title}`
-							)
-						);
-					} else {
-						console.log(chalk.yellow('No pending tasks found'));
-					}
+			// Show next task only for default preset (other presets don't use Task Master tasks)
+			if (prompt === 'default') {
+				const nextTask = await this.tmCore.tasks.getNext(options.tag);
+				if (nextTask) {
+					console.log(
+						chalk.white(
+							`Next task to work on: ${chalk.white(nextTask.id)} - ${nextTask.title}`
+						)
+					);
+				} else {
+					console.log(chalk.yellow('No pending tasks found'));
 				}
-				console.log();
 			}
+			console.log();
 
 			const config: Partial<LoopConfig> = {
 				iterations,
@@ -114,45 +109,36 @@ export class LoopCommand extends Command {
 			};
 
 			const result = await this.tmCore.loop.run(config);
-
-			if (options.json) {
-				console.log(JSON.stringify(result, null, 2));
-			} else {
-				this.displayResult(result);
-			}
+			this.displayResult(result);
 		} catch (error: unknown) {
 			displayError(error, { skipExit: true });
 			process.exit(1);
 		}
 	}
 
-	private handleSandboxAuth(isJson?: boolean): void {
-		if (!isJson) console.log(chalk.dim('Checking sandbox auth...'));
+	private handleSandboxAuth(): void {
+		console.log(chalk.dim('Checking sandbox auth...'));
 		const isAuthed = this.tmCore.loop.checkSandboxAuth();
 
 		if (isAuthed) {
-			if (!isJson) console.log(chalk.green('✓ Sandbox ready'));
+			console.log(chalk.green('✓ Sandbox ready'));
 			return;
 		}
 
-		if (!isJson) {
-			console.log(
-				chalk.yellow(
-					'Sandbox needs authentication. Starting interactive session...'
-				)
-			);
-			console.log(
-				chalk.dim('Please complete auth, then Ctrl+C to continue.\n')
-			);
-		}
+		console.log(
+			chalk.yellow(
+				'Sandbox needs authentication. Starting interactive session...'
+			)
+		);
+		console.log(chalk.dim('Please complete auth, then Ctrl+C to continue.\n'));
 
 		this.tmCore.loop.runInteractiveAuth();
-		if (!isJson) console.log(chalk.green('✓ Auth complete\n'));
+		console.log(chalk.green('✓ Auth complete\n'));
 	}
 
 	private validateIterations(iterations: string): void {
-		const parsed = parseInt(iterations, 10);
-		if (isNaN(parsed) || parsed < 1) {
+		const parsed = Number(iterations);
+		if (!Number.isInteger(parsed) || parsed < 1) {
 			throw new Error(
 				`Invalid iterations: ${iterations}. Must be a positive integer.`
 			);
@@ -169,13 +155,13 @@ export class LoopCommand extends Command {
 	}
 
 	private formatStatus(status: LoopResult['finalStatus']): string {
-		const statusMap: Record<string, string> = {
+		const statusMap: Record<LoopResult['finalStatus'], string> = {
 			all_complete: chalk.green('All tasks complete'),
 			max_iterations: chalk.yellow('Max iterations reached'),
 			blocked: chalk.red('Blocked'),
 			error: chalk.red('Error')
 		};
-		return statusMap[status] || status;
+		return statusMap[status];
 	}
 
 	static register(program: Command, name?: string): LoopCommand {

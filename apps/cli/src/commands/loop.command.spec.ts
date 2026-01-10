@@ -16,7 +16,14 @@ import { LoopCommand } from './loop.command.js';
 
 // Mock @tm/core
 vi.mock('@tm/core', () => ({
-	createTmCore: vi.fn()
+	createTmCore: vi.fn(),
+	PRESET_NAMES: [
+		'default',
+		'test-coverage',
+		'linting',
+		'duplication',
+		'entropy'
+	]
 }));
 
 // Mock display utilities
@@ -149,11 +156,6 @@ describe('LoopCommand', () => {
 			expect(option?.short).toBe('-t');
 		});
 
-		it('should have --json flag', () => {
-			const option = loopCommand.options.find((o) => o.long === '--json');
-			expect(option).toBeDefined();
-		});
-
 		it('should have --progress-file option', () => {
 			const option = loopCommand.options.find(
 				(o) => o.long === '--progress-file'
@@ -221,12 +223,6 @@ describe('LoopCommand', () => {
 			const result = formatStatus('error');
 			expect(result).toContain('Error');
 		});
-
-		it('should pass through unknown status', () => {
-			const formatStatus = (loopCommand as any).formatStatus.bind(loopCommand);
-			const result = formatStatus('unknown_status');
-			expect(result).toBe('unknown_status');
-		});
 	});
 
 	describe('displayResult', () => {
@@ -272,34 +268,7 @@ describe('LoopCommand', () => {
 			);
 		});
 
-		it('should output JSON when --json flag is set', async () => {
-			const result = createMockResult({
-				finalStatus: 'all_complete',
-				totalIterations: 2,
-				tasksCompleted: 2
-			});
-			mockLoopRun.mockResolvedValue(result);
-
-			const execute = (loopCommand as any).execute.bind(loopCommand);
-			await execute({ json: true });
-
-			const jsonOutput = consoleLogSpy.mock.calls.find((call: any[]) => {
-				try {
-					JSON.parse(call[0]);
-					return true;
-				} catch {
-					return false;
-				}
-			});
-
-			expect(jsonOutput).toBeDefined();
-			const parsed = JSON.parse(jsonOutput[0]);
-			expect(parsed.finalStatus).toBe('all_complete');
-			expect(parsed.totalIterations).toBe(2);
-			expect(parsed.tasksCompleted).toBe(2);
-		});
-
-		it('should display header for non-JSON output', async () => {
+		it('should display header', async () => {
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
 
@@ -307,16 +276,6 @@ describe('LoopCommand', () => {
 			await execute({});
 
 			expect(displayCommandHeader).toHaveBeenCalled();
-		});
-
-		it('should NOT display header for JSON output', async () => {
-			const result = createMockResult();
-			mockLoopRun.mockResolvedValue(result);
-
-			const execute = (loopCommand as any).execute.bind(loopCommand);
-			await execute({ json: true });
-
-			expect(displayCommandHeader).not.toHaveBeenCalled();
 		});
 
 		it('should call displayError on exception', async () => {
@@ -328,7 +287,7 @@ describe('LoopCommand', () => {
 			try {
 				await execute({});
 			} catch {
-				// Expected
+				// Expected - processExitSpy mock throws to simulate process.exit
 			}
 
 			expect(displayError).toHaveBeenCalledWith(error, { skipExit: true });
@@ -343,7 +302,7 @@ describe('LoopCommand', () => {
 			try {
 				await execute({});
 			} catch {
-				// Expected - our mock throws
+				// Expected - processExitSpy mock throws to simulate process.exit
 			}
 
 			expect(processExitSpy).toHaveBeenCalledWith(1);

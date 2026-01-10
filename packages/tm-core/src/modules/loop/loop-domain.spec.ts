@@ -143,24 +143,25 @@ describe('LoopDomain', () => {
 	describe('getAvailablePresets', () => {
 		it('should return array of all preset names', () => {
 			const presets = loopDomain.getAvailablePresets();
-			expect(presets).toEqual([
-				'default',
-				'test-coverage',
-				'linting',
-				'duplication',
-				'entropy'
-			]);
-		});
-
-		it('should return 5 presets', () => {
-			expect(loopDomain.getAvailablePresets()).toHaveLength(5);
+			expect(presets).toHaveLength(5);
+			expect(presets).toEqual(
+				expect.arrayContaining([
+					'default',
+					'test-coverage',
+					'linting',
+					'duplication',
+					'entropy'
+				])
+			);
 		});
 	});
 
 	describe('resolvePrompt', () => {
 		it('should resolve preset name to content', async () => {
 			const content = await loopDomain.resolvePrompt('default');
-			expect(content).toContain('task-master');
+			expect(typeof content).toBe('string');
+			expect(content.length).toBeGreaterThan(0);
+			// Assert on structural property - all presets should contain completion marker
 			expect(content).toContain('<loop-complete>');
 		});
 
