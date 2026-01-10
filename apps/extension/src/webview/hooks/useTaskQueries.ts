@@ -30,7 +30,8 @@ export function useTasks(options?: { tag?: string; status?: string }) {
 			console.log('📋 Tasks fetched:', response);
 			return response as TaskMasterTask[];
 		},
-		staleTime: 0 // Consider data stale immediately
+		staleTime: 10 * 1000, // 10 seconds - tasks don't change that frequently
+		refetchOnMount: 'always' // Still refetch on mount, but serve stale data first
 	});
 }
 
@@ -161,17 +162,30 @@ export function useUpdateTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log('✅ Task update successful, invalidating all task queries');
+			console.log('✅ Task update successful');
 			console.log('Response data:', data);
 			console.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries (same as handleRefresh)
+			// Targeted invalidation: only invalidate the specific task detail
 			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
+				queryKey: taskKeys.detail(variables.taskId)
 			});
 
+			// Optimistically update task lists with new data
+			queryClient.setQueriesData(
+				{ queryKey: taskKeys.lists() },
+				(old: TaskMasterTask[] | undefined) => {
+					if (!old || !Array.isArray(old)) return old;
+					return old.map((task) =>
+						task.id === variables.taskId
+							? { ...task, ...(data?.task || data) }
+							: task
+					);
+				}
+			);
+
 			console.log(
-				'🔄 All task queries invalidated for task:',
+				'🔄 Task detail invalidated and lists updated for:',
 				variables.taskId
 			);
 		}
@@ -210,18 +224,29 @@ export function useUpdateSubtask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log(
-				'✅ Subtask update successful, invalidating all task queries'
-			);
+			console.log('✅ Subtask update successful');
 			console.log('Subtask ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries (same as handleRefresh)
+			// Extract parent task ID from subtask ID (e.g., "1.2" -> "1")
+			const parentTaskId = variables.taskId.split('.')[0];
+
+			// Targeted invalidation: invalidate parent task detail and subtask detail
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(parentTaskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				})
+			]);
+
+			// Invalidate task lists to reflect subtask changes
 			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
+				queryKey: taskKeys.lists()
 			});
 
 			console.log(
-				'🔄 All task queries invalidated for subtask:',
+				'🔄 Parent and subtask details invalidated for:',
 				variables.taskId
 			);
 		}
@@ -268,16 +293,21 @@ export function useScopeUpTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log('✅ Task scope up successful, invalidating all task queries');
+			console.log('✅ Task scope up successful');
 			console.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries
-			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
-			});
+			// Scope changes affect task structure - invalidate task detail and lists
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.lists()
+				})
+			]);
 
 			console.log(
-				'🔄 All task queries invalidated for scoped up task:',
+				'🔄 Task detail and lists invalidated for scoped up task:',
 				variables.taskId
 			);
 		}
@@ -324,18 +354,21 @@ export function useScopeDownTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log(
-				'✅ Task scope down successful, invalidating all task queries'
-			);
+			console.log('✅ Task scope down successful');
 			console.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries
-			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
-			});
+			// Scope changes affect task structure - invalidate task detail and lists
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.lists()
+				})
+			]);
 
 			console.log(
-				'🔄 All task queries invalidated for scoped down task:',
+				'🔄 Task detail and lists invalidated for scoped down task:',
 				variables.taskId
 			);
 		}
