@@ -1,5 +1,42 @@
 # task-master-ai
 
+## 0.41.0
+
+### Minor Changes
+
+- [#1571](https://github.com/eyaltoledano/claude-task-master/pull/1571) [`c2d6c18`](https://github.com/eyaltoledano/claude-task-master/commit/c2d6c18a96fce5a2d5cb50bd1ae5d58ef577501c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add loop command for automated task execution with Claude Code
+
+  **New Features:**
+  - `task-master loop` command that runs Claude Code in a Docker sandbox, executing one task per iteration based on the selected tag
+  - Built-in presets for different workflows:
+    - `default` - General task completion from the Task Master backlog
+    - `test-coverage` - Find uncovered code and write meaningful tests
+    - `linting` - Fix lint errors and type errors one by one
+    - `duplication` - Find duplicated code and refactor into shared utilities
+    - `entropy` - Find code smells and clean them up
+  - Progress file tracking to maintain context across iterations (inside `.taskmaster/loop-progress.txt`)
+    - Remember to delete this file between loops to not pollute the agent with bad context
+  - Automatic completion detection via `<loop-complete>` and `<loop-blocked>` markers
+
+### Patch Changes
+
+- [#1556](https://github.com/eyaltoledano/claude-task-master/pull/1556) [`1befc6a`](https://github.com/eyaltoledano/claude-task-master/commit/1befc6a341babd825b8dd000513ffbf8a1620e62) Thanks [@TheLazyIndianTechie](https://github.com/TheLazyIndianTechie)! - fix: tolerate AI SDK versions without jsonSchema export
+
+  Fallback to sanitized Zod schema handling when jsonSchema is unavailable, and
+  align structured-output tests and registration perf thresholds to reduce CI
+  failures.
+
+  Also enforce sequential, unique subtask ids when regenerating subtasks during
+  scope adjustment.
+
+- [#1553](https://github.com/eyaltoledano/claude-task-master/pull/1553) [`226678b`](https://github.com/eyaltoledano/claude-task-master/commit/226678b93aa01d0e62c0fac852802e9955c7ebd7) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - fix: Remove .default() from Zod schemas to satisfy OpenAI strict JSON schema validation
+
+  This fixes an issue where codex-cli provider (using OpenAI API) would fail with "Missing 'dependencies'" error during task expansion. OpenAI's structured outputs require all properties to be in the 'required' array, but Zod's .default() makes fields optional. The fix removes .default() from schemas and applies defaults at the application level instead.
+
+- [#1543](https://github.com/eyaltoledano/claude-task-master/pull/1543) [`9a6fa1b`](https://github.com/eyaltoledano/claude-task-master/commit/9a6fa1bd2ab389097f1074fe4a4f779dee8180b6) Thanks [@triepod-ai](https://github.com/triepod-ai)! - feat: Add tool annotations for improved LLM tool understanding
+
+  Added MCP tool annotations (readOnlyHint, destructiveHint, title) to all 12 tools to help LLMs better understand tool behavior and make safer decisions about tool execution.
+
 ## 0.40.1
 
 ### Patch Changes
