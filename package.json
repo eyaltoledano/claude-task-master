@@ -13,11 +13,7 @@
 		"provenance": true,
 		"access": "public"
 	},
-	"workspaces": [
-		"apps/*",
-		"packages/*",
-		"."
-	],
+	"workspaces": ["apps/*", "packages/*", "."],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
