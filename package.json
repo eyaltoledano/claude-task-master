@@ -13,7 +13,11 @@
 		"provenance": true,
 		"access": "public"
 	},
-	"workspaces": ["apps/*", "packages/*", "."],
+	"workspaces": [
+		"apps/*",
+		"packages/*",
+		"."
+	],
 	"scripts": {
 		"build": "npm run build:build-config && cross-env NODE_ENV=production tsdown",
 		"dev": "tsdown --watch",
@@ -73,6 +77,7 @@
 		"@ai-sdk/xai": "^2.0.22",
 		"@aws-sdk/credential-providers": "^3.895.0",
 		"@inquirer/search": "^3.0.15",
+		"@modelcontextprotocol/sdk": "^1.25.2",
 		"@openrouter/ai-sdk-provider": "^1.2.0",
 		"@sentry/node": "^10.27.0",
 		"@streamparser/json": "^0.0.22",
@@ -84,6 +89,7 @@
 		"ai-sdk-provider-gemini-cli": "^1.4.0",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
+		"axios": "^1.13.2",
 		"boxen": "^8.0.1",
 		"chalk": "5.6.2",
 		"cli-highlight": "^2.1.11",
@@ -144,7 +150,8 @@
 	],
 	"overrides": {
 		"node-fetch": "^2.6.12",
-		"whatwg-url": "^11.0.0"
+		"whatwg-url": "^11.0.0",
+		"@modelcontextprotocol/sdk": "^1.25.2"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

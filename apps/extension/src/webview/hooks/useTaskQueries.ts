@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVSCodeContext } from '../contexts/VSCodeContext';
 import type { TaskMasterTask, TaskUpdates } from '../types';
+import { logger } from '../utils/logger';
 
 // Query keys factory
 export const taskKeys = {
@@ -19,7 +20,7 @@ export function useTasks(options?: { tag?: string; status?: string }) {
 	return useQuery({
 		queryKey: taskKeys.list(options || {}),
 		queryFn: async () => {
-			console.log('🔍 Fetching tasks with options:', options);
+			logger.log('Fetching tasks with options:', options);
 			const response = await sendMessage({
 				type: 'getTasks',
 				data: {
@@ -27,10 +28,10 @@ export function useTasks(options?: { tag?: string; status?: string }) {
 					withSubtasks: true
 				}
 			});
-			console.log('📋 Tasks fetched:', response);
+			logger.log('Tasks fetched:', response);
 			return response as TaskMasterTask[];
 		},
-		staleTime: 0 // Consider data stale immediately
+		staleTime: 10 * 1000 // 10 seconds - tasks don't change that frequently
 	});
 }
 
@@ -56,7 +57,7 @@ export function useTaskDetails(taskId: string) {
 					const parsed = JSON.parse(response.data.content[0].text);
 					fullTaskData = parsed.data;
 				} catch (e) {
-					console.error('Failed to parse MCP response:', e);
+					logger.error('Failed to parse MCP response:', e);
 				}
 			} else if (response?.data?.data) {
 				fullTaskData = response.data.data;
@@ -144,14 +145,14 @@ export function useUpdateTask() {
 			updates: TaskUpdates | { description: string };
 			options?: { append?: boolean; research?: boolean };
 		}) => {
-			console.log('🔄 Updating task:', taskId, updates, options);
+			logger.log('Updating task:', taskId, updates, options);
 
 			const response = await sendMessage({
 				type: 'updateTask',
 				data: { taskId, updates, options }
 			});
 
-			console.log('📥 Update task response:', response);
+			logger.log('Update task response:', response);
 
 			// Check for error in response
 			if (response && typeof response === 'object' && 'error' in response) {
@@ -161,19 +162,29 @@ export function useUpdateTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log('✅ Task update successful, invalidating all task queries');
-			console.log('Response data:', data);
-			console.log('Task ID:', variables.taskId);
+			logger.log('Task update successful');
+			logger.log('Response data:', data);
+			logger.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries (same as handleRefresh)
+			// Targeted invalidation: only invalidate the specific task detail
 			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
+				queryKey: taskKeys.detail(variables.taskId)
 			});
 
-			console.log(
-				'🔄 All task queries invalidated for task:',
-				variables.taskId
+			// Optimistically update task lists with new data
+			queryClient.setQueriesData(
+				{ queryKey: taskKeys.lists() },
+				(old: TaskMasterTask[] | undefined) => {
+					if (!old || !Array.isArray(old)) return old;
+					return old.map((task) =>
+						task.id === variables.taskId
+							? { ...task, ...(data?.task || data) }
+							: task
+					);
+				}
 			);
+
+			logger.log('Task detail invalidated and lists updated for:', variables.taskId);
 		}
 	});
 }
@@ -193,14 +204,14 @@ export function useUpdateSubtask() {
 			prompt: string;
 			options?: { research?: boolean };
 		}) => {
-			console.log('🔄 Updating subtask:', taskId, prompt, options);
+			logger.log('Updating subtask:', taskId, prompt, options);
 
 			const response = await sendMessage({
 				type: 'updateSubtask',
 				data: { taskId, prompt, options }
 			});
 
-			console.log('📥 Update subtask response:', response);
+			logger.log('Update subtask response:', response);
 
 			// Check for error in response
 			if (response && typeof response === 'object' && 'error' in response) {
@@ -210,20 +221,28 @@ export function useUpdateSubtask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log(
-				'✅ Subtask update successful, invalidating all task queries'
-			);
-			console.log('Subtask ID:', variables.taskId);
+			logger.log('Subtask update successful');
+			logger.log('Subtask ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries (same as handleRefresh)
+			// Extract parent task ID from subtask ID (e.g., "1.2" -> "1")
+			const parentTaskId = variables.taskId.split('.')[0];
+
+			// Targeted invalidation: invalidate parent task detail and subtask detail
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(parentTaskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				})
+			]);
+
+			// Invalidate task lists to reflect subtask changes
 			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
+				queryKey: taskKeys.lists()
 			});
 
-			console.log(
-				'🔄 All task queries invalidated for subtask:',
-				variables.taskId
-			);
+			logger.log('Parent and subtask details invalidated for:', variables.taskId);
 		}
 	});
 }
@@ -245,7 +264,7 @@ export function useScopeUpTask() {
 			prompt?: string;
 			options?: { research?: boolean };
 		}) => {
-			console.log('🔄 Scoping up task:', taskId, strength, prompt, options);
+			logger.log('Scoping up task:', taskId, strength, prompt, options);
 
 			const response = await sendMessage({
 				type: 'mcpRequest',
@@ -258,7 +277,7 @@ export function useScopeUpTask() {
 				}
 			});
 
-			console.log('📥 Scope up task response:', response);
+			logger.log('Scope up task response:', response);
 
 			// Check for error in response
 			if (response && typeof response === 'object' && 'error' in response) {
@@ -268,18 +287,20 @@ export function useScopeUpTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log('✅ Task scope up successful, invalidating all task queries');
-			console.log('Task ID:', variables.taskId);
+			logger.log('Task scope up successful');
+			logger.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries
-			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
-			});
+			// Scope changes affect task structure - invalidate task detail and lists
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.lists()
+				})
+			]);
 
-			console.log(
-				'🔄 All task queries invalidated for scoped up task:',
-				variables.taskId
-			);
+			logger.log('Task detail and lists invalidated for scoped up task:', variables.taskId);
 		}
 	});
 }
@@ -301,7 +322,7 @@ export function useScopeDownTask() {
 			prompt?: string;
 			options?: { research?: boolean };
 		}) => {
-			console.log('🔄 Scoping down task:', taskId, strength, prompt, options);
+			logger.log('Scoping down task:', taskId, strength, prompt, options);
 
 			const response = await sendMessage({
 				type: 'mcpRequest',
@@ -314,7 +335,7 @@ export function useScopeDownTask() {
 				}
 			});
 
-			console.log('📥 Scope down task response:', response);
+			logger.log('Scope down task response:', response);
 
 			// Check for error in response
 			if (response && typeof response === 'object' && 'error' in response) {
@@ -324,20 +345,20 @@ export function useScopeDownTask() {
 			return response;
 		},
 		onSuccess: async (data, variables) => {
-			console.log(
-				'✅ Task scope down successful, invalidating all task queries'
-			);
-			console.log('Task ID:', variables.taskId);
+			logger.log('Task scope down successful');
+			logger.log('Task ID:', variables.taskId);
 
-			// Invalidate ALL task-related queries
-			await queryClient.invalidateQueries({
-				queryKey: taskKeys.all
-			});
+			// Scope changes affect task structure - invalidate task detail and lists
+			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.detail(variables.taskId)
+				}),
+				queryClient.invalidateQueries({
+					queryKey: taskKeys.lists()
+				})
+			]);
 
-			console.log(
-				'🔄 All task queries invalidated for scoped down task:',
-				variables.taskId
-			);
+			logger.log('Task detail and lists invalidated for scoped down task:', variables.taskId);
 		}
 	});
 }
