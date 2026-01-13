@@ -319,7 +319,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 
 	if (isDebug) {
 		console.log(
-			`readJSON called with: ${filepath}, projectRoot: ${projectRoot}, tag: ${tag}`
+			`readJSON called with: ${filepath}, projectRoot: ${projectRoot}, explicit tag: ${tag ? `'${tag}'` : 'none'}`
 		);
 	}
 
@@ -711,6 +711,10 @@ function markMigrationForNotice(tasksJsonPath) {
 function writeJSON(filepath, data, projectRoot = null, tag = null) {
 	const isDebug = process.env.TASKMASTER_DEBUG === 'true';
 
+	if (isDebug && tag) {
+		console.log(`writeJSON: Writing with explicit tag '${tag}' to ${filepath}`);
+	}
+
 	try {
 		let finalData = data;
 
@@ -721,11 +725,13 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 			Array.isArray(data.tasks) &&
 			!hasTaggedStructure(data)
 		) {
-			const resolvedTag = tag || getCurrentTag(projectRoot);
+			// Ensure explicit tag is honored, only fall back to getCurrentTag if no tag provided
+			// Treat empty string, null, undefined as no tag provided
+			const resolvedTag = (tag && typeof tag === 'string' && tag.trim()) ? tag.trim() : getCurrentTag(projectRoot);
 
 			if (isDebug) {
 				console.log(
-					`writeJSON: Detected resolved tag data missing _rawTaggedData. Re-reading raw data to prevent data loss for tag '${resolvedTag}'.`
+					`writeJSON: Detected resolved tag data missing _rawTaggedData. Re-reading raw data to prevent data loss for tag '${resolvedTag}' (explicit tag: ${tag ? 'yes' : 'no'}).`
 				);
 			}
 
@@ -746,7 +752,9 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 		// If we have _rawTaggedData, this means we're working with resolved tag data
 		// and need to merge it back into the full tagged structure
 		else if (data && data._rawTaggedData && projectRoot) {
-			const resolvedTag = tag || getCurrentTag(projectRoot);
+			// Ensure explicit tag is honored, only fall back to getCurrentTag if no tag provided
+			// Treat empty string, null, undefined as no tag provided
+			const resolvedTag = (tag && typeof tag === 'string' && tag.trim()) ? tag.trim() : getCurrentTag(projectRoot);
 
 			// Get the original tagged data
 			const originalTaggedData = data._rawTaggedData;
@@ -762,7 +770,7 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 
 			if (isDebug) {
 				console.log(
-					`writeJSON: Merging resolved data back into tag '${resolvedTag}'`
+					`writeJSON: Merging resolved data back into tag '${resolvedTag}' (explicit tag: ${tag ? 'yes' : 'no'})`
 				);
 			}
 		}
