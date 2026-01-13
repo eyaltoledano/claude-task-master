@@ -92,14 +92,28 @@ describe('File Locking and Atomic Writes', () => {
 			expect(result).toBe('recovered');
 		});
 
-		it('should create file if it does not exist', () => {
+		it('should create file if createIfMissing is true', () => {
 			const newFilePath = path.join(tempDir, 'new-file.json');
 
-			utils.withFileLockSync(newFilePath, () => {
-				// Lock acquired on new file
-			});
+			utils.withFileLockSync(
+				newFilePath,
+				() => {
+					// Lock acquired on new file
+				},
+				{ createIfMissing: true }
+			);
 
 			expect(fs.existsSync(newFilePath)).toBe(true);
+		});
+
+		it('should not create file if createIfMissing is false (default)', () => {
+			const newFilePath = path.join(tempDir, 'should-not-exist.json');
+
+			utils.withFileLockSync(newFilePath, () => {
+				// Lock acquired, but file should not be created
+			});
+
+			expect(fs.existsSync(newFilePath)).toBe(false);
 		});
 
 		it('should clean up lock file after completion', () => {
@@ -122,6 +136,113 @@ describe('File Locking and Atomic Writes', () => {
 
 			// Lock file should be cleaned up
 			expect(fs.existsSync(`${testFilePath}.lock`)).toBe(false);
+		});
+	});
+
+	describe('withFileLock (async)', () => {
+		it('should execute async callback while holding lock', async () => {
+			const result = await utils.withFileLock(testFilePath, async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				return 'async callback executed';
+			});
+
+			expect(result).toBe('async callback executed');
+		});
+
+		it('should release lock after async callback completes', async () => {
+			await utils.withFileLock(testFilePath, async () => {
+				// First lock
+			});
+
+			// Should be able to acquire lock again
+			const result = await utils.withFileLock(testFilePath, async () => {
+				return 'second lock acquired';
+			});
+
+			expect(result).toBe('second lock acquired');
+		});
+
+		it('should release lock even if async callback rejects', async () => {
+			await expect(
+				utils.withFileLock(testFilePath, async () => {
+					throw new Error('Async error');
+				})
+			).rejects.toThrow('Async error');
+
+			// Should still be able to acquire lock
+			const result = await utils.withFileLock(
+				testFilePath,
+				async () => 'recovered'
+			);
+			expect(result).toBe('recovered');
+		});
+
+		it('should create file if createIfMissing is true', async () => {
+			const newFilePath = path.join(tempDir, 'new-async-file.json');
+
+			await utils.withFileLock(
+				newFilePath,
+				async () => {
+					// Lock acquired on new file
+				},
+				{ createIfMissing: true }
+			);
+
+			expect(fs.existsSync(newFilePath)).toBe(true);
+		});
+
+		it('should not create file if createIfMissing is false (default)', async () => {
+			const newFilePath = path.join(tempDir, 'should-not-exist-async.json');
+
+			await utils.withFileLock(newFilePath, async () => {
+				// Lock acquired, but file should not be created
+			});
+
+			expect(fs.existsSync(newFilePath)).toBe(false);
+		});
+
+		it('should clean up lock file after completion', async () => {
+			await utils.withFileLock(testFilePath, async () => {
+				// Do something
+			});
+
+			// Lock file should be cleaned up
+			expect(fs.existsSync(`${testFilePath}.lock`)).toBe(false);
+		});
+
+		it('should clean up lock file even on error', async () => {
+			try {
+				await utils.withFileLock(testFilePath, async () => {
+					throw new Error('Test error');
+				});
+			} catch {
+				// Expected
+			}
+
+			// Lock file should be cleaned up
+			expect(fs.existsSync(`${testFilePath}.lock`)).toBe(false);
+		});
+
+		it('should serialize truly concurrent writes', async () => {
+			const numConcurrentWrites = 5;
+			const writes = [];
+
+			for (let i = 0; i < numConcurrentWrites; i++) {
+				writes.push(
+					utils.withFileLock(testFilePath, async () => {
+						const data = JSON.parse(fs.readFileSync(testFilePath, 'utf8'));
+						data.master.tasks.push({
+							id: String(data.master.tasks.length + 1)
+						});
+						fs.writeFileSync(testFilePath, JSON.stringify(data, null, 2));
+					})
+				);
+			}
+
+			await Promise.all(writes);
+
+			const finalData = JSON.parse(fs.readFileSync(testFilePath, 'utf8'));
+			expect(finalData.master.tasks).toHaveLength(numConcurrentWrites);
 		});
 	});
 
@@ -223,6 +344,172 @@ describe('File Locking and Atomic Writes', () => {
 			const finalData = JSON.parse(fs.readFileSync(testFilePath, 'utf8'));
 			expect(finalData.master.tasks).toHaveLength(numWrites);
 		});
+	});
+
+	describe('True concurrent process writes', () => {
+		it('should handle multiple processes writing simultaneously without data loss', async () => {
+			const { spawn } = await import('child_process');
+
+			const numProcesses = 5;
+			const tasksPerProcess = 3;
+
+			// Create a worker script with inline locking implementation
+			// This mirrors the withFileLockSync implementation but without external dependencies
+			const workerScript = `
+				import fs from 'fs';
+
+				const filepath = process.argv[2];
+				const processId = process.argv[3];
+				const numTasks = parseInt(process.argv[4], 10);
+
+				const LOCK_CONFIG = {
+					maxRetries: 10,
+					retryDelay: 50,
+					staleLockAge: 10000
+				};
+
+				function sleepSync(ms) {
+					const end = Date.now() + ms;
+					while (Date.now() < end) {
+						// Busy wait
+					}
+				}
+
+				function withFileLockSync(filepath, callback) {
+					const lockPath = filepath + '.lock';
+					const { maxRetries, retryDelay, staleLockAge } = LOCK_CONFIG;
+
+					let acquired = false;
+					for (let attempt = 0; attempt < maxRetries; attempt++) {
+						try {
+							const lockContent = JSON.stringify({
+								pid: process.pid,
+								timestamp: Date.now()
+							});
+							fs.writeFileSync(lockPath, lockContent, { flag: 'wx' });
+							acquired = true;
+							break;
+						} catch (err) {
+							if (err.code === 'EEXIST') {
+								try {
+									const lockStat = fs.statSync(lockPath);
+									const age = Date.now() - lockStat.mtimeMs;
+									if (age > staleLockAge) {
+										const stalePath = lockPath + '.stale.' + process.pid + '.' + Date.now();
+										try {
+											fs.renameSync(lockPath, stalePath);
+											try { fs.unlinkSync(stalePath); } catch {}
+											continue;
+										} catch {}
+									}
+								} catch (statErr) {
+									if (statErr.code === 'ENOENT') continue;
+									throw statErr;
+								}
+								if (attempt < maxRetries - 1) {
+									const waitMs = retryDelay * Math.pow(2, attempt);
+									sleepSync(waitMs);
+								}
+							} else {
+								throw err;
+							}
+						}
+					}
+
+					if (!acquired) {
+						throw new Error('Failed to acquire lock on ' + filepath + ' after ' + maxRetries + ' attempts');
+					}
+
+					try {
+						return callback();
+					} finally {
+						try {
+							fs.unlinkSync(lockPath);
+						} catch {}
+					}
+				}
+
+				async function main() {
+					for (let i = 0; i < numTasks; i++) {
+						withFileLockSync(filepath, () => {
+							let currentData;
+							try {
+								currentData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+							} catch {
+								currentData = { master: { tasks: [], metadata: {} } };
+							}
+
+							currentData.master.tasks.push({
+								id: 'P' + processId + '-' + (i + 1),
+								title: 'Task from process ' + processId + ' #' + (i + 1),
+								status: 'pending'
+							});
+
+							fs.writeFileSync(filepath, JSON.stringify(currentData, null, 2), 'utf8');
+						});
+
+						// Small delay to increase chance of interleaving
+						await new Promise(r => setTimeout(r, 10));
+					}
+				}
+
+				main().catch(err => {
+					console.error(err);
+					process.exit(1);
+				});
+			`;
+
+			// Write worker script to temp file
+			const workerPath = path.join(tempDir, 'worker.mjs');
+			fs.writeFileSync(workerPath, workerScript);
+
+			// Spawn multiple processes that write concurrently
+			const processes = [];
+			for (let i = 0; i < numProcesses; i++) {
+				const proc = spawn(
+					'node',
+					[workerPath, testFilePath, String(i), String(tasksPerProcess)],
+					{
+						stdio: ['ignore', 'pipe', 'pipe']
+					}
+				);
+				processes.push(
+					new Promise((resolve, reject) => {
+						let stderr = '';
+						proc.stderr.on('data', (data) => {
+							stderr += data.toString();
+						});
+						proc.on('close', (code) => {
+							if (code === 0) {
+								resolve();
+							} else {
+								reject(
+									new Error(`Process ${i} exited with code ${code}: ${stderr}`)
+								);
+							}
+						});
+						proc.on('error', reject);
+					})
+				);
+			}
+
+			// Wait for all processes to complete
+			await Promise.all(processes);
+
+			// Verify all tasks were written
+			const finalData = JSON.parse(fs.readFileSync(testFilePath, 'utf8'));
+			const expectedTasks = numProcesses * tasksPerProcess;
+
+			expect(finalData.master.tasks.length).toBe(expectedTasks);
+
+			// Verify we have tasks from all processes
+			for (let i = 0; i < numProcesses; i++) {
+				const tasksFromProcess = finalData.master.tasks.filter((t) =>
+					t.id.startsWith(`P${i}-`)
+				);
+				expect(tasksFromProcess.length).toBe(tasksPerProcess);
+			}
+		}, 30000); // 30 second timeout for concurrent test
 	});
 });
 

@@ -32,25 +32,67 @@ const LOCK_CONFIG = {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * Synchronous sleep helper with Atomics.wait fallback
+ * Uses Atomics.wait when SharedArrayBuffer is available (proper non-busy wait),
+ * otherwise falls back to a busy-wait loop (less efficient but always works).
+ * @param {number} ms - Milliseconds to sleep
+ */
+function sleepSync(ms) {
+	// Check if SharedArrayBuffer and Atomics.wait are available
+	// They may not be available in some environments (e.g., browsers without proper headers)
+	if (
+		typeof SharedArrayBuffer !== 'undefined' &&
+		typeof Atomics !== 'undefined' &&
+		typeof Atomics.wait === 'function'
+	) {
+		try {
+			const sharedBuffer = new SharedArrayBuffer(4);
+			const int32 = new Int32Array(sharedBuffer);
+			Atomics.wait(int32, 0, 0, ms);
+			return;
+		} catch {
+			// Fall through to busy-wait fallback
+		}
+	}
+
+	// Fallback: busy-wait loop (less efficient but universally compatible)
+	// Note: This may cause high CPU usage for longer waits. Consider if this
+	// becomes an issue with large exponential backoff delays.
+	const end = Date.now() + ms;
+	while (Date.now() < end) {
+		// Busy wait - intentionally empty
+	}
+}
+
+/**
  * Acquires an exclusive lock on a file and executes a callback
  * Uses same lock file format as withFileLockSync for cross-process compatibility
  * @param {string} filepath - Path to the file to lock
  * @param {Function} callback - Async function to execute while holding the lock
+ * @param {Object} [options] - Options for lock behavior
+ * @param {boolean} [options.createIfMissing=false] - If true, creates the file with '{}' if it doesn't exist.
+ *        Set to true for write operations. Leave false for read-only operations that should handle
+ *        file-not-found scenarios in the callback.
  * @returns {Promise<*>} Result of the callback
  */
-async function withFileLock(filepath, callback) {
+async function withFileLock(filepath, callback, options = {}) {
+	const { createIfMissing = false } = options;
 	const fsPromises = fs.promises;
 
-	// Ensure the file exists before locking (atomic to prevent TOCTOU race)
+	// Ensure parent directory exists
 	const dir = path.dirname(filepath);
 	await fsPromises.mkdir(dir, { recursive: true });
-	try {
-		// Use 'wx' flag for atomic create - fails if file exists (prevents race)
-		await fsPromises.writeFile(filepath, '{}', { flag: 'wx' });
-	} catch (err) {
-		// EEXIST is expected if another process created the file - that's fine
-		if (err.code !== 'EEXIST') {
-			throw err;
+
+	// Only create the file if explicitly requested (for write operations)
+	if (createIfMissing) {
+		try {
+			// Use 'wx' flag for atomic create - fails if file exists (prevents race)
+			await fsPromises.writeFile(filepath, '{}', { flag: 'wx' });
+		} catch (err) {
+			// EEXIST is expected if another process created the file - that's fine
+			if (err.code !== 'EEXIST') {
+				throw err;
+			}
 		}
 	}
 
@@ -126,9 +168,11 @@ async function withFileLock(filepath, callback) {
 		try {
 			await fsPromises.unlink(lockPath);
 		} catch (releaseError) {
-			if (process.env.TASKMASTER_DEBUG === 'true') {
-				console.log(`[DEBUG] Error releasing lock: ${releaseError.message}`);
-			}
+			// Always log lock release failures - they indicate potential issues
+			log(
+				'warn',
+				`Failed to release lock for ${filepath}: ${releaseError.message}`
+			);
 		}
 	}
 }
@@ -138,21 +182,31 @@ async function withFileLock(filepath, callback) {
  * Uses a lock file approach with retries and stale lock detection
  * @param {string} filepath - Path to the file to lock
  * @param {Function} callback - Sync function to execute while holding the lock
+ * @param {Object} [options] - Options for lock behavior
+ * @param {boolean} [options.createIfMissing=false] - If true, creates the file with '{}' if it doesn't exist.
+ *        Set to true for write operations. Leave false for read-only operations that should handle
+ *        file-not-found scenarios in the callback.
  * @returns {*} Result of the callback
  */
-function withFileLockSync(filepath, callback) {
-	// Ensure the file exists before locking (atomic to prevent TOCTOU race)
+function withFileLockSync(filepath, callback, options = {}) {
+	const { createIfMissing = false } = options;
+
+	// Ensure parent directory exists
 	const dir = path.dirname(filepath);
 	if (!fs.existsSync(dir)) {
 		fs.mkdirSync(dir, { recursive: true });
 	}
-	try {
-		// Use 'wx' flag for atomic create - fails if file exists (prevents race)
-		fs.writeFileSync(filepath, '{}', { flag: 'wx' });
-	} catch (err) {
-		// EEXIST is expected if another process created the file - that's fine
-		if (err.code !== 'EEXIST') {
-			throw err;
+
+	// Only create the file if explicitly requested (for write operations)
+	if (createIfMissing) {
+		try {
+			// Use 'wx' flag for atomic create - fails if file exists (prevents race)
+			fs.writeFileSync(filepath, '{}', { flag: 'wx' });
+		} catch (err) {
+			// EEXIST is expected if another process created the file - that's fine
+			if (err.code !== 'EEXIST') {
+				throw err;
+			}
 		}
 	}
 
@@ -191,7 +245,7 @@ function withFileLockSync(filepath, callback) {
 								// Ignore cleanup errors
 							}
 							continue; // Retry lock acquisition
-						} catch (renameErr) {
+						} catch {
 							// Rename failed - another process handled it or lock was refreshed
 							// Just continue to retry
 						}
@@ -206,11 +260,8 @@ function withFileLockSync(filepath, callback) {
 
 				// Lock exists and isn't stale (or we couldn't handle it), wait and retry
 				if (attempt < maxRetries - 1) {
-					// Synchronous sleep using Atomics.wait (proper non-busy wait)
 					const waitMs = retryDelay * Math.pow(2, attempt);
-					const sharedBuffer = new SharedArrayBuffer(4);
-					const int32 = new Int32Array(sharedBuffer);
-					Atomics.wait(int32, 0, 0, waitMs);
+					sleepSync(waitMs);
 				}
 			} else {
 				throw err;
@@ -231,9 +282,11 @@ function withFileLockSync(filepath, callback) {
 		try {
 			fs.unlinkSync(lockPath);
 		} catch (releaseError) {
-			if (process.env.TASKMASTER_DEBUG === 'true') {
-				console.log(`[DEBUG] Error releasing lock: ${releaseError.message}`);
-			}
+			// Always log lock release failures - they indicate potential issues
+			log(
+				'warn',
+				`Failed to release lock for ${filepath}: ${releaseError.message}`
+			);
 		}
 	}
 }
@@ -934,159 +987,170 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 	try {
 		// Use file locking to prevent concurrent write race conditions
 		// This ensures the entire read-modify-write cycle is atomic
-		withFileLockSync(filepath, () => {
-			let finalData = data;
+		// createIfMissing: true because writeJSON is a write operation
+		withFileLockSync(
+			filepath,
+			() => {
+				let finalData = data;
 
-			// If data represents resolved tag data but lost _rawTaggedData (edge-case observed in MCP path)
-			if (
-				data &&
-				!data._rawTaggedData &&
-				projectRoot &&
-				Array.isArray(data.tasks) &&
-				!hasTaggedStructure(data)
-			) {
-				const resolvedTag = tag || getCurrentTag(projectRoot);
+				// If data represents resolved tag data but lost _rawTaggedData (edge-case observed in MCP path)
+				if (
+					data &&
+					!data._rawTaggedData &&
+					projectRoot &&
+					Array.isArray(data.tasks) &&
+					!hasTaggedStructure(data)
+				) {
+					const resolvedTag = tag || getCurrentTag(projectRoot);
 
-				if (isDebug) {
-					console.log(
-						`writeJSON: Detected resolved tag data missing _rawTaggedData. Re-reading raw data to prevent data loss for tag '${resolvedTag}'.`
-					);
-				}
-
-				// Re-read the full file to get the complete tagged structure
-				// This is now safe because we hold the lock
-				let rawFullData = {};
-				try {
-					rawFullData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-				} catch (readError) {
-					// File might be empty or invalid, start fresh
 					if (isDebug) {
 						console.log(
-							`writeJSON: Could not read existing file, starting fresh: ${readError.message}`
+							`writeJSON: Detected resolved tag data missing _rawTaggedData. Re-reading raw data to prevent data loss for tag '${resolvedTag}'.`
 						);
 					}
-				}
 
-				// Merge the updated data into the full structure
-				finalData = {
-					...rawFullData,
-					[resolvedTag]: {
-						// Preserve existing tag metadata, merged with any new metadata
-						metadata: {
-							...(rawFullData[resolvedTag]?.metadata || {}),
-							...(data.metadata || {})
-						},
-						tasks: data.tasks // The updated tasks array is the source of truth here
-					}
-				};
-			}
-			// If we have _rawTaggedData, this means we're working with resolved tag data
-			// and need to merge it back into the full tagged structure
-			else if (data && data._rawTaggedData && projectRoot) {
-				const resolvedTag = tag || getCurrentTag(projectRoot);
-
-				// IMPORTANT: Re-read the file to get the CURRENT state instead of using
-				// potentially stale _rawTaggedData. This prevents lost updates from other processes.
-				let currentTaggedData;
-				try {
-					currentTaggedData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-				} catch (readError) {
-					// Fall back to _rawTaggedData if file can't be read
-					currentTaggedData = data._rawTaggedData;
-					if (isDebug) {
-						console.log(
-							`writeJSON: Using _rawTaggedData as fallback: ${readError.message}`
-						);
-					}
-				}
-
-				// Create a clean copy of the current resolved data (without internal properties)
-				const { _rawTaggedData, tag: _, ...cleanResolvedData } = data;
-
-				// Update the specific tag with the resolved data, preserving other tags
-				finalData = {
-					...currentTaggedData,
-					[resolvedTag]: cleanResolvedData
-				};
-
-				if (isDebug) {
-					console.log(
-						`writeJSON: Merging resolved data back into tag '${resolvedTag}'`
-					);
-				}
-			}
-
-			// Clean up any internal properties that shouldn't be persisted
-			let cleanData = finalData;
-			if (cleanData && typeof cleanData === 'object') {
-				// Remove any _rawTaggedData or tag properties from root level
-				const { _rawTaggedData, tag: tagProp, ...rootCleanData } = cleanData;
-				cleanData = rootCleanData;
-
-				// Additional cleanup for tag objects
-				if (typeof cleanData === 'object' && !Array.isArray(cleanData)) {
-					const finalCleanData = {};
-					for (const [key, value] of Object.entries(cleanData)) {
-						if (
-							value &&
-							typeof value === 'object' &&
-							Array.isArray(value.tasks)
-						) {
-							// This is a tag object - clean up any rogue root-level properties
-							// Move created/description to metadata if they're at root level
-							const { created, description, ...cleanTagData } = value;
-
-							// Ensure metadata object exists
-							if (!cleanTagData.metadata) {
-								cleanTagData.metadata = {};
-							}
-
-							// Preserve created timestamp in metadata if it exists at root level
-							if (created && !cleanTagData.metadata.created) {
-								cleanTagData.metadata.created = created;
-							}
-
-							// Preserve description in metadata if it exists at root level
-							if (description && !cleanTagData.metadata.description) {
-								cleanTagData.metadata.description = description;
-							}
-
-							finalCleanData[key] = cleanTagData;
-						} else {
-							finalCleanData[key] = value;
+					// Re-read the full file to get the complete tagged structure
+					// This is now safe because we hold the lock
+					let rawFullData = {};
+					try {
+						rawFullData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+					} catch (readError) {
+						// File might be empty or invalid, start fresh
+						if (isDebug) {
+							console.log(
+								`writeJSON: Could not read existing file, starting fresh: ${readError.message}`
+							);
 						}
 					}
-					cleanData = finalCleanData;
-				}
-			}
 
-			// Use atomic write: write to temp file then rename
-			// This prevents partial writes from corrupting the file
-			const tempPath = `${filepath}.tmp.${process.pid}`;
-			try {
-				fs.writeFileSync(tempPath, JSON.stringify(cleanData, null, 2), 'utf8');
-				fs.renameSync(tempPath, filepath);
-			} catch (writeError) {
-				// Clean up temp file on failure
-				try {
-					if (fs.existsSync(tempPath)) {
-						fs.unlinkSync(tempPath);
+					// Merge the updated data into the full structure
+					finalData = {
+						...rawFullData,
+						[resolvedTag]: {
+							// Preserve existing tag metadata, merged with any new metadata
+							metadata: {
+								...(rawFullData[resolvedTag]?.metadata || {}),
+								...(data.metadata || {})
+							},
+							tasks: data.tasks // The updated tasks array is the source of truth here
+						}
+					};
+				}
+				// If we have _rawTaggedData, this means we're working with resolved tag data
+				// and need to merge it back into the full tagged structure
+				else if (data && data._rawTaggedData && projectRoot) {
+					const resolvedTag = tag || getCurrentTag(projectRoot);
+
+					// IMPORTANT: Re-read the file to get the CURRENT state instead of using
+					// potentially stale _rawTaggedData. This prevents lost updates from other processes.
+					let currentTaggedData;
+					try {
+						currentTaggedData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+					} catch (readError) {
+						// Fall back to _rawTaggedData if file can't be read
+						currentTaggedData = data._rawTaggedData;
+						if (isDebug) {
+							console.log(
+								`writeJSON: Using _rawTaggedData as fallback: ${readError.message}`
+							);
+						}
 					}
-				} catch {
-					// Ignore cleanup errors
-				}
-				throw writeError;
-			}
 
-			if (isDebug) {
-				console.log(`writeJSON: Successfully wrote to ${filepath}`);
-			}
-		});
+					// Create a clean copy of the current resolved data (without internal properties)
+					const { _rawTaggedData, tag: _, ...cleanResolvedData } = data;
+
+					// Update the specific tag with the resolved data, preserving other tags
+					finalData = {
+						...currentTaggedData,
+						[resolvedTag]: cleanResolvedData
+					};
+
+					if (isDebug) {
+						console.log(
+							`writeJSON: Merging resolved data back into tag '${resolvedTag}'`
+						);
+					}
+				}
+
+				// Clean up any internal properties that shouldn't be persisted
+				let cleanData = finalData;
+				if (cleanData && typeof cleanData === 'object') {
+					// Remove any _rawTaggedData or tag properties from root level
+					const { _rawTaggedData, tag: tagProp, ...rootCleanData } = cleanData;
+					cleanData = rootCleanData;
+
+					// Additional cleanup for tag objects
+					if (typeof cleanData === 'object' && !Array.isArray(cleanData)) {
+						const finalCleanData = {};
+						for (const [key, value] of Object.entries(cleanData)) {
+							if (
+								value &&
+								typeof value === 'object' &&
+								Array.isArray(value.tasks)
+							) {
+								// This is a tag object - clean up any rogue root-level properties
+								// Move created/description to metadata if they're at root level
+								const { created, description, ...cleanTagData } = value;
+
+								// Ensure metadata object exists
+								if (!cleanTagData.metadata) {
+									cleanTagData.metadata = {};
+								}
+
+								// Preserve created timestamp in metadata if it exists at root level
+								if (created && !cleanTagData.metadata.created) {
+									cleanTagData.metadata.created = created;
+								}
+
+								// Preserve description in metadata if it exists at root level
+								if (description && !cleanTagData.metadata.description) {
+									cleanTagData.metadata.description = description;
+								}
+
+								finalCleanData[key] = cleanTagData;
+							} else {
+								finalCleanData[key] = value;
+							}
+						}
+						cleanData = finalCleanData;
+					}
+				}
+
+				// Use atomic write: write to temp file then rename
+				// This prevents partial writes from corrupting the file
+				const tempPath = `${filepath}.tmp.${process.pid}`;
+				try {
+					fs.writeFileSync(
+						tempPath,
+						JSON.stringify(cleanData, null, 2),
+						'utf8'
+					);
+					fs.renameSync(tempPath, filepath);
+				} catch (writeError) {
+					// Clean up temp file on failure
+					try {
+						if (fs.existsSync(tempPath)) {
+							fs.unlinkSync(tempPath);
+						}
+					} catch {
+						// Ignore cleanup errors
+					}
+					throw writeError;
+				}
+
+				if (isDebug) {
+					console.log(`writeJSON: Successfully wrote to ${filepath}`);
+				}
+			},
+			{ createIfMissing: true }
+		);
 	} catch (error) {
 		log('error', `Error writing JSON file ${filepath}:`, error.message);
 		if (isDebug) {
 			log('error', 'Full error details:', error);
 		}
+		// Re-throw so callers know the write failed
+		throw error;
 	}
 }
 

@@ -27,7 +27,10 @@ const LOCK_OPTIONS = {
 };
 
 /**
- * Handles atomic file operations with cross-process locking mechanism
+ * Handles atomic file operations with cross-process locking mechanism.
+ *
+ * Writers are cached for reuse. Call {@link cleanup} when disposing of
+ * long-lived instances to prevent memory leaks.
  */
 export class FileOperations {
 	/** Map of file paths to steno Writers for reuse */
@@ -89,8 +92,14 @@ export class FileOperations {
 			if (release) {
 				try {
 					await release();
-				} catch {
-					// Ignore release errors - lock may have been released already
+				} catch (err: any) {
+					// Log but don't throw - lock may have been released already
+					// Other errors should be visible for debugging
+					if (process.env.DEBUG || process.env.TASKMASTER_DEBUG === 'true') {
+						console.warn(
+							`[WARN] Lock release warning for ${filePath}: ${err.message}`
+						);
+					}
 				}
 			}
 		}
@@ -121,9 +130,28 @@ export class FileOperations {
 			try {
 				const content = await fs.readFile(filePath, 'utf-8');
 				currentData = JSON.parse(content);
-			} catch {
-				// File empty or invalid - start with empty object
-				currentData = {} as T;
+			} catch (err: any) {
+				// Distinguish between expected empty/new files and actual corruption
+				if (err.code === 'ENOENT') {
+					// File doesn't exist yet - start fresh
+					currentData = {} as T;
+				} else if (err instanceof SyntaxError) {
+					// Check if it's just an empty file (our ensureFileExists writes '{}')
+					const content = await fs.readFile(filePath, 'utf-8').catch(() => '');
+					if (content.trim() === '' || content.trim() === '{}') {
+						currentData = {} as T;
+					} else {
+						// Actual JSON corruption - this is a serious error
+						throw new Error(
+							`Corrupted JSON in ${filePath}: ${err.message}. File contains: ${content.substring(0, 100)}...`
+						);
+					}
+				} else {
+					// Other errors (permission, I/O) should be surfaced
+					throw new Error(
+						`Failed to read ${filePath} for modification: ${err.message}`
+					);
+				}
 			}
 
 			// Apply modification
@@ -137,8 +165,14 @@ export class FileOperations {
 			if (release) {
 				try {
 					await release();
-				} catch {
-					// Ignore release errors - lock may have been released already
+				} catch (err: any) {
+					// Log but don't throw - lock may have been released already
+					// Other errors should be visible for debugging
+					if (process.env.DEBUG || process.env.TASKMASTER_DEBUG === 'true') {
+						console.warn(
+							`[WARN] Lock release warning for ${filePath}: ${err.message}`
+						);
+					}
 				}
 			}
 		}
