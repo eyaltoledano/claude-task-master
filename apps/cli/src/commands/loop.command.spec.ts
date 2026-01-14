@@ -394,7 +394,7 @@ describe('LoopCommand', () => {
 			mockLoopRun.mockResolvedValue(result);
 
 			const execute = (loopCommand as any).execute.bind(loopCommand);
-			await execute({});
+			await execute({ sandbox: true });
 
 			expect(mockTmCore.loop.checkSandboxAuth).toHaveBeenCalled();
 		});
@@ -405,7 +405,7 @@ describe('LoopCommand', () => {
 			mockLoopRun.mockResolvedValue(result);
 
 			const execute = (loopCommand as any).execute.bind(loopCommand);
-			await execute({});
+			await execute({ sandbox: true });
 
 			expect(mockTmCore.loop.runInteractiveAuth).toHaveBeenCalled();
 		});

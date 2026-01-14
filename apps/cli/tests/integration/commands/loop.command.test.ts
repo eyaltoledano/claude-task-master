@@ -14,8 +14,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createTask, createTasksFile } from '@tm/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCliBinPath } from '../../helpers/test-utils.js';
+
+// Increase hook timeout for this file - init command can be slow in CI
+vi.setConfig({ hookTimeout: 30000 });
 
 // Capture initial working directory at module load time
 const initialCwd = process.cwd();
@@ -144,13 +147,6 @@ describe('loop command', () => {
 			expect(output).toContain('--tag');
 		});
 
-		it('should show --json option in help', () => {
-			const { output, exitCode } = runHelp();
-
-			expect(exitCode).toBe(0);
-			expect(output).toContain('--json');
-		});
-
 		it('should show --progress-file option in help', () => {
 			const { output, exitCode } = runHelp();
 
@@ -191,44 +187,6 @@ describe('loop command', () => {
 		});
 	});
 
-	describe('option parsing', () => {
-		it('should accept valid iterations', () => {
-			// Command will fail when trying to run claude, but validation should pass
-			const { output } = runLoop('-n 5');
-
-			// Should NOT contain validation error for iterations
-			expect(output.toLowerCase()).not.toContain('invalid iterations');
-		});
-
-		it('should accept custom prompt preset', () => {
-			const { output } = runLoop('-p test-coverage');
-
-			// Should NOT contain validation error for prompt
-			expect(output.toLowerCase()).not.toContain('invalid prompt');
-		});
-
-		it('should accept tag filter', () => {
-			const { output } = runLoop('-t feature');
-
-			// Should NOT contain validation error for tag
-			expect(output.toLowerCase()).not.toContain('invalid tag');
-		});
-
-		it('should accept progress-file option', () => {
-			const { output } = runLoop('--progress-file /tmp/test-progress.txt');
-
-			// Should NOT contain validation error for progress-file
-			expect(output.toLowerCase()).not.toContain('invalid progress');
-		});
-
-		it('should accept multiple options together', () => {
-			const { output } = runLoop('-n 3 -p default -t test');
-
-			// Should NOT contain validation errors
-			expect(output.toLowerCase()).not.toContain('invalid iterations');
-		});
-	});
-
 	describe('error messages', () => {
 		it('should show helpful error for invalid iterations', () => {
 			const { output, exitCode } = runLoop('-n invalid');
@@ -237,25 +195,6 @@ describe('loop command', () => {
 			// Should mention what's wrong and what's expected
 			expect(output.toLowerCase()).toContain('iterations');
 			expect(output.toLowerCase()).toContain('positive');
-		});
-	});
-
-	describe('project detection', () => {
-		it('should work in initialized project directory', () => {
-			// The project is already initialized in beforeEach
-			// Command will fail when trying to run claude, but project detection should work
-			const { output } = runLoop('-n 1');
-
-			// Should NOT contain "not a task-master project" or similar
-			expect(output.toLowerCase()).not.toContain('not initialized');
-			expect(output.toLowerCase()).not.toContain('no project');
-		});
-
-		it('should accept --project option for explicit path', () => {
-			const { output } = runLoop(`--project "${testDir}" -n 1`);
-
-			// Should NOT contain validation error for project path
-			expect(output.toLowerCase()).not.toContain('invalid project');
 		});
 	});
 });

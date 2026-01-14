@@ -5,10 +5,14 @@
 import type { TmCore } from '@tm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock dependencies
-vi.mock('@tm/core', () => ({
-	createTmCore: vi.fn()
-}));
+// Mock dependencies - use partial mock to keep TaskIdSchema and other exports
+vi.mock('@tm/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@tm/core')>();
+	return {
+		...actual,
+		createTmCore: vi.fn()
+	};
+});
 
 vi.mock('../../../src/utils/project-root.js', () => ({
 	getProjectRoot: vi.fn((path?: string) => path || '/test/project')

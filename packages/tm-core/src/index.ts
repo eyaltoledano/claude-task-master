@@ -204,6 +204,17 @@ export {
 	type GenerateTaskFilesResult
 } from './modules/tasks/services/task-file-generator.service.js';
 
+// Task filtering utilities
+export {
+	buildBlocksMap,
+	filterReadyTasks,
+	filterBlockingTasks,
+	ACTIONABLE_STATUSES,
+	type TaskWithBlocks,
+	type InvalidDependency,
+	type BuildBlocksMapResult
+} from './modules/tasks/utils/index.js';
+
 // Integration - Advanced
 export {
 	ExportService,

@@ -10,6 +10,7 @@ import {
 	tryListTagsViaRemote,
 	tryUseTagViaRemote
 } from '@tm/bridge';
+import { filterReadyTasks, isTaskComplete } from '@tm/core';
 import { displayBanner, getStatusWithColor } from '../ui.js';
 import {
 	findProjectRoot,
@@ -624,30 +625,15 @@ async function tags(
 			const tasks = tagData.tasks || [];
 			const metadata = tagData.metadata || {};
 
-			// Calculate ready tasks (actionable status + dependencies satisfied)
-			const completedIds = new Set(
-				tasks
-					.filter(
-						(t) =>
-							t.status === 'done' ||
-							t.status === 'completed' ||
-							t.status === 'cancelled'
-					)
-					.map((t) => String(t.id))
-			);
-			const actionableStatuses = ['pending', 'in-progress', 'review'];
-			const readyTasks = tasks.filter((t) => {
-				if (!actionableStatuses.includes(t.status)) return false;
-				if (!t.dependencies || t.dependencies.length === 0) return true;
-				return t.dependencies.every((depId) => completedIds.has(String(depId)));
-			});
+			// Use centralized filtering from @tm/core
+			// Note: filterReadyTasks expects TaskWithBlocks[] but only uses status/dependencies at runtime
+			const tasksWithBlocks = tasks.map((t) => ({ ...t, blocks: [] }));
+			const readyTasks = filterReadyTasks(tasksWithBlocks);
 
 			tagList.push({
 				name: tagName,
 				isCurrent: tagName === currentTag,
-				completedTasks: tasks.filter(
-					(t) => t.status === 'done' || t.status === 'completed'
-				).length,
+				completedTasks: tasks.filter((t) => isTaskComplete(t.status)).length,
 				readyTasks: readyTasks.length,
 				tasks: tasks || [],
 				created: metadata.created || 'Unknown',

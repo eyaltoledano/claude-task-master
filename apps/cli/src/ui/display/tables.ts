@@ -27,6 +27,18 @@ export type TaskTableItem = (Task | Subtask) & {
 };
 
 /**
+ * Column width ratios indexed by number of optional columns
+ * Each array contains ratios for: [Tag?, ID, Title, Status, Priority, Dependencies?, Blocks?, Complexity?]
+ */
+const COLUMN_WIDTH_RATIOS: Record<number, number[]> = {
+	0: [0.1, 0.5, 0.2, 0.2],
+	1: [0.08, 0.4, 0.18, 0.14, 0.2],
+	2: [0.08, 0.35, 0.14, 0.11, 0.16, 0.16],
+	3: [0.07, 0.3, 0.12, 0.1, 0.14, 0.14, 0.1],
+	4: [0.12, 0.06, 0.2, 0.1, 0.1, 0.12, 0.12, 0.1]
+};
+
+/**
  * Create a task table for display
  */
 export function createTaskTable(
@@ -50,65 +62,17 @@ export function createTaskTable(
 	// Calculate dynamic column widths based on terminal width
 	const tableWidth = getBoxWidth(0.9, 100);
 
-	// Calculate number of optional columns
+	// Count optional columns and get corresponding width ratios
 	const optionalCols =
 		(showTag ? 1 : 0) +
 		(showDependencies ? 1 : 0) +
 		(showBlocks ? 1 : 0) +
 		(showComplexity ? 1 : 0);
 
-	// Base widths: ID, Title, Status, Priority (then optional: Tag, Dependencies, Blocks, Complexity)
-	let baseColWidths: number[];
-	if (optionalCols === 0) {
-		baseColWidths = [
-			Math.floor(tableWidth * 0.1),
-			Math.floor(tableWidth * 0.5),
-			Math.floor(tableWidth * 0.2),
-			Math.floor(tableWidth * 0.2)
-		];
-	} else if (optionalCols === 1) {
-		baseColWidths = [
-			Math.floor(tableWidth * 0.08),
-			Math.floor(tableWidth * 0.4),
-			Math.floor(tableWidth * 0.18),
-			Math.floor(tableWidth * 0.14),
-			Math.floor(tableWidth * 0.2)
-		];
-	} else if (optionalCols === 2) {
-		baseColWidths = [
-			Math.floor(tableWidth * 0.08),
-			Math.floor(tableWidth * 0.35),
-			Math.floor(tableWidth * 0.14),
-			Math.floor(tableWidth * 0.11),
-			Math.floor(tableWidth * 0.16),
-			Math.floor(tableWidth * 0.16)
-		];
-	} else if (optionalCols === 3) {
-		baseColWidths = [
-			Math.floor(tableWidth * 0.07),
-			Math.floor(tableWidth * 0.3),
-			Math.floor(tableWidth * 0.12),
-			Math.floor(tableWidth * 0.1),
-			Math.floor(tableWidth * 0.14),
-			Math.floor(tableWidth * 0.14),
-			Math.floor(tableWidth * 0.1)
-		];
-	} else {
-		// 4 optional columns (Tag + Dependencies + Blocks + Complexity)
-		// Order: Tag, ID, Title, Status, Priority, Dependencies, Blocks, Complexity
-		baseColWidths = [
-			Math.floor(tableWidth * 0.12), // Tag
-			Math.floor(tableWidth * 0.06), // ID
-			Math.floor(tableWidth * 0.2), // Title
-			Math.floor(tableWidth * 0.1), // Status
-			Math.floor(tableWidth * 0.1), // Priority
-			Math.floor(tableWidth * 0.12), // Dependencies
-			Math.floor(tableWidth * 0.12), // Blocks
-			Math.floor(tableWidth * 0.1) // Complexity
-		];
-	}
+	const ratios = COLUMN_WIDTH_RATIOS[optionalCols] || COLUMN_WIDTH_RATIOS[4];
+	const baseColWidths = ratios.map((ratio) => Math.floor(tableWidth * ratio));
 
-	// Build headers - Tag goes first when showing all tags
+	// Build headers and column widths dynamically
 	const headers: string[] = [];
 	const colWidths: number[] = [];
 	let colIndex = 0;
@@ -125,10 +89,8 @@ export function createTaskTable(
 		chalk.blue.bold('Status'),
 		chalk.blue.bold('Priority')
 	);
-	// Add 4 widths for core columns, adjusting for tag position
-	const coreStart = showTag ? 1 : 0;
-	colWidths.push(...baseColWidths.slice(coreStart, coreStart + 4));
-	colIndex = showTag ? 5 : 4;
+	colWidths.push(...baseColWidths.slice(colIndex, colIndex + 4));
+	colIndex += 4;
 
 	if (showDependencies) {
 		headers.push(chalk.blue.bold('Dependencies'));
@@ -183,12 +145,11 @@ export function createTaskTable(
 
 		if (showBlocks) {
 			// Show tasks that depend on this one
-			const taskWithBlocks = task as TaskTableItem;
-			if (!taskWithBlocks.blocks || taskWithBlocks.blocks.length === 0) {
+			if (!task.blocks || task.blocks.length === 0) {
 				row.push(chalk.gray('-'));
 			} else {
 				// Gray out blocks for completed tasks (no longer blocking)
-				const blocksText = taskWithBlocks.blocks.join(', ');
+				const blocksText = task.blocks.join(', ');
 				row.push(
 					isTaskComplete(task.status)
 						? chalk.gray(blocksText)

@@ -5,14 +5,20 @@
 
 import {
 	OUTPUT_FORMATS,
+	buildBlocksMap,
+	createTmCore,
+	filterBlockingTasks,
+	filterReadyTasks,
+	isTaskComplete,
+	type InvalidDependency,
 	type OutputFormat,
 	STATUS_ICONS,
 	TASK_STATUSES,
 	type Task,
 	type TaskStatus,
+	type TaskWithBlocks,
 	type TmCore,
-	type WatchSubscription,
-	createTmCore
+	type WatchSubscription
 } from '@tm/core';
 import type { StorageType } from '@tm/core';
 import chalk from 'chalk';
@@ -33,7 +39,6 @@ import {
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
 import { getProjectRoot } from '../utils/project-root.js';
-import { isTaskComplete } from '../utils/task-status.js';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -54,11 +59,6 @@ export interface ListCommandOptions {
 	blocking?: boolean;
 	allTags?: boolean;
 }
-
-/**
- * Task with blocks field (inverse of dependencies)
- */
-export type TaskWithBlocks = Task & { blocks: string[] };
 
 /**
  * Task with tag info for cross-tag listing
@@ -221,8 +221,15 @@ export class ListTasksCommand extends Command {
 							// Show sync message with timestamp
 							displaySyncMessage(storageType, lastSync);
 							displayWatchFooter(storageType, lastSync);
-						} catch {
-							// Ignore errors during watch (e.g. partial writes)
+						} catch (refreshError: unknown) {
+							// Log warning but continue watching - don't crash on transient errors
+							const message =
+								refreshError instanceof Error
+									? refreshError.message
+									: String(refreshError);
+							console.error(
+								chalk.yellow(`\nWarning: Failed to refresh tasks: ${message}`)
+							);
 						}
 					} else if (event.type === 'error' && event.error) {
 						console.error(chalk.red(`\n⚠ Watch error: ${event.error.message}`));
@@ -333,7 +340,8 @@ export class ListTasksCommand extends Command {
 		});
 
 		// Build blocks map and enrich tasks with blocks field
-		const blocksMap = this.buildBlocksMap(result.tasks);
+		const { blocksMap, invalidDependencies } = buildBlocksMap(result.tasks);
+		this.displayInvalidDependencyWarnings(invalidDependencies);
 		const enrichedTasks = result.tasks.map((task) => ({
 			...task,
 			blocks: blocksMap.get(String(task.id)) || []
@@ -343,11 +351,11 @@ export class ListTasksCommand extends Command {
 		let filteredTasks = enrichedTasks;
 
 		if (options.ready) {
-			filteredTasks = this.filterReadyTasks(filteredTasks);
+			filteredTasks = filterReadyTasks(filteredTasks);
 		}
 
 		if (options.blocking) {
-			filteredTasks = this.filterBlockingTasks(filteredTasks);
+			filteredTasks = filterBlockingTasks(filteredTasks);
 		}
 
 		// Apply status filter AFTER ready/blocking if we deferred it earlier
@@ -379,37 +387,68 @@ export class ListTasksCommand extends Command {
 		const tagsResult = await this.tmCore.tasks.getTagsWithStats();
 		const allTaggedTasks: TaskWithTag[] = [];
 		let totalTaskCount = 0;
+		const failedTags: Array<{ name: string; error: string }> = [];
 
 		// Fetch tasks from each tag
 		for (const tagInfo of tagsResult.tags) {
 			const tagName = tagInfo.name;
 
-			// Get tasks for this tag
-			const result = await this.tmCore.tasks.list({
-				tag: tagName,
-				includeSubtasks: options.withSubtasks
+			try {
+				// Get tasks for this tag
+				const result = await this.tmCore.tasks.list({
+					tag: tagName,
+					includeSubtasks: options.withSubtasks
+				});
+
+				// Track total count before any filtering (consistent with getTasks)
+				totalTaskCount += result.tasks.length;
+
+				// Build blocks map for this tag's tasks
+				const { blocksMap, invalidDependencies } = buildBlocksMap(result.tasks);
+				this.displayInvalidDependencyWarnings(invalidDependencies, tagName);
+
+				// Enrich tasks with blocks field and tag name
+				const enrichedTasks: TaskWithTag[] = result.tasks.map((task) => ({
+					...task,
+					blocks: blocksMap.get(String(task.id)) || [],
+					tagName
+				}));
+
+				// Apply ready filter per-tag to respect tag-scoped dependencies
+				// (task IDs may overlap between tags, so we must filter within each tag)
+				const tasksToAdd: TaskWithTag[] = options.ready
+					? (filterReadyTasks(enrichedTasks) as TaskWithTag[])
+					: enrichedTasks;
+
+				allTaggedTasks.push(...tasksToAdd);
+			} catch (tagError: unknown) {
+				const errorMessage =
+					tagError instanceof Error ? tagError.message : String(tagError);
+				failedTags.push({ name: tagName, error: errorMessage });
+				continue; // Skip this tag but continue with others
+			}
+		}
+
+		// Warn about failed tags
+		if (failedTags.length > 0) {
+			console.warn(
+				chalk.yellow(
+					`\nWarning: Could not fetch tasks from ${failedTags.length} tag(s):`
+				)
+			);
+			failedTags.forEach(({ name, error }) => {
+				console.warn(chalk.gray(`  ${name}: ${error}`));
 			});
+		}
 
-			// Track total count before any filtering (consistent with getTasks)
-			totalTaskCount += result.tasks.length;
-
-			// Build blocks map for this tag's tasks
-			const blocksMap = this.buildBlocksMap(result.tasks);
-
-			// Enrich tasks with blocks field and tag name
-			const enrichedTasks: TaskWithTag[] = result.tasks.map((task) => ({
-				...task,
-				blocks: blocksMap.get(String(task.id)) || [],
-				tagName
-			}));
-
-			// Apply ready filter per-tag to respect tag-scoped dependencies
-			// (task IDs may overlap between tags, so we must filter within each tag)
-			const tasksToAdd: TaskWithTag[] = options.ready
-				? (this.filterReadyTasks(enrichedTasks) as TaskWithTag[])
-				: enrichedTasks;
-
-			allTaggedTasks.push(...tasksToAdd);
+		// If ALL tags failed, throw to surface the issue
+		if (
+			failedTags.length === tagsResult.tags.length &&
+			tagsResult.tags.length > 0
+		) {
+			throw new Error(
+				`Failed to fetch tasks from any tag. First error: ${failedTags[0].error}`
+			);
 		}
 
 		// Apply additional filters
@@ -440,72 +479,34 @@ export class ListTasksCommand extends Command {
 	}
 
 	/**
-	 * Build a map of task ID -> array of task IDs that depend on it (blocks)
+	 * Display warnings for invalid dependency references
+	 * @param invalidDependencies - Array of invalid dependency references from buildBlocksMap
+	 * @param tagName - Optional tag name for context in multi-tag mode
 	 */
-	private buildBlocksMap(tasks: Task[]): Map<string, string[]> {
-		const blocksMap = new Map<string, string[]>();
+	private displayInvalidDependencyWarnings(
+		invalidDependencies: InvalidDependency[],
+		tagName?: string
+	): void {
+		if (invalidDependencies.length === 0) {
+			return;
+		}
 
-		// Initialize all tasks with empty arrays
-		tasks.forEach((task) => {
-			blocksMap.set(String(task.id), []);
-		});
-
-		// For each task, add it to the blocks list of each of its dependencies
-		tasks.forEach((task) => {
-			if (task.dependencies && task.dependencies.length > 0) {
-				task.dependencies.forEach((depId) => {
-					const depIdStr = String(depId);
-					const currentBlocks = blocksMap.get(depIdStr) || [];
-					currentBlocks.push(String(task.id));
-					blocksMap.set(depIdStr, currentBlocks);
-				});
-			}
-		});
-
-		return blocksMap;
-	}
-
-	/**
-	 * Filter to only tasks that are ready to work on (dependencies satisfied, actionable status)
-	 */
-	private filterReadyTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
-		// Statuses that are actionable (not deferred, blocked, or terminal)
-		const actionableStatuses: TaskStatus[] = [
-			'pending',
-			'in-progress',
-			'review'
-		];
-
-		// Build set of completed task IDs
-		const completedIds = new Set<string>();
-		tasks.forEach((t) => {
-			if (isTaskComplete(t.status)) {
-				completedIds.add(String(t.id));
-			}
-		});
-
-		return tasks.filter((task) => {
-			// Must be in an actionable status (excludes deferred, blocked, done, cancelled)
-			if (!actionableStatuses.includes(task.status)) {
-				return false;
-			}
-
-			// Must have all dependencies satisfied
-			if (!task.dependencies || task.dependencies.length === 0) {
-				return true;
-			}
-
-			return task.dependencies.every((depId) =>
-				completedIds.has(String(depId))
+		const tagContext = tagName ? ` (tag: ${tagName})` : '';
+		console.warn(
+			chalk.yellow(
+				`\nWarning: ${invalidDependencies.length} invalid dependency reference(s) found${tagContext}:`
+			)
+		);
+		invalidDependencies.slice(0, 5).forEach(({ taskId, depId }) => {
+			console.warn(
+				chalk.gray(`  Task ${taskId} depends on non-existent task ${depId}`)
 			);
 		});
-	}
-
-	/**
-	 * Filter to only tasks that block other tasks
-	 */
-	private filterBlockingTasks(tasks: TaskWithBlocks[]): TaskWithBlocks[] {
-		return tasks.filter((task) => task.blocks.length > 0);
+		if (invalidDependencies.length > 5) {
+			console.warn(
+				chalk.gray(`  ...and ${invalidDependencies.length - 5} more`)
+			);
+		}
 	}
 
 	/**
@@ -516,13 +517,12 @@ export class ListTasksCommand extends Command {
 		options: ListCommandOptions
 	): void {
 		// Resolve format: --json and --compact flags override --format option
-		const format = (
-			options.json
-				? 'json'
-				: options.compact
-					? 'compact'
-					: options.format || 'text'
-		) as OutputFormat;
+		let format: OutputFormat = options.format || 'text';
+		if (options.json) {
+			format = 'json';
+		} else if (options.compact) {
+			format = 'compact';
+		}
 
 		switch (format) {
 			case 'json':
@@ -579,24 +579,22 @@ export class ListTasksCommand extends Command {
 			});
 		}
 
-		tasks.forEach((task) => {
+		for (const task of tasks) {
 			const icon = STATUS_ICONS[task.status];
-			// Show tag in compact format when listing all tags
+			// Show tag in compact format when listing all tags (tasks are TaskWithTag[])
 			const tagPrefix =
-				allTags && (task as any).tagName
-					? chalk.magenta(`[${(task as any).tagName}] `)
-					: '';
+				allTags && 'tagName' in task ? chalk.magenta(`[${task.tagName}] `) : '';
 			console.log(`${tagPrefix}${chalk.cyan(task.id)} ${icon} ${task.title}`);
 
 			if (options.withSubtasks && task.subtasks?.length) {
-				task.subtasks.forEach((subtask) => {
+				for (const subtask of task.subtasks) {
 					const subIcon = STATUS_ICONS[subtask.status];
 					console.log(
 						`  ${chalk.gray(String(subtask.id))} ${subIcon} ${chalk.gray(subtask.title)}`
 					);
-				});
+				}
 			}
-		});
+		}
 	}
 
 	/**
