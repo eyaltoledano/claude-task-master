@@ -6,9 +6,9 @@ import path from 'node:path';
 import {
 	type LoopConfig,
 	type LoopResult,
+	PRESET_NAMES,
 	type TmCore,
-	createTmCore,
-	PRESET_NAMES
+	createTmCore
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -127,9 +127,13 @@ export class LoopCommand extends Command {
 
 	private handleSandboxAuth(): void {
 		console.log(chalk.dim('Checking sandbox auth...'));
-		const isAuthed = this.tmCore.loop.checkSandboxAuth();
+		const authCheck = this.tmCore.loop.checkSandboxAuth();
 
-		if (isAuthed) {
+		if (authCheck.error) {
+			throw new Error(authCheck.error);
+		}
+
+		if (authCheck.ready) {
 			console.log(chalk.green('✓ Sandbox ready'));
 			return;
 		}
@@ -141,7 +145,10 @@ export class LoopCommand extends Command {
 		);
 		console.log(chalk.dim('Please complete auth, then Ctrl+C to continue.\n'));
 
-		this.tmCore.loop.runInteractiveAuth();
+		const authResult = this.tmCore.loop.runInteractiveAuth();
+		if (!authResult.success) {
+			throw new Error(authResult.error || 'Interactive authentication failed');
+		}
 		console.log(chalk.green('✓ Auth complete\n'));
 	}
 

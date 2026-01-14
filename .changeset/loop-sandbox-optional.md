@@ -1,6 +1,5 @@
 ---
-"@tm/core": patch
-"@tm/cli": patch
+"task-master-ai": patch
 ---
 
 Make Docker sandbox mode opt-in for loop command

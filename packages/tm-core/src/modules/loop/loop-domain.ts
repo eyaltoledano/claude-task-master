@@ -31,9 +31,9 @@ export class LoopDomain {
 
 	/**
 	 * Check if Docker sandbox auth is ready
-	 * @returns true if ready, false if auth needed
+	 * @returns Object with ready status and optional error message
 	 */
-	checkSandboxAuth(): boolean {
+	checkSandboxAuth(): { ready: boolean; error?: string } {
 		const service = new LoopService({ projectRoot: this.projectRoot });
 		return service.checkSandboxAuth();
 	}
@@ -41,10 +41,11 @@ export class LoopDomain {
 	/**
 	 * Run Docker sandbox session for user authentication
 	 * Blocks until user completes auth
+	 * @returns Object with success status and optional error message
 	 */
-	runInteractiveAuth(): void {
+	runInteractiveAuth(): { success: boolean; error?: string } {
 		const service = new LoopService({ projectRoot: this.projectRoot });
-		service.runInteractiveAuth();
+		return service.runInteractiveAuth();
 	}
 
 	// ========== Loop Operations ==========

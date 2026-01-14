@@ -1,5 +1,5 @@
 /**
- * @fileoverview Loop Service - Orchestrates running Claude Code in Docker sandbox iterations
+ * @fileoverview Loop Service - Orchestrates running Claude Code iterations (sandbox or CLI mode)
  */
 
 import { spawnSync } from 'node:child_process';
@@ -34,7 +34,7 @@ export class LoopService {
 	}
 
 	/** Check if Docker sandbox auth is ready */
-	checkSandboxAuth(): boolean {
+	checkSandboxAuth(): { ready: boolean; error?: string } {
 		const result = spawnSync(
 			'docker',
 			['sandbox', 'run', 'claude', '-p', 'Say OK'],
@@ -42,16 +42,29 @@ export class LoopService {
 				cwd: this.projectRoot,
 				timeout: 30000,
 				encoding: 'utf-8',
-				stdio: ['inherit', 'pipe', 'pipe'] // stdin from terminal, capture stdout/stderr
+				stdio: ['inherit', 'pipe', 'pipe']
 			}
 		);
+
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') {
+				return {
+					ready: false,
+					error:
+						'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+				};
+			}
+			return { ready: false, error: `Docker error: ${result.error.message}` };
+		}
+
 		const output = (result.stdout || '') + (result.stderr || '');
-		return output.toLowerCase().includes('ok');
+		return { ready: output.toLowerCase().includes('ok') };
 	}
 
 	/** Run interactive Docker sandbox session for user authentication */
-	runInteractiveAuth(): void {
-		spawnSync(
+	runInteractiveAuth(): { success: boolean; error?: string } {
+		const result = spawnSync(
 			'docker',
 			[
 				'sandbox',
@@ -64,6 +77,34 @@ export class LoopService {
 				stdio: 'inherit'
 			}
 		);
+
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			if (code === 'ENOENT') {
+				return {
+					success: false,
+					error:
+						'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+				};
+			}
+			return { success: false, error: `Docker error: ${result.error.message}` };
+		}
+
+		if (result.status === null) {
+			return {
+				success: false,
+				error: 'Docker terminated abnormally (no exit code)'
+			};
+		}
+
+		if (result.status !== 0) {
+			return {
+				success: false,
+				error: `Docker exited with code ${result.status}`
+			};
+		}
+
+		return { success: true };
 	}
 
 	/** Run a loop with the given configuration */
@@ -232,7 +273,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		const command = sandbox ? 'docker' : 'claude';
 		const args = sandbox
 			? ['sandbox', 'run', 'claude', '-p', prompt]
-			: ['-p', prompt, '--allowedTools', 'Edit,Write,Bash,Read,Glob,Grep'];
+			: ['-p', prompt, '--dangerously-skip-permissions'];
 
 		const result = spawnSync(command, args, {
 			cwd: this.projectRoot,
@@ -241,15 +282,46 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 			stdio: ['inherit', 'pipe', 'pipe']
 		});
 
+		// Check for spawn-level errors (command not found, permission denied, etc.)
+		if (result.error) {
+			const code = (result.error as NodeJS.ErrnoException).code;
+			let errorMessage: string;
+
+			if (code === 'ENOENT') {
+				errorMessage = sandbox
+					? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+					: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
+			} else if (code === 'EACCES') {
+				errorMessage = `Permission denied executing '${command}'`;
+			} else {
+				errorMessage = `Failed to execute '${command}': ${result.error.message}`;
+			}
+
+			console.error(`[Loop Error] ${errorMessage}`);
+			return {
+				iteration: iterationNum,
+				status: 'error',
+				duration: Date.now() - startTime,
+				message: errorMessage
+			};
+		}
+
 		const output = (result.stdout || '') + (result.stderr || '');
 
 		// Print output to console (spawnSync with pipe captures but doesn't display)
 		if (output) console.log(output);
 
-		const { status, message } = this.parseCompletion(
-			output,
-			result.status ?? 1
-		);
+		// Handle null status (spawn failed but no error object - shouldn't happen but be safe)
+		if (result.status === null) {
+			return {
+				iteration: iterationNum,
+				status: 'error',
+				duration: Date.now() - startTime,
+				message: 'Command terminated abnormally (no exit code)'
+			};
+		}
+
+		const { status, message } = this.parseCompletion(output, result.status);
 		return {
 			iteration: iterationNum,
 			status,
