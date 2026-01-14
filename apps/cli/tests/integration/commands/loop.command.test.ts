@@ -147,6 +147,13 @@ describe('loop command', () => {
 			expect(output).toContain('--tag');
 		});
 
+		it('should show --sandbox option in help', () => {
+			const { output, exitCode } = runHelp();
+
+			expect(exitCode).toBe(0);
+			expect(output).toContain('--sandbox');
+		});
+
 		it('should show --progress-file option in help', () => {
 			const { output, exitCode } = runHelp();
 
