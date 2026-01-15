@@ -130,41 +130,21 @@
 	],
 	"codex-cli": [
 		{
-			"id": "gpt-5",
-			"swe_score": 0.749,
+			"id": "gpt-5.2-codex",
+			"name": "GPT-5.2 Codex",
+			"swe_score": 0.82,
 			"cost_per_1m_tokens": {
 				"input": 0,
 				"output": 0
 			},
 			"allowed_roles": ["main", "fallback", "research"],
 			"max_tokens": 128000,
-			"supported": true
-		},
-		{
-			"id": "gpt-5-codex",
-			"swe_score": 0.749,
-			"cost_per_1m_tokens": {
-				"input": 0,
-				"output": 0
-			},
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 128000,
-			"supported": true
-		},
-		{
-			"id": "gpt-5.1",
-			"swe_score": 0.76,
-			"cost_per_1m_tokens": {
-				"input": 0,
-				"output": 0
-			},
-			"allowed_roles": ["main", "fallback", "research"],
-			"max_tokens": 128000,
-			"reasoning_efforts": ["none", "low", "medium", "high"],
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
 			"supported": true
 		},
 		{
 			"id": "gpt-5.1-codex-max",
+			"name": "GPT-5.1 Codex Max",
 			"swe_score": 0.78,
 			"cost_per_1m_tokens": {
 				"input": 0,
@@ -176,7 +156,21 @@
 			"supported": true
 		},
 		{
+			"id": "gpt-5.1-codex-mini",
+			"name": "GPT-5.1 Codex Mini",
+			"swe_score": 0.72,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high"],
+			"supported": true
+		},
+		{
 			"id": "gpt-5.2",
+			"name": "GPT-5.2",
 			"swe_score": 0.8,
 			"cost_per_1m_tokens": {
 				"input": 0,
