@@ -55,6 +55,10 @@
 						]
 					},
 					{
+						"group": "Integrations",
+						"pages": ["integrations/claude-code"]
+					},
+					{
 						"group": "AI Providers",
 						"pages": ["providers/azure"]
 					},

@@ -1,4 +1,12 @@
-# Claude Code Provider Usage Example
+# ⚠️ DEPRECATED
+
+**This documentation has been moved and consolidated.**
+
+📖 **See the new comprehensive guide:** https://docs.task-master.dev/integrations/claude-code
+
+---
+
+# Claude Code Provider Usage Example (Legacy)
 
 The Claude Code provider allows you to use Claude models through the Claude Code CLI without requiring an API key.
 
