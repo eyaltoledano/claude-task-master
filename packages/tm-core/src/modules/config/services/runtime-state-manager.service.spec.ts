@@ -7,7 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { RuntimeStateManager } from './runtime-state-manager.service.js';
 
-vi.mock('node:fs/promises');
+vi.mock('node:fs/promises', () => ({
+	default: {
+		readFile: vi.fn(),
+		writeFile: vi.fn(),
+		mkdir: vi.fn(),
+		unlink: vi.fn()
+	}
+}));
 
 describe('RuntimeStateManager', () => {
 	let stateManager: RuntimeStateManager;
@@ -142,7 +149,7 @@ describe('RuntimeStateManager', () => {
 			const jsonContent = writeCall[1] as string;
 
 			// Check for 2-space indentation
-			expect(jsonContent).toMatch(/\n  /);
+			expect(jsonContent).toMatch(/\n {2}/);
 		});
 	});
 
