@@ -12,6 +12,7 @@ import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
+import { InteractiveCommand } from './commands/interactive.command.js';
 import { ListTasksCommand } from './commands/list.command.js';
 import { LoopCommand } from './commands/loop.command.js';
 import { LoginCommand } from './commands/login.command.js';
@@ -95,6 +96,14 @@ export class CommandRegistry {
 			description: 'Run Claude Code in a loop, one task per iteration',
 			commandClass: LoopCommand as any,
 			category: 'development'
+		},
+
+		// UI Commands
+		{
+			name: 'interactive',
+			description: 'Launch the interactive terminal UI',
+			commandClass: InteractiveCommand as any,
+			category: 'utility'
 		},
 
 		// Authentication & Context Commands

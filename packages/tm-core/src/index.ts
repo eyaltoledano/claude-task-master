@@ -243,6 +243,16 @@ export {
 	PROMPT_STATE_VERSION
 } from './modules/prompts/constants.js';
 
+// Storage - Advanced
+export { TaskWatcher } from './modules/storage/index.js';
+export type {
+	TaskWatcherEvent,
+	TaskWatcherOptions,
+	TaskFileAddedEvent,
+	TaskFileChangedEvent,
+	TaskFileDeletedEvent,
+	TaskDirectoryChangedEvent
+} from './modules/storage/index.js';
 // ========== Testing Utilities ==========
 
 // Test fixtures for integration tests
