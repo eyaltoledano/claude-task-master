@@ -17,8 +17,9 @@ import { createLogWrapper } from '../../tools/utils.js';
  * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
  * @param {string} args.id - Subtask ID in format "parent.sub".
- * @param {string} args.prompt - Information to append to the subtask.
+ * @param {string} [args.prompt] - Information to append to the subtask. Required unless only updating metadata.
  * @param {boolean} [args.research] - Whether to use research role.
+ * @param {Object} [args.metadata] - Parsed metadata object to merge into subtask metadata.
  * @param {string} [args.projectRoot] - Project root path.
  * @param {string} [args.tag] - Tag for the task (optional)
  * @param {Object} log - Logger object.
@@ -27,8 +28,9 @@ import { createLogWrapper } from '../../tools/utils.js';
  */
 export async function updateSubtaskByIdDirect(args, log, context = {}) {
 	const { session } = context;
-	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, prompt, research, projectRoot, tag } = args;
+	// Destructure expected args, including projectRoot and metadata
+	const { tasksJsonPath, id, prompt, research, metadata, projectRoot, tag } =
+		args;
 
 	const logWrapper = createLogWrapper(log);
 
@@ -60,9 +62,10 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			};
 		}
 
-		if (!prompt) {
+		// At least prompt or metadata is required (validated in MCP tool layer)
+		if (!prompt && !metadata) {
 			const errorMessage =
-				'No prompt specified. Please provide the information to append.';
+				'No prompt or metadata specified. Please provide information to append or metadata to update.';
 			logWrapper.error(errorMessage);
 			return {
 				success: false,
@@ -77,7 +80,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		const useResearch = research === true;
 
 		log.info(
-			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt}" and research: ${useResearch}`
+			`Updating subtask with ID ${subtaskIdStr} with prompt "${prompt || '(metadata-only)'}" and research: ${useResearch}`
 		);
 
 		const wasSilent = isSilentMode();
@@ -98,7 +101,8 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 					projectRoot,
 					tag,
 					commandName: 'update-subtask',
-					outputType: 'mcp'
+					outputType: 'mcp',
+					metadata
 				},
 				'json'
 			);

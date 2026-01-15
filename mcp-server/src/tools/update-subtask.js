@@ -7,7 +7,8 @@ import { TaskIdSchemaForMcp } from '@tm/core';
 import {
 	createErrorResponse,
 	handleApiResult,
-	withNormalizedProjectRoot
+	withNormalizedProjectRoot,
+	validateMcpMetadata
 } from '@tm/mcp';
 import { z } from 'zod';
 import { resolveTag } from '../../../scripts/modules/utils.js';
@@ -27,11 +28,22 @@ export function registerUpdateSubtaskTool(server) {
 			id: TaskIdSchemaForMcp.describe(
 				'ID of the subtask to update in format "parentId.subtaskId" (e.g., "5.2"). Parent ID is the ID of the task that contains the subtask.'
 			),
-			prompt: z.string().describe('Information to add to the subtask'),
+			prompt: z
+				.string()
+				.optional()
+				.describe(
+					'Information to add to the subtask. Required unless only updating metadata.'
+				),
 			research: z
 				.boolean()
 				.optional()
 				.describe('Use Perplexity AI for research-backed updates'),
+			metadata: z
+				.string()
+				.optional()
+				.describe(
+					'JSON string of metadata to merge into subtask metadata. Example: \'{"ticketId": "JIRA-456", "reviewed": true}\'. Requires TASK_MASTER_ALLOW_METADATA_UPDATES=true in MCP environment.'
+				),
 			file: z.string().optional().describe('Absolute path to the tasks file'),
 			projectRoot: z
 				.string()
@@ -65,12 +77,29 @@ export function registerUpdateSubtaskTool(server) {
 					);
 				}
 
+				// Validate metadata if provided
+				const validationResult = validateMcpMetadata(
+					args.metadata,
+					createErrorResponse
+				);
+				if (validationResult.error) {
+					return validationResult.error;
+				}
+				const parsedMetadata = validationResult.parsedMetadata;
+				// Validate that at least prompt or metadata is provided
+				if (!args.prompt && !parsedMetadata) {
+					return createErrorResponse(
+						'Either prompt or metadata must be provided for update-subtask'
+					);
+				}
+
 				const result = await updateSubtaskByIdDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
 						id: args.id,
 						prompt: args.prompt,
 						research: args.research,
+						metadata: parsedMetadata,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},

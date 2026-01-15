@@ -8,17 +8,18 @@ description: "Tasks in Task Master follow a specific format designed to provide 
 
 Tasks in tasks.json have the following structure:
 
-| Field          | Description                                    | Example                                                |
-| -------------- | ---------------------------------------------- | ------------------------------------------------------ |
-| `id`           | Unique identifier for the task.                | `1`                                                    |
-| `title`        | Brief, descriptive title.                      | `"Initialize Repo"`                                    |
-| `description`  | What the task involves.                        | `"Create a new repository, set up initial structure."` |
-| `status`       | Current state.                                 | `"pending"`, `"done"`, `"deferred"`                    |
+| Field          | Description                                     | Example                                                |
+| -------------- | ----------------------------------------------- | ------------------------------------------------------ |
+| `id`           | Unique identifier for the task.                 | `1`                                                    |
+| `title`        | Brief, descriptive title.                       | `"Initialize Repo"`                                    |
+| `description`  | What the task involves.                         | `"Create a new repository, set up initial structure."` |
+| `status`       | Current state.                                  | `"pending"`, `"done"`, `"deferred"`                    |
 | `dependencies` | Prerequisite task IDs. ✅ Completed, ⏱️ Pending | `[1, 2]`                                               |
-| `priority`     | Task importance.                               | `"high"`, `"medium"`, `"low"`                          |
-| `details`      | Implementation instructions.                   | `"Use GitHub client ID/secret, handle callback..."`    |
-| `testStrategy` | How to verify success.                         | `"Deploy and confirm 'Hello World' response."`         |
-| `subtasks`     | Nested subtasks related to the main task.      | `[{"id": 1, "title": "Configure OAuth", ...}]`         |
+| `priority`     | Task importance.                                | `"high"`, `"medium"`, `"low"`                          |
+| `details`      | Implementation instructions.                    | `"Use GitHub client ID/secret, handle callback..."`    |
+| `testStrategy` | How to verify success.                          | `"Deploy and confirm 'Hello World' response."`         |
+| `subtasks`     | Nested subtasks related to the main task.       | `[{"id": 1, "title": "Configure OAuth", ...}]`         |
+| `metadata`     | Optional user-defined data (see below).         | `{"githubIssue": 42, "sprint": "Q1-S3"}`               |
 
 ## Task File Format
 
@@ -38,6 +39,158 @@ Individual task files follow this format:
 <verification approach>
 ```
 
+## User-Defined Metadata Field
+
+The `metadata` field allows you to store arbitrary custom data on tasks without requiring schema changes. This is useful for:
+
+- **External IDs**: Link tasks to GitHub issues, Jira tickets, Linear issues, etc.
+- **Workflow data**: Track sprints, story points, custom statuses
+- **Integration data**: Store sync timestamps, external system references
+- **Custom tracking**: UUIDs, version numbers, audit information
+
+### Key Characteristics
+
+<CardGroup cols={2}>
+  <Card title="Fully Optional" icon="toggle-off">
+    The field is optional. Existing tasks work without it.
+  </Card>
+
+<Card title="AI-Safe" icon="shield">
+  AI operations preserve your metadata - it's never overwritten by AI.
+</Card>
+
+<Card title="Flexible Schema" icon="shapes">
+  Store any JSON-serializable data: strings, numbers, objects, arrays.
+</Card>
+
+  <Card title="Subtask Support" icon="list-tree">
+    Both tasks and subtasks can have their own metadata.
+  </Card>
+</CardGroup>
+
+### Usage Examples
+
+**GitHub Issue Linking**
+
+```json
+{
+  "id": 1,
+  "title": "Implement authentication",
+  "metadata": {
+    "githubIssue": 42,
+    "githubIssueUrl": "https://github.com/org/repo/issues/42"
+  }
+}
+```
+
+**Sprint & Project Management**
+
+```json
+{
+  "id": 2,
+  "title": "Refactor API endpoints",
+  "metadata": {
+    "sprint": "Q1-S3",
+    "storyPoints": 5,
+    "epic": "API Modernization"
+  }
+}
+```
+
+**External System Integration**
+
+```json
+{
+  "id": 3,
+  "title": "Fix login bug",
+  "metadata": {
+    "jira": {
+      "key": "PROJ-123",
+      "type": "bug",
+      "priority": "P1"
+    },
+    "importedAt": "2024-01-15T10:30:00Z",
+    "lastSyncedAt": "2024-01-20T14:00:00Z"
+  }
+}
+```
+
+**Stable UUID Tracking**
+
+```json
+{
+  "id": 4,
+  "title": "Add user preferences",
+  "metadata": {
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "version": 2,
+    "createdBy": "import-script"
+  }
+}
+```
+
+<Warning>
+  **Security Note**: Do not store secrets, API keys, or sensitive credentials in
+  the metadata field. Task data may be visible in logs, exports, or shared with
+  AI providers.
+</Warning>
+
+### Metadata Behavior
+
+| Operation        | Metadata Behavior                                            |
+| ---------------- | ------------------------------------------------------------ |
+| `parse-prd`      | New tasks are created without metadata                       |
+| `update-task`    | Existing metadata is preserved unless explicitly changed     |
+| `expand`         | Parent task metadata is preserved; subtasks don't inherit it |
+| `update-subtask` | Subtask metadata is preserved                                |
+| Manual edit      | You can add/modify metadata directly in tasks.json           |
+| MCP (with flag)  | Use the `metadata` parameter to explicitly update metadata   |
+
+### Updating Metadata via MCP
+
+The `update_task` and `update_subtask` MCP tools support a `metadata` parameter for updating task metadata. This feature is disabled by default for safety.
+
+**To enable MCP metadata updates:**
+
+Add `TASK_MASTER_ALLOW_METADATA_UPDATES=true` to your MCP server environment configuration in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "TASK_MASTER_ALLOW_METADATA_UPDATES": "true",
+        "ANTHROPIC_API_KEY": "your_key_here"
+      }
+    }
+  }
+}
+```
+
+**Usage example:**
+
+```javascript
+// Update task metadata (merges with existing)
+update_task({
+  id: "1",
+  projectRoot: "/path/to/project",
+  metadata: '{"githubIssue": 42, "sprint": "Q1-S3"}'
+})
+
+// Update only metadata (no prompt required)
+update_task({
+  id: "1",
+  projectRoot: "/path/to/project",
+  metadata: '{"status": "reviewed"}'
+})
+```
+
+<Note>
+  The `metadata` parameter accepts a JSON string. The new metadata is merged with existing metadata, allowing you to update specific fields without losing others.
+</Note>
+
 ## Features in Detail
 
 <AccordionGroup>
@@ -56,7 +209,7 @@ The generated report contains:
 - Recommended number of subtasks based on complexity
 - AI-generated expansion prompts customized for each task
 - Ready-to-run expansion commands directly within each task analysis
-</Accordion>
+  </Accordion>
 
 <Accordion title="Viewing Complexity Report">
 The `complexity-report` command:
@@ -67,7 +220,7 @@ The `complexity-report` command:
 - Highlights tasks recommended for expansion based on threshold score
 - Includes ready-to-use expansion commands for each complex task
 - If no report exists, offers to generate one on the spot
-</Accordion>
+  </Accordion>
 
 <Accordion title="Smart Task Expansion">
 The `expand` command automatically checks for and uses the complexity report:
@@ -93,6 +246,7 @@ task-master expand --id=8
 # or expand all tasks
 task-master expand --all
 ```
+
 </Accordion>
 
 <Accordion title="Finding the Next Task">
@@ -108,7 +262,7 @@ The `next` command:
   - Command to mark the task as in-progress
   - Command to mark the task as done
   - Commands for working with subtasks
-</Accordion>
+    </Accordion>
 
 <Accordion title="Viewing Specific Task Details">
 The `show` command:
@@ -119,7 +273,7 @@ The `show` command:
 - For subtasks, shows parent task relationship
 - Provides contextual action suggestions based on the task's state
 - Works with both regular tasks and subtasks (using the format taskId.subtaskId)
-</Accordion>
+  </Accordion>
 </AccordionGroup>
 
 ## Best Practices for AI-Driven Development
@@ -128,36 +282,42 @@ The `show` command:
   <Card title="📝 Detailed PRD" icon="lightbulb">
     The more detailed your PRD, the better the generated tasks will be.
   </Card>
-  
+
   <Card title="👀 Review Tasks" icon="magnifying-glass">
-    After parsing the PRD, review the tasks to ensure they make sense and have appropriate dependencies.
+    After parsing the PRD, review the tasks to ensure they make sense and have
+    appropriate dependencies.
   </Card>
-  
+
   <Card title="📊 Analyze Complexity" icon="chart-line">
-    Use the complexity analysis feature to identify which tasks should be broken down further.
+    Use the complexity analysis feature to identify which tasks should be broken
+    down further.
   </Card>
-  
+
   <Card title="⛓️ Follow Dependencies" icon="link">
     Always respect task dependencies - the Cursor agent will help with this.
   </Card>
-  
+
   <Card title="🔄 Update As You Go" icon="arrows-rotate">
-    If your implementation diverges from the plan, use the update command to keep future tasks aligned.
+    If your implementation diverges from the plan, use the update command to
+    keep future tasks aligned.
   </Card>
-  
+
   <Card title="📦 Break Down Tasks" icon="boxes-stacked">
     Use the expand command to break down complex tasks into manageable subtasks.
   </Card>
-  
+
   <Card title="🔄 Regenerate Files" icon="file-arrow-up">
-    After any updates to tasks.json, regenerate the task files to keep them in sync.
+    After any updates to tasks.json, regenerate the task files to keep them in
+    sync.
   </Card>
-  
+
   <Card title="💬 Provide Context" icon="comment">
-    When asking the Cursor agent to help with a task, provide context about what you're trying to achieve.
+    When asking the Cursor agent to help with a task, provide context about what
+    you're trying to achieve.
   </Card>
-  
+
   <Card title="✅ Validate Dependencies" icon="circle-check">
-    Periodically run the validate-dependencies command to check for invalid or circular dependencies.
+    Periodically run the validate-dependencies command to check for invalid or
+    circular dependencies.
   </Card>
 </CardGroup>

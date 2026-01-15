@@ -12,6 +12,10 @@ export interface UpdateBridgeParams extends BaseBridgeParams {
 	prompt: string;
 	/** Whether to append or full update (default: false) */
 	appendMode?: boolean;
+	/** Whether to use research mode (default: false) */
+	useResearch?: boolean;
+	/** Metadata to merge into task (for metadata-only updates or alongside prompt) */
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -45,6 +49,8 @@ export async function tryUpdateViaRemote(
 		projectRoot,
 		tag,
 		appendMode = false,
+		useResearch = false,
+		metadata,
 		isMCP = false,
 		outputFormat = 'text',
 		report
@@ -76,7 +82,9 @@ export async function tryUpdateViaRemote(
 	try {
 		// Call the API storage method which handles the remote update
 		await tmCore.tasks.updateWithPrompt(String(taskId), prompt, tag, {
-			mode
+			mode,
+			useResearch,
+			...(metadata && { metadata })
 		});
 
 		if (spinner) {

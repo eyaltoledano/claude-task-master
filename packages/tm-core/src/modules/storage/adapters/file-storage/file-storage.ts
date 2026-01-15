@@ -283,6 +283,7 @@ export class FileStorage implements IStorage {
 
 	/**
 	 * Normalize task IDs - keep Task IDs as strings, Subtask IDs as numbers
+	 * Note: Uses spread operator to preserve all task properties including user-defined metadata
 	 */
 	private normalizeTaskIds(tasks: Task[]): Task[] {
 		return tasks.map((task) => ({
@@ -372,9 +373,37 @@ export class FileStorage implements IStorage {
 			throw new Error(`Task ${taskId} not found`);
 		}
 
+		const existingTask = tasks[taskIndex];
+
+		// Preserve subtask metadata when subtasks are updated
+		// AI operations don't include metadata in returned subtasks
+		let mergedSubtasks = updates.subtasks;
+		if (updates.subtasks && existingTask.subtasks) {
+			mergedSubtasks = updates.subtasks.map((updatedSubtask) => {
+				// Type-coerce IDs for comparison; fall back to title match if IDs don't match
+				const originalSubtask = existingTask.subtasks?.find(
+					(st) =>
+						String(st.id) === String(updatedSubtask.id) ||
+						(updatedSubtask.title && st.title === updatedSubtask.title)
+				);
+				// Merge metadata: preserve original and add/override with new
+				if (originalSubtask?.metadata || updatedSubtask.metadata) {
+					return {
+						...updatedSubtask,
+						metadata: {
+							...(originalSubtask?.metadata || {}),
+							...(updatedSubtask.metadata || {})
+						}
+					};
+				}
+				return updatedSubtask;
+			});
+		}
+
 		tasks[taskIndex] = {
-			...tasks[taskIndex],
+			...existingTask,
 			...updates,
+			...(mergedSubtasks && { subtasks: mergedSubtasks }),
 			id: String(taskId) // Keep consistent with normalizeTaskIds
 		};
 		await this.saveTasks(tasks, tag);
