@@ -157,14 +157,22 @@ function getCurrentComplexityScore(taskId, context) {
 }
 
 /**
- * Regenerates subtasks for a task based on new complexity while preserving completed work
- * @param {Object} task - The updated task object
- * @param {string} tasksPath - Path to tasks.json
- * @param {Object} context - Context containing projectRoot, tag, session
- * @param {string} direction - Direction of scope change (up/down) for logging
- * @param {string} strength - Strength level ('light', 'regular', 'heavy')
- * @param {number|null} originalComplexity - Original complexity score for smarter adjustments
- * @returns {Promise<Object>} Object with updated task and regeneration info
+ * Regenerates a task's pending subtasks to match a changed complexity while preserving subtasks with work already done.
+ *
+ * Generates new pending subtasks (via the configured AI service) to reach a target subtask count based on direction and strength, preserves subtasks whose status indicates work should be kept, and remaps IDs/dependencies so generated subtasks follow preserved ones.
+ *
+ * @param {Object} task - The task object to update; its subtasks array will be replaced with preserved and newly generated subtasks in the returned `updatedTask`.
+ * @param {string} tasksPath - Filesystem path to tasks.json (used for context; not modified by this function).
+ * @param {Object} context - Execution context containing { projectRoot, tag, session, ... } used for AI calls and logging.
+ * @param {string} direction - Scope change direction: 'up' to increase complexity or 'down' to decrease complexity.
+ * @param {string} [strength='regular'] - Adjustment strength: 'light', 'regular', or 'heavy'.
+ * @param {number|null} [originalComplexity=null] - Original complexity score (1-10) used to bias how aggressive the adjustment should be.
+ * @returns {Promise<Object>} An object with:
+ *   - updatedTask: the task object with preserved and regenerated subtasks,
+ *   - regenerated: `true` if new subtasks were generated, `false` otherwise,
+ *   - preserved: number of subtasks kept,
+ *   - generated: number of subtasks newly generated,
+ *   - error?: string when regeneration failed (present only on failure).
  */
 async function regenerateSubtasksForComplexity(
 	task,
@@ -442,6 +450,38 @@ Ensure the JSON is valid and properly formatted.`;
 	}
 }
 
+function ensureSequentialSubtaskIds(subtasks) {
+	if (!Array.isArray(subtasks) || subtasks.length === 0) {
+		return;
+	}
+
+	const ids = subtasks.map((subtask) => subtask.id);
+	if (ids.some((id) => !Number.isInteger(id) || id < 1)) {
+		throw new Error('Generated subtask ids must be positive integers');
+	}
+	const uniqueIds = new Set(ids);
+	if (uniqueIds.size !== ids.length) {
+		throw new Error('Generated subtasks must have unique ids');
+	}
+
+	const sortedIds = [...uniqueIds].sort((a, b) => a - b);
+	for (let index = 0; index < sortedIds.length; index += 1) {
+		if (sortedIds[index] !== index + 1) {
+			throw new Error(
+				'Generated subtask ids must be sequential starting from 1'
+			);
+		}
+	}
+}
+
+/**
+ * Validate that subtasks have unique, positive integer IDs forming a sequential series starting at 1.
+ *
+ * @param {Array<object>} subtasks - Array of subtask objects; each object is expected to have an `id` property.
+ * @throws {Error} If any `id` is not a positive integer ("Generated subtask ids must be positive integers").
+ * @throws {Error} If `id` values are not unique ("Generated subtasks must have unique ids").
+ * @throws {Error} If `id` values are not a contiguous sequence starting at 1 ("Generated subtask ids must be sequential starting from 1").
+ */
 function ensureSequentialSubtaskIds(subtasks) {
 	if (!Array.isArray(subtasks) || subtasks.length === 0) {
 		return;
