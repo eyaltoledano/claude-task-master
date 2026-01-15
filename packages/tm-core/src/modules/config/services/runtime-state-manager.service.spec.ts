@@ -7,14 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { RuntimeStateManager } from './runtime-state-manager.service.js';
 
-vi.mock('node:fs/promises', () => ({
-	default: {
-		readFile: vi.fn(),
-		writeFile: vi.fn(),
-		mkdir: vi.fn(),
-		unlink: vi.fn()
-	}
-}));
+vi.mock('node:fs/promises');
 
 describe('RuntimeStateManager', () => {
 	let stateManager: RuntimeStateManager;
