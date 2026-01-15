@@ -6,14 +6,15 @@
  *
  * FILE STORAGE (local):
  * - Main tasks: "1", "2", "15"
- * - Subtasks: "1.2", "15.3" (one level only)
+ * - Subtasks: "1.2", "15.3"
+ * - Sub-subtasks: "1.2.3", "15.3.1"
  *
  * API STORAGE (Hamster):
  * - Main tasks: "HAM-1", "ham-1", "HAM1", "ham1" (all normalized to "HAM-1")
+ * - Variable-length prefixes: "PROJ-456", "TAS-1", "abc-999"
  * - No subtasks (API doesn't use dot notation)
  *
  * NOT supported:
- * - Deep nesting: "1.2.3" (file storage only has one subtask level)
  * - API subtasks: "HAM-1.2" (doesn't exist)
  */
 
@@ -24,10 +25,10 @@ import { normalizeDisplayId } from '../../../common/schemas/task-id.schema.js';
  * Pattern for validating a single task ID
  * Permissive input - accepts with or without hyphen for API IDs
  * - Numeric: "1", "15", "999"
- * - Numeric subtasks: "1.2" (one level only)
- * - API display IDs: "HAM-1", "ham-1", "HAM1", "ham1"
+ * - Numeric subtasks: "1.2", "1.2.3" (multi-level supported)
+ * - API display IDs: "HAM-1", "PROJ-456", "TAS-1", "abc-999"
  */
-export const TASK_ID_PATTERN = /^(\d+(\.\d+)?|[A-Za-z]{3}-?\d+)$/;
+export const TASK_ID_PATTERN = /^(\d+(\.\d+)*|[A-Za-z]+-?\d+)$/;
 
 /**
  * Validates a single task ID string
@@ -39,9 +40,10 @@ export const TASK_ID_PATTERN = /^(\d+(\.\d+)?|[A-Za-z]{3}-?\d+)$/;
  * ```typescript
  * isValidTaskIdFormat("1");        // true
  * isValidTaskIdFormat("1.2");      // true
+ * isValidTaskIdFormat("1.2.3");    // true (multi-level subtasks)
  * isValidTaskIdFormat("HAM-1");    // true
+ * isValidTaskIdFormat("PROJ-456"); // true (variable-length prefix)
  * isValidTaskIdFormat("ham1");     // true (permissive input)
- * isValidTaskIdFormat("1.2.3");    // false (too deep)
  * isValidTaskIdFormat("HAM-1.2");  // false (no API subtasks)
  * isValidTaskIdFormat("abc");      // false
  * ```

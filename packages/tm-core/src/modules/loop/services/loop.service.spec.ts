@@ -122,7 +122,7 @@ describe('LoopService', () => {
 	});
 
 	describe('checkSandboxAuth()', () => {
-		it('should return true when output contains ok', () => {
+		it('should return ready=true when output contains ok', () => {
 			mockSpawnSync.mockReturnValue({
 				stdout: 'OK',
 				stderr: '',
@@ -135,7 +135,7 @@ describe('LoopService', () => {
 			const service = new LoopService(defaultOptions);
 			const result = service.checkSandboxAuth();
 
-			expect(result).toBe(true);
+			expect(result.ready).toBe(true);
 			expect(mockSpawnSync).toHaveBeenCalledWith(
 				'docker',
 				['sandbox', 'run', 'claude', '-p', 'Say OK'],
@@ -146,7 +146,7 @@ describe('LoopService', () => {
 			);
 		});
 
-		it('should return false when output does not contain ok', () => {
+		it('should return ready=false when output does not contain ok', () => {
 			mockSpawnSync.mockReturnValue({
 				stdout: 'Error: not authenticated',
 				stderr: '',
@@ -159,7 +159,7 @@ describe('LoopService', () => {
 			const service = new LoopService(defaultOptions);
 			const result = service.checkSandboxAuth();
 
-			expect(result).toBe(false);
+			expect(result.ready).toBe(false);
 		});
 
 		it('should check stderr as well as stdout', () => {
@@ -175,7 +175,7 @@ describe('LoopService', () => {
 			const service = new LoopService(defaultOptions);
 			const result = service.checkSandboxAuth();
 
-			expect(result).toBe(true);
+			expect(result.ready).toBe(true);
 		});
 	});
 
@@ -256,7 +256,7 @@ describe('LoopService', () => {
 				expect(mockSpawnSync).toHaveBeenCalledTimes(3);
 			});
 
-			it('should call spawnSync with docker sandbox run claude -p', async () => {
+			it('should call spawnSync with claude -p by default (non-sandbox)', async () => {
 				mockSpawnSync.mockReturnValue({
 					stdout: 'Done',
 					stderr: '',
@@ -274,14 +274,8 @@ describe('LoopService', () => {
 				});
 
 				expect(mockSpawnSync).toHaveBeenCalledWith(
-					'docker',
-					expect.arrayContaining([
-						'sandbox',
-						'run',
-						'claude',
-						'-p',
-						expect.any(String)
-					]),
+					'claude',
+					expect.arrayContaining(['-p', expect.any(String)]),
 					expect.objectContaining({
 						cwd: '/test/project'
 					})
@@ -397,7 +391,8 @@ describe('LoopService', () => {
 				expect(fsPromises.mkdir).toHaveBeenCalledWith('/test', {
 					recursive: true
 				});
-				expect(fsPromises.writeFile).toHaveBeenCalledWith(
+				// Uses appendFile instead of writeFile to preserve existing progress
+				expect(fsPromises.appendFile).toHaveBeenCalledWith(
 					'/test/progress.txt',
 					expect.stringContaining('# Task Master Loop Progress'),
 					'utf-8'
@@ -449,8 +444,8 @@ describe('LoopService', () => {
 
 				// Verify spawn was called with prompt containing iteration info
 				const spawnCall = mockSpawnSync.mock.calls[0];
-				// Args are ['sandbox', 'run', 'claude', '-p', prompt]
-				const promptArg = spawnCall[1][4];
+				// Args are ['-p', prompt, '--dangerously-skip-permissions'] for non-sandbox
+				const promptArg = spawnCall[1][1];
 				expect(promptArg).toContain('iteration 1 of 1');
 			});
 

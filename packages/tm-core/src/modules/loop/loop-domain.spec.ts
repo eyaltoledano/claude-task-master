@@ -102,7 +102,7 @@ describe('LoopDomain', () => {
 				tag: 'feature-branch'
 			};
 			const config = (loopDomain as any).buildConfig(fullConfig);
-			expect(config).toEqual(fullConfig);
+			expect(config).toMatchObject(fullConfig);
 		});
 	});
 

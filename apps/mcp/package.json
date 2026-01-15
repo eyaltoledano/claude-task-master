@@ -17,8 +17,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"test:unit": "vitest run -t unit",
-		"test:integration": "vitest run -t integration",
+		"test:unit": "vitest run '**/*.spec.ts'",
+		"test:integration": "vitest run '**/*.test.ts'",
 		"test:ci": "vitest run --coverage --reporter=dot"
 	},
 	"dependencies": {

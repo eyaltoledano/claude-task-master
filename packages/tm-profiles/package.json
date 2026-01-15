@@ -10,6 +10,8 @@
 	},
 	"scripts": {
 		"test": "vitest run",
+		"test:unit": "vitest run '**/*.spec.ts'",
+		"test:integration": "vitest run '**/*.test.ts'",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
 		"lint": "biome check --write",

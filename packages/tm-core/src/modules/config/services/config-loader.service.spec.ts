@@ -2,17 +2,12 @@
  * @fileoverview Unit tests for ConfigLoader service
  */
 
-import fs from 'node:fs/promises';
+import * as fsPromises from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { ConfigLoader } from './config-loader.service.js';
 
-vi.mock('node:fs', () => ({
-	promises: {
-		readFile: vi.fn(),
-		access: vi.fn()
-	}
-}));
+vi.mock('node:fs/promises');
 
 describe('ConfigLoader', () => {
 	let configLoader: ConfigLoader;
@@ -56,11 +51,13 @@ describe('ConfigLoader', () => {
 				storage: { type: 'api' as const }
 			};
 
-			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(mockConfig));
+			vi.mocked(fsPromises.readFile).mockResolvedValue(
+				JSON.stringify(mockConfig)
+			);
 
 			const result = await configLoader.loadLocalConfig();
 
-			expect(fs.readFile).toHaveBeenCalledWith(
+			expect(fsPromises.readFile).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/config.json',
 				'utf-8'
 			);
@@ -70,7 +67,7 @@ describe('ConfigLoader', () => {
 		it('should return null when config file does not exist', async () => {
 			const error = new Error('File not found') as any;
 			error.code = 'ENOENT';
-			vi.mocked(fs.readFile).mockRejectedValue(error);
+			vi.mocked(fsPromises.readFile).mockRejectedValue(error);
 
 			const result = await configLoader.loadLocalConfig();
 
@@ -79,7 +76,7 @@ describe('ConfigLoader', () => {
 
 		it('should throw TaskMasterError for other file errors', async () => {
 			const error = new Error('Permission denied');
-			vi.mocked(fs.readFile).mockRejectedValue(error);
+			vi.mocked(fsPromises.readFile).mockRejectedValue(error);
 
 			await expect(configLoader.loadLocalConfig()).rejects.toThrow(
 				'Failed to load local configuration'
@@ -87,7 +84,7 @@ describe('ConfigLoader', () => {
 		});
 
 		it('should throw error for invalid JSON', async () => {
-			vi.mocked(fs.readFile).mockResolvedValue('invalid json');
+			vi.mocked(fsPromises.readFile).mockResolvedValue('invalid json');
 
 			await expect(configLoader.loadLocalConfig()).rejects.toThrow();
 		});
@@ -102,18 +99,18 @@ describe('ConfigLoader', () => {
 
 	describe('hasLocalConfig', () => {
 		it('should return true when local config exists', async () => {
-			vi.mocked(fs.access).mockResolvedValue(undefined);
+			vi.mocked(fsPromises.access).mockResolvedValue(undefined);
 
 			const result = await configLoader.hasLocalConfig();
 
-			expect(fs.access).toHaveBeenCalledWith(
+			expect(fsPromises.access).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/config.json'
 			);
 			expect(result).toBe(true);
 		});
 
 		it('should return false when local config does not exist', async () => {
-			vi.mocked(fs.access).mockRejectedValue(new Error('Not found'));
+			vi.mocked(fsPromises.access).mockRejectedValue(new Error('Not found'));
 
 			const result = await configLoader.hasLocalConfig();
 
@@ -123,18 +120,18 @@ describe('ConfigLoader', () => {
 
 	describe('hasGlobalConfig', () => {
 		it('should check global config path', async () => {
-			vi.mocked(fs.access).mockResolvedValue(undefined);
+			vi.mocked(fsPromises.access).mockResolvedValue(undefined);
 
 			const result = await configLoader.hasGlobalConfig();
 
-			expect(fs.access).toHaveBeenCalledWith(
+			expect(fsPromises.access).toHaveBeenCalledWith(
 				expect.stringContaining('.taskmaster/config.json')
 			);
 			expect(result).toBe(true);
 		});
 
 		it('should return false when global config does not exist', async () => {
-			vi.mocked(fs.access).mockRejectedValue(new Error('Not found'));
+			vi.mocked(fsPromises.access).mockRejectedValue(new Error('Not found'));
 
 			const result = await configLoader.hasGlobalConfig();
 

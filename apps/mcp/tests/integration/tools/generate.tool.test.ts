@@ -158,7 +158,7 @@ describe('generate MCP tool', () => {
 		const response = callMCPTool('generate', { projectRoot: testDir });
 
 		expect(response.data.orphanedFilesRemoved).toBe(1);
-	}, 15000);
+	}, 30000); // Longer timeout: this test makes 2 MCP calls (generate, then regenerate)
 
 	it('should accept output parameter for custom directory', () => {
 		const testData = createTasksFile({

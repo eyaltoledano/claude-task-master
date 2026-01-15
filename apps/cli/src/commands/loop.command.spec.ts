@@ -77,8 +77,8 @@ describe('LoopCommand', () => {
 		mockTmCore = {
 			loop: {
 				run: mockLoopRun,
-				checkSandboxAuth: vi.fn().mockReturnValue(true),
-				runInteractiveAuth: vi.fn(),
+				checkSandboxAuth: vi.fn().mockReturnValue({ ready: true }),
+				runInteractiveAuth: vi.fn().mockReturnValue({ success: true }),
 				resolveIterations: vi.fn().mockImplementation((opts) => {
 					// Mirror the real implementation logic for accurate testing
 					if (opts.userIterations !== undefined) return opts.userIterations;
@@ -400,7 +400,7 @@ describe('LoopCommand', () => {
 		});
 
 		it('should run interactive auth when sandbox not ready', async () => {
-			mockTmCore.loop.checkSandboxAuth.mockReturnValue(false);
+			mockTmCore.loop.checkSandboxAuth.mockReturnValue({ ready: false });
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
 

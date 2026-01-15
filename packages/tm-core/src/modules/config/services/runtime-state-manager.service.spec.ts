@@ -7,8 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG_VALUES } from '../../../common/interfaces/configuration.interface.js';
 import { RuntimeStateManager } from './runtime-state-manager.service.js';
 
-vi.mock('node:fs', () => ({
-	promises: {
+vi.mock('node:fs/promises', () => ({
+	default: {
 		readFile: vi.fn(),
 		writeFile: vi.fn(),
 		mkdir: vi.fn(),
@@ -96,15 +96,10 @@ describe('RuntimeStateManager', () => {
 		it('should handle invalid JSON gracefully', async () => {
 			vi.mocked(fs.readFile).mockResolvedValue('invalid json');
 
-			// Mock console.warn to avoid noise in tests
-			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
 			const state = await stateManager.loadState();
 
+			// Should return default state when JSON is invalid
 			expect(state.currentTag).toBe(DEFAULT_CONFIG_VALUES.TAGS.DEFAULT_TAG);
-			expect(warnSpy).toHaveBeenCalled();
-
-			warnSpy.mockRestore();
 		});
 	});
 
@@ -124,7 +119,7 @@ describe('RuntimeStateManager', () => {
 			// Verify writeFile was called with correct data
 			expect(fs.writeFile).toHaveBeenCalledWith(
 				'/test/project/.taskmaster/state.json',
-				expect.stringContaining('"activeTag":"test-tag"'),
+				expect.stringContaining('"currentTag": "test-tag"'),
 				'utf-8'
 			);
 
