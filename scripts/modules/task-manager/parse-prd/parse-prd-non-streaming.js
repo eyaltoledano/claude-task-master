@@ -40,7 +40,8 @@ export async function handleNonStreamingService(config, prompts) {
 			systemPrompt,
 			prompt: userPrompt,
 			commandName: 'parse-prd',
-			outputType: config.isMCP ? 'mcp' : 'cli'
+			outputType: config.isMCP ? 'mcp' : 'cli',
+			timeoutMs: config.streamingTimeout // Pass timeout to the HTTP client
 		});
 
 		// Extract generated data
