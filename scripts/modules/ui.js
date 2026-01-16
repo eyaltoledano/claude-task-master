@@ -617,8 +617,18 @@ function displayHelp() {
 			commands: [
 				{
 					name: 'list',
-					args: '[<status>|all] [--with-subtasks]',
+					args: '[<status>|all] [-s <status>] [-t <tag>]',
 					desc: 'List all tasks - use "all" to show with subtasks'
+				},
+				{
+					name: 'list',
+					args: '[--with-subtasks] [-f <format>] [--json] [-c]',
+					desc: 'Options: format (text/json/compact), subtasks'
+				},
+				{
+					name: 'list',
+					args: '[-w] [--ready] [--blocking] [--all-tags]',
+					desc: 'Options: watch mode, ready/blocking filters, all tags'
 				},
 				{
 					name: 'set-status',
@@ -741,33 +751,33 @@ function displayHelp() {
 			commands: [
 				{
 					name: 'tags',
-					args: '[--show-metadata]',
+					args: '[list] [--show-metadata] [--ready]',
 					desc: 'List all available tags with task counts'
 				},
 				{
-					name: 'add-tag',
-					args: '<tagName> [--copy-from-current] [--copy-from=<tag>] [-d="<desc>"]',
-					desc: 'Create a new tag context for organizing tasks'
+					name: 'tags add',
+					args: '<name> [--description <desc>] [--copy-from <tag>]',
+					desc: 'Create a new tag (--from-branch for git branch name)'
 				},
 				{
-					name: 'use-tag',
-					args: '<tagName>',
+					name: 'tags use',
+					args: '<name>',
 					desc: 'Switch to a different tag context'
 				},
 				{
-					name: 'delete-tag',
-					args: '<tagName> [--yes]',
+					name: 'tags remove',
+					args: '<name> [-y]',
 					desc: 'Delete an existing tag and all its tasks'
 				},
 				{
-					name: 'rename-tag',
+					name: 'tags rename',
 					args: '<oldName> <newName>',
 					desc: 'Rename an existing tag'
 				},
 				{
-					name: 'copy-tag',
-					args: '<sourceName> <targetName> [-d="<desc>"]',
-					desc: 'Copy an existing tag to create a new tag with the same tasks'
+					name: 'tags copy',
+					args: '<source> <target> [--description <desc>]',
+					desc: 'Copy a tag with all its tasks'
 				}
 			]
 		},
