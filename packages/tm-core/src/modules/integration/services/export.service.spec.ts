@@ -229,7 +229,7 @@ describe('ExportService - FileStorage cleanup', () => {
 							},
 							taskMapping: []
 						})
-				} as Response);
+				} as unknown as Response);
 			});
 
 			const result = await exportService.generateBriefFromTasks({});
