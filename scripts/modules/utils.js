@@ -14,6 +14,8 @@ import {
 } from '../../src/constants/paths.js';
 // Import specific config getters needed here
 import { getDebugFlag, getLogLevel } from './config-manager.js';
+// Import FileOperations from tm-core for atomic file modifications
+import { FileOperations } from '@tm/core';
 import * as gitUtils from './utils/git-utils.js';
 
 // Global silent mode flag
@@ -973,99 +975,35 @@ function markMigrationForNotice(tasksJsonPath) {
 	}
 }
 
+// Shared FileOperations instance for modifyJSON
+let _fileOps = null;
+
+/**
+ * Gets or creates the shared FileOperations instance
+ * @returns {FileOperations} The shared FileOperations instance
+ */
+function getFileOps() {
+	if (!_fileOps) {
+		_fileOps = new FileOperations();
+	}
+	return _fileOps;
+}
+
 /**
  * Atomically modifies a JSON file using a callback pattern.
  * This is the safe way to update JSON files - it reads, modifies, and writes
  * all within a single lock, preventing race conditions.
  *
+ * Uses FileOperations from @tm/core for proper cross-process locking.
+ *
  * @param {string} filepath - Path to the JSON file
- * @param {Function} modifier - Callback function that receives current data and returns modified data.
- *                              Signature: (currentData: Object | null) => Object
- *                              Returns null/undefined to skip the write.
- * @param {Object} [options] - Options for the operation
- * @param {Object} [options.defaultValue={}] - Default value if file doesn't exist or is invalid
- * @returns {Object} The final data that was written (or would have been written if modifier returned null)
+ * @param {Function} modifier - Async callback that receives current data and returns modified data.
+ *                              Signature: (currentData: Object) => Object | Promise<Object>
+ * @returns {Promise<void>}
  */
-function modifyJSON(filepath, modifier, options = {}) {
-	const { defaultValue = {} } = options;
-	const isDebug = process.env.TASKMASTER_DEBUG === 'true';
-
-	if (typeof modifier !== 'function') {
-		throw new Error('modifyJSON requires a modifier function');
-	}
-
-	let result;
-
-	try {
-		// Use file locking to ensure atomic read-modify-write
-		withFileLockSync(
-			filepath,
-			() => {
-				// Read current data inside the lock
-				let currentData;
-				try {
-					const rawContent = fs.readFileSync(filepath, 'utf8');
-					currentData = JSON.parse(rawContent);
-				} catch (readError) {
-					// File doesn't exist or is invalid - use default
-					if (isDebug) {
-						console.log(
-							`modifyJSON: Could not read ${filepath}, using default: ${readError.message}`
-						);
-					}
-					currentData = defaultValue;
-				}
-
-				// Apply the modifier
-				const modifiedData = modifier(currentData);
-
-				// If modifier returns null/undefined, skip the write
-				if (modifiedData == null) {
-					if (isDebug) {
-						console.log(`modifyJSON: Modifier returned null, skipping write`);
-					}
-					result = currentData;
-					return;
-				}
-
-				result = modifiedData;
-
-				// Use atomic write: write to temp file then rename
-				const tempPath = `${filepath}.tmp.${process.pid}`;
-				try {
-					fs.writeFileSync(
-						tempPath,
-						JSON.stringify(modifiedData, null, 2),
-						'utf8'
-					);
-					fs.renameSync(tempPath, filepath);
-				} catch (writeError) {
-					// Clean up temp file on failure
-					try {
-						if (fs.existsSync(tempPath)) {
-							fs.unlinkSync(tempPath);
-						}
-					} catch {
-						// Ignore cleanup errors
-					}
-					throw writeError;
-				}
-
-				if (isDebug) {
-					console.log(`modifyJSON: Successfully wrote to ${filepath}`);
-				}
-			},
-			{ createIfMissing: true }
-		);
-	} catch (error) {
-		log('error', `Error modifying JSON file ${filepath}:`, error.message);
-		if (isDebug) {
-			log('error', 'Full error details:', error);
-		}
-		throw error;
-	}
-
-	return result;
+async function modifyJSON(filepath, modifier) {
+	const fileOps = getFileOps();
+	await fileOps.modifyJson(filepath, modifier);
 }
 
 /**
