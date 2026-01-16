@@ -233,8 +233,13 @@ export class ExportCommand extends Command {
 			}
 
 			const fileStorage = new FileStorage(projectRoot);
-			await fileStorage.initialize();
-			const tagsResult = await fileStorage.getTagsWithStats();
+			let tagsResult;
+			try {
+				await fileStorage.initialize();
+				tagsResult = await fileStorage.getTagsWithStats();
+			} finally {
+				await fileStorage.close();
+			}
 
 			if (!tagsResult.tags || tagsResult.tags.length === 0) {
 				console.log(chalk.yellow('\nNo local tags found in tasks.json.\n'));
@@ -391,8 +396,13 @@ export class ExportCommand extends Command {
 
 			spinner = ora('Loading tasks...').start();
 			const fileStorage = new FileStorage(projectRoot);
-			await fileStorage.initialize();
-			const tasks = await fileStorage.loadTasks(options?.tag);
+			let tasks;
+			try {
+				await fileStorage.initialize();
+				tasks = await fileStorage.loadTasks(options?.tag);
+			} finally {
+				await fileStorage.close();
+			}
 			spinner.succeed(`${tasks.length} tasks`);
 
 			if (!tasks || tasks.length === 0) {
@@ -496,8 +506,13 @@ export class ExportCommand extends Command {
 			}
 
 			const fileStorage = new FileStorage(projectRoot);
-			await fileStorage.initialize();
-			const tasks = await fileStorage.loadTasks(options?.tag);
+			let tasks;
+			try {
+				await fileStorage.initialize();
+				tasks = await fileStorage.loadTasks(options?.tag);
+			} finally {
+				await fileStorage.close();
+			}
 
 			if (!tasks || tasks.length === 0) {
 				console.log(
@@ -717,57 +732,62 @@ export class ExportCommand extends Command {
 			return;
 		}
 		const fileStorage = new FileStorage(projectRoot);
-		await fileStorage.initialize();
 
-		const exportPromises: Promise<ExportResult>[] = tags.map(async (tag) => {
-			try {
-				// Load tasks from LOCAL FileStorage to count parent tasks vs subtasks
-				const tasks = await fileStorage.loadTasks(tag);
-				const parentTaskCount = tasks.length;
-				const subtaskCount = tasks.reduce(
-					(acc, t) => acc + (t.subtasks?.length || 0),
-					0
-				);
+		let results: ExportResult[];
+		try {
+			await fileStorage.initialize();
+			const exportPromises: Promise<ExportResult>[] = tags.map(async (tag) => {
+				try {
+					// Load tasks from LOCAL FileStorage to count parent tasks vs subtasks
+					const tasks = await fileStorage.loadTasks(tag);
+					const parentTaskCount = tasks.length;
+					const subtaskCount = tasks.reduce(
+						(acc, t) => acc + (t.subtasks?.length || 0),
+						0
+					);
 
-				const result =
-					await this.taskMasterCore!.integration.generateBriefFromTasks({
-						tag,
-						options: {
-							generateTitle: true,
-							generateDescription: true,
-							preserveHierarchy: true,
-							preserveDependencies: true
-						}
-					});
+					const result =
+						await this.taskMasterCore!.integration.generateBriefFromTasks({
+							tag,
+							options: {
+								generateTitle: true,
+								generateDescription: true,
+								preserveHierarchy: true,
+								preserveDependencies: true
+							}
+						});
 
-				if (result.success && result.brief) {
-					// Track exported tag
-					await this.trackExportedTag(tag, result.brief.id, result.brief.url);
+					if (result.success && result.brief) {
+						// Track exported tag
+						await this.trackExportedTag(tag, result.brief.id, result.brief.url);
+						return {
+							tag,
+							success: true,
+							brief: result.brief,
+							parentTaskCount,
+							subtaskCount
+						};
+					}
 					return {
 						tag,
-						success: true,
-						brief: result.brief,
-						parentTaskCount,
-						subtaskCount
+						success: false,
+						error: result.error?.message || 'Unknown error'
+					};
+				} catch (error: any) {
+					return {
+						tag,
+						success: false,
+						error: error.message || 'Export failed'
 					};
 				}
-				return {
-					tag,
-					success: false,
-					error: result.error?.message || 'Unknown error'
-				};
-			} catch (error: any) {
-				return {
-					tag,
-					success: false,
-					error: error.message || 'Export failed'
-				};
-			}
-		});
+			});
 
-		// Wait for all exports to complete
-		const results = await Promise.all(exportPromises);
-		spinner.stop();
+			// Wait for all exports to complete
+			results = await Promise.all(exportPromises);
+			spinner.stop();
+		} finally {
+			await fileStorage.close();
+		}
 
 		// Display results
 		const successful = results.filter((r) => r.success);
