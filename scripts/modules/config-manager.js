@@ -707,6 +707,16 @@ function getBedrockBaseURL(explicitRoot = null) {
 }
 
 /**
+ * Gets the Azure AI Foundry endpoint URL from configuration.
+ * @param {string|null} explicitRoot - Optional explicit path to the project root.
+ * @returns {string|undefined} The endpoint URL or undefined if not configured
+ */
+function getAzureAIFoundryEndpoint(explicitRoot = null) {
+	// Directly return value from config
+	return getGlobalConfig(explicitRoot).azureAIFoundryEndpoint;
+}
+
+/**
  * Gets the Google Cloud project ID for Vertex AI from configuration
  * @param {string|null} explicitRoot - Optional explicit path to the project root.
  * @returns {string|null} The project ID or null if not configured
@@ -899,6 +909,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		perplexity: 'PERPLEXITY_API_KEY',
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
+		'azure-ai-foundry': 'AZURE_AI_FOUNDRY_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
 		xai: 'XAI_API_KEY',
 		zai: 'ZAI_API_KEY',
@@ -1011,6 +1022,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'azure':
 				apiKeyToCheck = mcpEnv.AZURE_OPENAI_API_KEY;
 				placeholderValue = 'YOUR_AZURE_OPENAI_API_KEY_HERE';
+				break;
+			case 'azure-ai-foundry':
+				apiKeyToCheck = mcpEnv.AZURE_AI_FOUNDRY_API_KEY;
+				placeholderValue = 'YOUR_AZURE_AI_FOUNDRY_API_KEY_HERE';
 				break;
 			case 'vertex':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY; // Vertex uses Google API key
@@ -1298,6 +1313,7 @@ export {
 	getProjectName,
 	getOllamaBaseURL,
 	getAzureBaseURL,
+	getAzureAIFoundryEndpoint,
 	getBedrockBaseURL,
 	getResponseLanguage,
 	getCodebaseAnalysisEnabled,

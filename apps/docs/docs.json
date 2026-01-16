@@ -56,7 +56,7 @@
 					},
 					{
 						"group": "AI Providers",
-						"pages": ["providers/azure"]
+						"pages": ["providers/azure", "providers/azure-ai-foundry"]
 					},
 					{
 						"group": "TDD Workflow (Autopilot)",
