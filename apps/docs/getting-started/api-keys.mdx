@@ -85,6 +85,18 @@ OPENROUTER_API_KEY="your-openrouter-key-here"
 AZURE_OPENAI_API_KEY="your-azure-key-here"
 ```
 
+### AZURE_AI_FOUNDRY_API_KEY
+- **Provider**: Azure AI Foundry (Microsoft Foundry)
+- **Required**: ✅ **Yes**
+- **Requirements**: Also requires `AZURE_AI_FOUNDRY_ENDPOINT` configuration
+- **Models**: Various models deployed in Azure AI Foundry (GPT, Claude, Llama, Mistral, etc.)
+- **Get Key**: [Azure Portal](https://portal.azure.com/)
+
+```bash
+AZURE_AI_FOUNDRY_API_KEY="your-azure-ai-foundry-key-here"
+AZURE_AI_FOUNDRY_ENDPOINT="https://your-project.services.ai.azure.com"
+```
+
 ### XAI_API_KEY
 - **Provider**: xAI (Grok) models
 - **Required**: ✅ **Yes**
@@ -216,6 +228,7 @@ For Claude Code integration, configure keys in `.mcp.json`:
 
 ### Provider-Specific Requirements
 - **Azure OpenAI**: Requires both `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` configuration
+- **Azure AI Foundry**: Requires both `AZURE_AI_FOUNDRY_API_KEY` and `AZURE_AI_FOUNDRY_ENDPOINT` configuration
 - **Google Vertex**: Requires `VERTEX_PROJECT_ID` and `VERTEX_LOCATION` environment variables
 - **AWS Bedrock**: Uses AWS credential chain (profiles, IAM roles, etc.) instead of API keys
 - **Ollama**: Only needs API key for remote servers with authentication

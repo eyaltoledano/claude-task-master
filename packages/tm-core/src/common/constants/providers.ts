@@ -25,6 +25,7 @@ export type ValidatedProvider = (typeof VALIDATED_PROVIDERS)[number];
 // Custom providers object for easy named access
 export const CUSTOM_PROVIDERS = {
 	AZURE: 'azure',
+	AZURE_AI_FOUNDRY: 'azure-ai-foundry',
 	VERTEX: 'vertex',
 	BEDROCK: 'bedrock',
 	OPENROUTER: 'openrouter',

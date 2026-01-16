@@ -1,0 +1,168 @@
+---
+title: "Azure AI Foundry"
+sidebarTitle: "Azure AI Foundry"
+description: "Configure Task Master to use Microsoft Azure AI Foundry (Microsoft Foundry)"
+---
+
+Azure AI Foundry (Microsoft Foundry) provides unified access to a wide variety of AI models through Microsoft Azure, including models from various providers deployed in your Azure environment.
+
+## Prerequisites
+
+1. **Azure subscription** with access to Azure AI Foundry
+2. **Azure AI Foundry project** with deployed models
+3. **API key** from your Azure AI Foundry resource
+
+## Quick Setup
+
+### 1. Set Your API Key
+
+Add your Azure AI Foundry API key to your `.env` file:
+
+```bash
+AZURE_AI_FOUNDRY_API_KEY="your-azure-ai-foundry-api-key"
+```
+
+### 2. Configure the Endpoint URL
+
+Set `azureAIFoundryEndpoint` in your `.taskmaster/config.json` under the `global` section:
+
+```json
+{
+  "global": {
+    "azureAIFoundryEndpoint": "https://your-resource.services.ai.azure.com"
+  }
+}
+```
+
+<Tip>
+Task Master automatically appends `/models` to your endpoint URL if needed.
+</Tip>
+
+### 3. Set Azure AI Foundry as Your Provider
+
+```bash
+task-master models --set-main azure-ai-foundry:your-deployment-name
+```
+
+## Supported Models
+
+Azure AI Foundry supports any model deployed in your Azure AI project. Common options include:
+
+| Model Type | Examples |
+|------------|----------|
+| OpenAI | `gpt-4o`, `gpt-4o-mini`, `o1` |
+| Claude | `claude-3-opus`, `claude-3-sonnet` |
+| Llama | `llama-3-70b`, `llama-3-8b` |
+| Mistral | `mistral-large`, `mistral-small` |
+
+<Note>
+The `modelId` should match your Azure AI Foundry deployment name exactly. Deployment names are case-sensitive.
+</Note>
+
+## Configuration Examples
+
+### Basic Configuration
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "azure-ai-foundry",
+      "modelId": "gpt-4o",
+      "maxTokens": 16384,
+      "temperature": 0.2
+    }
+  },
+  "global": {
+    "azureAIFoundryEndpoint": "https://my-project.services.ai.azure.com"
+  }
+}
+```
+
+### Role-Specific Base URLs
+
+You can set different endpoints per role if you have deployments in different projects:
+
+```json
+{
+  "models": {
+    "main": {
+      "provider": "azure-ai-foundry",
+      "modelId": "gpt-4o",
+      "baseURL": "https://project-a.services.ai.azure.com",
+      "maxTokens": 16384
+    },
+    "fallback": {
+      "provider": "azure-ai-foundry",
+      "modelId": "claude-3-sonnet",
+      "baseURL": "https://project-b.services.ai.azure.com",
+      "maxTokens": 16384
+    }
+  }
+}
+```
+
+## MCP Server Configuration
+
+For Claude Code integration, include your Azure AI Foundry configuration in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "task-master-ai": {
+      "command": "npx",
+      "args": ["-y", "task-master-ai"],
+      "env": {
+        "AZURE_AI_FOUNDRY_API_KEY": "your-api-key-here",
+        "AZURE_AI_FOUNDRY_ENDPOINT": "https://your-project.services.ai.azure.com"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### "Azure AI Foundry endpoint URL is required"
+
+Make sure you've set either:
+- `global.azureAIFoundryEndpoint` in config
+- `models.[role].baseURL` for the specific role
+
+### "Invalid API key"
+
+Verify your `AZURE_AI_FOUNDRY_API_KEY` is correct and has access to the deployment.
+
+### "Resource not found" (404)
+
+1. Ensure the `modelId` matches your Azure AI Foundry deployment name exactly
+2. Verify your endpoint URL format is correct (should be `https://your-project.services.ai.azure.com`)
+
+## Getting Your Azure AI Foundry Credentials
+
+### Azure Portal
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to your Azure AI Foundry project
+3. Under **Keys and Endpoint**, copy:
+   - One of the API keys
+   - The endpoint URL
+
+### Creating a Deployment
+
+1. In your Azure AI Foundry project, go to **Deployments**
+2. Click **Deploy model** to create a new deployment
+3. Note the deployment name - this is your `modelId`
+
+## Comparison with Azure OpenAI
+
+| Feature | Azure OpenAI | Azure AI Foundry |
+|---------|--------------|------------------|
+| Provider name | `azure` | `azure-ai-foundry` |
+| API Key env var | `AZURE_OPENAI_API_KEY` | `AZURE_AI_FOUNDRY_API_KEY` |
+| Endpoint format | `*.openai.azure.com` | `*.services.ai.azure.com` |
+| Available models | OpenAI models only | Multiple providers |
+
+<Info>
+Use `azure` for Azure OpenAI Service deployments and `azure-ai-foundry` for Azure AI Foundry (Microsoft Foundry) deployments.
+</Info>
