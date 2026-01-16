@@ -2,7 +2,7 @@
  * @fileoverview Tests for FileStorage cleanup in ExportService
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Use vi.hoisted to define mocks that will be available during hoisting
 const {
@@ -63,6 +63,9 @@ describe('ExportService - FileStorage cleanup', () => {
 		mockLoadTasks.mockResolvedValue([]);
 		mockClose.mockResolvedValue(undefined);
 
+		// Stub global fetch to prevent leakage
+		vi.stubGlobal('fetch', vi.fn());
+
 		mockConfigManager = {
 			getProjectRoot: vi.fn().mockReturnValue('/test/project'),
 			getActiveTag: vi.fn().mockReturnValue('default')
@@ -79,6 +82,10 @@ describe('ExportService - FileStorage cleanup', () => {
 		} as unknown as AuthManager;
 
 		exportService = new ExportService(mockConfigManager, mockAuthManager);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
 	describe('exportTasks - FileStorage cleanup', () => {
@@ -129,7 +136,7 @@ describe('ExportService - FileStorage cleanup', () => {
 			mockLoadTasks.mockResolvedValue(mockTasks);
 
 			// Mock fetch to prevent actual API call
-			global.fetch = vi.fn().mockResolvedValue({
+			vi.mocked(fetch).mockResolvedValue({
 				ok: true,
 				json: () =>
 					Promise.resolve({
@@ -138,7 +145,7 @@ describe('ExportService - FileStorage cleanup', () => {
 						failedCount: 0,
 						results: []
 					})
-			});
+			} as Response);
 
 			const result = await exportService.exportTasks({});
 
@@ -203,7 +210,7 @@ describe('ExportService - FileStorage cleanup', () => {
 			});
 
 			// Mock fetch
-			global.fetch = vi.fn().mockImplementation(() => {
+			vi.mocked(fetch).mockImplementation(() => {
 				callOrder.push('fetch');
 				return Promise.resolve({
 					ok: true,
@@ -222,7 +229,7 @@ describe('ExportService - FileStorage cleanup', () => {
 							},
 							taskMapping: []
 						})
-				});
+				} as Response);
 			});
 
 			const result = await exportService.generateBriefFromTasks({});

@@ -732,10 +732,10 @@ export class ExportCommand extends Command {
 			return;
 		}
 		const fileStorage = new FileStorage(projectRoot);
-		await fileStorage.initialize();
 
 		let results: ExportResult[];
 		try {
+			await fileStorage.initialize();
 			const exportPromises: Promise<ExportResult>[] = tags.map(async (tag) => {
 				try {
 					// Load tasks from LOCAL FileStorage to count parent tasks vs subtasks
