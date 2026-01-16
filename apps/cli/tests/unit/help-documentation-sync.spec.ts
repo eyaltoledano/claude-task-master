@@ -143,7 +143,7 @@ const INTENTIONALLY_UNDOCUMENTED = [
  */
 const COMMAND_NAME_MAPPINGS: Record<string, string> = {
 	// Tags subcommands in help map to legacy CLI commands
-	'tags': 'tags', // tags list
+	tags: 'tags', // tags list
 	// The following are legacy commands that may still exist
 	'add-tag': 'add-tag',
 	'use-tag': 'use-tag',
