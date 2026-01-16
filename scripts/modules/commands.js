@@ -5250,6 +5250,20 @@ Examples:
 }
 
 /**
+ * Dynamically load the TUI module if available
+ * @returns {Promise<object|null>} The TUI module or null if not available
+ */
+async function loadTUI() {
+	try {
+		const tuiModule = await import('@tm/tui');
+		return tuiModule;
+	} catch (error) {
+		// TUI package not installed
+		return null;
+	}
+}
+
+/**
  * Launch the interactive TUI REPL
  */
 async function launchREPL() {
