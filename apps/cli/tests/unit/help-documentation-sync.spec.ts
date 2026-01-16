@@ -48,7 +48,7 @@ function extractCommandsFromLegacyCommandsJs(): string[] {
 
 /**
  * Extract command names from modern TypeScript command files
- * Looks for patterns like: super(name || 'command-name')
+ * Looks for patterns like: super(name || 'command-name') or super('command-name')
  */
 function extractCommandsFromModernTs(): string[] {
 	const commands = new Set<string>();
@@ -62,8 +62,8 @@ function extractCommandsFromModernTs(): string[] {
 			const filePath = resolve(MODERN_COMMANDS_DIR, file);
 			const content = readFileSync(filePath, 'utf-8');
 
-			// Match super(name || 'command-name') pattern
-			const superRegex = /super\(name \|\| ['"]([^'"]+)['"]\)/g;
+			// Match super(name || 'command-name') or super('command-name') patterns
+			const superRegex = /super\((?:name \|\| )?['"]([^'"]+)['"]\)/g;
 			let match;
 			while ((match = superRegex.exec(content)) !== null) {
 				commands.add(match[1]);
@@ -132,6 +132,7 @@ const INTENTIONALLY_UNDOCUMENTED = [
 	'briefs', // Hamster briefs management
 	'context', // Hamster context management
 	'export', // Hamster export functionality
+	'export-tag', // Hamster export tag alias
 	'start', // Hamster workflow start
 	'loop', // Autonomous loop mode
 	'generate' // May be internal or aliased
