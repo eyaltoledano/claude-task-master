@@ -104,3 +104,6 @@ apps/extension/vsix-build/
 .scannerwork
 
 # OS specific
+
+# Serena tool artifacts
+.serena/

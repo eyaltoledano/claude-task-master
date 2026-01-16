@@ -116,6 +116,9 @@ jest.unstable_mockModule('../../scripts/modules/config-manager.js', () => ({
 	getAllProviders: mockGetAllProviders,
 	getOllamaBaseURL: mockGetOllamaBaseURL,
 	getAzureBaseURL: mockGetAzureBaseURL,
+	getAzureAIFoundryEndpoint: jest.fn(
+		() => 'https://test.services.ai.azure.com'
+	),
 	getBedrockBaseURL: mockGetBedrockBaseURL,
 	getVertexProjectId: mockGetVertexProjectId,
 	getVertexLocation: mockGetVertexLocation,
@@ -222,6 +225,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		streamText: jest.fn(),
 		generateObject: jest.fn(),
 		getRequiredApiKeyName: jest.fn(() => 'AZURE_OPENAI_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
+	})),
+	AzureAIFoundryProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'AZURE_AI_FOUNDRY_API_KEY'),
 		isRequiredApiKey: jest.fn(() => true)
 	})),
 	VertexAIProvider: jest.fn(() => ({

@@ -9,6 +9,7 @@
 // --- Core Dependencies ---
 import {
 	MODEL_MAP,
+	getAzureAIFoundryEndpoint,
 	getAzureBaseURL,
 	getBaseUrlForRole,
 	getBedrockBaseURL,
@@ -36,6 +37,7 @@ import {
 // Import provider classes
 import {
 	AnthropicAIProvider,
+	AzureAIFoundryProvider,
 	AzureProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
@@ -80,6 +82,7 @@ const PROVIDERS = {
 	}),
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
+	'azure-ai-foundry': new AzureAIFoundryProvider(),
 	vertex: new VertexAIProvider(),
 	'claude-code': new ClaudeCodeProvider(),
 	'codex-cli': new CodexCliProvider(),
@@ -606,6 +609,13 @@ async function _unifiedServiceRunner(serviceType, params) {
 			if (providerName?.toLowerCase() === 'azure' && !baseURL) {
 				baseURL = getAzureBaseURL(effectiveProjectRoot);
 				log('debug', `Using global Azure base URL: ${baseURL}`);
+			} else if (
+				providerName?.toLowerCase() === 'azure-ai-foundry' &&
+				!baseURL
+			) {
+				// For Azure AI Foundry, use the global endpoint if role-specific URL is not configured
+				baseURL = getAzureAIFoundryEndpoint(effectiveProjectRoot);
+				log('debug', `Using global Azure AI Foundry endpoint: ${baseURL}`);
 			} else if (providerName?.toLowerCase() === 'ollama' && !baseURL) {
 				// For Ollama, use the global Ollama base URL if role-specific URL is not configured
 				baseURL = getOllamaBaseURL(effectiveProjectRoot);

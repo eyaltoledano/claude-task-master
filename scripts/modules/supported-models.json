@@ -1439,5 +1439,6 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
-	]
+	],
+	"azure-ai-foundry": []
 }
