@@ -5,7 +5,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Use vi.hoisted to define mocks that will be available during hoisting
-const { mockInitialize, mockLoadTasks, mockClose, MockFileStorage, MockAuthDomain } = vi.hoisted(() => {
+const {
+	mockInitialize,
+	mockLoadTasks,
+	mockClose,
+	MockFileStorage,
+	MockAuthDomain
+} = vi.hoisted(() => {
 	const mockInitialize = vi.fn().mockResolvedValue(undefined);
 	const mockLoadTasks = vi.fn().mockResolvedValue([]);
 	const mockClose = vi.fn().mockResolvedValue(undefined);
@@ -22,7 +28,13 @@ const { mockInitialize, mockLoadTasks, mockClose, MockFileStorage, MockAuthDomai
 		}
 	}
 
-	return { mockInitialize, mockLoadTasks, mockClose, MockFileStorage, MockAuthDomain };
+	return {
+		mockInitialize,
+		mockLoadTasks,
+		mockClose,
+		MockFileStorage,
+		MockAuthDomain
+	};
 });
 
 // Mock FileStorage module
