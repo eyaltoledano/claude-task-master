@@ -5398,7 +5398,8 @@ async function runCLI(argv = process.argv) {
 		// Display banner if not in a pipe (except for init/start/repl commands which have their own)
 		const isInitCommand = argv.includes('init');
 		const isREPLCommand = argv.includes('tui') || argv.includes('repl');
-		if (process.stdout.isTTY && !isInitCommand && !isREPLCommand) {
+		const noBanner = argv.includes('--no-banner');
+		if (process.stdout.isTTY && !isInitCommand && !isREPLCommand && !noBanner) {
 			displayBanner();
 		}
 
@@ -5435,7 +5436,9 @@ async function runCLI(argv = process.argv) {
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
 		// This means the ConfigurationError might be thrown here if configuration file is missing.
 		const programInstance = setupCLI();
-		await programInstance.parseAsync(argv);
+		// Filter out --no-banner since it's handled above and not a Commander option
+		const filteredArgv = argv.filter((arg) => arg !== '--no-banner');
+		await programInstance.parseAsync(filteredArgv);
 
 		// Check if migration has occurred and show FYI notice once
 		try {
