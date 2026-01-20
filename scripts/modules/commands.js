@@ -5250,6 +5250,15 @@ Examples:
 }
 
 /**
+ * Load the TUI module (coming soon)
+ * @returns {Promise<object|null>} null - TUI not yet available
+ */
+async function loadTUI() {
+	// TUI is coming soon - return null for now
+	return null;
+}
+
+/**
  * Launch the interactive TUI REPL
  */
 async function launchREPL() {
@@ -5257,10 +5266,8 @@ async function launchREPL() {
 	const tui = await loadTUI();
 
 	if (!tui) {
-		// Fallback to help if TUI not available
-		console.log(
-			chalk.yellow('TUI mode not available. Install @tm/tui to enable.')
-		);
+		// TUI coming soon - show help for now
+		console.log(chalk.yellow('TUI mode coming soon!'));
 		console.log(chalk.dim('Showing help instead...\n'));
 		if (isConnectedToHamster()) {
 			displayHamsterHelp();
