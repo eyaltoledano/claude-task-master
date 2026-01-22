@@ -131,7 +131,7 @@ The Claude Code settings can be specified globally in the `claudeCode` section o
 }
 ```
 
-- For a full list of Cluaude Code settings, see the [Claude Code Settings documentation](https://docs.anthropic.com/en/docs/claude-code/settings).
+- For a full list of Claude Code settings, see the [Claude Code Settings documentation](https://docs.anthropic.com/en/docs/claude-code/settings).
 - For a full list of AI powered command names, see this file: `src/constants/commands.js`
 
 ### Why These Settings Matter
