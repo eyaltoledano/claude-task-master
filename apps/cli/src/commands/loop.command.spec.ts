@@ -412,6 +412,7 @@ describe('LoopCommand', () => {
 
 		it('should run interactive auth when sandbox not ready', async () => {
 			mockTmCore.loop.checkSandboxAuth.mockReturnValue({ ready: false });
+			mockTmCore.loop.runInteractiveAuth.mockReturnValue({ success: true });
 			const result = createMockResult();
 			mockLoopRun.mockResolvedValue(result);
 

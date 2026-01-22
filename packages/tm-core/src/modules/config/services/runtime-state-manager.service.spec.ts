@@ -142,7 +142,7 @@ describe('RuntimeStateManager', () => {
 			const jsonContent = writeCall[1] as string;
 
 			// Check for 2-space indentation
-			expect(jsonContent).toMatch(/\n {2}/);
+			expect(jsonContent).toMatch(/\n  /);
 		});
 	});
 
