@@ -49,6 +49,55 @@
   - Add gpt-5.1-codex-mini for faster, cheaper option
   - Keep gpt-5.1-codex-max and gpt-5.2
 
+## 0.42.0-rc.0
+
+### Minor Changes
+
+- [#1533](https://github.com/eyaltoledano/claude-task-master/pull/1533) [`6c3a92c`](https://github.com/eyaltoledano/claude-task-master/commit/6c3a92c439d4573ff5046e3d251a4a26d85d0deb) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Add --ready and --blocking filters to list command for identifying parallelizable tasks
+  - Add `--ready` filter to show only tasks with satisfied dependencies (ready to work on)
+  - Add `--blocking` filter to show only tasks that block other tasks
+  - Combine `--ready --blocking` to find high-impact tasks (ready AND blocking others)
+  - Add "Blocks" column to task table showing which tasks depend on each task
+  - Blocks field included in JSON output for programmatic access
+  - Add "Ready" column to `tags` command showing count of ready tasks per tag
+  - Add `--ready` filter to `tags` command to show only tags with available work
+  - Excludes deferred/blocked tasks from ready count (only actionable statuses)
+  - Add `--all-tags` option to list ready tasks across all tags (use with `--ready`)
+  - Tag column shown as first column when using `--all-tags` for easy scanning
+
+### Patch Changes
+
+- [#1569](https://github.com/eyaltoledano/claude-task-master/pull/1569) [`4cfde1c`](https://github.com/eyaltoledano/claude-task-master/commit/4cfde1c3d54b94701e0fcfc8dbdedbc3bbaf4339) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Improve concurrency safety by adopting modifyJson pattern in file-storage
+  - Refactor saveTasks, createTag, deleteTag, renameTag to use modifyJson for atomic read-modify-write operations
+  - This prevents lost updates when multiple processes concurrently modify tasks.json
+  - Complements the cross-process file locking added in PR #1566
+
+- [#1566](https://github.com/eyaltoledano/claude-task-master/pull/1566) [`3cc6174`](https://github.com/eyaltoledano/claude-task-master/commit/3cc6174b471fc1ea7f12955095d0d35b4dc5904c) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Fix race condition when multiple Claude Code windows write to tasks.json simultaneously
+  - Add cross-process file locking to prevent concurrent write collisions
+  - Implement atomic writes using temp file + rename pattern to prevent partial writes
+  - Re-read file inside lock to get current state, preventing lost updates from stale snapshots
+  - Add stale lock detection and automatic cleanup (10-second timeout)
+  - Export `withFileLock` and `withFileLockSync` utilities for use by other modules
+
+  This fix prevents data loss that could occur when multiple Task Master instances (e.g., multiple Claude Code windows) access the same tasks.json file concurrently.
+
+- [#1576](https://github.com/eyaltoledano/claude-task-master/pull/1576) [`097c8ed`](https://github.com/eyaltoledano/claude-task-master/commit/097c8edcb0ca065218e9b51758ad370ac7475f1a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Improve loop command error handling and use dangerously-skip-permissions
+  - Add proper spawn error handling (ENOENT, EACCES) with actionable messages
+  - Return error info from checkSandboxAuth and runInteractiveAuth instead of silent failures
+  - Use --dangerously-skip-permissions for unattended loop execution
+  - Fix null exit code masking issue
+
+- [#1577](https://github.com/eyaltoledano/claude-task-master/pull/1577) [`e762e4f`](https://github.com/eyaltoledano/claude-task-master/commit/e762e4f64608a77d248ac8ce5eeb218000b51907) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Make Docker sandbox mode opt-in for loop command
+  - Add `--sandbox` flag to `task-master loop` (default: use plain `claude -p`)
+  - Preserve progress.txt between runs (append instead of overwrite)
+  - Display execution mode in loop startup output
+
+- [#1580](https://github.com/eyaltoledano/claude-task-master/pull/1580) [`940ab58`](https://github.com/eyaltoledano/claude-task-master/commit/940ab587e50cff43c3a2639bbbd210fdd577c3f1) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Update Codex CLI supported models to match current available models
+  - Remove deprecated models: gpt-5, gpt-5-codex, gpt-5.1
+  - Add gpt-5.2-codex as the current default model
+  - Add gpt-5.1-codex-mini for faster, cheaper option
+  - Keep gpt-5.1-codex-max and gpt-5.2
+
 ## 0.41.0
 
 ### Minor Changes
