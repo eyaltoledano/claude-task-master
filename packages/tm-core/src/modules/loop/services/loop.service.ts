@@ -2,7 +2,7 @@
  * @fileoverview Loop Service - Orchestrates running Claude Code iterations (sandbox or CLI mode)
  */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
@@ -121,10 +121,12 @@ export class LoopService {
 			console.log(`━━━ Iteration ${i} of ${config.iterations} ━━━`);
 
 			const prompt = await this.buildPrompt(config, i);
-			const iteration = this.executeIteration(
+			const iteration = await this.executeIteration(
 				prompt,
 				i,
-				config.sandbox ?? false
+				config.sandbox ?? false,
+				config.includeOutput ?? false,
+				config.stream ?? false
 			);
 			iterations.push(iteration);
 
@@ -179,6 +181,7 @@ export class LoopService {
 
 	private async initProgressFile(config: LoopConfig): Promise<void> {
 		await mkdir(path.dirname(config.progressFile), { recursive: true });
+		const briefLine = config.brief ? `# Brief: ${config.brief}\n` : '';
 		const tagLine = config.tag ? `# Tag: ${config.tag}\n` : '';
 		// Append to existing progress file instead of overwriting
 		await appendFile(
@@ -186,7 +189,7 @@ export class LoopService {
 			`
 # Task Master Loop Progress
 # Started: ${new Date().toISOString()}
-# Preset: ${config.prompt}
+${briefLine}# Preset: ${config.prompt}
 # Max Iterations: ${config.iterations}
 ${tagLine}
 ---
@@ -230,7 +233,8 @@ ${tagLine}
 
 	private buildContextHeader(config: LoopConfig, iteration: number): string {
 		const tagInfo = config.tag ? ` (tag: ${config.tag})` : '';
-		return `@${config.progressFile} @.taskmaster/tasks/tasks.json @CLAUDE.md
+		// Note: tasks.json reference removed - let the preset control task source to avoid confusion
+		return `@${config.progressFile} @CLAUDE.md
 
 Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 	}
@@ -262,63 +266,66 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		return { status: 'success' };
 	}
 
-	private executeIteration(
+	private async executeIteration(
 		prompt: string,
 		iterationNum: number,
-		sandbox: boolean
-	): LoopIteration {
+		sandbox: boolean,
+		includeOutput: boolean = false,
+		stream: boolean = false
+	): Promise<LoopIteration> {
 		const startTime = Date.now();
-
-		// Use docker sandbox or plain claude based on config
 		const command = sandbox ? 'docker' : 'claude';
-		const args = sandbox
-			? ['sandbox', 'run', 'claude', '-p', prompt]
-			: ['-p', prompt, '--dangerously-skip-permissions'];
 
+		// Validate incompatible options: streaming requires CLI flags not available in sandbox
+		if (stream && sandbox) {
+			console.error(
+				'[Loop Error] Streaming mode (--stream) is not supported with sandbox mode (--sandbox)'
+			);
+			return this.createErrorIteration(
+				iterationNum,
+				startTime,
+				'Streaming mode is not supported with sandbox mode. Use --stream without --sandbox, or remove --stream.'
+			);
+		}
+
+		if (stream) {
+			return this.executeStreamingIteration(
+				prompt,
+				iterationNum,
+				command,
+				sandbox,
+				includeOutput,
+				startTime
+			);
+		}
+
+		const args = this.buildCommandArgs(prompt, sandbox, false);
 		const result = spawnSync(command, args, {
 			cwd: this.projectRoot,
 			encoding: 'utf-8',
-			maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+			maxBuffer: 50 * 1024 * 1024,
 			stdio: ['inherit', 'pipe', 'pipe']
 		});
 
-		// Check for spawn-level errors (command not found, permission denied, etc.)
 		if (result.error) {
-			const code = (result.error as NodeJS.ErrnoException).code;
-			let errorMessage: string;
-
-			if (code === 'ENOENT') {
-				errorMessage = sandbox
-					? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
-					: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
-			} else if (code === 'EACCES') {
-				errorMessage = `Permission denied executing '${command}'`;
-			} else {
-				errorMessage = `Failed to execute '${command}': ${result.error.message}`;
-			}
-
+			const errorMessage = this.formatCommandError(
+				result.error,
+				command,
+				sandbox
+			);
 			console.error(`[Loop Error] ${errorMessage}`);
-			return {
-				iteration: iterationNum,
-				status: 'error',
-				duration: Date.now() - startTime,
-				message: errorMessage
-			};
+			return this.createErrorIteration(iterationNum, startTime, errorMessage);
 		}
 
 		const output = (result.stdout || '') + (result.stderr || '');
-
-		// Print output to console (spawnSync with pipe captures but doesn't display)
 		if (output) console.log(output);
 
-		// Handle null status (spawn failed but no error object - shouldn't happen but be safe)
 		if (result.status === null) {
-			return {
-				iteration: iterationNum,
-				status: 'error',
-				duration: Date.now() - startTime,
-				message: 'Command terminated abnormally (no exit code)'
-			};
+			return this.createErrorIteration(
+				iterationNum,
+				startTime,
+				'Command terminated abnormally (no exit code)'
+			);
 		}
 
 		const { status, message } = this.parseCompletion(output, result.status);
@@ -326,7 +333,291 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 			iteration: iterationNum,
 			status,
 			duration: Date.now() - startTime,
+			message,
+			...(includeOutput && { output })
+		};
+	}
+
+	/**
+	 * Execute an iteration with real-time streaming output.
+	 * Uses Claude's stream-json format to display assistant messages as they arrive.
+	 * @param prompt - The prompt to send to Claude
+	 * @param iterationNum - Current iteration number (1-indexed)
+	 * @param command - The command to execute ('claude' or 'docker')
+	 * @param sandbox - Whether running in Docker sandbox mode
+	 * @param includeOutput - Whether to include full output in the result
+	 * @param startTime - Timestamp when iteration started (for duration calculation)
+	 * @returns Promise resolving to the iteration result
+	 */
+	private executeStreamingIteration(
+		prompt: string,
+		iterationNum: number,
+		command: string,
+		sandbox: boolean,
+		includeOutput: boolean,
+		startTime: number
+	): Promise<LoopIteration> {
+		const args = this.buildCommandArgs(prompt, sandbox, true);
+
+		return new Promise((resolve) => {
+			// Prevent multiple resolutions from race conditions between error/close events
+			let isResolved = false;
+			const resolveOnce = (result: LoopIteration): void => {
+				if (!isResolved) {
+					isResolved = true;
+					resolve(result);
+				}
+			};
+
+			const child = spawn(command, args, {
+				cwd: this.projectRoot,
+				stdio: ['inherit', 'pipe', 'pipe']
+			});
+
+			// Track stdout completion to handle race between data and close events
+			let stdoutEnded = false;
+			let output = '';
+			let finalResult = '';
+			let buffer = '';
+
+			const processLine = (line: string): void => {
+				if (!line.startsWith('{')) return;
+
+				try {
+					const event = JSON.parse(line);
+
+					// Validate event structure before accessing properties
+					if (!this.isValidStreamEvent(event)) {
+						return;
+					}
+
+					this.handleStreamEvent(event, (text) => {
+						output += text;
+					});
+
+					if (event.type === 'result') {
+						finalResult = typeof event.result === 'string' ? event.result : '';
+					}
+				} catch (error) {
+					// Log malformed JSON for debugging (non-JSON lines like system output are expected)
+					if (line.trim().startsWith('{')) {
+						console.error(
+							`[Loop Debug] Failed to parse JSON event: ${error instanceof Error ? error.message : 'Unknown error'}`
+						);
+						console.error(
+							`[Loop Debug] Problematic line: ${line.substring(0, 100)}...`
+						);
+					}
+				}
+			};
+
+			// Handle null stdout (shouldn't happen with pipe, but be defensive)
+			if (!child.stdout) {
+				resolveOnce(
+					this.createErrorIteration(
+						iterationNum,
+						startTime,
+						'Failed to capture stdout from child process'
+					)
+				);
+				return;
+			}
+
+			child.stdout.on('data', (data: Buffer) => {
+				try {
+					const lines = this.processBufferedLines(
+						buffer,
+						data.toString('utf-8')
+					);
+					buffer = lines.remaining;
+					for (const line of lines.complete) {
+						processLine(line);
+					}
+				} catch (error) {
+					console.error(
+						`[Loop Error] Failed to process stdout data: ${error instanceof Error ? error.message : 'Unknown error'}`
+					);
+				}
+			});
+
+			child.stdout.on('end', () => {
+				stdoutEnded = true;
+				// Process any remaining buffer when stdout ends
+				if (buffer) {
+					processLine(buffer);
+					buffer = '';
+				}
+			});
+
+			child.stderr?.on('data', (data: Buffer) => {
+				// Prefix stderr with iteration context for debugging
+				const stderrText = data.toString('utf-8');
+				process.stderr.write(`[Iteration ${iterationNum}] ${stderrText}`);
+			});
+
+			child.on('error', (error: NodeJS.ErrnoException) => {
+				const errorMessage = this.formatCommandError(error, command, sandbox);
+				console.error(`[Loop Error] ${errorMessage}`);
+
+				// Cleanup: remove listeners and kill process if still running
+				child.stdout?.removeAllListeners();
+				child.stderr?.removeAllListeners();
+				if (!child.killed) {
+					try {
+						child.kill('SIGTERM');
+					} catch {
+						// Process may have already exited
+					}
+				}
+
+				resolveOnce(
+					this.createErrorIteration(iterationNum, startTime, errorMessage)
+				);
+			});
+
+			child.on('close', (exitCode: number | null) => {
+				// Process remaining buffer only if stdout hasn't already ended
+				if (!stdoutEnded && buffer) {
+					processLine(buffer);
+				}
+
+				if (exitCode === null) {
+					resolveOnce(
+						this.createErrorIteration(
+							iterationNum,
+							startTime,
+							'Command terminated abnormally (no exit code)'
+						)
+					);
+					return;
+				}
+
+				const textForParsing = finalResult || output;
+				const { status, message } = this.parseCompletion(
+					textForParsing,
+					exitCode
+				);
+				resolveOnce({
+					iteration: iterationNum,
+					status,
+					duration: Date.now() - startTime,
+					message,
+					...(includeOutput && { output: textForParsing })
+				});
+			});
+		});
+	}
+
+	/**
+	 * Validate that a parsed JSON object has the expected stream event structure.
+	 */
+	private isValidStreamEvent(event: unknown): event is {
+		type: string;
+		message?: {
+			content?: Array<{ type: string; text?: string; name?: string }>;
+		};
+		result?: string;
+	} {
+		if (!event || typeof event !== 'object') {
+			return false;
+		}
+
+		const e = event as Record<string, unknown>;
+		if (!('type' in e) || typeof e.type !== 'string') {
+			return false;
+		}
+
+		// Validate message structure if present
+		if ('message' in e && e.message !== undefined) {
+			if (typeof e.message !== 'object' || e.message === null) {
+				return false;
+			}
+			const msg = e.message as Record<string, unknown>;
+			if ('content' in msg && !Array.isArray(msg.content)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private buildCommandArgs(
+		prompt: string,
+		sandbox: boolean,
+		streaming: boolean
+	): string[] {
+		if (sandbox) {
+			return ['sandbox', 'run', 'claude', '-p', prompt];
+		}
+
+		const args = ['-p', prompt, '--dangerously-skip-permissions'];
+		if (streaming) {
+			args.push('--output-format', 'stream-json', '--verbose');
+		}
+		return args;
+	}
+
+	private formatCommandError(
+		error: NodeJS.ErrnoException,
+		command: string,
+		sandbox: boolean
+	): string {
+		if (error.code === 'ENOENT') {
+			return sandbox
+				? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
+				: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
+		}
+
+		if (error.code === 'EACCES') {
+			return `Permission denied executing '${command}'`;
+		}
+
+		return `Failed to execute '${command}': ${error.message}`;
+	}
+
+	private createErrorIteration(
+		iterationNum: number,
+		startTime: number,
+		message: string
+	): LoopIteration {
+		return {
+			iteration: iterationNum,
+			status: 'error',
+			duration: Date.now() - startTime,
 			message
+		};
+	}
+
+	private handleStreamEvent(
+		event: {
+			type: string;
+			message?: {
+				content?: Array<{ type: string; text?: string; name?: string }>;
+			};
+		},
+		onText: (text: string) => void
+	): void {
+		if (event.type !== 'assistant' || !event.message?.content) return;
+
+		for (const block of event.message.content) {
+			if (block.type === 'text' && block.text) {
+				console.log(block.text);
+				onText(block.text + '\n');
+			} else if (block.type === 'tool_use' && block.name) {
+				console.log(`  → ${block.name}`);
+			}
+		}
+	}
+
+	private processBufferedLines(
+		buffer: string,
+		newData: string
+	): { complete: string[]; remaining: string } {
+		const combined = buffer + newData;
+		const lines = combined.split('\n');
+		return {
+			complete: lines.slice(0, -1),
+			remaining: lines[lines.length - 1]
 		};
 	}
 }

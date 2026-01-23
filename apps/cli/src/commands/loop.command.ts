@@ -23,6 +23,8 @@ export interface LoopCommandOptions {
 	tag?: string;
 	project?: string;
 	sandbox?: boolean;
+	output?: boolean;
+	stream?: boolean;
 }
 
 export class LoopCommand extends Command {
@@ -49,6 +51,11 @@ export class LoopCommand extends Command {
 				'Project root directory (auto-detected if not provided)'
 			)
 			.option('--sandbox', 'Run Claude in Docker sandbox mode')
+			.option(
+				'--no-output',
+				'Exclude full Claude output from iteration results'
+			)
+			.option('--stream', 'Stream output in real-time instead of at end')
 			.action((options: LoopCommandOptions) => this.execute(options));
 	}
 
@@ -109,12 +116,20 @@ export class LoopCommand extends Command {
 			}
 			console.log();
 
+			// Auto-detect brief name from auth context (if available)
+			const briefName = this.tmCore.auth.getContext()?.briefName;
+
 			const config: Partial<LoopConfig> = {
 				iterations,
 				prompt,
 				progressFile,
 				tag: options.tag,
-				sandbox: options.sandbox
+				sandbox: options.sandbox,
+				// CLI defaults to including output (users typically want to see it)
+				// Domain defaults to false (library consumers opt-in explicitly)
+				includeOutput: options.output ?? true,
+				stream: options.stream ?? false,
+				brief: briefName
 			};
 
 			const result = await this.tmCore.loop.run(config);

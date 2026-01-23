@@ -190,7 +190,10 @@ export class LoopDomain {
 				path.join(this.projectRoot, '.taskmaster', 'progress.txt'),
 			sleepSeconds: partial.sleepSeconds ?? 5,
 			tag: partial.tag,
-			sandbox: partial.sandbox ?? false
+			sandbox: partial.sandbox ?? false,
+			includeOutput: partial.includeOutput ?? false,
+			stream: partial.stream ?? false,
+			brief: partial.brief
 		};
 	}
 }

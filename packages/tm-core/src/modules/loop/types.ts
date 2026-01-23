@@ -28,6 +28,34 @@ export interface LoopConfig {
 	tag?: string;
 	/** Run Claude in Docker sandbox mode (default: false) */
 	sandbox?: boolean;
+	/**
+	 * Include full Claude output in iteration results (default: false)
+	 *
+	 * When true: `LoopIteration.output` will contain full stdout+stderr text
+	 * When false: `LoopIteration.output` will be undefined (saves memory)
+	 *
+	 * Can be combined with `stream=true` to both display and capture output.
+	 * Note: Output can be large (up to 50MB per iteration).
+	 */
+	includeOutput?: boolean;
+	/**
+	 * Stream output in real-time instead of showing at end (default: false)
+	 *
+	 * When true: Output appears as Claude generates it (uses --output-format stream-json)
+	 * When false: Output appears only after iteration completes
+	 *
+	 * Independent of `includeOutput` - controls display timing, not capture.
+	 * Note: NOT compatible with `sandbox=true` (will return error).
+	 */
+	stream?: boolean;
+	/**
+	 * Brief title describing the current initiative/goal (optional)
+	 *
+	 * If provided, included in the progress file header to give Claude
+	 * context about the bigger picture across iterations.
+	 * Example: "Implement streaming output for loop command"
+	 */
+	brief?: string;
 }
 
 /**
@@ -44,6 +72,15 @@ export interface LoopIteration {
 	message?: string;
 	/** Duration of this iteration in milliseconds */
 	duration?: number;
+	/**
+	 * Full Claude output text
+	 *
+	 * ONLY present when `LoopConfig.includeOutput=true`.
+	 * Contains concatenated stdout and stderr from Claude CLI execution.
+	 * May include ANSI color codes and tool call output.
+	 * Can be large - use `includeOutput=false` to save memory.
+	 */
+	output?: string;
 }
 
 /**
