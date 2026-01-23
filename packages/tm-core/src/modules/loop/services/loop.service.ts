@@ -9,6 +9,7 @@ import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
 import type {
 	LoopConfig,
 	LoopIteration,
+	LoopOutputCallbacks,
 	LoopPreset,
 	LoopResult
 } from '../types.js';
@@ -109,6 +110,19 @@ export class LoopService {
 
 	/** Run a loop with the given configuration */
 	async run(config: LoopConfig): Promise<LoopResult> {
+		// Validate incompatible options early - fail once, not per iteration
+		if (config.stream && config.sandbox) {
+			const errorMsg =
+				'Streaming mode is not supported with sandbox mode. Use --stream without --sandbox, or remove --stream.';
+			config.callbacks?.onError?.(errorMsg);
+			return {
+				iterations: [],
+				totalIterations: 0,
+				tasksCompleted: 0,
+				finalStatus: 'error'
+			};
+		}
+
 		this._isRunning = true;
 		const iterations: LoopIteration[] = [];
 		let tasksCompleted = 0;
@@ -116,9 +130,8 @@ export class LoopService {
 		await this.initProgressFile(config);
 
 		for (let i = 1; i <= config.iterations && this._isRunning; i++) {
-			// Show iteration header
-			console.log();
-			console.log(`━━━ Iteration ${i} of ${config.iterations} ━━━`);
+			// Notify presentation layer of iteration start
+			config.callbacks?.onIterationStart?.(i, config.iterations);
 
 			const prompt = await this.buildPrompt(config, i);
 			const iteration = await this.executeIteration(
@@ -126,7 +139,8 @@ export class LoopService {
 				i,
 				config.sandbox ?? false,
 				config.includeOutput ?? false,
-				config.stream ?? false
+				config.stream ?? false,
+				config.callbacks
 			);
 			iterations.push(iteration);
 
@@ -270,23 +284,12 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		prompt: string,
 		iterationNum: number,
 		sandbox: boolean,
-		includeOutput: boolean = false,
-		stream: boolean = false
+		includeOutput = false,
+		stream = false,
+		callbacks?: LoopOutputCallbacks
 	): Promise<LoopIteration> {
 		const startTime = Date.now();
 		const command = sandbox ? 'docker' : 'claude';
-
-		// Validate incompatible options: streaming requires CLI flags not available in sandbox
-		if (stream && sandbox) {
-			console.error(
-				'[Loop Error] Streaming mode (--stream) is not supported with sandbox mode (--sandbox)'
-			);
-			return this.createErrorIteration(
-				iterationNum,
-				startTime,
-				'Streaming mode is not supported with sandbox mode. Use --stream without --sandbox, or remove --stream.'
-			);
-		}
 
 		if (stream) {
 			return this.executeStreamingIteration(
@@ -295,7 +298,8 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				command,
 				sandbox,
 				includeOutput,
-				startTime
+				startTime,
+				callbacks
 			);
 		}
 
@@ -313,12 +317,14 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				command,
 				sandbox
 			);
-			console.error(`[Loop Error] ${errorMessage}`);
+			callbacks?.onError?.(errorMessage);
 			return this.createErrorIteration(iterationNum, startTime, errorMessage);
 		}
 
 		const output = (result.stdout || '') + (result.stderr || '');
-		if (output) console.log(output);
+		if (output) {
+			callbacks?.onOutput?.(output);
+		}
 
 		if (result.status === null) {
 			return this.createErrorIteration(
@@ -347,6 +353,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 	 * @param sandbox - Whether running in Docker sandbox mode
 	 * @param includeOutput - Whether to include full output in the result
 	 * @param startTime - Timestamp when iteration started (for duration calculation)
+	 * @param callbacks - Optional callbacks for presentation layer output
 	 * @returns Promise resolving to the iteration result
 	 */
 	private executeStreamingIteration(
@@ -355,7 +362,8 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		command: string,
 		sandbox: boolean,
 		includeOutput: boolean,
-		startTime: number
+		startTime: number,
+		callbacks?: LoopOutputCallbacks
 	): Promise<LoopIteration> {
 		const args = this.buildCommandArgs(prompt, sandbox, true);
 
@@ -376,7 +384,6 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 
 			// Track stdout completion to handle race between data and close events
 			let stdoutEnded = false;
-			let output = '';
 			let finalResult = '';
 			let buffer = '';
 
@@ -391,22 +398,17 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 						return;
 					}
 
-					this.handleStreamEvent(event, (text) => {
-						output += text;
-					});
+					this.handleStreamEvent(event, callbacks);
 
+					// Capture final result for includeOutput feature
 					if (event.type === 'result') {
 						finalResult = typeof event.result === 'string' ? event.result : '';
 					}
 				} catch (error) {
 					// Log malformed JSON for debugging (non-JSON lines like system output are expected)
 					if (line.trim().startsWith('{')) {
-						console.error(
-							`[Loop Debug] Failed to parse JSON event: ${error instanceof Error ? error.message : 'Unknown error'}`
-						);
-						console.error(
-							`[Loop Debug] Problematic line: ${line.substring(0, 100)}...`
-						);
+						const parseError = `Failed to parse JSON event: ${error instanceof Error ? error.message : 'Unknown error'}. Line: ${line.substring(0, 100)}...`;
+						callbacks?.onError?.(parseError);
 					}
 				}
 			};
@@ -434,8 +436,8 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 						processLine(line);
 					}
 				} catch (error) {
-					console.error(
-						`[Loop Error] Failed to process stdout data: ${error instanceof Error ? error.message : 'Unknown error'}`
+					callbacks?.onError?.(
+						`Failed to process stdout data: ${error instanceof Error ? error.message : 'Unknown error'}`
 					);
 				}
 			});
@@ -450,14 +452,13 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 			});
 
 			child.stderr?.on('data', (data: Buffer) => {
-				// Prefix stderr with iteration context for debugging
 				const stderrText = data.toString('utf-8');
-				process.stderr.write(`[Iteration ${iterationNum}] ${stderrText}`);
+				callbacks?.onStderr?.(stderrText, iterationNum);
 			});
 
 			child.on('error', (error: NodeJS.ErrnoException) => {
 				const errorMessage = this.formatCommandError(error, command, sandbox);
-				console.error(`[Loop Error] ${errorMessage}`);
+				callbacks?.onError?.(errorMessage);
 
 				// Cleanup: remove listeners and kill process if still running
 				child.stdout?.removeAllListeners();
@@ -492,17 +493,13 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 					return;
 				}
 
-				const textForParsing = finalResult || output;
-				const { status, message } = this.parseCompletion(
-					textForParsing,
-					exitCode
-				);
+				const { status, message } = this.parseCompletion(finalResult, exitCode);
 				resolveOnce({
 					iteration: iterationNum,
 					status,
 					duration: Date.now() - startTime,
 					message,
-					...(includeOutput && { output: textForParsing })
+					...(includeOutput && { output: finalResult })
 				});
 			});
 		});
@@ -595,16 +592,15 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				content?: Array<{ type: string; text?: string; name?: string }>;
 			};
 		},
-		onText: (text: string) => void
+		callbacks?: LoopOutputCallbacks
 	): void {
 		if (event.type !== 'assistant' || !event.message?.content) return;
 
 		for (const block of event.message.content) {
 			if (block.type === 'text' && block.text) {
-				console.log(block.text);
-				onText(block.text + '\n');
+				callbacks?.onText?.(block.text);
 			} else if (block.type === 'tool_use' && block.name) {
-				console.log(`  → ${block.name}`);
+				callbacks?.onToolUse?.(block.name);
 			}
 		}
 	}

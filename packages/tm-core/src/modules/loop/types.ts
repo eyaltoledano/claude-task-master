@@ -13,6 +13,26 @@ export type LoopPreset =
 	| 'entropy';
 
 /**
+ * Output callbacks for loop execution.
+ * These allow the caller (CLI/MCP) to handle presentation while
+ * the service stays focused on business logic.
+ */
+export interface LoopOutputCallbacks {
+	/** Called at the start of each iteration */
+	onIterationStart?: (iteration: number, total: number) => void;
+	/** Called when Claude outputs text (streaming mode) */
+	onText?: (text: string) => void;
+	/** Called when Claude invokes a tool (streaming mode) */
+	onToolUse?: (toolName: string) => void;
+	/** Called when an error occurs */
+	onError?: (message: string) => void;
+	/** Called for stderr output */
+	onStderr?: (text: string, iteration: number) => void;
+	/** Called when non-streaming iteration completes with output */
+	onOutput?: (output: string) => void;
+}
+
+/**
  * Configuration options for a loop execution
  */
 export interface LoopConfig {
@@ -56,6 +76,11 @@ export interface LoopConfig {
 	 * Example: "Implement streaming output for loop command"
 	 */
 	brief?: string;
+	/**
+	 * Output callbacks for presentation layer (CLI/MCP).
+	 * If not provided, the service runs silently (no console output).
+	 */
+	callbacks?: LoopOutputCallbacks;
 }
 
 /**

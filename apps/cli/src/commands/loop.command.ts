@@ -5,6 +5,7 @@
 import path from 'node:path';
 import {
 	type LoopConfig,
+	type LoopOutputCallbacks,
 	type LoopResult,
 	PRESET_NAMES,
 	type TmCore,
@@ -129,7 +130,8 @@ export class LoopCommand extends Command {
 				// Domain defaults to false (library consumers opt-in explicitly)
 				includeOutput: options.output ?? true,
 				stream: options.stream ?? false,
-				brief: briefName
+				brief: briefName,
+				callbacks: this.createOutputCallbacks()
 			};
 
 			const result = await this.tmCore.loop.run(config);
@@ -174,6 +176,34 @@ export class LoopCommand extends Command {
 				`Invalid iterations: ${iterations}. Must be a positive integer.`
 			);
 		}
+	}
+
+	private createOutputCallbacks(): LoopOutputCallbacks {
+		return {
+			onIterationStart: (iteration: number, total: number) => {
+				console.log();
+				console.log(
+					chalk.cyan(`━━━ Iteration ${iteration} of ${total} ━━━`)
+				);
+			},
+			onText: (text: string) => {
+				console.log(text);
+			},
+			onToolUse: (toolName: string) => {
+				console.log(chalk.dim(`  → ${toolName}`));
+			},
+			onError: (message: string) => {
+				console.error(chalk.red(`[Loop Error] ${message}`));
+			},
+			onStderr: (text: string, iteration: number) => {
+				process.stderr.write(
+					chalk.dim(`[Iteration ${iteration}] `) + text
+				);
+			},
+			onOutput: (output: string) => {
+				console.log(output);
+			}
+		};
 	}
 
 	private displayResult(result: LoopResult): void {
