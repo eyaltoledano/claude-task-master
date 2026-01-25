@@ -5,6 +5,7 @@
 import path from 'node:path';
 import {
 	type LoopConfig,
+	type LoopIteration,
 	type LoopOutputCallbacks,
 	type LoopResult,
 	PRESET_NAMES,
@@ -25,7 +26,7 @@ export interface LoopCommandOptions {
 	project?: string;
 	sandbox?: boolean;
 	output?: boolean;
-	stream?: boolean;
+	verbose?: boolean;
 }
 
 export class LoopCommand extends Command {
@@ -56,7 +57,7 @@ export class LoopCommand extends Command {
 				'--no-output',
 				'Exclude full Claude output from iteration results'
 			)
-			.option('--stream', 'Stream output in real-time instead of at end')
+			.option('-v, --verbose', "Show Claude's work in real-time")
 			.action((options: LoopCommandOptions) => this.execute(options));
 	}
 
@@ -129,7 +130,7 @@ export class LoopCommand extends Command {
 				// CLI defaults to including output (users typically want to see it)
 				// Domain defaults to false (library consumers opt-in explicitly)
 				includeOutput: options.output ?? true,
-				stream: options.stream ?? false,
+				verbose: options.verbose ?? false,
 				brief: briefName,
 				callbacks: this.createOutputCallbacks()
 			};
@@ -182,9 +183,7 @@ export class LoopCommand extends Command {
 		return {
 			onIterationStart: (iteration: number, total: number) => {
 				console.log();
-				console.log(
-					chalk.cyan(`━━━ Iteration ${iteration} of ${total} ━━━`)
-				);
+				console.log(chalk.cyan(`━━━ Iteration ${iteration} of ${total} ━━━`));
 			},
 			onText: (text: string) => {
 				console.log(text);
@@ -192,16 +191,31 @@ export class LoopCommand extends Command {
 			onToolUse: (toolName: string) => {
 				console.log(chalk.dim(`  → ${toolName}`));
 			},
-			onError: (message: string) => {
-				console.error(chalk.red(`[Loop Error] ${message}`));
+			onError: (message: string, severity?: 'warning' | 'error') => {
+				if (severity === 'warning') {
+					console.error(chalk.yellow(`[Loop Warning] ${message}`));
+				} else {
+					console.error(chalk.red(`[Loop Error] ${message}`));
+				}
 			},
-			onStderr: (text: string, iteration: number) => {
-				process.stderr.write(
-					chalk.dim(`[Iteration ${iteration}] `) + text
-				);
+			onStderr: (iteration: number, text: string) => {
+				process.stderr.write(chalk.dim(`[Iteration ${iteration}] `) + text);
 			},
 			onOutput: (output: string) => {
 				console.log(output);
+			},
+			onIterationEnd: (iteration: LoopIteration) => {
+				const statusColor =
+					iteration.status === 'success'
+						? chalk.green
+						: iteration.status === 'error'
+							? chalk.red
+							: chalk.yellow;
+				console.log(
+					statusColor(
+						`  Iteration ${iteration.iteration} completed: ${iteration.status}`
+					)
+				);
 			}
 		};
 	}
@@ -213,6 +227,9 @@ export class LoopCommand extends Command {
 		console.log(`Total iterations: ${result.totalIterations}`);
 		console.log(`Tasks completed: ${result.tasksCompleted}`);
 		console.log(`Final status: ${this.formatStatus(result.finalStatus)}`);
+		if (result.errorMessage) {
+			console.log(chalk.red(`Error: ${result.errorMessage}`));
+		}
 	}
 
 	private formatStatus(status: LoopResult['finalStatus']): string {

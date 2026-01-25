@@ -5,6 +5,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { getLogger } from '../../../common/logger/index.js';
 import { PRESETS, isPreset as checkIsPreset } from '../presets/index.js';
 import type {
 	LoopConfig,
@@ -20,6 +21,7 @@ export interface LoopServiceOptions {
 
 export class LoopService {
 	private readonly projectRoot: string;
+	private readonly logger = getLogger('LoopService');
 	private _isRunning = false;
 
 	constructor(options: LoopServiceOptions) {
@@ -111,15 +113,16 @@ export class LoopService {
 	/** Run a loop with the given configuration */
 	async run(config: LoopConfig): Promise<LoopResult> {
 		// Validate incompatible options early - fail once, not per iteration
-		if (config.stream && config.sandbox) {
+		if (config.verbose && config.sandbox) {
 			const errorMsg =
-				'Streaming mode is not supported with sandbox mode. Use --stream without --sandbox, or remove --stream.';
-			config.callbacks?.onError?.(errorMsg);
+				'Verbose mode is not supported with sandbox mode. Use --verbose without --sandbox, or remove --verbose.';
+			this.reportError(config.callbacks, errorMsg);
 			return {
 				iterations: [],
 				totalIterations: 0,
 				tasksCompleted: 0,
-				finalStatus: 'error'
+				finalStatus: 'error',
+				errorMessage: errorMsg
 			};
 		}
 
@@ -139,10 +142,13 @@ export class LoopService {
 				i,
 				config.sandbox ?? false,
 				config.includeOutput ?? false,
-				config.stream ?? false,
+				config.verbose ?? false,
 				config.callbacks
 			);
 			iterations.push(iteration);
+
+			// Notify presentation layer of iteration completion
+			config.callbacks?.onIterationEnd?.(iteration);
 
 			// Check for early exit conditions
 			if (iteration.status === 'complete') {
@@ -193,22 +199,41 @@ export class LoopService {
 		return result;
 	}
 
+	/**
+	 * Report an error via callback if provided, otherwise log to the logger.
+	 * Ensures errors are never silently swallowed when callbacks aren't configured.
+	 */
+	private reportError(
+		callbacks: LoopOutputCallbacks | undefined,
+		message: string,
+		severity: 'warning' | 'error' = 'error'
+	): void {
+		if (callbacks?.onError) {
+			callbacks.onError(message, severity);
+		} else if (severity === 'warning') {
+			this.logger.warn(message);
+		} else {
+			this.logger.error(message);
+		}
+	}
+
 	private async initProgressFile(config: LoopConfig): Promise<void> {
 		await mkdir(path.dirname(config.progressFile), { recursive: true });
-		const briefLine = config.brief ? `# Brief: ${config.brief}\n` : '';
-		const tagLine = config.tag ? `# Tag: ${config.tag}\n` : '';
+		const lines = [
+			'# Taskmaster Loop Progress',
+			`# Started: ${new Date().toISOString()}`,
+			...(config.brief ? [`# Brief: ${config.brief}`] : []),
+			`# Preset: ${config.prompt}`,
+			`# Max Iterations: ${config.iterations}`,
+			...(config.tag ? [`# Tag: ${config.tag}`] : []),
+			'',
+			'---',
+			''
+		];
 		// Append to existing progress file instead of overwriting
 		await appendFile(
 			config.progressFile,
-			`
-# Task Master Loop Progress
-# Started: ${new Date().toISOString()}
-${briefLine}# Preset: ${config.prompt}
-# Max Iterations: ${config.iterations}
-${tagLine}
----
-
-`,
+			'\n' + lines.join('\n') + '\n',
 			'utf-8'
 		);
 	}
@@ -285,14 +310,14 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		iterationNum: number,
 		sandbox: boolean,
 		includeOutput = false,
-		stream = false,
+		verbose = false,
 		callbacks?: LoopOutputCallbacks
 	): Promise<LoopIteration> {
 		const startTime = Date.now();
 		const command = sandbox ? 'docker' : 'claude';
 
-		if (stream) {
-			return this.executeStreamingIteration(
+		if (verbose) {
+			return this.executeVerboseIteration(
 				prompt,
 				iterationNum,
 				command,
@@ -317,7 +342,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				command,
 				sandbox
 			);
-			callbacks?.onError?.(errorMessage);
+			this.reportError(callbacks, errorMessage);
 			return this.createErrorIteration(iterationNum, startTime, errorMessage);
 		}
 
@@ -327,11 +352,9 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		}
 
 		if (result.status === null) {
-			return this.createErrorIteration(
-				iterationNum,
-				startTime,
-				'Command terminated abnormally (no exit code)'
-			);
+			const errorMsg = 'Command terminated abnormally (no exit code)';
+			this.reportError(callbacks, errorMsg);
+			return this.createErrorIteration(iterationNum, startTime, errorMsg);
 		}
 
 		const { status, message } = this.parseCompletion(output, result.status);
@@ -345,7 +368,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 	}
 
 	/**
-	 * Execute an iteration with real-time streaming output.
+	 * Execute an iteration with verbose output (shows Claude's work in real-time).
 	 * Uses Claude's stream-json format to display assistant messages as they arrive.
 	 * @param prompt - The prompt to send to Claude
 	 * @param iterationNum - Current iteration number (1-indexed)
@@ -356,7 +379,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 	 * @param callbacks - Optional callbacks for presentation layer output
 	 * @returns Promise resolving to the iteration result
 	 */
-	private executeStreamingIteration(
+	private executeVerboseIteration(
 		prompt: string,
 		iterationNum: number,
 		command: string,
@@ -408,7 +431,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 					// Log malformed JSON for debugging (non-JSON lines like system output are expected)
 					if (line.trim().startsWith('{')) {
 						const parseError = `Failed to parse JSON event: ${error instanceof Error ? error.message : 'Unknown error'}. Line: ${line.substring(0, 100)}...`;
-						callbacks?.onError?.(parseError);
+						this.reportError(callbacks, parseError, 'warning');
 					}
 				}
 			};
@@ -436,8 +459,10 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 						processLine(line);
 					}
 				} catch (error) {
-					callbacks?.onError?.(
-						`Failed to process stdout data: ${error instanceof Error ? error.message : 'Unknown error'}`
+					this.reportError(
+						callbacks,
+						`Failed to process stdout data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+						'warning'
 					);
 				}
 			});
@@ -453,12 +478,12 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 
 			child.stderr?.on('data', (data: Buffer) => {
 				const stderrText = data.toString('utf-8');
-				callbacks?.onStderr?.(stderrText, iterationNum);
+				callbacks?.onStderr?.(iterationNum, stderrText);
 			});
 
 			child.on('error', (error: NodeJS.ErrnoException) => {
 				const errorMessage = this.formatCommandError(error, command, sandbox);
-				callbacks?.onError?.(errorMessage);
+				this.reportError(callbacks, errorMessage);
 
 				// Cleanup: remove listeners and kill process if still running
 				child.stdout?.removeAllListeners();
@@ -483,12 +508,10 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 				}
 
 				if (exitCode === null) {
+					const errorMsg = 'Command terminated abnormally (no exit code)';
+					this.reportError(callbacks, errorMsg);
 					resolveOnce(
-						this.createErrorIteration(
-							iterationNum,
-							startTime,
-							'Command terminated abnormally (no exit code)'
-						)
+						this.createErrorIteration(iterationNum, startTime, errorMsg)
 					);
 					return;
 				}
@@ -541,14 +564,15 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 	private buildCommandArgs(
 		prompt: string,
 		sandbox: boolean,
-		streaming: boolean
+		verbose: boolean
 	): string[] {
 		if (sandbox) {
 			return ['sandbox', 'run', 'claude', '-p', prompt];
 		}
 
 		const args = ['-p', prompt, '--dangerously-skip-permissions'];
-		if (streaming) {
+		if (verbose) {
+			// Use stream-json format to show Claude's work in real-time
 			args.push('--output-format', 'stream-json', '--verbose');
 		}
 		return args;

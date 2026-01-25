@@ -2,7 +2,7 @@
  * @fileoverview Entropy (Code Smells) preset for loop module
  */
 
-export const ENTROPY_PRESET = `# Task Master Loop - Entropy (Code Smells)
+export const ENTROPY_PRESET = `# Taskmaster Loop - Entropy (Code Smells)
 
 Find code smells and clean them up. ONE cleanup per session.
 
