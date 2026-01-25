@@ -36,7 +36,7 @@
 		"postpack": "chmod +x dist/task-master.js dist/mcp-server.js",
 		"changeset": "changeset",
 		"changeset:validate": "node .github/scripts/validate-changesets.mjs",
-		"version": "changeset version",
+		"version": "changeset version && node ./.github/scripts/sync-manifest-version.mjs && npm i --package-lock-only",
 		"release": "node ./.github/scripts/release.mjs",
 		"publish-packages": "turbo run build lint test && changeset version && changeset publish",
 		"inspector": "npx @modelcontextprotocol/inspector node dist/mcp-server.js",
@@ -114,14 +114,14 @@
 		"ollama-ai-provider-v2": "^1.3.1",
 		"open": "^10.2.0",
 		"ora": "^8.2.0",
+		"proper-lockfile": "^4.1.2",
 		"simple-git": "^3.28.0",
 		"steno": "^4.0.2",
 		"terminal-link": "^5.0.0",
 		"turndown": "^7.2.2",
 		"undici": "^7.16.0",
 		"uuid": "^11.1.0",
-		"zod": "^4.1.12",
-		"proper-lockfile": "^4.1.2"
+		"zod": "^4.1.12"
 	},
 	"optionalDependencies": {
 		"@anthropic-ai/claude-code": "^2.0.59",
@@ -151,6 +151,7 @@
 		"whatwg-url": "^11.0.0"
 	},
 	"devDependencies": {
+		"@anthropic-ai/mcpb": "^2.1.2",
 		"@biomejs/biome": "^1.9.4",
 		"@changesets/changelog-github": "^0.5.1",
 		"@changesets/cli": "^2.28.1",
