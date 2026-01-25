@@ -173,12 +173,48 @@ jobs:
           path: dist/
           retention-days: 1
 
-  test:
-    name: Test
-    timeout-minutes: 15
+  # Detect which packages changed (with dependency awareness)
+  detect-changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
-    needs: [format-check, typecheck, build, changeset-validation]
-    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+      cli: ${{ steps.filter.outputs.cli }}
+      mcp: ${{ steps.filter.outputs.mcp }}
+      root: ${{ steps.filter.outputs.root }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core:
+              - 'packages/tm-core/**'
+              - 'package-lock.json'
+              - 'tsconfig.json'
+              - 'vitest.workspace.ts'
+            cli:
+              - 'apps/cli/**'
+              - 'packages/tm-core/**'
+              - 'package-lock.json'
+            mcp:
+              - 'apps/mcp/**'
+              - 'packages/tm-core/**'
+              - 'package-lock.json'
+            root:
+              - 'src/**'
+              - 'tests/**'
+              - 'package-lock.json'
+              - 'jest.config.*'
+
+  # Test @tm/core (unit + integration)
+  test-core:
+    name: Test @tm/core
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    needs: [install, detect-changes, build]
+    if: needs.detect-changes.outputs.core == 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -194,8 +230,128 @@ jobs:
           key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+
+      - name: Unit Tests
+        run: npm run test:unit -w @tm/core
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+      - name: Integration Tests
+        run: npm run test:integration -w @tm/core
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+  # Test @tm/cli (unit + integration)
+  test-cli:
+    name: Test @tm/cli
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    needs: [install, detect-changes, build]
+    if: needs.detect-changes.outputs.cli == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules cache
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+
+      - name: Unit Tests
+        run: npm run test:unit -w @tm/cli
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+      - name: Integration Tests
+        run: npm run test:integration -w @tm/cli
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+  # Test @tm/mcp (unit + integration)
+  test-mcp:
+    name: Test @tm/mcp
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    needs: [install, detect-changes, build]
+    if: needs.detect-changes.outputs.mcp == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules cache
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+
+      - name: Unit Tests
+        run: npm run test:unit -w @tm/mcp
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+      - name: Integration Tests
+        run: npm run test:integration -w @tm/mcp
+        env:
+          NODE_ENV: test
+          CI: true
+          FORCE_COLOR: 1
+
+  # Test root package (legacy Jest tests)
+  test-root:
+    name: Test Root
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    needs: [format-check, typecheck, build, changeset-validation, detect-changes]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && needs.detect-changes.outputs.root == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore node_modules cache
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         timeout-minutes: 5
 
       - name: Download build artifacts
