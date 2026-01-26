@@ -442,3 +442,63 @@ export function withToolContext<TArgs extends { projectRoot?: string }>(
 		}
 	);
 }
+
+/**
+ * Validates and parses metadata string for MCP tools.
+ * Checks environment flag, validates JSON format, and ensures metadata is a plain object.
+ *
+ * @param metadataString - JSON string to parse and validate
+ * @param errorResponseFn - Function to create error response
+ * @returns Object with parsed metadata or error
+ */
+export function validateMcpMetadata(
+	metadataString: string | null | undefined,
+	errorResponseFn: (message: string) => ContentResult
+): { parsedMetadata: Record<string, unknown> | null; error?: ContentResult } {
+	// Return null if no metadata provided
+	if (!metadataString) {
+		return { parsedMetadata: null };
+	}
+
+	// Check if metadata updates are allowed via environment variable
+	const allowMetadataUpdates =
+		process.env.TASK_MASTER_ALLOW_METADATA_UPDATES === 'true';
+	if (!allowMetadataUpdates) {
+		return {
+			parsedMetadata: null,
+			error: errorResponseFn(
+				'Metadata updates are disabled. Set TASK_MASTER_ALLOW_METADATA_UPDATES=true in your MCP server environment to enable metadata modifications.'
+			)
+		};
+	}
+
+	// Parse and validate JSON
+	try {
+		const parsedMetadata = JSON.parse(metadataString);
+
+		// Ensure it's a plain object (not null, not array)
+		if (
+			typeof parsedMetadata !== 'object' ||
+			parsedMetadata === null ||
+			Array.isArray(parsedMetadata)
+		) {
+			return {
+				parsedMetadata: null,
+				error: errorResponseFn(
+					'Invalid metadata: must be a JSON object (not null or array)'
+				)
+			};
+		}
+
+		return { parsedMetadata };
+	} catch (parseError: unknown) {
+		const message =
+			parseError instanceof Error ? parseError.message : 'Unknown parse error';
+		return {
+			parsedMetadata: null,
+			error: errorResponseFn(
+				`Invalid metadata JSON: ${message}. Provide a valid JSON object string.`
+			)
+		};
+	}
+}
