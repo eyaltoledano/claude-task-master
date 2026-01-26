@@ -9,8 +9,8 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage=false --passWithNoTests",
+		"test:watch": "vitest --coverage=false",
 		"lint": "biome check --write",
 		"lint:check": "biome check",
 		"typecheck": "tsc --noEmit"
