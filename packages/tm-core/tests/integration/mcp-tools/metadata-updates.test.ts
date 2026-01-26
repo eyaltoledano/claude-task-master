@@ -14,10 +14,11 @@
  * - Direct function integration (covered by the validation tests here)
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { validateMcpMetadata } from '@tm/mcp';
 
 describe('MCP Tool Metadata Updates - Integration Tests', () => {
 	let tempDir: string;
@@ -198,7 +199,7 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 
 	describe('metadata-only update detection', () => {
 		it('should detect metadata-only update when prompt is empty', () => {
-			const prompt = '';
+			const prompt: string = '';
 			const metadata = { key: 'value' };
 
 			const isMetadataOnly = metadata && (!prompt || prompt.trim() === '');
@@ -206,7 +207,7 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 		});
 
 		it('should detect metadata-only update when prompt is whitespace', () => {
-			const prompt = '   ';
+			const prompt: string = '   ';
 			const metadata = { key: 'value' };
 
 			const isMetadataOnly = metadata && (!prompt || prompt.trim() === '');
@@ -214,7 +215,7 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 		});
 
 		it('should not be metadata-only when prompt is provided', () => {
-			const prompt = 'Update task details';
+			const prompt: string = 'Update task details';
 			const metadata = { key: 'value' };
 
 			const isMetadataOnly = metadata && (!prompt || prompt.trim() === '');
@@ -222,7 +223,7 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 		});
 
 		it('should not be metadata-only when neither is provided', () => {
-			const prompt = '';
+			const prompt: string = '';
 			const metadata = null;
 
 			const isMetadataOnly = metadata && (!prompt || prompt.trim() === '');
@@ -350,6 +351,190 @@ describe('MCP Tool Metadata Updates - Integration Tests', () => {
 
 			expect(errorMessage).toContain('JSON object');
 			expect(errorMessage).toContain('not null or array');
+		});
+	});
+});
+
+/**
+ * Unit tests for the actual validateMcpMetadata function from @tm/mcp
+ * These tests verify the security gate behavior for MCP metadata updates.
+ */
+describe('validateMcpMetadata function', () => {
+	// Mock error response creator that matches the MCP ContentResult format
+	const mockCreateErrorResponse = (message: string) => ({
+		content: [{ type: 'text' as const, text: `Error: ${message}` }],
+		isError: true
+	});
+
+	// Helper to safely extract text from content
+	const getErrorText = (
+		error: { content: Array<{ type: string; text?: string }> } | undefined
+	): string => {
+		if (!error?.content?.[0]) return '';
+		const content = error.content[0];
+		return 'text' in content ? (content.text ?? '') : '';
+	};
+
+	afterEach(() => {
+		delete process.env.TASK_MASTER_ALLOW_METADATA_UPDATES;
+	});
+
+	describe('when metadataString is null/undefined', () => {
+		it('should return null parsedMetadata for undefined input', () => {
+			const result = validateMcpMetadata(undefined, mockCreateErrorResponse);
+			expect(result.parsedMetadata).toBeNull();
+			expect(result.error).toBeUndefined();
+		});
+
+		it('should return null parsedMetadata for null input', () => {
+			const result = validateMcpMetadata(null, mockCreateErrorResponse);
+			expect(result.parsedMetadata).toBeNull();
+			expect(result.error).toBeUndefined();
+		});
+
+		it('should return null parsedMetadata for empty string', () => {
+			const result = validateMcpMetadata('', mockCreateErrorResponse);
+			expect(result.parsedMetadata).toBeNull();
+			expect(result.error).toBeUndefined();
+		});
+	});
+
+	describe('when TASK_MASTER_ALLOW_METADATA_UPDATES is not set', () => {
+		beforeEach(() => {
+			delete process.env.TASK_MASTER_ALLOW_METADATA_UPDATES;
+		});
+
+		it('should return error when flag is not set', () => {
+			const result = validateMcpMetadata(
+				'{"key": "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'TASK_MASTER_ALLOW_METADATA_UPDATES'
+			);
+		});
+
+		it('should return error when flag is set to "false"', () => {
+			process.env.TASK_MASTER_ALLOW_METADATA_UPDATES = 'false';
+			const result = validateMcpMetadata(
+				'{"key": "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+		});
+
+		it('should return error when flag is "TRUE" (case sensitive)', () => {
+			process.env.TASK_MASTER_ALLOW_METADATA_UPDATES = 'TRUE';
+			const result = validateMcpMetadata(
+				'{"key": "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+		});
+
+		it('should return error when flag is "True" (case sensitive)', () => {
+			process.env.TASK_MASTER_ALLOW_METADATA_UPDATES = 'True';
+			const result = validateMcpMetadata(
+				'{"key": "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+		});
+	});
+
+	describe('when TASK_MASTER_ALLOW_METADATA_UPDATES is "true"', () => {
+		beforeEach(() => {
+			process.env.TASK_MASTER_ALLOW_METADATA_UPDATES = 'true';
+		});
+
+		it('should return parsed metadata for valid JSON object', () => {
+			const result = validateMcpMetadata(
+				'{"key": "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.parsedMetadata).toEqual({ key: 'value' });
+			expect(result.error).toBeUndefined();
+		});
+
+		it('should return parsed metadata for complex nested object', () => {
+			const complexMeta = {
+				githubIssue: 42,
+				sprint: 'Q1-S3',
+				nested: { deep: { value: true } },
+				array: [1, 2, 3]
+			};
+			const result = validateMcpMetadata(
+				JSON.stringify(complexMeta),
+				mockCreateErrorResponse
+			);
+			expect(result.parsedMetadata).toEqual(complexMeta);
+			expect(result.error).toBeUndefined();
+		});
+
+		it('should return parsed metadata for empty object', () => {
+			const result = validateMcpMetadata('{}', mockCreateErrorResponse);
+			expect(result.parsedMetadata).toEqual({});
+			expect(result.error).toBeUndefined();
+		});
+
+		it('should return error for invalid JSON string', () => {
+			const result = validateMcpMetadata(
+				'{key: "value"}',
+				mockCreateErrorResponse
+			);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain('Invalid metadata JSON');
+		});
+
+		it('should return error for JSON array', () => {
+			const result = validateMcpMetadata('[1, 2, 3]', mockCreateErrorResponse);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'must be a JSON object (not null or array)'
+			);
+		});
+
+		it('should return error for JSON null', () => {
+			const result = validateMcpMetadata('null', mockCreateErrorResponse);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'must be a JSON object (not null or array)'
+			);
+		});
+
+		it('should return error for JSON string primitive', () => {
+			const result = validateMcpMetadata('"string"', mockCreateErrorResponse);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'must be a JSON object (not null or array)'
+			);
+		});
+
+		it('should return error for JSON number primitive', () => {
+			const result = validateMcpMetadata('123', mockCreateErrorResponse);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'must be a JSON object (not null or array)'
+			);
+		});
+
+		it('should return error for JSON boolean primitive', () => {
+			const result = validateMcpMetadata('true', mockCreateErrorResponse);
+			expect(result.error).toBeDefined();
+			expect(result.error?.isError).toBe(true);
+			expect(getErrorText(result.error)).toContain(
+				'must be a JSON object (not null or array)'
+			);
 		});
 	});
 });
