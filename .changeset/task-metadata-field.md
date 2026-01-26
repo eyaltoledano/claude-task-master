@@ -1,5 +1,5 @@
 ---
-"@tm/core": minor
+"task-master-ai": minor
 ---
 
 Add optional `metadata` field to tasks for storing user-defined custom data
