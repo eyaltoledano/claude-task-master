@@ -18,13 +18,10 @@
 	"scripts": {
 		"build": "tsc",
 		"typecheck": "tsc --noEmit",
-		"fix-null-versions": "npx tsx scripts/fix-null-versions.ts"
+		"fix-null-versions": "bun run scripts/fix-null-versions.ts"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2"
-	},
-	"dependencies": {
-		"tsup": "^8.5.0"
 	},
 	"version": ""
 }
