@@ -2,4 +2,4 @@
 "task-master-ai": patch
 ---
 
-Add --no-banner option to limit the output of each command.
+Add --no-banner to suppress the startup banner.
