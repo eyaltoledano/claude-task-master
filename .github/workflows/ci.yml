@@ -184,6 +184,8 @@ jobs:
       root: ${{ steps.filter.outputs.root }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -205,6 +207,7 @@ jobs:
             root:
               - 'src/**'
               - 'tests/**'
+              - 'package.json'
               - 'package-lock.json'
               - 'jest.config.*'
 

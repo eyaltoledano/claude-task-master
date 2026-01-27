@@ -1,61 +1,110 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /**
- * Root Vitest configuration for Task Master monorepo
- * Provides shared defaults for all packages
- * Individual packages can extend this config with package-specific settings
+ * Vitest workspace configuration for Task Master monorepo
+ *
+ * Convention: .spec.ts = unit tests, .test.ts = integration tests
  */
 export default defineConfig({
 	test: {
-		// Enable global test APIs (describe, it, expect, etc.)
-		globals: true,
+		projects: [
+			// Core package
+			{
+				test: {
+					name: 'core:unit',
+					root: './packages/tm-core',
+					include: ['tests/**/*.spec.ts', 'src/**/*.spec.ts'],
+					setupFiles: ['./tests/setup.ts']
+				},
+				resolve: {
+					alias: {
+						'@': path.resolve(__dirname, './packages/tm-core/src'),
+						'@/types': path.resolve(__dirname, './packages/tm-core/src/types'),
+						'@/providers': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/providers'
+						),
+						'@/storage': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/storage'
+						),
+						'@/parser': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/parser'
+						),
+						'@/utils': path.resolve(__dirname, './packages/tm-core/src/utils'),
+						'@/errors': path.resolve(__dirname, './packages/tm-core/src/errors')
+					}
+				}
+			},
+			{
+				test: {
+					name: 'core:integration',
+					root: './packages/tm-core',
+					include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+					setupFiles: ['./tests/setup.ts']
+				},
+				resolve: {
+					alias: {
+						'@': path.resolve(__dirname, './packages/tm-core/src'),
+						'@/types': path.resolve(__dirname, './packages/tm-core/src/types'),
+						'@/providers': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/providers'
+						),
+						'@/storage': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/storage'
+						),
+						'@/parser': path.resolve(
+							__dirname,
+							'./packages/tm-core/src/parser'
+						),
+						'@/utils': path.resolve(__dirname, './packages/tm-core/src/utils'),
+						'@/errors': path.resolve(__dirname, './packages/tm-core/src/errors')
+					}
+				}
+			},
 
-		// Default environment for all packages (Node.js)
-		environment: 'node',
+			// CLI app
+			{
+				test: {
+					name: 'cli:unit',
+					root: './apps/cli',
+					include: ['tests/**/*.spec.ts', 'src/**/*.spec.ts']
+				}
+			},
+			{
+				test: {
+					name: 'cli:integration',
+					root: './apps/cli',
+					include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+					// Integration tests spawn CLI processes - need longer timeouts
+					testTimeout: 30000,
+					hookTimeout: 15000
+				}
+			},
 
-		// Common test file patterns
-		include: [
-			'tests/**/*.test.ts',
-			'tests/**/*.spec.ts',
-			'src/**/*.test.ts',
-			'src/**/*.spec.ts'
-		],
-
-		// Common exclusions
-		exclude: ['node_modules', 'dist', '.git', '.cache', '**/node_modules/**'],
-
-		// Coverage configuration
-		coverage: {
-			provider: 'v8',
-			enabled: true,
-			reporter: ['text', 'json', 'html'],
-			include: ['src/**/*.ts'],
-			exclude: [
-				'node_modules/',
-				'dist/',
-				'tests/',
-				'**/*.test.ts',
-				'**/*.spec.ts',
-				'**/*.d.ts',
-				'**/mocks/**',
-				'**/fixtures/**',
-				'**/types/**',
-				'vitest.config.ts',
-				'src/index.ts'
-			],
-			// Default thresholds (can be overridden per package)
-			thresholds: {
-				branches: 70,
-				functions: 70,
-				lines: 70,
-				statements: 70
+			// MCP app
+			{
+				test: {
+					name: 'mcp:unit',
+					root: './apps/mcp',
+					include: ['tests/**/*.spec.ts', 'src/**/*.spec.ts']
+				}
+			},
+			{
+				test: {
+					name: 'mcp:integration',
+					root: './apps/mcp',
+					include: ['tests/**/*.test.ts', 'src/**/*.test.ts']
+				}
 			}
-		},
-
-		// Test execution settings
-		testTimeout: 10000,
-		clearMocks: true,
-		restoreMocks: true,
-		mockReset: true
+		]
 	}
 });
