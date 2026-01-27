@@ -1,7 +1,7 @@
 {
 	"manifest_version": "0.3",
 	"name": "Claude Task Master",
-	"version": "0.42.0",
+	"version": "0.43.0",
 	"description": "AI-powered task management for structured development workflows. Parse PRDs, generate tasks with AI, track dependencies, and manage complexity.",
 	"author": {
 		"name": "Eyal Toledano",
@@ -17,7 +17,10 @@
 		"entry_point": "dist/mcp-server.js",
 		"mcp_config": {
 			"command": "npx",
-			"args": ["-y", "task-master-ai"],
+			"args": [
+				"-y",
+				"task-master-ai"
+			],
 			"env": {
 				"ANTHROPIC_API_KEY": "${user_config.anthropic_api_key}",
 				"PERPLEXITY_API_KEY": "${user_config.perplexity_api_key}",
