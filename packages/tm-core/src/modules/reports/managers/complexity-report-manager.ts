@@ -48,7 +48,7 @@ export class ComplexityReportManager {
 			return this.reportCache.get(cacheKey)!;
 		}
 
-		const reportPath = this.getReportPath(tag);
+		const reportPath = this.getReportPath(resolvedTag);
 
 		try {
 			// Check if file exists
