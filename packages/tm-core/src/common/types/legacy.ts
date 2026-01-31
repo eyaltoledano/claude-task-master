@@ -4,6 +4,6 @@
  */
 
 /**
- * @deprecated Use string directly instead. This will be removed in a future version.
+ * @deprecated Use number | string directly instead. This will be removed in a future version.
  */
-export type TaskId = string;
+export type TaskId = number | string;

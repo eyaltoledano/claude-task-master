@@ -49,12 +49,13 @@ export class ClaudeExecutor extends BaseExecutor {
 	async execute(task: Task): Promise<ExecutionResult> {
 		const startTime = new Date().toISOString();
 
+		const taskIdStr = String(task.id);
 		try {
 			// Check if Claude is available
 			const isAvailable = await this.isAvailable();
 			if (!isAvailable) {
 				return this.createResult(
-					task.id,
+					taskIdStr,
 					false,
 					undefined,
 					`Claude CLI not found. Please ensure 'claude' command is available in PATH.`
@@ -66,7 +67,7 @@ export class ClaudeExecutor extends BaseExecutor {
 			const fullPrompt = `${this.claudeConfig.systemPrompt}\n\nHere is the task to complete:\n\n${taskPrompt}`;
 
 			// Execute Claude with the task details
-			const result = await this.runClaude(fullPrompt, task.id);
+			const result = await this.runClaude(fullPrompt, taskIdStr);
 
 			return {
 				...result,
@@ -74,9 +75,9 @@ export class ClaudeExecutor extends BaseExecutor {
 				endTime: new Date().toISOString()
 			};
 		} catch (error: any) {
-			this.logger.error(`Failed to execute task ${task.id}:`, error);
+			this.logger.error(`Failed to execute task ${taskIdStr}:`, error);
 			return this.createResult(
-				task.id,
+				taskIdStr,
 				false,
 				undefined,
 				error.message || 'Unknown error occurred'

@@ -217,18 +217,31 @@ export class FormatHandler {
 	}
 
 	/**
-	 * Normalize task IDs - keep Task IDs as strings, Subtask IDs as numbers
+	 * Normalize task IDs - keep Task IDs as numbers, Subtask IDs as numbers
+	 * Dependencies can be either numbers (task refs) or strings (subtask refs like "7.1")
 	 */
 	private normalizeTasks(tasks: Task[]): Task[] {
 		return tasks.map((task) => ({
 			...task,
-			id: String(task.id), // Task IDs are strings
-			dependencies: task.dependencies?.map((dep) => String(dep)) || [],
+			id: Number(task.id), // Task IDs are numbers
+			// Dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
+			dependencies:
+				task.dependencies?.map((dep) => {
+					const depStr = String(dep);
+					return depStr.includes('.') ? depStr : Number(dep);
+				}) || [],
 			subtasks:
 				task.subtasks?.map((subtask) => ({
 					...subtask,
 					id: Number(subtask.id), // Subtask IDs are numbers
-					parentId: String(subtask.parentId) // Parent ID is string (Task ID)
+					// Set parentId to the parent task's ID (subtasks are nested, so we know the parent)
+					parentId: Number(task.id),
+					// Subtask dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
+					dependencies:
+						subtask.dependencies?.map((dep) => {
+							const depStr = String(dep);
+							return depStr.includes('.') ? depStr : Number(dep);
+						}) || []
 				})) || []
 		}));
 	}

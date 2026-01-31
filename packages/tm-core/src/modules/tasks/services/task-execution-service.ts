@@ -200,7 +200,7 @@ export class TaskExecutionService {
 	/**
 	 * Get the next available task to start
 	 */
-	async getNextAvailableTask(): Promise<string | null> {
+	async getNextAvailableTask(): Promise<string | number | null> {
 		const nextTask = await this.taskService.getNextTask();
 		return nextTask?.id || null;
 	}

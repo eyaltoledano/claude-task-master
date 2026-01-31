@@ -119,7 +119,7 @@ export interface TaskImplementationMetadata {
  * Placeholder task interface for temporary/minimal task objects
  */
 export interface PlaceholderTask {
-	id: string;
+	id: number | string;
 	title: string;
 	status: TaskStatus;
 	priority: TaskPriority;
@@ -129,12 +129,12 @@ export interface PlaceholderTask {
  * Base task interface
  */
 export interface Task extends TaskImplementationMetadata {
-	id: string;
+	id: number | string;
 	title: string;
 	description: string;
 	status: TaskStatus;
 	priority: TaskPriority;
-	dependencies: string[];
+	dependencies: (number | string)[];
 	details: string;
 	testStrategy: string;
 	subtasks: Subtask[];
@@ -171,7 +171,7 @@ export interface Task extends TaskImplementationMetadata {
  */
 export interface Subtask extends Omit<Task, 'id' | 'subtasks'> {
 	id: number | string;
-	parentId: string;
+	parentId: number | string;
 	subtasks?: never; // Subtasks cannot have their own subtasks
 }
 
@@ -203,7 +203,7 @@ export interface TaskCollection {
  */
 export interface TaskTag {
 	name: string;
-	tasks: string[]; // Task IDs belonging to this tag
+	tasks: (number | string)[]; // Task IDs belonging to this tag
 	metadata: Record<string, any>;
 }
 

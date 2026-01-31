@@ -552,6 +552,20 @@ function normalizeTaskIds(tasks) {
 			}
 		}
 
+		// Convert dependencies: keep as string if it's a subtask ref (contains "."), otherwise convert to number
+		if (Array.isArray(task.dependencies)) {
+			task.dependencies = task.dependencies.map((dep) => {
+				const depStr = String(dep);
+				// Keep subtask references as strings (e.g., "7.1", "1.2")
+				if (depStr.includes('.')) {
+					return depStr;
+				}
+				// Convert task references to numbers
+				const parsedDep = parseInt(depStr, 10);
+				return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
+			});
+		}
+
 		// Convert subtask IDs to numbers with validation
 		if (Array.isArray(task.subtasks)) {
 			task.subtasks.forEach((subtask) => {
@@ -567,6 +581,27 @@ function normalizeTaskIds(tasks) {
 							subtask.id = parsedSubtaskId;
 						}
 					}
+				}
+
+				// Set parentId to the parent task's ID (subtasks are nested, so we know the parent)
+				// This ensures parentId is always set correctly
+				const parsedTaskId = parseInt(task.id, 10);
+				if (!isNaN(parsedTaskId) && parsedTaskId > 0) {
+					subtask.parentId = parsedTaskId;
+				}
+
+				// Convert subtask dependencies: keep as string if it's a subtask ref (contains "."), otherwise convert to number
+				if (Array.isArray(subtask.dependencies)) {
+					subtask.dependencies = subtask.dependencies.map((dep) => {
+						const depStr = String(dep);
+						// Keep subtask references as strings (e.g., "7.1", "1.2")
+						if (depStr.includes('.')) {
+							return depStr;
+						}
+						// Convert task references to numbers
+						const parsedDep = parseInt(depStr, 10);
+						return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
+					});
 				}
 			});
 		}
@@ -1151,6 +1186,26 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 							}
 						}
 						cleanData = finalCleanData;
+					}
+				}
+
+				// Normalize task IDs before writing to ensure consistency
+				// This ensures IDs are always stored as numbers in JSON
+				if (cleanData && typeof cleanData === 'object') {
+					// Handle tagged structure
+					if (hasTaggedStructure(cleanData)) {
+						Object.keys(cleanData).forEach((tagName) => {
+							if (
+								cleanData[tagName] &&
+								Array.isArray(cleanData[tagName].tasks)
+							) {
+								normalizeTaskIds(cleanData[tagName].tasks);
+							}
+						});
+					}
+					// Handle legacy structure
+					else if (Array.isArray(cleanData.tasks)) {
+						normalizeTaskIds(cleanData.tasks);
 					}
 				}
 
