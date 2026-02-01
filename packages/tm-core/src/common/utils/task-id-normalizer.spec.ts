@@ -129,7 +129,7 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeSubtask(subtask as any, 5);
 
-			expect(result.id).toBe('1');
+			expect(result.id).toBe(1); // number, not string
 			expect(result.parentId).toBe(5);
 			expect(result.dependencies).toEqual([2, '3.1']);
 		});
@@ -168,7 +168,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeSubtask(subtask as any, 1);
 
 			// Negative IDs should be rejected and fall back to 0
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 			expect(result.parentId).toBe(1);
 		});
 
@@ -185,7 +185,7 @@ describe('Task ID Normalizer', () => {
 			};
 
 			const result = normalizeSubtask(subtask as any, 1);
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('rejects zero subtask ID', () => {
@@ -203,7 +203,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeSubtask(subtask as any, 1);
 
 			// Zero should be rejected and fall back to 0 (already 0)
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('handles undefined/null subtask ID', () => {
@@ -229,8 +229,8 @@ describe('Task ID Normalizer', () => {
 				testStrategy: ''
 			};
 
-			expect(normalizeSubtask(subtask1 as any, 1).id).toBe('0');
-			expect(normalizeSubtask(subtask2 as any, 1).id).toBe('0');
+			expect(normalizeSubtask(subtask1 as any, 1).id).toBe(0); // number, not string
+			expect(normalizeSubtask(subtask2 as any, 1).id).toBe(0); // number, not string
 		});
 	});
 
@@ -262,10 +262,10 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTask(task);
 
-			expect(result.id).toBe('5');
+			expect(result.id).toBe(5); // number, not string
 			expect(result.dependencies).toEqual([1, 2, '3.1']);
-			expect(result.subtasks[0].id).toBe('1');
-			expect(result.subtasks[0].parentId).toBe('5');
+			expect(result.subtasks[0].id).toBe(1); // number, not string
+			expect(result.subtasks[0].parentId).toBe(5); // number, not string
 			expect(result.subtasks[0].dependencies).toEqual([1, '2.1']);
 		});
 
@@ -283,7 +283,7 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTask(task);
 
-			expect(result.id).toBe('10');
+			expect(result.id).toBe(10); // number, not string
 			expect(result.subtasks).toEqual([]);
 		});
 
@@ -341,7 +341,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeTask(task);
 
 			// Negative IDs should be rejected and fall back to 0
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('rejects zero task ID', () => {
@@ -360,7 +360,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeTask(task);
 
 			// Zero should be rejected and fall back to 0
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('handles undefined/null task ID', () => {
@@ -388,8 +388,8 @@ describe('Task ID Normalizer', () => {
 				subtasks: []
 			};
 
-			expect(normalizeTask(task1).id).toBe('0');
-			expect(normalizeTask(task2).id).toBe('0');
+			expect(normalizeTask(task1).id).toBe(0); // number, not string
+			expect(normalizeTask(task2).id).toBe(0); // number, not string
 		});
 
 		it('handles NaN task ID', () => {
@@ -408,7 +408,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeTask(task);
 
 			// NaN should be rejected and fall back to 0
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('rejects Infinity task ID', () => {
@@ -425,7 +425,7 @@ describe('Task ID Normalizer', () => {
 			};
 
 			const result = normalizeTask(task);
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('handles empty string task ID', () => {
@@ -444,7 +444,7 @@ describe('Task ID Normalizer', () => {
 			const result = normalizeTask(task);
 
 			// Empty string should fall back to 0
-			expect(result.id).toBe('0');
+			expect(result.id).toBe(0); // number, not string
 		});
 
 		it('subtasks preserve parentId when parent has string ID', () => {
@@ -509,9 +509,9 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTaskIds(tasks as Task[]);
 
-			expect(result[0].id).toBe('1');
+			expect(result[0].id).toBe(1); // number, not string
 			expect(result[0].dependencies).toEqual([2]);
-			expect(result[1].id).toBe('2');
+			expect(result[1].id).toBe(2); // number, not string
 			expect(result[1].dependencies).toEqual([1, '3.1']);
 		});
 
@@ -549,9 +549,9 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTaskIds(tasks as Task[]);
 
-			expect(result[0].id).toBe('1');
+			expect(result[0].id).toBe(1); // number, not string
 			expect(result[0].dependencies).toEqual([2, '3.1']);
-			expect(result[1].id).toBe('2');
+			expect(result[1].id).toBe(2); // number, not string
 		});
 	});
 });

@@ -231,10 +231,15 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 
 			const loadedTasks = await storage.loadTasks();
 			expect(loadedTasks).toHaveLength(2);
-			expect(loadedTasks.find((t) => t.id === '1')?.metadata).toEqual({
+			// Use String() for comparison since IDs are normalized to numbers after save/load
+			expect(
+				loadedTasks.find((t) => String(t.id) === '1')?.metadata
+			).toEqual({
 				existing: true
 			});
-			expect(loadedTasks.find((t) => t.id === '2')?.metadata).toEqual({
+			expect(
+				loadedTasks.find((t) => String(t.id) === '2')?.metadata
+			).toEqual({
 				newTask: true
 			});
 		});

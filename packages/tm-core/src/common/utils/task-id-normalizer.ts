@@ -150,23 +150,23 @@ export function normalizeSubtask(
 	const normalizedId = normalizeSubtaskId(subtask.id);
 
 	// Determine the subtask ID with proper validation:
-	// 1. Use normalized ID if successful (positive integer)
-	// 2. Preserve non-empty string IDs (could be API IDs)
+	// 1. Use normalized ID if successful (positive integer) - return as number
+	// 2. Preserve non-empty string IDs (could be API IDs like "HAM-1")
 	// 3. Only accept positive numbers (reject negative/zero)
 	// 4. Fall back to 0 only for truly undefined/null cases
 	let subtaskIdValue: number | string;
 	if (normalizedId !== null) {
-		// Preserve string IDs in storage (even when numeric)
-		subtaskIdValue = String(normalizedId);
+		// Return numeric IDs as numbers for file storage
+		subtaskIdValue = normalizedId;
 	} else if (typeof subtask.id === 'string' && subtask.id.length > 0) {
-		// Preserve non-empty string IDs
+		// Preserve non-empty string IDs (API IDs like "HAM-1")
 		subtaskIdValue = subtask.id;
 	} else if (isValidPositiveInteger(subtask.id)) {
-		// Only accept positive, finite integers
-		subtaskIdValue = String(subtask.id);
+		// Already a valid positive integer, use as-is
+		subtaskIdValue = subtask.id;
 	} else {
 		// Fallback for truly undefined/null only
-		subtaskIdValue = '0';
+		subtaskIdValue = 0;
 	}
 
 	return {
@@ -203,23 +203,23 @@ export function normalizeTask(task: Partial<Task>): Task {
 	const normalizedId = normalizeTaskId(task.id);
 
 	// Determine the task ID with proper validation:
-	// 1. Use normalized ID if successful (positive integer)
+	// 1. Use normalized ID if successful (positive integer) - return as number
 	// 2. Preserve non-empty string IDs (could be API IDs like "HAM-1")
 	// 3. Only accept positive numbers (reject negative/zero)
 	// 4. Fall back to 0 only for truly undefined/null cases
 	let taskIdValue: number | string;
 	if (normalizedId !== null) {
-		// Preserve string IDs in storage (even when numeric)
-		taskIdValue = String(normalizedId);
+		// Return numeric IDs as numbers for file storage
+		taskIdValue = normalizedId;
 	} else if (typeof task.id === 'string' && task.id.length > 0) {
-		// Preserve non-empty string IDs (could be API IDs like "HAM-1")
+		// Preserve non-empty string IDs (API IDs like "HAM-1")
 		taskIdValue = task.id;
 	} else if (isValidPositiveInteger(task.id)) {
-		// Only accept positive, finite integers
-		taskIdValue = String(task.id);
+		// Already a valid positive integer, use as-is
+		taskIdValue = task.id;
 	} else {
 		// Fallback for truly undefined/null only
-		taskIdValue = '0';
+		taskIdValue = 0;
 	}
 
 	return {
