@@ -22,6 +22,7 @@ import type {
 	TaskMetadata,
 	TaskStatus
 } from '../../../../common/types/index.js';
+import { normalizeTaskIds } from '../../../../common/utils/task-id-normalizer.js';
 import { ComplexityReportManager } from '../../../reports/managers/complexity-report-manager.js';
 import { FileOperations } from './file-operations.js';
 import { FormatHandler } from './format-handler.js';
@@ -238,8 +239,8 @@ export class FileStorage implements IStorage {
 			tags: [resolvedTag]
 		};
 
-		// Normalize tasks
-		const normalizedTasks = this.normalizeTaskIds(tasks);
+		// Normalize tasks using shared utility
+		const normalizedTasks = normalizeTaskIds(tasks);
 
 		// Use modifyJson for atomic read-modify-write
 		await this.fileOps.modifyJson(filePath, (existingData: any) => {
@@ -279,36 +280,6 @@ export class FileStorage implements IStorage {
 				};
 			}
 		});
-	}
-
-	/**
-	 * Normalize task IDs - keep Task IDs as numbers, Subtask IDs as numbers
-	 * Dependencies can be either numbers (task refs) or strings (subtask refs like "7.1")
-	 */
-	private normalizeTaskIds(tasks: Task[]): Task[] {
-		return tasks.map((task) => ({
-			...task,
-			id: Number(task.id),
-			// Dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
-			dependencies:
-				task.dependencies?.map((dep) => {
-					const depStr = String(dep);
-					return depStr.includes('.') ? depStr : Number(dep);
-				}) || [],
-			subtasks:
-				task.subtasks?.map((subtask) => ({
-					...subtask,
-					id: Number(subtask.id),
-					// Set parentId to the parent task's ID (subtasks are nested, so we know the parent)
-					parentId: Number(task.id),
-					// Subtask dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
-					dependencies:
-						subtask.dependencies?.map((dep) => {
-							const depStr = String(dep);
-							return depStr.includes('.') ? depStr : Number(dep);
-						}) || []
-				})) || []
-		}));
 	}
 
 	/**

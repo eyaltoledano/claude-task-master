@@ -146,8 +146,9 @@ export class TaskExecutionService {
 		);
 
 		// If the target task is already in-progress, that's fine
+		// Use String() coercion to handle both numeric and string IDs
 		const targetTaskInProgress = inProgressTasks.find(
-			(task) => task.id === targetTaskId
+			(task) => String(task.id) === targetTaskId
 		);
 		if (targetTaskInProgress) {
 			return { canProceed: true, conflictingTasks: [] };
@@ -158,7 +159,7 @@ export class TaskExecutionService {
 		if (isSubtask) {
 			const parentTaskId = targetTaskId.split('.')[0];
 			const parentInProgress = inProgressTasks.find(
-				(task) => task.id === parentTaskId
+				(task) => String(task.id) === parentTaskId
 			);
 			if (parentInProgress) {
 				return { canProceed: true, conflictingTasks: [] }; // Allow subtasks when parent is in-progress
@@ -167,17 +168,18 @@ export class TaskExecutionService {
 
 		// Check if other unrelated tasks are in-progress
 		const conflictingTasks = inProgressTasks.filter((task) => {
-			if (task.id === targetTaskId) return false;
+			const taskIdStr = String(task.id);
+			if (taskIdStr === targetTaskId) return false;
 
 			// If target is a subtask, exclude its parent from conflicts
 			if (isSubtask) {
 				const parentTaskId = targetTaskId.split('.')[0];
-				if (task.id === parentTaskId) return false;
+				if (taskIdStr === parentTaskId) return false;
 			}
 
 			// If the in-progress task is a subtask of our target parent, exclude it
-			if (task.id.toString().includes('.')) {
-				const taskParentId = task.id.toString().split('.')[0];
+			if (taskIdStr.includes('.')) {
+				const taskParentId = taskIdStr.split('.')[0];
 				if (isSubtask && taskParentId === targetTaskId.split('.')[0]) {
 					return false;
 				}

@@ -57,6 +57,17 @@ export {
 // Export path construction utilities
 export { getProjectPaths } from './path-helpers.js';
 
+// Export task ID normalization utilities
+export {
+	normalizeTaskId,
+	normalizeSubtaskId,
+	normalizeDependency,
+	normalizeDependencies,
+	normalizeSubtask,
+	normalizeTask,
+	normalizeTaskIds
+} from './task-id-normalizer.js';
+
 // Additional utility exports
 
 /**

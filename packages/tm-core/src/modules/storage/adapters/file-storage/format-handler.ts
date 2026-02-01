@@ -3,6 +3,7 @@
  */
 
 import type { Task, TaskMetadata } from '../../../../common/types/index.js';
+import { normalizeTaskIds } from '../../../../common/utils/task-id-normalizer.js';
 
 export interface FileStorageData {
 	tasks: Task[];
@@ -168,8 +169,8 @@ export class FormatHandler {
 	): any {
 		const resolvedTag = tag || 'master';
 
-		// Normalize task IDs to strings
-		const normalizedTasks = this.normalizeTasks(tasks);
+		// Normalize task IDs using shared utility
+		const normalizedTasks = normalizeTaskIds(tasks);
 
 		// Check if existing file uses legacy format
 		if (existingData && this.detectFormat(existingData) === 'legacy') {
@@ -214,36 +215,6 @@ export class FormatHandler {
 				tags: tag ? [tag] : []
 			}
 		};
-	}
-
-	/**
-	 * Normalize task IDs - keep Task IDs as numbers, Subtask IDs as numbers
-	 * Dependencies can be either numbers (task refs) or strings (subtask refs like "7.1")
-	 */
-	private normalizeTasks(tasks: Task[]): Task[] {
-		return tasks.map((task) => ({
-			...task,
-			id: Number(task.id), // Task IDs are numbers
-			// Dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
-			dependencies:
-				task.dependencies?.map((dep) => {
-					const depStr = String(dep);
-					return depStr.includes('.') ? depStr : Number(dep);
-				}) || [],
-			subtasks:
-				task.subtasks?.map((subtask) => ({
-					...subtask,
-					id: Number(subtask.id), // Subtask IDs are numbers
-					// Set parentId to the parent task's ID (subtasks are nested, so we know the parent)
-					parentId: Number(task.id),
-					// Subtask dependencies: keep as string if it contains "." (subtask ref), otherwise convert to number
-					dependencies:
-						subtask.dependencies?.map((dep) => {
-							const depStr = String(dep);
-							return depStr.includes('.') ? depStr : Number(dep);
-						}) || []
-				})) || []
-		}));
 	}
 
 	/**

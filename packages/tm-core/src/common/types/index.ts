@@ -291,6 +291,15 @@ export function isTaskComplexity(value: unknown): value is TaskComplexity {
 }
 
 /**
+ * Type guard to check if a value is a valid task ID type (number or string)
+ * Note: This checks the TYPE of the ID, not the format. For format validation,
+ * use isValidTaskIdFormat from tasks/validation/task-id.ts
+ */
+export function isValidTaskIdType(value: unknown): value is number | string {
+	return typeof value === 'number' || typeof value === 'string';
+}
+
+/**
  * Type guard to check if an object is a Task
  */
 export function isTask(obj: unknown): obj is Task {
@@ -298,7 +307,7 @@ export function isTask(obj: unknown): obj is Task {
 	const task = obj as Record<string, unknown>;
 
 	return (
-		typeof task.id === 'string' &&
+		isValidTaskIdType(task.id) &&
 		typeof task.title === 'string' &&
 		typeof task.description === 'string' &&
 		isTaskStatus(task.status) &&
@@ -318,8 +327,8 @@ export function isSubtask(obj: unknown): obj is Subtask {
 	const subtask = obj as Record<string, unknown>;
 
 	return (
-		typeof subtask.id === 'number' &&
-		typeof subtask.parentId === 'string' &&
+		isValidTaskIdType(subtask.id) &&
+		isValidTaskIdType(subtask.parentId) &&
 		typeof subtask.title === 'string' &&
 		typeof subtask.description === 'string' &&
 		isTaskStatus(subtask.status) &&
