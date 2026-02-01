@@ -129,7 +129,7 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeSubtask(subtask as any, 5);
 
-			expect(result.id).toBe(1);
+			expect(result.id).toBe('1');
 			expect(result.parentId).toBe(5);
 			expect(result.dependencies).toEqual([2, '3.1']);
 		});
@@ -151,6 +151,86 @@ describe('Task ID Normalizer', () => {
 			// Falls back to original value when normalization fails
 			expect(result.id).toBe('abc');
 			expect(result.parentId).toBe(1);
+		});
+
+		it('rejects negative subtask IDs (does not bypass validation)', () => {
+			const subtask = {
+				id: -5,
+				title: 'Test',
+				description: '',
+				status: 'pending' as const,
+				priority: 'low' as const,
+				dependencies: [],
+				details: '',
+				testStrategy: ''
+			};
+
+			const result = normalizeSubtask(subtask as any, 1);
+
+			// Negative IDs should be rejected and fall back to 0
+			expect(result.id).toBe('0');
+			expect(result.parentId).toBe(1);
+		});
+
+		it('rejects Infinity subtask ID', () => {
+			const subtask = {
+				id: Infinity,
+				title: 'Test',
+				description: '',
+				status: 'pending' as const,
+				priority: 'low' as const,
+				dependencies: [],
+				details: '',
+				testStrategy: ''
+			};
+
+			const result = normalizeSubtask(subtask as any, 1);
+			expect(result.id).toBe('0');
+		});
+
+		it('rejects zero subtask ID', () => {
+			const subtask = {
+				id: 0,
+				title: 'Test',
+				description: '',
+				status: 'pending' as const,
+				priority: 'low' as const,
+				dependencies: [],
+				details: '',
+				testStrategy: ''
+			};
+
+			const result = normalizeSubtask(subtask as any, 1);
+
+			// Zero should be rejected and fall back to 0 (already 0)
+			expect(result.id).toBe('0');
+		});
+
+		it('handles undefined/null subtask ID', () => {
+			const subtask1 = {
+				id: undefined,
+				title: 'Test',
+				description: '',
+				status: 'pending' as const,
+				priority: 'low' as const,
+				dependencies: [],
+				details: '',
+				testStrategy: ''
+			};
+
+			const subtask2 = {
+				id: null,
+				title: 'Test',
+				description: '',
+				status: 'pending' as const,
+				priority: 'low' as const,
+				dependencies: [],
+				details: '',
+				testStrategy: ''
+			};
+
+			expect(normalizeSubtask(subtask1 as any, 1).id).toBe('0');
+			expect(normalizeSubtask(subtask2 as any, 1).id).toBe('0');
 		});
 	});
 
@@ -182,10 +262,10 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTask(task);
 
-			expect(result.id).toBe(5);
+			expect(result.id).toBe('5');
 			expect(result.dependencies).toEqual([1, 2, '3.1']);
-			expect(result.subtasks[0].id).toBe(1);
-			expect(result.subtasks[0].parentId).toBe(5);
+			expect(result.subtasks[0].id).toBe('1');
+			expect(result.subtasks[0].parentId).toBe('5');
 			expect(result.subtasks[0].dependencies).toEqual([1, '2.1']);
 		});
 
@@ -203,8 +283,200 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTask(task);
 
-			expect(result.id).toBe(10);
+			expect(result.id).toBe('10');
 			expect(result.subtasks).toEqual([]);
+		});
+
+		it('preserves non-numeric string IDs (API IDs like HAM-1)', () => {
+			const task: Partial<Task> = {
+				id: 'HAM-123',
+				title: 'API Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// Should preserve the API ID, not coerce to 0
+			expect(result.id).toBe('HAM-123');
+		});
+
+		it('preserves other non-numeric string IDs', () => {
+			const task: Partial<Task> = {
+				id: 'abc',
+				title: 'Test Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// Should preserve the string ID, not coerce to 0
+			expect(result.id).toBe('abc');
+		});
+
+		it('rejects negative task IDs (does not bypass validation)', () => {
+			const task: Partial<Task> = {
+				id: -5,
+				title: 'Negative ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// Negative IDs should be rejected and fall back to 0
+			expect(result.id).toBe('0');
+		});
+
+		it('rejects zero task ID', () => {
+			const task: Partial<Task> = {
+				id: 0,
+				title: 'Zero ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// Zero should be rejected and fall back to 0
+			expect(result.id).toBe('0');
+		});
+
+		it('handles undefined/null task ID', () => {
+			const task1: Partial<Task> = {
+				id: undefined,
+				title: 'Undefined ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const task2: Partial<Task> = {
+				id: null as any,
+				title: 'Null ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			expect(normalizeTask(task1).id).toBe('0');
+			expect(normalizeTask(task2).id).toBe('0');
+		});
+
+		it('handles NaN task ID', () => {
+			const task: Partial<Task> = {
+				id: NaN as any,
+				title: 'NaN ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// NaN should be rejected and fall back to 0
+			expect(result.id).toBe('0');
+		});
+
+		it('rejects Infinity task ID', () => {
+			const task: Partial<Task> = {
+				id: Infinity as any,
+				title: 'Infinity ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+			expect(result.id).toBe('0');
+		});
+
+		it('handles empty string task ID', () => {
+			const task: Partial<Task> = {
+				id: '',
+				title: 'Empty ID Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
+			};
+
+			const result = normalizeTask(task);
+
+			// Empty string should fall back to 0
+			expect(result.id).toBe('0');
+		});
+
+		it('subtasks preserve parentId when parent has string ID', () => {
+			const task: Partial<Task> = {
+				id: 'HAM-123',
+				title: 'API Task',
+				description: '',
+				status: 'pending',
+				priority: 'medium',
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: [
+					{
+						id: '1',
+						parentId: 'HAM-123',
+						title: 'Subtask 1',
+						description: '',
+						status: 'pending',
+						priority: 'medium',
+						dependencies: [],
+						details: '',
+						testStrategy: ''
+					} as Subtask
+				]
+			};
+
+			const result = normalizeTask(task);
+
+			// Parent has string ID, subtask parentId should preserve it
+			expect(result.id).toBe('HAM-123');
+			expect(result.subtasks[0].parentId).toBe('HAM-123');
 		});
 	});
 
@@ -237,9 +509,9 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTaskIds(tasks as Task[]);
 
-			expect(result[0].id).toBe(1);
+			expect(result[0].id).toBe('1');
 			expect(result[0].dependencies).toEqual([2]);
-			expect(result[1].id).toBe(2);
+			expect(result[1].id).toBe('2');
 			expect(result[1].dependencies).toEqual([1, '3.1']);
 		});
 
@@ -277,9 +549,9 @@ describe('Task ID Normalizer', () => {
 
 			const result = normalizeTaskIds(tasks as Task[]);
 
-			expect(result[0].id).toBe(1);
+			expect(result[0].id).toBe('1');
 			expect(result[0].dependencies).toEqual([2, '3.1']);
-			expect(result[1].id).toBe(2);
+			expect(result[1].id).toBe('2');
 		});
 	});
 });

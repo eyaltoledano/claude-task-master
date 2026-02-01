@@ -145,16 +145,51 @@ export function normalizeDependencies(
  */
 export function normalizeSubtask(
 	subtask: Partial<Subtask>,
-	parentTaskId: number
+	parentTaskId: number | string
 ): Subtask {
 	const normalizedId = normalizeSubtaskId(subtask.id);
 
+	// Determine the subtask ID with proper validation:
+	// 1. Use normalized ID if successful (positive integer)
+	// 2. Preserve non-empty string IDs (could be API IDs)
+	// 3. Only accept positive numbers (reject negative/zero)
+	// 4. Fall back to 0 only for truly undefined/null cases
+	let subtaskIdValue: number | string;
+	if (normalizedId !== null) {
+		// Preserve string IDs in storage (even when numeric)
+		subtaskIdValue = String(normalizedId);
+	} else if (typeof subtask.id === 'string' && subtask.id.length > 0) {
+		// Preserve non-empty string IDs
+		subtaskIdValue = subtask.id;
+	} else if (isValidPositiveInteger(subtask.id)) {
+		// Only accept positive, finite integers
+		subtaskIdValue = String(subtask.id);
+	} else {
+		// Fallback for truly undefined/null only
+		subtaskIdValue = '0';
+	}
+
 	return {
 		...subtask,
-		id: normalizedId ?? subtask.id ?? 0, // Use original if normalization fails
+		id: subtaskIdValue,
 		parentId: parentTaskId,
 		dependencies: normalizeDependencies(subtask.dependencies)
 	} as Subtask;
+}
+
+/**
+ * Checks if a value is a valid positive, finite integer (not NaN, not ±Infinity, not zero, not negative).
+ *
+ * @param value - The value to check
+ * @returns True if value is a positive, finite integer
+ */
+function isValidPositiveInteger(value: unknown): value is number {
+	return (
+		typeof value === 'number' &&
+		Number.isFinite(value) &&
+		Number.isInteger(value) &&
+		value > 0
+	);
 }
 
 /**
@@ -166,14 +201,33 @@ export function normalizeSubtask(
  */
 export function normalizeTask(task: Partial<Task>): Task {
 	const normalizedId = normalizeTaskId(task.id);
-	const taskIdNum = normalizedId ?? (typeof task.id === 'number' ? task.id : 0);
+
+	// Determine the task ID with proper validation:
+	// 1. Use normalized ID if successful (positive integer)
+	// 2. Preserve non-empty string IDs (could be API IDs like "HAM-1")
+	// 3. Only accept positive numbers (reject negative/zero)
+	// 4. Fall back to 0 only for truly undefined/null cases
+	let taskIdValue: number | string;
+	if (normalizedId !== null) {
+		// Preserve string IDs in storage (even when numeric)
+		taskIdValue = String(normalizedId);
+	} else if (typeof task.id === 'string' && task.id.length > 0) {
+		// Preserve non-empty string IDs (could be API IDs like "HAM-1")
+		taskIdValue = task.id;
+	} else if (isValidPositiveInteger(task.id)) {
+		// Only accept positive, finite integers
+		taskIdValue = String(task.id);
+	} else {
+		// Fallback for truly undefined/null only
+		taskIdValue = '0';
+	}
 
 	return {
 		...task,
-		id: taskIdNum,
+		id: taskIdValue,
 		dependencies: normalizeDependencies(task.dependencies),
 		subtasks: (task.subtasks ?? []).map((subtask) =>
-			normalizeSubtask(subtask, taskIdNum)
+			normalizeSubtask(subtask, taskIdValue)
 		)
 	} as Task;
 }

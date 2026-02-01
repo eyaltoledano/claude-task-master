@@ -537,6 +537,27 @@ function hasTaggedStructure(data) {
 }
 
 /**
+ * Normalizes a dependency array - converts task refs to numbers, keeps subtask refs as strings.
+ * This is a helper function to eliminate duplication in normalizeTaskIds.
+ *
+ * @param {Array} dependencies - Array of dependency values
+ * @returns {Array} Normalized dependencies with task refs as numbers and subtask refs as strings
+ */
+function normalizeDependencyArray(dependencies) {
+	if (!Array.isArray(dependencies)) return dependencies;
+	return dependencies.map((dep) => {
+		const depStr = String(dep);
+		// Keep subtask references as strings (e.g., "7.1", "1.2")
+		if (depStr.includes('.')) {
+			return depStr;
+		}
+		// Convert task references to numbers
+		const parsedDep = parseInt(depStr, 10);
+		return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
+	});
+}
+
+/**
  * Normalizes task IDs to ensure they are numbers instead of strings
  * @param {Array} tasks - Array of tasks to normalize
  */
@@ -552,18 +573,9 @@ function normalizeTaskIds(tasks) {
 			}
 		}
 
-		// Convert dependencies: keep as string if it's a subtask ref (contains "."), otherwise convert to number
+		// Convert dependencies using helper function
 		if (Array.isArray(task.dependencies)) {
-			task.dependencies = task.dependencies.map((dep) => {
-				const depStr = String(dep);
-				// Keep subtask references as strings (e.g., "7.1", "1.2")
-				if (depStr.includes('.')) {
-					return depStr;
-				}
-				// Convert task references to numbers
-				const parsedDep = parseInt(depStr, 10);
-				return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
-			});
+			task.dependencies = normalizeDependencyArray(task.dependencies);
 		}
 
 		// Convert subtask IDs to numbers with validation
@@ -590,18 +602,9 @@ function normalizeTaskIds(tasks) {
 					subtask.parentId = parsedTaskId;
 				}
 
-				// Convert subtask dependencies: keep as string if it's a subtask ref (contains "."), otherwise convert to number
+				// Convert subtask dependencies using helper function
 				if (Array.isArray(subtask.dependencies)) {
-					subtask.dependencies = subtask.dependencies.map((dep) => {
-						const depStr = String(dep);
-						// Keep subtask references as strings (e.g., "7.1", "1.2")
-						if (depStr.includes('.')) {
-							return depStr;
-						}
-						// Convert task references to numbers
-						const parsedDep = parseInt(depStr, 10);
-						return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
-					});
+					subtask.dependencies = normalizeDependencyArray(subtask.dependencies);
 				}
 			});
 		}
