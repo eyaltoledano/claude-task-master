@@ -142,11 +142,17 @@ const INTENTIONALLY_UNDOCUMENTED = [
 /**
  * Commands documented in help that map to different CLI command names
  * Format: { helpName: cliName }
+ *
+ * TEMPORARY DURING TAG MIGRATION: This mapping exempts legacy tag commands from help
+ * validation while they're being deprecated in favor of the new 'tags' subcommand structure.
+ * Legacy commands to be removed: add-tag, use-tag, delete-tag, rename-tag, copy-tag
+ * TODO: Remove these mappings once legacy commands are fully deprecated and removed from
+ * scripts/modules/commands.js (tracked in issue #1588)
  */
 const COMMAND_NAME_MAPPINGS: Record<string, string> = {
 	// Tags subcommands in help map to legacy CLI commands
 	tags: 'tags', // tags list
-	// The following are legacy commands that may still exist
+	// The following are legacy commands being deprecated (see note above)
 	'add-tag': 'add-tag',
 	'use-tag': 'use-tag',
 	'delete-tag': 'delete-tag',
