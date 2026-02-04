@@ -332,26 +332,30 @@ describe('Help Documentation Sync', () => {
 				/Tag Management.*?(?=\n\s*\n\s*[A-Z]|\n\s*\])/s
 			);
 
-			if (tagSectionMatch) {
-				const tagSection = tagSectionMatch[0];
-				const foundDeprecated = deprecatedCommands.filter((pattern) =>
-					pattern.test(tagSection)
+			if (!tagSectionMatch) {
+				console.warn(
+					'Could not isolate Tag Management section - checking entire help content instead'
 				);
-
-				if (foundDeprecated.length > 0) {
-					console.log(
-						'\nDeprecated tag commands found in Tag Management section.'
-					);
-					console.log(
-						'These should be replaced with unified tags subcommands.\n'
-					);
-				}
-
-				expect(
-					foundDeprecated.length,
-					'Help should use unified tags subcommands, not deprecated standalone commands'
-				).toBe(0);
 			}
+
+			const sectionToCheck = tagSectionMatch ? tagSectionMatch[0] : helpContent;
+			const foundDeprecated = deprecatedCommands.filter((pattern) =>
+				pattern.test(sectionToCheck)
+			);
+
+			if (foundDeprecated.length > 0) {
+				console.log(
+					'\nDeprecated tag commands found in Tag Management section.'
+				);
+				console.log(
+					'These should be replaced with unified tags subcommands.\n'
+				);
+			}
+
+			expect(
+				foundDeprecated.length,
+				'Help should use unified tags subcommands, not deprecated standalone commands'
+			).toBe(0);
 		});
 
 		it('should document list command options', () => {
