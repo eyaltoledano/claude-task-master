@@ -1,5 +1,5 @@
 ---
-"@tm/cli": patch
+"task-master-ai": patch
 ---
 
 Enhanced help documentation sync test to verify subcommand structure and improve test maintainability
