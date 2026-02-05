@@ -238,7 +238,9 @@ export class SqliteDatabase {
 	 * @param destPath - Destination path for the backup
 	 */
 	backup(destPath: string): void {
-		this.db.exec(`VACUUM INTO '${destPath}'`);
+		// Escape single quotes to prevent SQL injection
+		const escapedPath = destPath.replace(/'/g, "''");
+		this.db.exec(`VACUUM INTO '${escapedPath}'`);
 	}
 }
 

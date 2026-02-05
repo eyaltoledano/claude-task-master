@@ -26,6 +26,8 @@ export interface JsonlTask extends Task {
 	_ts: string;
 	/** Soft delete marker */
 	_deleted?: boolean;
+	/** Tag/context the task belongs to */
+	_tag?: string;
 }
 
 /**
@@ -336,6 +338,26 @@ export class JsonlSync {
 	}
 
 	/**
+	 * Export all tasks with their tag information to the JSONL file
+	 * This preserves tag context for proper rebuild from JSONL
+	 *
+	 * @param tasksWithTags - Array of {task, tag} pairs
+	 */
+	async exportAllWithTags(
+		tasksWithTags: Array<{ task: Task; tag: string }>
+	): Promise<void> {
+		await this.ensureDirectory();
+
+		const lines = tasksWithTags.map(({ task, tag }) =>
+			JSON.stringify(this.toJsonlTask(task, tag))
+		);
+
+		// Write with trailing newline for POSIX compliance
+		const content = lines.length > 0 ? lines.join('\n') + '\n' : '';
+		await fs.promises.writeFile(this.jsonlPath, content, 'utf-8');
+	}
+
+	/**
 	 * Check if the JSONL file exists
 	 *
 	 * @returns true if the file exists
@@ -437,12 +459,16 @@ export class JsonlSync {
 	/**
 	 * Convert a Task to a JsonlTask with metadata
 	 */
-	private toJsonlTask(task: Task): JsonlTask {
-		return {
+	private toJsonlTask(task: Task, tag?: string): JsonlTask {
+		const jsonlTask: JsonlTask = {
 			...task,
 			_v: this.schemaVersion,
 			_ts: new Date().toISOString()
 		};
+		if (tag) {
+			jsonlTask._tag = tag;
+		}
+		return jsonlTask;
 	}
 
 	/**

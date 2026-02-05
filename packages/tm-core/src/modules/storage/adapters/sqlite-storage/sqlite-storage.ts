@@ -132,15 +132,15 @@ export class SqliteStorage implements IStorage {
 			return;
 		}
 
-		// Group tasks by tag (using 'master' as default)
+		// Group tasks by tag (using stored _tag or 'master' as default)
 		const tasksByTag = new Map<string, Task[]>();
 
 		for (const jsonlTask of tasks) {
 			// Remove JSONL metadata fields before saving
-			const { _v, _ts, _deleted, ...task } = jsonlTask;
+			const { _v, _ts, _deleted, _tag, ...task } = jsonlTask;
 
-			// Determine tag (default to 'master')
-			const tag = 'master';
+			// Use stored tag or default to 'master'
+			const tag = _tag || 'master';
 
 			if (!tasksByTag.has(tag)) {
 				tasksByTag.set(tag, []);
@@ -784,25 +784,30 @@ export class SqliteStorage implements IStorage {
 
 	/**
 	 * Sync tasks for a specific tag to JSONL
+	 * Uses exportAll to ensure deletions are reflected (full overwrite)
 	 */
-	private async syncToJsonl(tag: string): Promise<void> {
-		const tasks = loadAllTasks(this.getDb().getDb(), tag);
-		await this.jsonlSync.writeTasks(tasks);
+	private async syncToJsonl(_tag: string): Promise<void> {
+		// Always sync ALL tasks from ALL tags to ensure deletions are reflected
+		// Using exportAll does a full overwrite, so deleted tasks won't resurrect
+		await this.syncAllToJsonl();
 	}
 
 	/**
 	 * Sync all tasks from all tags to JSONL
+	 * Preserves tag information for proper rebuild
 	 */
 	private async syncAllToJsonl(): Promise<void> {
 		const tags = getAllTags(this.getDb().getDb());
-		const allTasks: Task[] = [];
+		const tasksWithTags: Array<{ task: Task; tag: string }> = [];
 
 		for (const tag of tags) {
 			const tasks = loadAllTasks(this.getDb().getDb(), tag);
-			allTasks.push(...tasks);
+			for (const task of tasks) {
+				tasksWithTags.push({ task, tag });
+			}
 		}
 
-		await this.jsonlSync.exportAll(allTasks);
+		await this.jsonlSync.exportAllWithTags(tasksWithTags);
 	}
 
 	/**

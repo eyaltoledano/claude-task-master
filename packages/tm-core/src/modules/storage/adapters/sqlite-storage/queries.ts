@@ -713,8 +713,9 @@ export function subtaskRowToSubtask(row: SubtaskRow, dependencies: number[]): Su
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		assignee: row.assignee ?? undefined,
+		// Split on newlines to reverse the join('\n') done during write
 		acceptanceCriteria: row.acceptance_criteria
-			? [row.acceptance_criteria]
+			? row.acceptance_criteria.split('\n').filter((s: string) => s.length > 0)
 			: undefined
 	};
 }
