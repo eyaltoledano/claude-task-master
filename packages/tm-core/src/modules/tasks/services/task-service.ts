@@ -489,7 +489,7 @@ export class TaskService {
 	 * Get current storage type (resolved at runtime)
 	 * Returns the actual storage type being used, never 'auto'
 	 */
-	getStorageType(): 'file' | 'api' {
+	getStorageType(): 'file' | 'sqlite' | 'api' {
 		// Storage interface guarantees this method exists
 		return this.storage.getStorageType();
 	}

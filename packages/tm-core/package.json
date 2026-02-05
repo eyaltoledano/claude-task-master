@@ -34,6 +34,7 @@
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.57.4",
+		"libsql": "^0.5.0",
 		"date-fns": "^4.1.0",
 		"fs-extra": "^11.3.2",
 		"proper-lockfile": "^4.1.2",
@@ -42,7 +43,7 @@
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
-		"@types/fs-extra": "^11.0.4",
+				"@types/fs-extra": "^11.0.4",
 		"@types/proper-lockfile": "^4.1.4",
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^4.0.10",

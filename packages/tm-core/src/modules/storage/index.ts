@@ -8,6 +8,14 @@ export { FileStorage } from './adapters/file-storage/index.js';
 export { ApiStorage, type ApiStorageConfig } from './adapters/api-storage.js';
 export { StorageFactory } from './services/storage-factory.js';
 
+// Export storage migration service
+export {
+	StorageMigration,
+	type MigrationResult,
+	type MigrationOptions,
+	type ValidationResult
+} from './services/storage-migration.js';
+
 // Export activity logger
 export {
 	logActivity,

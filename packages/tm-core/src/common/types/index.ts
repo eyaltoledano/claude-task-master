@@ -4,11 +4,12 @@
 
 /**
  * Storage type options
- * - 'file': Local file system storage
+ * - 'file': Local file system storage (tasks.json)
+ * - 'sqlite': SQLite database with JSONL sync for git
  * - 'api': Remote API storage (Hamster integration)
  * - 'auto': Automatically detect based on auth status
  */
-export type StorageType = 'file' | 'api' | 'auto';
+export type StorageType = 'file' | 'sqlite' | 'api' | 'auto';
 
 // ============================================================================
 // Type Literals

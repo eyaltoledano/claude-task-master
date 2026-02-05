@@ -424,7 +424,7 @@ export class TasksDomain {
 	/**
 	 * Get the resolved storage type (actual type being used at runtime)
 	 */
-	getStorageType(): 'file' | 'api' {
+	getStorageType(): 'file' | 'sqlite' | 'api' {
 		return this.taskService.getStorageType();
 	}
 
