@@ -49,7 +49,8 @@ import {
 	registerGenerateTool,
 	registerGetTaskTool,
 	registerGetTasksTool,
-	registerSetTaskStatusTool
+	registerSetTaskStatusTool,
+	registerStorageConfigTool
 } from '@tm/mcp';
 
 /**
@@ -100,7 +101,8 @@ export const toolRegistry = {
 	autopilot_commit: registerAutopilotCommitTool,
 	autopilot_finalize: registerAutopilotFinalizeTool,
 	autopilot_abort: registerAutopilotAbortTool,
-	generate: registerGenerateTool
+	generate: registerGenerateTool,
+	storage_config: registerStorageConfigTool
 };
 
 /**
