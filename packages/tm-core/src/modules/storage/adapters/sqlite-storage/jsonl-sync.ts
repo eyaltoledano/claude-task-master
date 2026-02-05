@@ -38,6 +38,8 @@ export interface JsonlStats {
 	size: number;
 	/** Number of lines (tasks) in the file */
 	lineCount: number;
+	/** Last modified time */
+	modifiedTime: Date;
 }
 
 /**
@@ -385,7 +387,8 @@ export class JsonlSync {
 
 			return {
 				size: stat.size,
-				lineCount
+				lineCount,
+				modifiedTime: stat.mtime
 			};
 		} catch {
 			return null;
@@ -414,6 +417,8 @@ export class JsonlSync {
 			crlfDelay: Infinity
 		});
 
+		let found: JsonlTask | null = null;
+
 		try {
 			for await (const line of rl) {
 				const trimmedLine = line.trim();
@@ -424,8 +429,8 @@ export class JsonlSync {
 				try {
 					const task = JSON.parse(trimmedLine) as JsonlTask;
 					if (task.id === taskId && !task._deleted) {
-						rl.close();
-						return task;
+						found = task;
+						break; // Exit loop, finally will close rl
 					}
 				} catch {
 					// Continue to next line
@@ -435,7 +440,7 @@ export class JsonlSync {
 			rl.close();
 		}
 
-		return null;
+		return found;
 	}
 
 	/**

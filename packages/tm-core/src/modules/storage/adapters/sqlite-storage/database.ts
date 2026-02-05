@@ -200,11 +200,11 @@ export class SqliteDatabase {
 			return 0;
 		}
 
-		const result = this.queryOne<{ page_count: number; page_size: number }>(
+		const result = this.queryOne<{ size: number }>(
 			"SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
 		);
 
-		return result ? (result as any).size : 0;
+		return result?.size ?? 0;
 	}
 
 	/**

@@ -706,8 +706,8 @@ export class StorageMigration {
 	async roundTripTest(
 		sourceType: 'file' | 'sqlite'
 	): Promise<ValidationResult> {
-		let source: IStorage;
-		let target: IStorage;
+		let source: IStorage | undefined;
+		let target: IStorage | undefined;
 
 		try {
 			if (sourceType === 'file') {
@@ -733,9 +733,6 @@ export class StorageMigration {
 			// Validate
 			const result = await this.validate(source, target, tags);
 
-			await source.close();
-			await target.close();
-
 			return result;
 		} catch (error) {
 			return {
@@ -746,6 +743,10 @@ export class StorageMigration {
 				targetSubtaskCount: 0,
 				discrepancies: [error instanceof Error ? error.message : String(error)]
 			};
+		} finally {
+			// Always close storage connections to prevent resource leaks
+			await source?.close();
+			await target?.close();
 		}
 	}
 

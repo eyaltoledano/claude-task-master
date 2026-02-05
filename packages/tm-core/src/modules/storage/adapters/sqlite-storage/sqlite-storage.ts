@@ -660,11 +660,9 @@ export class SqliteStorage implements IStorage {
 		// Get database size
 		const storageSize = this.getDb().getSize();
 
-		// Get last modified from database or JSONL
+		// Get last modified from JSONL file stats or fall back to now
 		const jsonlStats = this.jsonlSync.getStats();
-		const lastModified = jsonlStats
-			? new Date().toISOString()
-			: new Date().toISOString();
+		const lastModified = jsonlStats?.modifiedTime?.toISOString() ?? new Date().toISOString();
 
 		return {
 			totalTasks,
