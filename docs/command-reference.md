@@ -453,3 +453,52 @@ task-master research "Best practices for this implementation" --id=15,16 --files
   - **Save to file**: Preserve entire conversation for later reference if needed
   - **Continue exploring**: Ask more follow-up questions to dig deeper
 - **Automatic file naming** with timestamps and query-based slugs when saving conversations
+
+## Storage Management
+
+Task Master supports multiple storage backends. The default is JSON file storage, but SQLite is available for better performance and queryability.
+
+```bash
+# Show current storage backend and status
+task-master storage status
+
+# Switch to SQLite storage (migrates existing data)
+task-master storage switch sqlite
+
+# Switch back to file storage
+task-master storage switch file
+
+# Switch without migrating data
+task-master storage switch sqlite --no-migrate
+
+# Switch without creating a backup
+task-master storage switch sqlite --no-backup
+
+# Manually migrate data between backends
+task-master storage migrate --from=file --to=sqlite
+
+# Skip validation after migration
+task-master storage migrate --from=file --to=sqlite --no-validate
+
+# Rebuild SQLite database from JSONL file
+# (useful if database gets corrupted or deleted)
+task-master storage rebuild
+```
+
+**Storage Backends:**
+
+- **`file`** (default): JSON file storage in `.taskmaster/tasks/tasks.json`
+  - Simple, human-readable
+  - Good for small projects
+  - Direct git diffs on task changes
+
+- **`sqlite`**: SQLite database with JSONL sync
+  - Better performance for large task sets
+  - Indexed queries for faster lookups
+  - Self-healing: rebuilds from JSONL if database is missing
+  - JSONL file provides git-friendly persistence
+  - WAL mode for concurrent access
+
+**Self-Healing:**
+
+When using SQLite storage, Task Master maintains a JSONL file alongside the database. If the SQLite database is deleted or corrupted, it automatically rebuilds from the JSONL file on next access. You can also manually trigger this with `task-master storage rebuild`.
