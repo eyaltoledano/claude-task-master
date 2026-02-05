@@ -55,11 +55,13 @@ const DEFAULT_TASKS_DIR = '.taskmaster/tasks';
  * Uses SQLite for fast local operations and syncs to JSONL for git compatibility.
  */
 export class SqliteStorage implements IStorage {
-	private db: SqliteDatabase;
+	private db: SqliteDatabase | null = null;
 	private jsonlSync: JsonlSync;
 	private projectPath: string;
 	private dbPath: string;
 	private jsonlPath: string;
+	private config?: Partial<SqliteStorageConfig>;
+	private initialized = false;
 
 	/**
 	 * Create a new SqliteStorage instance
@@ -68,17 +70,25 @@ export class SqliteStorage implements IStorage {
 	 */
 	constructor(projectPath: string, config?: Partial<SqliteStorageConfig>) {
 		this.projectPath = projectPath;
+		this.config = config;
 
 		// Determine paths
 		const tasksDir = path.join(projectPath, DEFAULT_TASKS_DIR);
 		this.dbPath = config?.dbPath || path.join(tasksDir, DEFAULT_DB_FILENAME);
 		this.jsonlPath = path.join(tasksDir, DEFAULT_JSONL_FILENAME);
 
-		// Initialize database connection
-		this.db = new SqliteDatabase(this.dbPath, config);
-
-		// Initialize JSONL sync
+		// Initialize JSONL sync (doesn't require directory to exist yet)
 		this.jsonlSync = new JsonlSync(this.jsonlPath);
+	}
+
+	/**
+	 * Get the database instance, throwing if not initialized
+	 */
+	private getDb(): SqliteDatabase {
+		if (!this.db || !this.initialized) {
+			throw new Error('SqliteStorage not initialized. Call initialize() first.');
+		}
+		return this.db;
 	}
 
 	/**
@@ -86,6 +96,10 @@ export class SqliteStorage implements IStorage {
 	 * Creates necessary directories and schema, rebuilds from JSONL if needed
 	 */
 	async initialize(): Promise<void> {
+		if (this.initialized) {
+			return; // Already initialized
+		}
+
 		// Ensure tasks directory exists
 		const tasksDir = path.dirname(this.dbPath);
 		await fs.promises.mkdir(tasksDir, { recursive: true });
@@ -94,8 +108,13 @@ export class SqliteStorage implements IStorage {
 		const dbExists = fs.existsSync(this.dbPath);
 		const jsonlExists = this.jsonlSync.exists();
 
+		// Create database connection now that directory exists
+		this.db = new SqliteDatabase(this.dbPath, this.config);
+
 		// Initialize database schema
 		this.db.initialize();
+
+		this.initialized = true;
 
 		// If database was just created but JSONL exists, rebuild from JSONL
 		if (!dbExists && jsonlExists) {
@@ -130,10 +149,10 @@ export class SqliteStorage implements IStorage {
 		}
 
 		// Save all tasks in a transaction
-		this.db.transaction(() => {
+		this.getDb().transaction(() => {
 			for (const [tag, tasks] of tasksByTag) {
 				for (const task of tasks) {
-					saveCompleteTask(this.db.getDb(), task, tag);
+					saveCompleteTask(this.getDb().getDb(), task, tag);
 				}
 			}
 		});
@@ -143,7 +162,11 @@ export class SqliteStorage implements IStorage {
 	 * Close the database connection
 	 */
 	async close(): Promise<void> {
-		this.db.close();
+		if (this.db) {
+			this.db.close();
+			this.db = null;
+			this.initialized = false;
+		}
 	}
 
 	/**
@@ -165,7 +188,7 @@ export class SqliteStorage implements IStorage {
 	 */
 	async loadTasks(tag?: string, options?: LoadTasksOptions): Promise<Task[]> {
 		const resolvedTag = tag || 'master';
-		let tasks = loadAllTasks(this.db.getDb(), resolvedTag);
+		let tasks = loadAllTasks(this.getDb().getDb(), resolvedTag);
 
 		// Apply filters if provided
 		if (options) {
@@ -194,7 +217,7 @@ export class SqliteStorage implements IStorage {
 		// Check if this is a subtask (contains a dot)
 		if (taskId.includes('.')) {
 			const [parentId, subtaskId] = taskId.split('.');
-			const parentTask = loadCompleteTask(this.db.getDb(), parentId, resolvedTag);
+			const parentTask = loadCompleteTask(this.getDb().getDb(), parentId, resolvedTag);
 
 			if (!parentTask || !parentTask.subtasks) {
 				return null;
@@ -217,7 +240,7 @@ export class SqliteStorage implements IStorage {
 			} as Task;
 		}
 
-		return loadCompleteTask(this.db.getDb(), taskId, resolvedTag);
+		return loadCompleteTask(this.getDb().getDb(), taskId, resolvedTag);
 	}
 
 	/**
@@ -226,17 +249,17 @@ export class SqliteStorage implements IStorage {
 	async saveTasks(tasks: Task[], tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
-		this.db.transaction(() => {
+		this.getDb().transaction(() => {
 			// Delete all existing tasks for this tag
-			deleteAllTasksForTag(this.db.getDb(), resolvedTag);
+			deleteAllTasksForTag(this.getDb().getDb(), resolvedTag);
 
 			// Insert all new tasks
 			for (const task of tasks) {
-				saveCompleteTask(this.db.getDb(), task, resolvedTag);
+				saveCompleteTask(this.getDb().getDb(), task, resolvedTag);
 			}
 
 			// Update tag metadata
-			setTagMetadata(this.db.getDb(), resolvedTag, {
+			setTagMetadata(this.getDb().getDb(), resolvedTag, {
 				updated_at: new Date().toISOString()
 			});
 		});
@@ -251,12 +274,12 @@ export class SqliteStorage implements IStorage {
 	async appendTasks(tasks: Task[], tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
-		this.db.transaction(() => {
+		this.getDb().transaction(() => {
 			for (const task of tasks) {
-				saveCompleteTask(this.db.getDb(), task, resolvedTag);
+				saveCompleteTask(this.getDb().getDb(), task, resolvedTag);
 			}
 
-			setTagMetadata(this.db.getDb(), resolvedTag, {
+			setTagMetadata(this.getDb().getDb(), resolvedTag, {
 				updated_at: new Date().toISOString()
 			});
 		});
@@ -276,7 +299,7 @@ export class SqliteStorage implements IStorage {
 		const resolvedTag = tag || 'master';
 
 		// Load the existing task
-		const existingTask = loadCompleteTask(this.db.getDb(), taskId, resolvedTag);
+		const existingTask = loadCompleteTask(this.getDb().getDb(), taskId, resolvedTag);
 
 		if (!existingTask) {
 			throw new Error(`Task ${taskId} not found`);
@@ -290,8 +313,8 @@ export class SqliteStorage implements IStorage {
 			updatedAt: new Date().toISOString()
 		};
 
-		this.db.transaction(() => {
-			saveCompleteTask(this.db.getDb(), updatedTask, resolvedTag);
+		this.getDb().transaction(() => {
+			saveCompleteTask(this.getDb().getDb(), updatedTask, resolvedTag);
 		});
 
 		// Sync to JSONL
@@ -350,7 +373,7 @@ export class SqliteStorage implements IStorage {
 		}
 
 		// Get current task status
-		const task = getTask(this.db.getDb(), taskId, resolvedTag);
+		const task = getTask(this.getDb().getDb(), taskId, resolvedTag);
 
 		if (!task) {
 			throw new Error(`Task ${taskId} not found`);
@@ -367,8 +390,8 @@ export class SqliteStorage implements IStorage {
 			};
 		}
 
-		this.db.transaction(() => {
-			updateTaskQuery(this.db.getDb(), taskId, resolvedTag, {
+		this.getDb().transaction(() => {
+			updateTaskQuery(this.getDb().getDb(), taskId, resolvedTag, {
 				status: newStatus
 			});
 		});
@@ -402,7 +425,7 @@ export class SqliteStorage implements IStorage {
 		}
 
 		// Get subtasks to find current status
-		const subtasks = getSubtasks(this.db.getDb(), parentId, tag);
+		const subtasks = getSubtasks(this.getDb().getDb(), parentId, tag);
 		const subtask = subtasks.find((st) => st.id === subId);
 
 		if (!subtask) {
@@ -420,13 +443,13 @@ export class SqliteStorage implements IStorage {
 			};
 		}
 
-		this.db.transaction(() => {
-			updateSubtaskQuery(this.db.getDb(), subId, parentId, tag, {
+		this.getDb().transaction(() => {
+			updateSubtaskQuery(this.getDb().getDb(), subId, parentId, tag, {
 				status: newStatus
 			});
 
 			// Auto-adjust parent status based on subtask statuses
-			const allSubtasks = getSubtasks(this.db.getDb(), parentId, tag);
+			const allSubtasks = getSubtasks(this.getDb().getDb(), parentId, tag);
 			const isDoneLike = (status: string) =>
 				status === 'done' || status === 'completed';
 
@@ -443,7 +466,7 @@ export class SqliteStorage implements IStorage {
 			}
 
 			if (parentNewStatus) {
-				updateTaskQuery(this.db.getDb(), parentId, tag, {
+				updateTaskQuery(this.getDb().getDb(), parentId, tag, {
 					status: parentNewStatus
 				});
 			}
@@ -466,14 +489,14 @@ export class SqliteStorage implements IStorage {
 	async deleteTask(taskId: string, tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
-		const task = getTask(this.db.getDb(), taskId, resolvedTag);
+		const task = getTask(this.getDb().getDb(), taskId, resolvedTag);
 
 		if (!task) {
 			throw new Error(`Task ${taskId} not found`);
 		}
 
-		this.db.transaction(() => {
-			deleteTaskQuery(this.db.getDb(), taskId, resolvedTag);
+		this.getDb().transaction(() => {
+			deleteTaskQuery(this.getDb().getDb(), taskId, resolvedTag);
 		});
 
 		// Sync to JSONL
@@ -485,7 +508,7 @@ export class SqliteStorage implements IStorage {
 	 */
 	async exists(tag?: string): Promise<boolean> {
 		const resolvedTag = tag || 'master';
-		const counts = getTaskCounts(this.db.getDb(), resolvedTag);
+		const counts = getTaskCounts(this.getDb().getDb(), resolvedTag);
 		return counts.total > 0;
 	}
 
@@ -494,8 +517,8 @@ export class SqliteStorage implements IStorage {
 	 */
 	async loadMetadata(tag?: string): Promise<TaskMetadata | null> {
 		const resolvedTag = tag || 'master';
-		const tagMetadata = getTagMetadata(this.db.getDb(), resolvedTag);
-		const counts = getTaskCounts(this.db.getDb(), resolvedTag);
+		const tagMetadata = getTagMetadata(this.getDb().getDb(), resolvedTag);
+		const counts = getTaskCounts(this.getDb().getDb(), resolvedTag);
 
 		return tagMetadataRowToTaskMetadata(tagMetadata, counts.total, counts.completed);
 	}
@@ -506,7 +529,7 @@ export class SqliteStorage implements IStorage {
 	async saveMetadata(metadata: TaskMetadata, tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
-		setTagMetadata(this.db.getDb(), resolvedTag, {
+		setTagMetadata(this.getDb().getDb(), resolvedTag, {
 			description: metadata.description,
 			project_name: metadata.projectName,
 			version: metadata.version
@@ -517,7 +540,7 @@ export class SqliteStorage implements IStorage {
 	 * Get all available tags
 	 */
 	async getAllTags(): Promise<string[]> {
-		return getAllTags(this.db.getDb());
+		return getAllTags(this.getDb().getDb());
 	}
 
 	/**
@@ -528,20 +551,20 @@ export class SqliteStorage implements IStorage {
 		options?: { copyFrom?: string; description?: string }
 	): Promise<void> {
 		// Check if tag already exists
-		const existingTags = getAllTags(this.db.getDb());
+		const existingTags = getAllTags(this.getDb().getDb());
 		if (existingTags.includes(tagName)) {
 			throw new Error(`Tag ${tagName} already exists`);
 		}
 
-		this.db.transaction(() => {
+		this.getDb().transaction(() => {
 			// Create tag metadata
-			setTagMetadata(this.db.getDb(), tagName, {
+			setTagMetadata(this.getDb().getDb(), tagName, {
 				description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`
 			});
 
 			// Copy tasks from source tag if specified
 			if (options?.copyFrom) {
-				copyTasksToTag(this.db.getDb(), options.copyFrom, tagName);
+				copyTasksToTag(this.getDb().getDb(), options.copyFrom, tagName);
 			}
 		});
 
@@ -557,9 +580,9 @@ export class SqliteStorage implements IStorage {
 			throw new Error('Cannot delete the master tag');
 		}
 
-		this.db.transaction(() => {
-			deleteAllTasksForTag(this.db.getDb(), tag);
-			deleteTagMetadata(this.db.getDb(), tag);
+		this.getDb().transaction(() => {
+			deleteAllTasksForTag(this.getDb().getDb(), tag);
+			deleteTagMetadata(this.getDb().getDb(), tag);
 		});
 
 		// Sync to JSONL (will remove tasks for this tag)
@@ -571,19 +594,19 @@ export class SqliteStorage implements IStorage {
 	 */
 	async renameTag(oldTag: string, newTag: string): Promise<void> {
 		// Check if new tag already exists
-		const existingTags = getAllTags(this.db.getDb());
+		const existingTags = getAllTags(this.getDb().getDb());
 		if (existingTags.includes(newTag)) {
 			throw new Error(`Tag ${newTag} already exists`);
 		}
 
-		this.db.transaction(() => {
+		this.getDb().transaction(() => {
 			// Copy tasks to new tag
-			copyTasksToTag(this.db.getDb(), oldTag, newTag);
+			copyTasksToTag(this.getDb().getDb(), oldTag, newTag);
 
 			// Copy metadata
-			const oldMetadata = getTagMetadata(this.db.getDb(), oldTag);
+			const oldMetadata = getTagMetadata(this.getDb().getDb(), oldTag);
 			if (oldMetadata) {
-				setTagMetadata(this.db.getDb(), newTag, {
+				setTagMetadata(this.getDb().getDb(), newTag, {
 					description: oldMetadata.description,
 					project_name: oldMetadata.project_name,
 					version: oldMetadata.version
@@ -591,8 +614,8 @@ export class SqliteStorage implements IStorage {
 			}
 
 			// Delete old tag
-			deleteAllTasksForTag(this.db.getDb(), oldTag);
-			deleteTagMetadata(this.db.getDb(), oldTag);
+			deleteAllTasksForTag(this.getDb().getDb(), oldTag);
+			deleteTagMetadata(this.getDb().getDb(), oldTag);
 		});
 
 		// Sync to JSONL
@@ -603,10 +626,10 @@ export class SqliteStorage implements IStorage {
 	 * Copy all tasks from one tag to another
 	 */
 	async copyTag(sourceTag: string, targetTag: string): Promise<void> {
-		this.db.transaction(() => {
-			copyTasksToTag(this.db.getDb(), sourceTag, targetTag);
+		this.getDb().transaction(() => {
+			copyTasksToTag(this.getDb().getDb(), sourceTag, targetTag);
 
-			setTagMetadata(this.db.getDb(), targetTag, {
+			setTagMetadata(this.getDb().getDb(), targetTag, {
 				description: `Copied from ${sourceTag} on ${new Date().toLocaleDateString()}`
 			});
 		});
@@ -619,12 +642,12 @@ export class SqliteStorage implements IStorage {
 	 * Get storage statistics
 	 */
 	async getStats(): Promise<StorageStats> {
-		const tags = getAllTags(this.db.getDb());
+		const tags = getAllTags(this.getDb().getDb());
 		let totalTasks = 0;
 
 		const tagStats = tags.map((tag) => {
-			const counts = getTaskCounts(this.db.getDb(), tag);
-			const metadata = getTagMetadata(this.db.getDb(), tag);
+			const counts = getTaskCounts(this.getDb().getDb(), tag);
+			const metadata = getTagMetadata(this.getDb().getDb(), tag);
 			totalTasks += counts.total;
 
 			return {
@@ -635,7 +658,7 @@ export class SqliteStorage implements IStorage {
 		});
 
 		// Get database size
-		const storageSize = this.db.getSize();
+		const storageSize = this.getDb().getSize();
 
 		// Get last modified from database or JSONL
 		const jsonlStats = this.jsonlSync.getStats();
@@ -656,17 +679,17 @@ export class SqliteStorage implements IStorage {
 	 * Get all tags with detailed statistics
 	 */
 	async getTagsWithStats(): Promise<TagsWithStatsResult> {
-		const tags = getAllTags(this.db.getDb());
+		const tags = getAllTags(this.getDb().getDb());
 
 		// Get active tag from state.json if it exists
 		const activeTag = await this.getActiveTagFromState();
 
 		const tagsWithStats = tags.map((tagName) => {
-			const counts = getTaskCounts(this.db.getDb(), tagName);
-			const metadata = getTagMetadata(this.db.getDb(), tagName);
+			const counts = getTaskCounts(this.getDb().getDb(), tagName);
+			const metadata = getTagMetadata(this.getDb().getDb(), tagName);
 
 			// Get subtask counts
-			const tasks = loadAllTasks(this.db.getDb(), tagName);
+			const tasks = loadAllTasks(this.getDb().getDb(), tagName);
 			let totalSubtasks = 0;
 			const subtasksByStatus: Record<string, number> = {};
 
@@ -763,7 +786,7 @@ export class SqliteStorage implements IStorage {
 	 * Sync tasks for a specific tag to JSONL
 	 */
 	private async syncToJsonl(tag: string): Promise<void> {
-		const tasks = loadAllTasks(this.db.getDb(), tag);
+		const tasks = loadAllTasks(this.getDb().getDb(), tag);
 		await this.jsonlSync.writeTasks(tasks);
 	}
 
@@ -771,11 +794,11 @@ export class SqliteStorage implements IStorage {
 	 * Sync all tasks from all tags to JSONL
 	 */
 	private async syncAllToJsonl(): Promise<void> {
-		const tags = getAllTags(this.db.getDb());
+		const tags = getAllTags(this.getDb().getDb());
 		const allTasks: Task[] = [];
 
 		for (const tag of tags) {
-			const tasks = loadAllTasks(this.db.getDb(), tag);
+			const tasks = loadAllTasks(this.getDb().getDb(), tag);
 			allTasks.push(...tasks);
 		}
 

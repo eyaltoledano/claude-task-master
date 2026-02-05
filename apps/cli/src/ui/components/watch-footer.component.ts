@@ -8,15 +8,22 @@ import { formatTime } from '@tm/core';
 /**
  * Get display label for storage source
  */
-function getSourceLabel(storageType: 'api' | 'file'): string {
-	return storageType === 'api' ? 'Hamster Studio' : 'tasks.json';
+function getSourceLabel(storageType: 'api' | 'file' | 'sqlite'): string {
+	switch (storageType) {
+		case 'api':
+			return 'Hamster Studio';
+		case 'sqlite':
+			return 'SQLite database';
+		default:
+			return 'tasks.json';
+	}
 }
 
 /**
  * Display watch status footer
  */
 export function displayWatchFooter(
-	storageType: 'api' | 'file',
+	storageType: 'api' | 'file' | 'sqlite',
 	lastSync: Date
 ): void {
 	const syncTime = formatTime(lastSync);
@@ -31,7 +38,7 @@ export function displayWatchFooter(
  * Display sync notification message
  */
 export function displaySyncMessage(
-	storageType: 'api' | 'file',
+	storageType: 'api' | 'file' | 'sqlite',
 	syncTime: Date
 ): void {
 	const formattedTime = formatTime(syncTime);

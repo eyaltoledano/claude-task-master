@@ -23,8 +23,12 @@ export interface MigrationResult {
 	success: boolean;
 	/** Number of tasks migrated */
 	taskCount: number;
+	/** Alias for taskCount (for MCP tool compatibility) */
+	tasksCount?: number;
 	/** Number of subtasks migrated */
 	subtaskCount: number;
+	/** Number of tags migrated */
+	tagsCount?: number;
 	/** List of error messages encountered */
 	errors: string[];
 	/** List of warning messages */
@@ -35,6 +39,22 @@ export interface MigrationResult {
 	targetType: StorageType;
 	/** Duration of migration in milliseconds */
 	durationMs: number;
+}
+
+/**
+ * Status of the current storage configuration
+ */
+export interface StorageStatus {
+	/** Current storage type */
+	currentType: StorageType;
+	/** Whether SQLite database exists */
+	sqliteExists: boolean;
+	/** Whether JSONL file exists */
+	jsonlExists: boolean;
+	/** Whether tasks.json exists */
+	tasksJsonExists: boolean;
+	/** List of available tags */
+	tags: string[];
 }
 
 /**
@@ -122,6 +142,156 @@ export class StorageMigration {
 		this.configPath = path.join(this.taskmasterDir, 'config.json');
 		this.gitignorePath = path.join(projectPath, '.gitignore');
 		this.formatHandler = new FormatHandler();
+	}
+
+	/**
+	 * Get the current storage status
+	 *
+	 * @returns Storage status including current type and available files
+	 */
+	async getStatus(): Promise<StorageStatus> {
+		const currentType = await this.getCurrentStorageType();
+
+		const sqliteDbPath = path.join(this.tasksDir, 'tasks.db');
+		const jsonlPath = path.join(this.tasksDir, 'tasks.jsonl');
+		const tasksJsonPath = path.join(this.tasksDir, 'tasks.json');
+
+		const sqliteExists = fs.existsSync(sqliteDbPath);
+		const jsonlExists = fs.existsSync(jsonlPath);
+		const tasksJsonExists = fs.existsSync(tasksJsonPath);
+
+		// Get tags from whichever storage exists
+		let tags: string[] = [];
+		try {
+			if (currentType === 'sqlite' && sqliteExists) {
+				const sqliteStorage = new SqliteStorage(this.projectPath);
+				await sqliteStorage.initialize();
+				tags = await sqliteStorage.getAllTags();
+				await sqliteStorage.close();
+			} else if (tasksJsonExists) {
+				const rawData = JSON.parse(
+					await fs.promises.readFile(tasksJsonPath, 'utf-8')
+				);
+				tags = this.formatHandler.extractTags(rawData);
+			}
+		} catch {
+			tags = ['master'];
+		}
+
+		if (tags.length === 0) {
+			tags = ['master'];
+		}
+
+		return {
+			currentType,
+			sqliteExists,
+			jsonlExists,
+			tasksJsonExists,
+			tags
+		};
+	}
+
+	/**
+	 * Rebuild SQLite database from JSONL file
+	 *
+	 * This is useful when the SQLite database is corrupted or out of sync
+	 * with the JSONL file (which is the git-synced source of truth).
+	 *
+	 * @returns Migration result
+	 */
+	async rebuildSqlite(): Promise<MigrationResult> {
+		const startTime = Date.now();
+		const errors: string[] = [];
+		const warnings: string[] = [];
+		let taskCount = 0;
+		let subtaskCount = 0;
+		let tagsCount = 0;
+
+		try {
+			const jsonlPath = path.join(this.tasksDir, 'tasks.jsonl');
+			const sqliteDbPath = path.join(this.tasksDir, 'tasks.db');
+
+			// Check if JSONL exists
+			if (!fs.existsSync(jsonlPath)) {
+				errors.push(`JSONL file not found at ${jsonlPath}`);
+				return {
+					success: false,
+					taskCount,
+					tasksCount: taskCount,
+					subtaskCount,
+					tagsCount,
+					errors,
+					warnings,
+					sourceType: 'sqlite',
+					targetType: 'sqlite',
+					durationMs: Date.now() - startTime
+				};
+			}
+
+			// Delete existing database if it exists
+			if (fs.existsSync(sqliteDbPath)) {
+				await fs.promises.unlink(sqliteDbPath);
+				warnings.push('Deleted existing SQLite database');
+			}
+
+			// Also delete WAL and SHM files if they exist
+			const walPath = `${sqliteDbPath}-wal`;
+			const shmPath = `${sqliteDbPath}-shm`;
+			if (fs.existsSync(walPath)) {
+				await fs.promises.unlink(walPath);
+			}
+			if (fs.existsSync(shmPath)) {
+				await fs.promises.unlink(shmPath);
+			}
+
+			// Create new SQLite storage (this will rebuild from JSONL on init)
+			const sqliteStorage = new SqliteStorage(this.projectPath);
+			await sqliteStorage.initialize();
+
+			// Get stats after rebuild
+			const tags = await sqliteStorage.getAllTags();
+			tagsCount = tags.length;
+
+			for (const tag of tags) {
+				const tasks = await sqliteStorage.loadTasks(tag);
+				taskCount += tasks.length;
+				for (const task of tasks) {
+					subtaskCount += task.subtasks?.length || 0;
+				}
+			}
+
+			await sqliteStorage.close();
+
+			return {
+				success: true,
+				taskCount,
+				tasksCount: taskCount,
+				subtaskCount,
+				tagsCount,
+				errors,
+				warnings,
+				sourceType: 'sqlite',
+				targetType: 'sqlite',
+				durationMs: Date.now() - startTime
+			};
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			errors.push(errorMessage);
+
+			return {
+				success: false,
+				taskCount,
+				tasksCount: taskCount,
+				subtaskCount,
+				tagsCount,
+				errors,
+				warnings,
+				sourceType: 'sqlite',
+				targetType: 'sqlite',
+				durationMs: Date.now() - startTime
+			};
+		}
 	}
 
 	/**
@@ -240,7 +410,9 @@ export class StorageMigration {
 			return {
 				success: errors.length === 0,
 				taskCount,
+				tasksCount: taskCount,
 				subtaskCount,
+				tagsCount: tags.length,
 				errors,
 				warnings,
 				sourceType: 'file',
@@ -255,7 +427,9 @@ export class StorageMigration {
 			return {
 				success: false,
 				taskCount,
+				tasksCount: taskCount,
 				subtaskCount,
+				tagsCount: 0,
 				errors,
 				warnings,
 				sourceType: 'file',
@@ -365,7 +539,9 @@ export class StorageMigration {
 			return {
 				success: errors.length === 0,
 				taskCount,
+				tasksCount: taskCount,
 				subtaskCount,
+				tagsCount: tags.length,
 				errors,
 				warnings,
 				sourceType: 'sqlite',
@@ -380,7 +556,9 @@ export class StorageMigration {
 			return {
 				success: false,
 				taskCount,
+				tasksCount: taskCount,
 				subtaskCount,
+				tagsCount: 0,
 				errors,
 				warnings,
 				sourceType: 'sqlite',

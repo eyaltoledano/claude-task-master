@@ -13,7 +13,8 @@ export {
 	StorageMigration,
 	type MigrationResult,
 	type MigrationOptions,
-	type ValidationResult
+	type ValidationResult,
+	type StorageStatus
 } from './services/storage-migration.js';
 
 // Export activity logger
