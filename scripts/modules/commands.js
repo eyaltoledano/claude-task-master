@@ -3587,6 +3587,20 @@ ${result.result}
 			cmdOptions.rules = selectedProfiles;
 			cmdOptions.rulesExplicitlyProvided = rulesExplicitlyProvided;
 
+			// Validate storage backend option
+			const validBackends = ['file', 'sqlite'];
+			if (
+				cmdOptions.storageBackend &&
+				!validBackends.includes(cmdOptions.storageBackend)
+			) {
+				console.error(
+					chalk.red(
+						`Invalid storage backend: "${cmdOptions.storageBackend}". Valid options are: ${validBackends.join(', ')}`
+					)
+				);
+				process.exit(1);
+			}
+
 			try {
 				// Directly call the initializeProject function, passing the parsed options
 				await initializeProject(cmdOptions);

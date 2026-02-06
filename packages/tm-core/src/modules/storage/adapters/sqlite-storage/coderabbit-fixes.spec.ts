@@ -91,9 +91,10 @@ describe('SqliteDatabase constructor undefined filtering', () => {
 		}
 	});
 
-	it('should use default walMode when options.walMode is undefined', () => {
+	it('should use default walMode when options.walMode is undefined', async () => {
 		// Bug: { walMode: undefined } would shadow the default true value
 		const db = new SqliteDatabase(testDbPath, { walMode: undefined });
+		await db.open();
 
 		// Should use default (WAL mode enabled)
 		// Check by running PRAGMA journal_mode and reading the result
@@ -107,8 +108,9 @@ describe('SqliteDatabase constructor undefined filtering', () => {
 		expect(result[0]?.journal_mode?.toLowerCase()).toBe('wal');
 	});
 
-	it('should respect explicit walMode: false', () => {
+	it('should respect explicit walMode: false', async () => {
 		const db = new SqliteDatabase(testDbPath, { walMode: false });
+		await db.open();
 
 		const result = db.getDb().pragma('journal_mode') as Array<{
 			journal_mode: string;
@@ -120,8 +122,9 @@ describe('SqliteDatabase constructor undefined filtering', () => {
 		expect(result[0]?.journal_mode?.toLowerCase()).not.toBe('wal');
 	});
 
-	it('should use default busyTimeout when options.busyTimeout is undefined', () => {
+	it('should use default busyTimeout when options.busyTimeout is undefined', async () => {
 		const db = new SqliteDatabase(testDbPath, { busyTimeout: undefined });
+		await db.open();
 
 		// Just verify it doesn't throw - defaults should be applied
 		expect(() => db.close()).not.toThrow();
@@ -284,7 +287,7 @@ describe('SqliteDatabase backup path validation', () => {
 	let testDbPath: string;
 	let db: SqliteDatabase;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		testDbPath = path.join(
 			os.tmpdir(),
 			`test-db-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -293,6 +296,7 @@ describe('SqliteDatabase backup path validation', () => {
 		// Create the directory
 		fs.mkdirSync(path.dirname(testDbPath), { recursive: true });
 		db = new SqliteDatabase(testDbPath);
+		await db.open();
 		db.initialize();
 	});
 

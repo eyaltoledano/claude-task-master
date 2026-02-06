@@ -14,8 +14,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
+import { LogLevel, Logger } from '../../../../common/logger/logger.js';
 import type { Task } from '../../../../common/types/index.js';
-import { Logger, LogLevel } from '../../../../common/logger/logger.js';
 
 /**
  * Task with JSONL metadata fields

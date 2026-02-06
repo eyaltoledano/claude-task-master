@@ -13,9 +13,8 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SqliteDatabase } from './database.js';
 import {
-	ALL_MIGRATIONS,
-	MigrationRunner,
 	type Migration,
+	MigrationRunner,
 	validateMigrations
 } from './migrations.js';
 import { CURRENT_SCHEMA_VERSION } from './schema.js';
@@ -26,10 +25,11 @@ describe('MigrationRunner', () => {
 	let db: SqliteDatabase;
 	let runner: MigrationRunner;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'migration-test-'));
 		dbPath = path.join(tempDir, 'test.db');
 		db = new SqliteDatabase(dbPath);
+		await db.open();
 		db.initialize();
 		runner = new MigrationRunner(db.getDb());
 	});

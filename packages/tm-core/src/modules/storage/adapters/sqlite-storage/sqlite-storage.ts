@@ -20,6 +20,7 @@ import type {
 	TaskMetadata,
 	TaskStatus
 } from '../../../../common/types/index.js';
+import type { Subtask } from '../../../../common/types/index.js';
 import type { ExpandTaskResult } from '../../../integration/services/task-expansion.service.js';
 import { SqliteDatabase } from './database.js';
 import { JsonlSync } from './jsonl-sync.js';
@@ -44,7 +45,6 @@ import {
 	updateTask as updateTaskQuery
 } from './queries.js';
 import type { SqliteStorageConfig } from './types.js';
-import type { Subtask } from '../../../../common/types/index.js';
 
 /**
  * Convert a Subtask to a Task-like object with safe defaults
@@ -107,9 +107,7 @@ function persistTasksWithDependencies(
 		for (const task of tagTasks) {
 			// Set task dependencies (filter to only valid ones that exist in this tag)
 			const validDeps = (task.dependencies || [])
-				.filter((depId) =>
-					tagTasks.some((t) => String(t.id) === String(depId))
-				)
+				.filter((depId) => tagTasks.some((t) => String(t.id) === String(depId)))
 				.map((d) => String(d));
 
 			if (
@@ -222,14 +220,26 @@ export class SqliteStorage implements IStorage {
 		const { dbPath: _unusedDbPath, ...configWithoutDbPath } = this.config || {};
 		this.db = new SqliteDatabase(this.dbPath, configWithoutDbPath);
 
+		// Open database connection (loads libsql dynamically)
+		await this.db.open();
+
 		// Initialize database schema
 		this.db.initialize();
 
-		this.initialized = true;
-
 		// If database was just created but JSONL exists, rebuild from JSONL
+		// Only mark as initialized after successful rebuild to prevent partial state
 		if (!dbExists && jsonlExists) {
-			await this.rebuildFromJsonl();
+			try {
+				await this.rebuildFromJsonl();
+				this.initialized = true;
+			} catch (error) {
+				// Close database on rebuild failure to allow retry
+				this.db.close();
+				this.db = null;
+				throw error;
+			}
+		} else {
+			this.initialized = true;
 		}
 	}
 
@@ -265,8 +275,12 @@ export class SqliteStorage implements IStorage {
 		}
 
 		// Save all tasks in a transaction using two-pass approach
-		this.getDb().transaction(() => {
-			persistTasksWithDependencies(this.getDb().getDb(), tasksByTag);
+		// Use this.db directly since we're called during initialization before this.initialized is set
+		if (!this.db) {
+			throw new Error('Database not available for rebuild');
+		}
+		this.db.transaction(() => {
+			persistTasksWithDependencies(this.db!.getDb(), tasksByTag);
 		});
 	}
 
@@ -381,14 +395,16 @@ export class SqliteStorage implements IStorage {
 
 	/**
 	 * Append tasks without replacing existing ones
+	 * Uses two-pass approach for dependency resolution
 	 */
 	async appendTasks(tasks: Task[], tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
 		this.getDb().transaction(() => {
-			for (const task of tasks) {
-				saveCompleteTask(this.getDb().getDb(), task, resolvedTag);
-			}
+			// Use two-pass helper to save tasks with dependencies
+			const tasksByTag = new Map<string, Task[]>();
+			tasksByTag.set(resolvedTag, tasks);
+			persistTasksWithDependencies(this.getDb().getDb(), tasksByTag);
 
 			setTagMetadata(this.getDb().getDb(), resolvedTag, {
 				updated_at: new Date().toISOString()

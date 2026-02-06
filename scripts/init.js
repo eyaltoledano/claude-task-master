@@ -976,10 +976,9 @@ async function createProjectStructure(
 		log('debug', 'Could not update maxTokens in config');
 	}
 
-	// Update config.json with storage configuration
-	updateStorageConfig(configPath, selectedStorage, authCredentials, storageBackendType);
-
-	// Initialize SQLite database if selected
+	// Initialize SQLite database if selected (before updating config)
+	// We only write sqlite to config if initialization succeeds
+	let effectiveBackendType = storageBackendType;
 	if (storageBackendType === 'sqlite' && selectedStorage !== 'cloud') {
 		let storage;
 		try {
@@ -987,15 +986,21 @@ async function createProjectStructure(
 			storage = new SqliteStorage(targetDir);
 			await storage.initialize();
 			log('success', 'SQLite database initialized');
+			// SQLite initialization succeeded, keep effectiveBackendType as 'sqlite'
 		} catch (error) {
 			log('error', `Failed to initialize SQLite database: ${error.message}`);
-			log('warn', 'You can switch to SQLite later using: task-master storage switch sqlite');
+			log('warn', 'Falling back to JSON storage. You can switch to SQLite later using: task-master storage switch sqlite');
+			// Fall back to file (JSON) storage if SQLite fails
+			effectiveBackendType = 'file';
 		} finally {
 			if (storage) {
 				await storage.close();
 			}
 		}
 	}
+
+	// Update config.json with storage configuration (after SQLite init if applicable)
+	updateStorageConfig(configPath, selectedStorage, authCredentials, effectiveBackendType);
 
 	// Copy .gitignore with GitTasks preference
 	try {

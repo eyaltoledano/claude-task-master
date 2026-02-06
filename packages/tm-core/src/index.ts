@@ -53,10 +53,7 @@ export { FileStorage } from './modules/storage/index.js';
 export {
 	StorageMigration,
 	StorageFactory,
-	type MigrationResult,
-	type MigrationOptions,
-	type ValidationResult,
-	type StorageStatus
+	type MigrationResult
 } from './modules/storage/index.js';
 
 // SQLite storage adapter for direct access

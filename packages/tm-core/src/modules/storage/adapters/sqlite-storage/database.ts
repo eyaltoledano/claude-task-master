@@ -4,23 +4,26 @@
  */
 
 import * as path from 'node:path';
-import Database from 'libsql';
 import { MigrationRunner } from './migrations.js';
 import { COMPLETE_SCHEMA } from './schema.js';
 import type { SqliteStorageConfig } from './types.js';
 import { DEFAULT_SQLITE_CONFIG } from './types.js';
+
+// Type alias for the libsql Database - imported dynamically
+type LibsqlDatabase = import('libsql').Database;
 
 /**
  * SQLite database wrapper for TaskMaster storage
  * Provides connection management, initialization, and configuration.
  */
 export class SqliteDatabase {
-	private db: Database.Database;
+	private db: LibsqlDatabase | null = null;
 	private config: Required<SqliteStorageConfig>;
 	private initialized: boolean = false;
 
 	/**
 	 * Create a new SqliteDatabase instance
+	 * Note: Call open() to establish the database connection
 	 * @param dbPath - Path to the SQLite database file (or ':memory:' for in-memory)
 	 * @param options - Optional configuration overrides
 	 */
@@ -41,35 +44,80 @@ export class SqliteDatabase {
 			...DEFAULT_SQLITE_CONFIG,
 			...definedOptions
 		};
+	}
 
-		// Create the database connection
-		this.db = new Database(this.config.dbPath);
+	/**
+	 * Open the database connection
+	 * Uses dynamic import to load libsql, allowing graceful degradation
+	 * when the optional dependency is not available.
+	 * @throws Error if libsql is not installed or cannot be loaded
+	 */
+	async open(): Promise<void> {
+		if (this.db) {
+			return; // Already open
+		}
 
-		// Apply initial pragmas
-		this.applyPragmas();
+		try {
+			// Dynamic import to handle optional dependency
+			const libsql = await import('libsql');
+			const Database = libsql.default;
+
+			// Create the database connection
+			this.db = new Database(this.config.dbPath);
+
+			// Apply initial pragmas
+			this.applyPragmas();
+		} catch (error) {
+			const err = error as Error & { code?: string };
+			if (
+				err.code === 'ERR_MODULE_NOT_FOUND' ||
+				err.message?.includes('Cannot find module')
+			) {
+				throw new Error(
+					'SQLite storage requires the libsql package. ' +
+						'Install it with: npm install libsql'
+				);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Ensure the database connection is open
+	 * @throws Error if database is not connected
+	 */
+	private ensureOpen(): LibsqlDatabase {
+		if (!this.db) {
+			throw new Error(
+				'Database not connected. Call open() before using the database.'
+			);
+		}
+		return this.db;
 	}
 
 	/**
 	 * Apply SQLite pragmas for performance and safety
 	 */
 	private applyPragmas(): void {
+		const db = this.ensureOpen();
+
 		// Enable WAL mode for better concurrent access
 		if (this.config.walMode) {
-			this.db.pragma('journal_mode = WAL');
+			db.pragma('journal_mode = WAL');
 		}
 
 		// Enable foreign key constraints
 		if (this.config.foreignKeys) {
-			this.db.pragma('foreign_keys = ON');
+			db.pragma('foreign_keys = ON');
 		}
 
 		// Set busy timeout
-		this.db.pragma(`busy_timeout = ${this.config.busyTimeout}`);
+		db.pragma(`busy_timeout = ${this.config.busyTimeout}`);
 
 		// Additional performance pragmas
-		this.db.pragma('synchronous = NORMAL');
-		this.db.pragma('cache_size = -64000'); // 64MB cache
-		this.db.pragma('temp_store = MEMORY');
+		db.pragma('synchronous = NORMAL');
+		db.pragma('cache_size = -64000'); // 64MB cache
+		db.pragma('temp_store = MEMORY');
 	}
 
 	/**
@@ -77,29 +125,31 @@ export class SqliteDatabase {
 	 * Creates all tables and runs any pending migrations
 	 */
 	initialize(): void {
+		const db = this.ensureOpen();
+
 		if (this.initialized) {
 			return;
 		}
 
 		// Create all tables within a transaction
-		this.db.exec('BEGIN TRANSACTION');
+		db.exec('BEGIN TRANSACTION');
 
 		try {
 			// Apply complete schema
 			for (const statement of COMPLETE_SCHEMA) {
-				this.db.exec(statement);
+				db.exec(statement);
 			}
 
 			// Run migrations if auto-migrate is enabled
 			if (this.config.autoMigrate) {
-				const migrationRunner = new MigrationRunner(this.db);
+				const migrationRunner = new MigrationRunner(db);
 				migrationRunner.runMigrations();
 			}
 
-			this.db.exec('COMMIT');
+			db.exec('COMMIT');
 			this.initialized = true;
 		} catch (error) {
-			this.db.exec('ROLLBACK');
+			db.exec('ROLLBACK');
 			throw error;
 		}
 	}
@@ -108,8 +158,8 @@ export class SqliteDatabase {
 	 * Get the underlying libsql Database instance
 	 * @returns The database instance for direct queries
 	 */
-	getDb(): Database.Database {
-		return this.db;
+	getDb(): LibsqlDatabase {
+		return this.ensureOpen();
 	}
 
 	/**
@@ -126,7 +176,7 @@ export class SqliteDatabase {
 	 * @returns The result of the callback
 	 */
 	transaction<T>(callback: () => T): T {
-		return this.db.transaction(callback)();
+		return this.ensureOpen().transaction(callback)();
 	}
 
 	/**
@@ -136,7 +186,7 @@ export class SqliteDatabase {
 	 * @returns Array of result rows
 	 */
 	query<T = unknown>(sql: string, params?: unknown[]): T[] {
-		const stmt = this.db.prepare(sql);
+		const stmt = this.ensureOpen().prepare(sql);
 		return (params ? stmt.all(...params) : stmt.all()) as T[];
 	}
 
@@ -147,7 +197,7 @@ export class SqliteDatabase {
 	 * @returns First result row or undefined
 	 */
 	queryOne<T = unknown>(sql: string, params?: unknown[]): T | undefined {
-		const stmt = this.db.prepare(sql);
+		const stmt = this.ensureOpen().prepare(sql);
 		return (params ? stmt.get(...params) : stmt.get()) as T | undefined;
 	}
 
@@ -157,8 +207,8 @@ export class SqliteDatabase {
 	 * @param params - Statement parameters
 	 * @returns Database run result with changes and lastInsertRowid
 	 */
-	run(sql: string, params?: unknown[]): Database.RunResult {
-		const stmt = this.db.prepare(sql);
+	run(sql: string, params?: unknown[]): import('libsql').RunResult {
+		const stmt = this.ensureOpen().prepare(sql);
 		return params ? stmt.run(...params) : stmt.run();
 	}
 
@@ -167,7 +217,7 @@ export class SqliteDatabase {
 	 * @param sql - SQL to execute
 	 */
 	exec(sql: string): void {
-		this.db.exec(sql);
+		this.ensureOpen().exec(sql);
 	}
 
 	/**
@@ -175,8 +225,8 @@ export class SqliteDatabase {
 	 * @param sql - SQL statement string
 	 * @returns Prepared statement
 	 */
-	prepare(sql: string): Database.Statement {
-		return this.db.prepare(sql);
+	prepare(sql: string): import('libsql').Statement {
+		return this.ensureOpen().prepare(sql);
 	}
 
 	/**
@@ -184,6 +234,10 @@ export class SqliteDatabase {
 	 * Should be called when the storage is no longer needed
 	 */
 	close(): void {
+		if (!this.db) {
+			return; // Already closed or never opened
+		}
+
 		// Checkpoint WAL before closing for durability
 		if (this.config.walMode) {
 			try {
@@ -193,6 +247,7 @@ export class SqliteDatabase {
 			}
 		}
 		this.db.close();
+		this.db = null;
 		this.initialized = false;
 	}
 
@@ -200,7 +255,7 @@ export class SqliteDatabase {
 	 * Vacuum the database to reclaim space
 	 */
 	vacuum(): void {
-		this.db.exec('VACUUM');
+		this.ensureOpen().exec('VACUUM');
 	}
 
 	/**
@@ -280,7 +335,7 @@ export class SqliteDatabase {
 			);
 		}
 
-		this.db.exec(`VACUUM INTO '${normalizedPath}'`);
+		this.ensureOpen().exec(`VACUUM INTO '${normalizedPath}'`);
 	}
 }
 
@@ -289,8 +344,9 @@ export class SqliteDatabase {
  * @param dbPath - Path to the database file
  * @returns Initialized SqliteDatabase instance
  */
-export function createDatabase(dbPath: string): SqliteDatabase {
+export async function createDatabase(dbPath: string): Promise<SqliteDatabase> {
 	const db = new SqliteDatabase(dbPath);
+	await db.open();
 	db.initialize();
 	return db;
 }
@@ -299,8 +355,9 @@ export function createDatabase(dbPath: string): SqliteDatabase {
  * Create an in-memory SQLite database (useful for testing)
  * @returns Initialized in-memory SqliteDatabase instance
  */
-export function createInMemoryDatabase(): SqliteDatabase {
+export async function createInMemoryDatabase(): Promise<SqliteDatabase> {
 	const db = new SqliteDatabase(':memory:');
+	await db.open();
 	db.initialize();
 	return db;
 }
