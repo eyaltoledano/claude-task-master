@@ -111,7 +111,10 @@ export class SqliteStorage implements IStorage {
 		const jsonlExists = this.jsonlSync.exists();
 
 		// Create database connection now that directory exists
-		this.db = new SqliteDatabase(this.dbPath, this.config);
+		// Extract dbPath from config to avoid passing undefined dbPath to SqliteDatabase
+		// (if config has dbPath: undefined, spreading it would override the computed this.dbPath)
+		const { dbPath: _unusedDbPath, ...configWithoutDbPath } = this.config || {};
+		this.db = new SqliteDatabase(this.dbPath, configWithoutDbPath);
 
 		// Initialize database schema
 		this.db.initialize();

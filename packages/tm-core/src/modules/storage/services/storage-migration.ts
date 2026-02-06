@@ -630,9 +630,16 @@ export class StorageMigration {
 			const sourceMap = new Map(sourceTasks.map((t) => [String(t.id), t]));
 			const targetMap = new Map(targetTasks.map((t) => [String(t.id), t]));
 
+			// Build set of valid task IDs for dependency validation
+			const validTaskIds = new Set(sourceTasks.map((t) => String(t.id)));
+
 			// Check for missing tasks
 			for (const [id, sourceTask] of sourceMap) {
-				sourceSubtaskCount += sourceTask.subtasks?.length || 0;
+				// Count unique subtask IDs (source may have duplicates that get deduplicated)
+				const sourceSubtaskIds = new Set(
+					(sourceTask.subtasks || []).map((s) => s.id)
+				);
+				sourceSubtaskCount += sourceSubtaskIds.size;
 
 				const targetTask = targetMap.get(id);
 				if (!targetTask) {
@@ -657,19 +664,23 @@ export class StorageMigration {
 					);
 				}
 
-				// Check subtask count
-				const sourceSubtasks = sourceTask.subtasks?.length || 0;
+				// Check subtask count (using unique IDs from source)
 				const targetSubtasks = targetTask.subtasks?.length || 0;
-				if (sourceSubtasks !== targetSubtasks) {
+				if (sourceSubtaskIds.size !== targetSubtasks) {
 					discrepancies.push(
-						`Tag "${tag}": Task ${id} subtask count mismatch - source: ${sourceSubtasks}, target: ${targetSubtasks}`
+						`Tag "${tag}": Task ${id} subtask count mismatch - source: ${sourceSubtaskIds.size} unique, target: ${targetSubtasks}`
 					);
 				}
 
-				// Check dependencies
-				const sourceDeps = sourceTask.dependencies?.sort().join(',') || '';
-				const targetDeps = targetTask.dependencies?.sort().join(',') || '';
-				if (sourceDeps !== targetDeps) {
+				// Check dependencies (only compare valid dependencies that exist in source)
+				const sourceValidDeps = (sourceTask.dependencies || [])
+					.filter((d) => validTaskIds.has(String(d)))
+					.map(String)
+					.sort()
+					.join(',');
+				const targetDeps =
+					(targetTask.dependencies || []).map(String).sort().join(',') || '';
+				if (sourceValidDeps !== targetDeps) {
 					discrepancies.push(`Tag "${tag}": Task ${id} dependencies mismatch`);
 				}
 			}
