@@ -162,12 +162,12 @@ export class StorageMigration {
 
 		// Get tags from whichever storage exists
 		let tags: string[] = [];
+		let sqliteStorage: SqliteStorage | undefined;
 		try {
 			if (currentType === 'sqlite' && sqliteExists) {
-				const sqliteStorage = new SqliteStorage(this.projectPath);
+				sqliteStorage = new SqliteStorage(this.projectPath);
 				await sqliteStorage.initialize();
 				tags = await sqliteStorage.getAllTags();
-				await sqliteStorage.close();
 			} else if (tasksJsonExists) {
 				const rawData = JSON.parse(
 					await fs.promises.readFile(tasksJsonPath, 'utf-8')
@@ -176,6 +176,9 @@ export class StorageMigration {
 			}
 		} catch {
 			tags = ['master'];
+		} finally {
+			// Always close storage to prevent resource leaks
+			await sqliteStorage?.close();
 		}
 
 		if (tags.length === 0) {
@@ -315,6 +318,7 @@ export class StorageMigration {
 		const warnings: string[] = [];
 		let taskCount = 0;
 		let subtaskCount = 0;
+		let tagsCount = 0;
 
 		const {
 			createBackup = true,
@@ -322,6 +326,10 @@ export class StorageMigration {
 			updateConfig = true,
 			updateGitignore = true
 		} = options;
+
+		// Declare storage variables outside try for finally cleanup
+		let sqliteStorage: SqliteStorage | undefined;
+		let fileStorage: FileStorage | undefined;
 
 		try {
 			// Step 1: Check current storage type
@@ -350,9 +358,10 @@ export class StorageMigration {
 			if (tags.length === 0) {
 				tags.push('master');
 			}
+			tagsCount = tags.length;
 
 			// Step 3: Create SQLite storage and initialize
-			const sqliteStorage = new SqliteStorage(this.projectPath);
+			sqliteStorage = new SqliteStorage(this.projectPath);
 			await sqliteStorage.initialize();
 
 			// Step 4: Migrate all tasks for each tag
@@ -389,7 +398,7 @@ export class StorageMigration {
 
 			// Step 7: Validate migration if requested
 			if (validateAfterMigration) {
-				const fileStorage = new FileStorage(this.projectPath);
+				fileStorage = new FileStorage(this.projectPath);
 				await fileStorage.initialize();
 
 				const validation = await this.validate(
@@ -397,22 +406,18 @@ export class StorageMigration {
 					sqliteStorage,
 					tags
 				);
-				await fileStorage.close();
 
 				if (!validation.isValid) {
 					errors.push(...validation.discrepancies);
 				}
 			}
 
-			// Clean up
-			await sqliteStorage.close();
-
 			return {
 				success: errors.length === 0,
 				taskCount,
 				tasksCount: taskCount,
 				subtaskCount,
-				tagsCount: tags.length,
+				tagsCount,
 				errors,
 				warnings,
 				sourceType: 'file',
@@ -429,13 +434,17 @@ export class StorageMigration {
 				taskCount,
 				tasksCount: taskCount,
 				subtaskCount,
-				tagsCount: 0,
+				tagsCount,
 				errors,
 				warnings,
 				sourceType: 'file',
 				targetType: 'sqlite',
 				durationMs: Date.now() - startTime
 			};
+		} finally {
+			// Always close storage connections to prevent resource leaks
+			await sqliteStorage?.close();
+			await fileStorage?.close();
 		}
 	}
 
@@ -458,12 +467,17 @@ export class StorageMigration {
 		const warnings: string[] = [];
 		let taskCount = 0;
 		let subtaskCount = 0;
+		let tagsCount = 0;
 
 		const {
 			createBackup = true,
 			validateAfterMigration = true,
 			updateConfig = true
 		} = options;
+
+		// Declare storage variables outside try for finally cleanup
+		let sqliteStorage: SqliteStorage | undefined;
+		let fileStorage: FileStorage | undefined;
 
 		try {
 			// Step 1: Check current storage type
@@ -473,7 +487,7 @@ export class StorageMigration {
 			}
 
 			// Step 2: Initialize SQLite storage and load tasks
-			const sqliteStorage = new SqliteStorage(this.projectPath);
+			sqliteStorage = new SqliteStorage(this.projectPath);
 			await sqliteStorage.initialize();
 
 			// Get all tags
@@ -481,6 +495,7 @@ export class StorageMigration {
 			if (tags.length === 0) {
 				tags.push('master');
 			}
+			tagsCount = tags.length;
 
 			// Create backup of existing tasks.json if it exists
 			const tasksJsonPath = path.join(this.tasksDir, 'tasks.json');
@@ -489,7 +504,7 @@ export class StorageMigration {
 			}
 
 			// Step 3: Initialize file storage
-			const fileStorage = new FileStorage(this.projectPath);
+			fileStorage = new FileStorage(this.projectPath);
 			await fileStorage.initialize();
 
 			// Step 4: Migrate all tasks for each tag
@@ -532,16 +547,12 @@ export class StorageMigration {
 				}
 			}
 
-			// Clean up
-			await sqliteStorage.close();
-			await fileStorage.close();
-
 			return {
 				success: errors.length === 0,
 				taskCount,
 				tasksCount: taskCount,
 				subtaskCount,
-				tagsCount: tags.length,
+				tagsCount,
 				errors,
 				warnings,
 				sourceType: 'sqlite',
@@ -558,13 +569,17 @@ export class StorageMigration {
 				taskCount,
 				tasksCount: taskCount,
 				subtaskCount,
-				tagsCount: 0,
+				tagsCount,
 				errors,
 				warnings,
 				sourceType: 'sqlite',
 				targetType: 'file',
 				durationMs: Date.now() - startTime
 			};
+		} finally {
+			// Always close storage connections to prevent resource leaks
+			await sqliteStorage?.close();
+			await fileStorage?.close();
 		}
 	}
 

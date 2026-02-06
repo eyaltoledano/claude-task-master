@@ -274,15 +274,17 @@ export class TasksDomain {
 
 	/**
 	 * Switch to a different tag/brief context
-	 * For file storage: updates active tag in state
+	 * For local storage (file/sqlite): updates active tag in state
 	 * For API storage: looks up brief by name and updates auth context
 	 */
 	async switchTag(tagName: string): Promise<void> {
 		const storageType = this.taskService.getStorageType();
 
-		if (storageType === 'file') {
+		// SQLite and file are both local storage types that use tags
+		if (storageType === 'file' || storageType === 'sqlite') {
 			await this.setActiveTag(tagName);
 		} else {
+			// API storage uses briefs
 			await this.briefsDomain.switchBrief(tagName);
 		}
 	}

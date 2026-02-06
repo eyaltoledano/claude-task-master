@@ -139,7 +139,7 @@ export class JsonlSync {
 		// If file doesn't exist, just create it with this task
 		if (!this.exists()) {
 			await this.ensureDirectory();
-			await fs.promises.writeFile(this.jsonlPath, newLine + '\n', 'utf-8');
+			await this.writeLines([newLine]);
 			return;
 		}
 
@@ -198,11 +198,7 @@ export class JsonlSync {
 		if (!this.exists()) {
 			await this.ensureDirectory();
 			const lines = tasks.map((task) => JSON.stringify(this.toJsonlTask(task)));
-			await fs.promises.writeFile(
-				this.jsonlPath,
-				lines.join('\n') + '\n',
-				'utf-8'
-			);
+			await this.writeLines(lines);
 			return;
 		}
 
@@ -331,10 +327,7 @@ export class JsonlSync {
 		await this.ensureDirectory();
 
 		const lines = tasks.map((task) => JSON.stringify(this.toJsonlTask(task)));
-
-		// Write with trailing newline for POSIX compliance
-		const content = lines.length > 0 ? lines.join('\n') + '\n' : '';
-		await fs.promises.writeFile(this.jsonlPath, content, 'utf-8');
+		await this.writeLines(lines);
 	}
 
 	/**
@@ -351,10 +344,7 @@ export class JsonlSync {
 		const lines = tasksWithTags.map(({ task, tag }) =>
 			JSON.stringify(this.toJsonlTask(task, tag))
 		);
-
-		// Write with trailing newline for POSIX compliance
-		const content = lines.length > 0 ? lines.join('\n') + '\n' : '';
-		await fs.promises.writeFile(this.jsonlPath, content, 'utf-8');
+		await this.writeLines(lines);
 	}
 
 	/**
@@ -483,11 +473,26 @@ export class JsonlSync {
 	}
 
 	/**
-	 * Write lines to the file
+	 * Write lines to the file atomically
+	 * Uses temp file + rename to prevent corruption from concurrent writes
 	 */
 	private async writeLines(lines: string[]): Promise<void> {
 		const content = lines.length > 0 ? lines.join('\n') + '\n' : '';
-		await fs.promises.writeFile(this.jsonlPath, content, 'utf-8');
+
+		// Write to temp file first, then atomically rename
+		const tempPath = `${this.jsonlPath}.tmp.${Date.now()}.${process.pid}`;
+		try {
+			await fs.promises.writeFile(tempPath, content, 'utf-8');
+			await fs.promises.rename(tempPath, this.jsonlPath);
+		} catch (error) {
+			// Clean up temp file on error
+			try {
+				await fs.promises.unlink(tempPath);
+			} catch {
+				// Ignore cleanup errors
+			}
+			throw error;
+		}
 	}
 
 	/**

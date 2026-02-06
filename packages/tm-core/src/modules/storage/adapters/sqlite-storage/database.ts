@@ -3,6 +3,7 @@
  * Handles database initialization, connection management, and configuration.
  */
 
+import * as path from 'node:path';
 import Database from 'libsql';
 import { MigrationRunner } from './migrations.js';
 import { COMPLETE_SCHEMA } from './schema.js';
@@ -239,11 +240,27 @@ export class SqliteDatabase {
 	/**
 	 * Backup the database to a file
 	 * @param destPath - Destination path for the backup
+	 * @throws Error if destPath contains invalid characters
 	 */
 	backup(destPath: string): void {
-		// Escape single quotes to prevent SQL injection
-		const escapedPath = destPath.replace(/'/g, "''");
-		this.db.exec(`VACUUM INTO '${escapedPath}'`);
+		// Validate path to prevent SQL injection
+		// Only allow alphanumeric, path separators, dots, underscores, hyphens, and spaces
+		const validPathPattern = /^[a-zA-Z0-9_\-./\\ ]+$/;
+		if (!validPathPattern.test(destPath)) {
+			throw new Error(
+				`Invalid backup path: "${destPath}". Path contains disallowed characters.`
+			);
+		}
+
+		// Additional check: prevent path traversal attacks
+		const normalizedPath = path.resolve(destPath);
+		if (normalizedPath.includes("'") || normalizedPath.includes('"')) {
+			throw new Error(
+				`Invalid backup path: "${destPath}". Path cannot contain quotes.`
+			);
+		}
+
+		this.db.exec(`VACUUM INTO '${normalizedPath}'`);
 	}
 }
 
