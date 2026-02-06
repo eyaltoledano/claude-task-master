@@ -5,13 +5,13 @@
  * for the SQLite storage backend.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
-import path from 'node:path';
+import fs from 'node:fs/promises';
 import os from 'node:os';
-import { JsonlSync } from './jsonl-sync.js';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Task } from '../../../../common/types/index.js';
+import { JsonlSync } from './jsonl-sync.js';
 
 /**
  * Create a test task
@@ -162,8 +162,8 @@ describe('JsonlSync', () => {
 			await fs.writeFile(
 				jsonlPath,
 				'{"id":"1","title":"Valid","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01"}\n' +
-				'invalid json line\n' +
-				'{"id":"2","title":"Also Valid","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01"}\n'
+					'invalid json line\n' +
+					'{"id":"2","title":"Also Valid","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01"}\n'
 			);
 
 			const loaded = await sync.readAll();
@@ -179,7 +179,7 @@ describe('JsonlSync', () => {
 			await fs.writeFile(
 				jsonlPath,
 				'{"id":"1","title":"Task 1","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01"}\n' +
-				'{"id":"2","title":"Deleted","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01","_deleted":true}\n'
+					'{"id":"2","title":"Deleted","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01","_deleted":true}\n'
 			);
 
 			const loaded = await sync.readAll();
@@ -191,7 +191,7 @@ describe('JsonlSync', () => {
 			await fs.writeFile(
 				jsonlPath,
 				'{"id":"1","title":"Task 1","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01"}\n' +
-				'{"id":"2","title":"Deleted","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01","_deleted":true}\n'
+					'{"id":"2","title":"Deleted","status":"pending","priority":"medium","dependencies":[],"description":"","details":"","testStrategy":"","subtasks":[],"_v":1,"_ts":"2024-01-01","_deleted":true}\n'
 			);
 
 			const loaded = await sync.readAll({ includeDeleted: true });
@@ -212,13 +212,9 @@ describe('JsonlSync', () => {
 
 	describe('writeTasks', () => {
 		it('should update existing tasks', async () => {
-			await sync.exportAll([
-				createTestTask({ id: '1', title: 'Original' })
-			]);
+			await sync.exportAll([createTestTask({ id: '1', title: 'Original' })]);
 
-			await sync.writeTasks([
-				createTestTask({ id: '1', title: 'Updated' })
-			]);
+			await sync.writeTasks([createTestTask({ id: '1', title: 'Updated' })]);
 
 			const loaded = await sync.readAll();
 			expect(loaded).toHaveLength(1);
@@ -281,7 +277,9 @@ describe('JsonlSync', () => {
 			await sync.exportAll([task]);
 			const loaded = await sync.readAll();
 
-			expect(loaded[0].title).toBe('Task with special: "quotes", \\backslash, \ttab');
+			expect(loaded[0].title).toBe(
+				'Task with special: "quotes", \\backslash, \ttab'
+			);
 			expect(loaded[0].description).toBe('Unicode: 日本語 emoji: 🎉');
 		});
 

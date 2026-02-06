@@ -5,7 +5,10 @@
  */
 
 import type Database from 'libsql';
-import { CURRENT_SCHEMA_VERSION, SCHEMA_VERSION_DESCRIPTIONS } from './schema.js';
+import {
+	CURRENT_SCHEMA_VERSION,
+	SCHEMA_VERSION_DESCRIPTIONS
+} from './schema.js';
 
 /**
  * Migration definition
@@ -55,7 +58,7 @@ export class MigrationRunner {
 	 */
 	getPendingMigrations(): Migration[] {
 		const currentVersion = this.getCurrentVersion();
-		return ALL_MIGRATIONS.filter(m => m.version > currentVersion);
+		return ALL_MIGRATIONS.filter((m) => m.version > currentVersion);
 	}
 
 	/**
@@ -91,7 +94,7 @@ export class MigrationRunner {
 
 		// Record the migration in schema_version
 		const stmt = this.db.prepare(
-			'INSERT INTO schema_version (version, applied_at, description) VALUES (?, datetime(\'now\'), ?)'
+			"INSERT INTO schema_version (version, applied_at, description) VALUES (?, datetime('now'), ?)"
 		);
 		stmt.run(migration.version, migration.description);
 	}
@@ -114,7 +117,9 @@ export class MigrationRunner {
 		}
 
 		// Remove from schema_version
-		const stmt = this.db.prepare('DELETE FROM schema_version WHERE version = ?');
+		const stmt = this.db.prepare(
+			'DELETE FROM schema_version WHERE version = ?'
+		);
 		stmt.run(migration.version);
 	}
 
@@ -133,7 +138,7 @@ export class MigrationRunner {
 		if (targetVersion > currentVersion) {
 			// Apply migrations up to target
 			const migrations = ALL_MIGRATIONS.filter(
-				m => m.version > currentVersion && m.version <= targetVersion
+				(m) => m.version > currentVersion && m.version <= targetVersion
 			);
 
 			for (const migration of migrations) {
@@ -143,9 +148,9 @@ export class MigrationRunner {
 			return migrations.length;
 		} else {
 			// Revert migrations down to target
-			const migrations = ALL_MIGRATIONS
-				.filter(m => m.version <= currentVersion && m.version > targetVersion)
-				.reverse();
+			const migrations = ALL_MIGRATIONS.filter(
+				(m) => m.version <= currentVersion && m.version > targetVersion
+			).reverse();
 
 			for (const migration of migrations) {
 				this.revertMigration(migration);

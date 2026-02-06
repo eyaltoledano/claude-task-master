@@ -5,13 +5,13 @@
  * SQLite is the local working database, JSONL is the git-synced source of truth.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
-import path from 'node:path';
+import fs from 'node:fs/promises';
 import os from 'node:os';
-import { SqliteStorage } from './sqlite-storage.js';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Task, TaskMetadata } from '../../../../common/types/index.js';
+import { SqliteStorage } from './sqlite-storage.js';
 
 /**
  * Create a test task with required fields
@@ -34,7 +34,9 @@ function createTestTask(overrides: Partial<Task> = {}): Task {
 /**
  * Create test metadata
  */
-function createTestMetadata(overrides: Partial<TaskMetadata> = {}): TaskMetadata {
+function createTestMetadata(
+	overrides: Partial<TaskMetadata> = {}
+): TaskMetadata {
 	return {
 		version: '1.0.0',
 		lastModified: new Date().toISOString(),
@@ -50,7 +52,9 @@ describe('SqliteStorage', () => {
 
 	beforeEach(async () => {
 		// Create a temp directory for each test
-		tempDir = fsSync.mkdtempSync(path.join(os.tmpdir(), 'sqlite-storage-test-'));
+		tempDir = fsSync.mkdtempSync(
+			path.join(os.tmpdir(), 'sqlite-storage-test-')
+		);
 		storage = new SqliteStorage(tempDir);
 	});
 
@@ -221,7 +225,12 @@ describe('SqliteStorage', () => {
 			await storage.saveTasks([task], 'master');
 
 			// Check JSONL file exists
-			const jsonlPath = path.join(tempDir, '.taskmaster', 'tasks', 'tasks.jsonl');
+			const jsonlPath = path.join(
+				tempDir,
+				'.taskmaster',
+				'tasks',
+				'tasks.jsonl'
+			);
 			expect(fsSync.existsSync(jsonlPath)).toBe(true);
 
 			// Read JSONL content
@@ -410,7 +419,12 @@ describe('SqliteStorage', () => {
 		});
 
 		it('should sync JSONL after every write operation', async () => {
-			const jsonlPath = path.join(tempDir, '.taskmaster', 'tasks', 'tasks.jsonl');
+			const jsonlPath = path.join(
+				tempDir,
+				'.taskmaster',
+				'tasks',
+				'tasks.jsonl'
+			);
 
 			// Save first task
 			await storage.saveTasks([createTestTask({ id: '1' })], 'master');
@@ -432,11 +446,19 @@ describe('SqliteStorage', () => {
 		});
 
 		it('should handle metadata in JSONL', async () => {
-			const jsonlPath = path.join(tempDir, '.taskmaster', 'tasks', 'tasks.jsonl');
+			const jsonlPath = path.join(
+				tempDir,
+				'.taskmaster',
+				'tasks',
+				'tasks.jsonl'
+			);
 
 			// Save tasks with metadata
 			await storage.saveTasks([createTestTask()], 'master');
-			await storage.saveMetadata(createTestMetadata({ projectName: 'Test' }), 'master');
+			await storage.saveMetadata(
+				createTestMetadata({ projectName: 'Test' }),
+				'master'
+			);
 
 			const content = await fs.readFile(jsonlPath, 'utf-8');
 			// JSONL should include both task and metadata info
@@ -461,7 +483,9 @@ describe('SqliteStorage', () => {
 			} as Task;
 
 			// Should throw or handle gracefully
-			await expect(storage.saveTasks([invalidTask], 'master')).rejects.toThrow();
+			await expect(
+				storage.saveTasks([invalidTask], 'master')
+			).rejects.toThrow();
 		});
 	});
 });

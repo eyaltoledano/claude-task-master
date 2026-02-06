@@ -12,8 +12,8 @@
  */
 
 import * as fs from 'node:fs';
-import * as readline from 'node:readline';
 import * as path from 'node:path';
+import * as readline from 'node:readline';
 import type { Task } from '../../../../common/types/index.js';
 
 /**
@@ -197,9 +197,7 @@ export class JsonlSync {
 		// If file doesn't exist, just create it with all tasks
 		if (!this.exists()) {
 			await this.ensureDirectory();
-			const lines = tasks.map((task) =>
-				JSON.stringify(this.toJsonlTask(task))
-			);
+			const lines = tasks.map((task) => JSON.stringify(this.toJsonlTask(task)));
 			await fs.promises.writeFile(
 				this.jsonlPath,
 				lines.join('\n') + '\n',

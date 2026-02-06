@@ -68,7 +68,10 @@ export { JsonlSync } from './jsonl-sync.js';
 export type { JsonlTask, JsonlStats, ReadOptions } from './jsonl-sync.js';
 
 // Export storage adapter
-export { SqliteStorage, default as SqliteStorageDefault } from './sqlite-storage.js';
+export {
+	SqliteStorage,
+	default as SqliteStorageDefault
+} from './sqlite-storage.js';
 
 // Export queries
 export {
@@ -79,19 +82,16 @@ export {
 	getTask,
 	getTasks,
 	getTasksByStatus,
-
 	// Task dependencies
 	addTaskDependency,
 	removeTaskDependency,
 	getTaskDependencies,
 	setTaskDependencies,
-
 	// Task labels
 	addTaskLabel,
 	removeTaskLabel,
 	getTaskLabels,
 	setTaskLabels,
-
 	// Subtask operations
 	insertSubtask,
 	updateSubtask,
@@ -99,7 +99,6 @@ export {
 	getSubtasks,
 	getSubtaskDependencies,
 	setSubtaskDependencies,
-
 	// Metadata operations
 	getTaskMetadata,
 	setTaskMetadata,
@@ -108,14 +107,12 @@ export {
 	setTagMetadata,
 	deleteTagMetadata,
 	getAllTags,
-
 	// Conversion helpers
 	taskRowToTask,
 	subtaskRowToSubtask,
 	taskToInsertData,
 	subtaskToInsertData,
 	tagMetadataRowToTaskMetadata,
-
 	// Bulk operations
 	loadCompleteTask,
 	loadAllTasks,

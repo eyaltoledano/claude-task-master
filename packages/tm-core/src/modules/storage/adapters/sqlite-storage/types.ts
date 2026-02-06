@@ -4,10 +4,10 @@
  */
 
 import type {
-	TaskStatus,
-	TaskPriority,
 	TaskComplexity,
-	TaskImplementationMetadata
+	TaskImplementationMetadata,
+	TaskPriority,
+	TaskStatus
 } from '../../../../common/types/index.js';
 
 // ============================================================================
@@ -141,7 +141,9 @@ export interface SqliteStorageConfig {
 /**
  * Default configuration values
  */
-export const DEFAULT_SQLITE_CONFIG: Required<Omit<SqliteStorageConfig, 'dbPath'>> = {
+export const DEFAULT_SQLITE_CONFIG: Required<
+	Omit<SqliteStorageConfig, 'dbPath'>
+> = {
 	walMode: true,
 	foreignKeys: true,
 	busyTimeout: 5000,
@@ -278,7 +280,9 @@ export function isValidTaskPriority(value: unknown): value is TaskPriority {
 /**
  * Parse complexity value from database string
  */
-export function parseComplexity(value: string | null): TaskComplexity | number | undefined {
+export function parseComplexity(
+	value: string | null
+): TaskComplexity | number | undefined {
 	if (value === null) {
 		return undefined;
 	}
@@ -300,7 +304,9 @@ export function parseComplexity(value: string | null): TaskComplexity | number |
 /**
  * Serialize complexity value for database storage
  */
-export function serializeComplexity(value: TaskComplexity | number | null | undefined): string | null {
+export function serializeComplexity(
+	value: TaskComplexity | number | null | undefined
+): string | null {
 	if (value === undefined || value === null) {
 		return null;
 	}

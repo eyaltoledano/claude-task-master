@@ -24,24 +24,24 @@ import type { ExpandTaskResult } from '../../../integration/services/task-expans
 import { SqliteDatabase } from './database.js';
 import { JsonlSync } from './jsonl-sync.js';
 import {
-	deleteAllTasksForTag,
 	copyTasksToTag,
+	deleteAllTasksForTag,
+	deleteTagMetadata,
 	deleteTask as deleteTaskQuery,
 	getAllTags,
+	getSubtasks,
 	getTagMetadata,
 	getTask,
 	getTaskCounts,
 	loadAllTasks,
 	loadCompleteTask,
 	saveCompleteTask,
+	setSubtaskDependencies,
 	setTagMetadata,
-	deleteTagMetadata,
-	tagMetadataRowToTaskMetadata,
-	updateTask as updateTaskQuery,
-	updateSubtask as updateSubtaskQuery,
-	getSubtasks,
 	setTaskDependencies,
-	setSubtaskDependencies
+	tagMetadataRowToTaskMetadata,
+	updateSubtask as updateSubtaskQuery,
+	updateTask as updateTaskQuery
 } from './queries.js';
 import type { SqliteStorageConfig } from './types.js';
 
@@ -88,7 +88,9 @@ export class SqliteStorage implements IStorage {
 	 */
 	private getDb(): SqliteDatabase {
 		if (!this.db || !this.initialized) {
-			throw new Error('SqliteStorage not initialized. Call initialize() first.');
+			throw new Error(
+				'SqliteStorage not initialized. Call initialize() first.'
+			);
 		}
 		return this.db;
 	}
@@ -169,22 +171,37 @@ export class SqliteStorage implements IStorage {
 			for (const [tag, tagTasks] of tasksByTag) {
 				for (const task of tagTasks) {
 					// Set task dependencies (filter to only valid ones)
-					const validDeps = (task.dependencies || []).filter(depId =>
-						tagTasks.some(t => String(t.id) === String(depId))
-					).map(d => String(d)); // Ensure all deps are strings
-					if (validDeps.length > 0 || (task.dependencies && task.dependencies.length > 0)) {
-						setTaskDependencies(this.getDb().getDb(), String(task.id), tag, validDeps);
+					const validDeps = (task.dependencies || [])
+						.filter((depId) =>
+							tagTasks.some((t) => String(t.id) === String(depId))
+						)
+						.map((d) => String(d)); // Ensure all deps are strings
+					if (
+						validDeps.length > 0 ||
+						(task.dependencies && task.dependencies.length > 0)
+					) {
+						setTaskDependencies(
+							this.getDb().getDb(),
+							String(task.id),
+							tag,
+							validDeps
+						);
 					}
 
 					// Set subtask dependencies
 					const subtasks = task.subtasks || [];
 					const subtaskIds = new Set(
-						subtasks.map(s => typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10))
+						subtasks.map((s) =>
+							typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
+						)
 					);
 					for (const subtask of subtasks) {
-						const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+						const subtaskId =
+							typeof subtask.id === 'number'
+								? subtask.id
+								: parseInt(String(subtask.id), 10);
 						const deps: number[] = [];
-						for (const d of (subtask.dependencies || [])) {
+						for (const d of subtask.dependencies || []) {
 							let depId: number;
 							if (typeof d === 'number') {
 								depId = d;
@@ -202,7 +219,13 @@ export class SqliteStorage implements IStorage {
 							}
 						}
 						if (deps.length > 0) {
-							setSubtaskDependencies(this.getDb().getDb(), String(task.id), subtaskId, tag, deps);
+							setSubtaskDependencies(
+								this.getDb().getDb(),
+								String(task.id),
+								subtaskId,
+								tag,
+								deps
+							);
 						}
 					}
 				}
@@ -269,7 +292,11 @@ export class SqliteStorage implements IStorage {
 		// Check if this is a subtask (contains a dot)
 		if (taskId.includes('.')) {
 			const [parentId, subtaskId] = taskId.split('.');
-			const parentTask = loadCompleteTask(this.getDb().getDb(), parentId, resolvedTag);
+			const parentTask = loadCompleteTask(
+				this.getDb().getDb(),
+				parentId,
+				resolvedTag
+			);
 
 			if (!parentTask || !parentTask.subtasks) {
 				return null;
@@ -318,23 +345,36 @@ export class SqliteStorage implements IStorage {
 			// (now all tasks exist, so FKs can be satisfied)
 			for (const task of tasks) {
 				// Set task dependencies (filter to only valid ones)
-				const validDeps = (task.dependencies || []).filter(depId =>
-					tasks.some(t => String(t.id) === String(depId))
-				).map(d => String(d)); // Ensure all deps are strings
-				if (validDeps.length > 0 || (task.dependencies && task.dependencies.length > 0)) {
+				const validDeps = (task.dependencies || [])
+					.filter((depId) => tasks.some((t) => String(t.id) === String(depId)))
+					.map((d) => String(d)); // Ensure all deps are strings
+				if (
+					validDeps.length > 0 ||
+					(task.dependencies && task.dependencies.length > 0)
+				) {
 					// Only call if there are deps to set or clear
-					setTaskDependencies(this.getDb().getDb(), String(task.id), resolvedTag, validDeps);
+					setTaskDependencies(
+						this.getDb().getDb(),
+						String(task.id),
+						resolvedTag,
+						validDeps
+					);
 				}
 
 				// Set subtask dependencies (within the same task)
 				const subtasks = task.subtasks || [];
 				const subtaskIds = new Set(
-					subtasks.map(s => typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10))
+					subtasks.map((s) =>
+						typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
+					)
 				);
 				for (const subtask of subtasks) {
-					const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+					const subtaskId =
+						typeof subtask.id === 'number'
+							? subtask.id
+							: parseInt(String(subtask.id), 10);
 					const deps: number[] = [];
-					for (const d of (subtask.dependencies || [])) {
+					for (const d of subtask.dependencies || []) {
 						let depId: number;
 						if (typeof d === 'number') {
 							depId = d;
@@ -352,7 +392,13 @@ export class SqliteStorage implements IStorage {
 						}
 					}
 					if (deps.length > 0) {
-						setSubtaskDependencies(this.getDb().getDb(), String(task.id), subtaskId, resolvedTag, deps);
+						setSubtaskDependencies(
+							this.getDb().getDb(),
+							String(task.id),
+							subtaskId,
+							resolvedTag,
+							deps
+						);
 					}
 				}
 			}
@@ -398,7 +444,11 @@ export class SqliteStorage implements IStorage {
 		const resolvedTag = tag || 'master';
 
 		// Load the existing task
-		const existingTask = loadCompleteTask(this.getDb().getDb(), taskId, resolvedTag);
+		const existingTask = loadCompleteTask(
+			this.getDb().getDb(),
+			taskId,
+			resolvedTag
+		);
 
 		if (!existingTask) {
 			throw new Error(`Task ${taskId} not found`);
@@ -619,7 +669,11 @@ export class SqliteStorage implements IStorage {
 		const tagMetadata = getTagMetadata(this.getDb().getDb(), resolvedTag);
 		const counts = getTaskCounts(this.getDb().getDb(), resolvedTag);
 
-		return tagMetadataRowToTaskMetadata(tagMetadata, counts.total, counts.completed);
+		return tagMetadataRowToTaskMetadata(
+			tagMetadata,
+			counts.total,
+			counts.completed
+		);
 	}
 
 	/**
@@ -658,7 +712,9 @@ export class SqliteStorage implements IStorage {
 		this.getDb().transaction(() => {
 			// Create tag metadata
 			setTagMetadata(this.getDb().getDb(), tagName, {
-				description: options?.description || `Tag created on ${new Date().toLocaleDateString()}`
+				description:
+					options?.description ||
+					`Tag created on ${new Date().toLocaleDateString()}`
 			});
 
 			// Copy tasks from source tag if specified
@@ -761,7 +817,8 @@ export class SqliteStorage implements IStorage {
 
 		// Get last modified from JSONL file stats or fall back to now
 		const jsonlStats = this.jsonlSync.getStats();
-		const lastModified = jsonlStats?.modifiedTime?.toISOString() ?? new Date().toISOString();
+		const lastModified =
+			jsonlStats?.modifiedTime?.toISOString() ?? new Date().toISOString();
 
 		return {
 			totalTasks,
@@ -807,9 +864,7 @@ export class SqliteStorage implements IStorage {
 				completedTasks: counts.completed,
 				statusBreakdown: counts.byStatus,
 				subtaskCounts:
-					totalSubtasks > 0
-						? { totalSubtasks, subtasksByStatus }
-						: undefined,
+					totalSubtasks > 0 ? { totalSubtasks, subtasksByStatus } : undefined,
 				created: metadata?.created_at,
 				updatedAt: metadata?.updated_at,
 				description: metadata?.description ?? undefined
@@ -912,7 +967,11 @@ export class SqliteStorage implements IStorage {
 	 */
 	private async getActiveTagFromState(): Promise<string> {
 		try {
-			const statePath = path.join(this.projectPath, '.taskmaster', 'state.json');
+			const statePath = path.join(
+				this.projectPath,
+				'.taskmaster',
+				'state.json'
+			);
 			const content = await fs.promises.readFile(statePath, 'utf-8');
 			const stateData = JSON.parse(content);
 			return stateData?.currentTag || 'master';

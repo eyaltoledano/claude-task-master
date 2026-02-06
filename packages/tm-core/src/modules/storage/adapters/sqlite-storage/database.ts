@@ -4,10 +4,10 @@
  */
 
 import Database from 'libsql';
-import type { SqliteStorageConfig } from './types.js';
-import { DEFAULT_SQLITE_CONFIG } from './types.js';
 import { MigrationRunner } from './migrations.js';
 import { COMPLETE_SCHEMA } from './schema.js';
+import type { SqliteStorageConfig } from './types.js';
+import { DEFAULT_SQLITE_CONFIG } from './types.js';
 
 /**
  * SQLite database wrapper for TaskMaster storage
@@ -23,7 +23,10 @@ export class SqliteDatabase {
 	 * @param dbPath - Path to the SQLite database file (or ':memory:' for in-memory)
 	 * @param options - Optional configuration overrides
 	 */
-	constructor(dbPath: string, options?: Partial<Omit<SqliteStorageConfig, 'dbPath'>>) {
+	constructor(
+		dbPath: string,
+		options?: Partial<Omit<SqliteStorageConfig, 'dbPath'>>
+	) {
 		this.config = {
 			dbPath,
 			...DEFAULT_SQLITE_CONFIG,
@@ -201,7 +204,7 @@ export class SqliteDatabase {
 		}
 
 		const result = this.queryOne<{ size: number }>(
-			"SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+			'SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()'
 		);
 
 		return result?.size ?? 0;
@@ -213,7 +216,7 @@ export class SqliteDatabase {
 	 */
 	checkIntegrity(): boolean {
 		const result = this.queryOne<{ integrity_check: string }>(
-			"SELECT integrity_check FROM pragma_integrity_check()"
+			'SELECT integrity_check FROM pragma_integrity_check()'
 		);
 		return result?.integrity_check === 'ok';
 	}

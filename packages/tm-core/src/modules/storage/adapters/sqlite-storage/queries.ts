@@ -5,24 +5,24 @@
 
 import type Database from 'libsql';
 import type {
-	Task,
-	Subtask,
-	TaskStatus,
-	TaskMetadata,
-	TaskImplementationMetadata,
-	RelevantFile,
 	ExistingInfrastructure,
-	ScopeBoundaries
+	RelevantFile,
+	ScopeBoundaries,
+	Subtask,
+	Task,
+	TaskImplementationMetadata,
+	TaskMetadata,
+	TaskStatus
 } from '../../../../common/types/index.js';
 import type {
-	TaskRow,
+	SubtaskInsertData,
 	SubtaskRow,
-	TaskMetadataRow,
+	SubtaskUpdateData,
 	TagMetadataRow,
 	TaskInsertData,
-	TaskUpdateData,
-	SubtaskInsertData,
-	SubtaskUpdateData
+	TaskMetadataRow,
+	TaskRow,
+	TaskUpdateData
 } from './types.js';
 import { parseComplexity, serializeComplexity } from './types.js';
 
@@ -77,7 +77,7 @@ export function updateTask(
 	tag: string,
 	updates: TaskUpdateData
 ): void {
-	const setClauses: string[] = ['updated_at = datetime(\'now\')'];
+	const setClauses: string[] = ["updated_at = datetime('now')"];
 	const params: unknown[] = [];
 
 	if (updates.title !== undefined) {
@@ -146,7 +146,11 @@ export function updateTask(
 /**
  * Delete a task and all related data (cascades via foreign keys)
  */
-export function deleteTask(db: Database.Database, taskId: string, tag: string): void {
+export function deleteTask(
+	db: Database.Database,
+	taskId: string,
+	tag: string
+): void {
 	const stmt = db.prepare('DELETE FROM tasks WHERE id = ? AND tag = ?');
 	stmt.run(taskId, tag);
 }
@@ -154,7 +158,11 @@ export function deleteTask(db: Database.Database, taskId: string, tag: string): 
 /**
  * Get a single task by ID and tag
  */
-export function getTask(db: Database.Database, taskId: string, tag: string): TaskRow | undefined {
+export function getTask(
+	db: Database.Database,
+	taskId: string,
+	tag: string
+): TaskRow | undefined {
 	const stmt = db.prepare('SELECT * FROM tasks WHERE id = ? AND tag = ?');
 	return stmt.get(taskId, tag) as TaskRow | undefined;
 }
@@ -175,7 +183,9 @@ export function getTasksByStatus(
 	tag: string,
 	status: TaskStatus
 ): TaskRow[] {
-	const stmt = db.prepare('SELECT * FROM tasks WHERE tag = ? AND status = ? ORDER BY id');
+	const stmt = db.prepare(
+		'SELECT * FROM tasks WHERE tag = ? AND status = ? ORDER BY id'
+	);
 	return stmt.all(tag, status) as TaskRow[];
 }
 
@@ -226,7 +236,7 @@ export function getTaskDependencies(
 		'SELECT depends_on_id FROM task_dependencies WHERE task_id = ? AND tag = ?'
 	);
 	const rows = stmt.all(taskId, tag) as Array<{ depends_on_id: string }>;
-	return rows.map(r => r.depends_on_id);
+	return rows.map((r) => r.depends_on_id);
 }
 
 /**
@@ -303,7 +313,7 @@ export function getTaskLabels(
 		'SELECT tag_name FROM task_tags WHERE task_id = ? AND context_tag = ?'
 	);
 	const rows = stmt.all(taskId, contextTag) as Array<{ tag_name: string }>;
-	return rows.map(r => r.tag_name);
+	return rows.map((r) => r.tag_name);
 }
 
 /**
@@ -340,7 +350,11 @@ export function setTaskLabels(
 /**
  * Insert a new subtask
  */
-export function insertSubtask(db: Database.Database, data: SubtaskInsertData, tag: string): void {
+export function insertSubtask(
+	db: Database.Database,
+	data: SubtaskInsertData,
+	tag: string
+): void {
 	const stmt = db.prepare(`
 		INSERT INTO subtasks (
 			id, parent_id, tag, title, description, status, priority,
@@ -378,7 +392,7 @@ export function updateSubtask(
 	tag: string,
 	updates: SubtaskUpdateData
 ): void {
-	const setClauses: string[] = ['updated_at = datetime(\'now\')'];
+	const setClauses: string[] = ["updated_at = datetime('now')"];
 	const params: unknown[] = [];
 
 	if (updates.title !== undefined) {
@@ -429,7 +443,9 @@ export function deleteSubtask(
 	parentId: string,
 	tag: string
 ): void {
-	const stmt = db.prepare('DELETE FROM subtasks WHERE id = ? AND parent_id = ? AND tag = ?');
+	const stmt = db.prepare(
+		'DELETE FROM subtasks WHERE id = ? AND parent_id = ? AND tag = ?'
+	);
 	stmt.run(subtaskId, parentId, tag);
 }
 
@@ -460,8 +476,10 @@ export function getSubtaskDependencies(
 		SELECT depends_on_subtask_id FROM subtask_dependencies
 		WHERE parent_id = ? AND subtask_id = ? AND tag = ?
 	`);
-	const rows = stmt.all(parentId, subtaskId, tag) as Array<{ depends_on_subtask_id: number }>;
-	return rows.map(r => r.depends_on_subtask_id);
+	const rows = stmt.all(parentId, subtaskId, tag) as Array<{
+		depends_on_subtask_id: number;
+	}>;
+	return rows.map((r) => r.depends_on_subtask_id);
 }
 
 /**
@@ -504,7 +522,9 @@ export function getTaskMetadata(
 	taskId: string,
 	tag: string
 ): TaskMetadataRow | undefined {
-	const stmt = db.prepare('SELECT * FROM task_metadata WHERE task_id = ? AND tag = ?');
+	const stmt = db.prepare(
+		'SELECT * FROM task_metadata WHERE task_id = ? AND tag = ?'
+	);
 	return stmt.get(taskId, tag) as TaskMetadataRow | undefined;
 }
 
@@ -530,11 +550,19 @@ export function setTaskMetadata(
 		taskId,
 		tag,
 		metadata.relevantFiles ? JSON.stringify(metadata.relevantFiles) : null,
-		metadata.codebasePatterns ? JSON.stringify(metadata.codebasePatterns) : null,
-		metadata.existingInfrastructure ? JSON.stringify(metadata.existingInfrastructure) : null,
+		metadata.codebasePatterns
+			? JSON.stringify(metadata.codebasePatterns)
+			: null,
+		metadata.existingInfrastructure
+			? JSON.stringify(metadata.existingInfrastructure)
+			: null,
 		metadata.scopeBoundaries ? JSON.stringify(metadata.scopeBoundaries) : null,
-		metadata.technicalConstraints ? JSON.stringify(metadata.technicalConstraints) : null,
-		metadata.acceptanceCriteria ? JSON.stringify(metadata.acceptanceCriteria) : null,
+		metadata.technicalConstraints
+			? JSON.stringify(metadata.technicalConstraints)
+			: null,
+		metadata.acceptanceCriteria
+			? JSON.stringify(metadata.acceptanceCriteria)
+			: null,
 		metadata.skills ? JSON.stringify(metadata.skills) : null,
 		metadata.category ?? null,
 		userMetadata ? JSON.stringify(userMetadata) : null
@@ -544,8 +572,14 @@ export function setTaskMetadata(
 /**
  * Delete task metadata
  */
-export function deleteTaskMetadata(db: Database.Database, taskId: string, tag: string): void {
-	const stmt = db.prepare('DELETE FROM task_metadata WHERE task_id = ? AND tag = ?');
+export function deleteTaskMetadata(
+	db: Database.Database,
+	taskId: string,
+	tag: string
+): void {
+	const stmt = db.prepare(
+		'DELETE FROM task_metadata WHERE task_id = ? AND tag = ?'
+	);
 	stmt.run(taskId, tag);
 }
 
@@ -556,7 +590,10 @@ export function deleteTaskMetadata(db: Database.Database, taskId: string, tag: s
 /**
  * Get tag metadata
  */
-export function getTagMetadata(db: Database.Database, tag: string): TagMetadataRow | undefined {
+export function getTagMetadata(
+	db: Database.Database,
+	tag: string
+): TagMetadataRow | undefined {
 	const stmt = db.prepare('SELECT * FROM tag_metadata WHERE tag = ?');
 	return stmt.get(tag) as TagMetadataRow | undefined;
 }
@@ -572,7 +609,7 @@ export function setTagMetadata(
 	const existing = getTagMetadata(db, tag);
 
 	if (existing) {
-		const setClauses: string[] = ['updated_at = datetime(\'now\')'];
+		const setClauses: string[] = ["updated_at = datetime('now')"];
 		const params: unknown[] = [];
 
 		if (metadata.description !== undefined) {
@@ -620,7 +657,7 @@ export function deleteTagMetadata(db: Database.Database, tag: string): void {
 export function getAllTags(db: Database.Database): string[] {
 	const stmt = db.prepare('SELECT DISTINCT tag FROM tasks ORDER BY tag');
 	const rows = stmt.all() as Array<{ tag: string }>;
-	return rows.map(r => r.tag);
+	return rows.map((r) => r.tag);
 }
 
 // ============================================================================
@@ -663,10 +700,14 @@ export function taskRowToTask(
 	// Add implementation metadata if present
 	if (metadata) {
 		if (metadata.relevant_files) {
-			task.relevantFiles = JSON.parse(metadata.relevant_files) as RelevantFile[];
+			task.relevantFiles = JSON.parse(
+				metadata.relevant_files
+			) as RelevantFile[];
 		}
 		if (metadata.codebase_patterns) {
-			task.codebasePatterns = JSON.parse(metadata.codebase_patterns) as string[];
+			task.codebasePatterns = JSON.parse(
+				metadata.codebase_patterns
+			) as string[];
 		}
 		if (metadata.existing_infrastructure) {
 			task.existingInfrastructure = JSON.parse(
@@ -674,13 +715,19 @@ export function taskRowToTask(
 			) as ExistingInfrastructure[];
 		}
 		if (metadata.scope_boundaries) {
-			task.scopeBoundaries = JSON.parse(metadata.scope_boundaries) as ScopeBoundaries;
+			task.scopeBoundaries = JSON.parse(
+				metadata.scope_boundaries
+			) as ScopeBoundaries;
 		}
 		if (metadata.technical_constraints) {
-			task.technicalConstraints = JSON.parse(metadata.technical_constraints) as string[];
+			task.technicalConstraints = JSON.parse(
+				metadata.technical_constraints
+			) as string[];
 		}
 		if (metadata.acceptance_criteria) {
-			task.acceptanceCriteria = JSON.parse(metadata.acceptance_criteria) as string[];
+			task.acceptanceCriteria = JSON.parse(
+				metadata.acceptance_criteria
+			) as string[];
 		}
 		if (metadata.skills) {
 			task.skills = JSON.parse(metadata.skills) as string[];
@@ -689,7 +736,10 @@ export function taskRowToTask(
 			task.category = metadata.category as Task['category'];
 		}
 		if (metadata.user_metadata) {
-			task.metadata = JSON.parse(metadata.user_metadata) as Record<string, unknown>;
+			task.metadata = JSON.parse(metadata.user_metadata) as Record<
+				string,
+				unknown
+			>;
 		}
 	}
 
@@ -699,7 +749,10 @@ export function taskRowToTask(
 /**
  * Convert a SubtaskRow to a Subtask domain object
  */
-export function subtaskRowToSubtask(row: SubtaskRow, dependencies: number[]): Subtask {
+export function subtaskRowToSubtask(
+	row: SubtaskRow,
+	dependencies: number[]
+): Subtask {
 	return {
 		id: row.id,
 		parentId: row.parent_id,
@@ -747,7 +800,10 @@ export function taskToInsertData(task: Task, tag: string): TaskInsertData {
 /**
  * Convert a Subtask domain object to insert data
  */
-export function subtaskToInsertData(subtask: Subtask, parentId?: string): SubtaskInsertData {
+export function subtaskToInsertData(
+	subtask: Subtask,
+	parentId?: string
+): SubtaskInsertData {
 	// Handle acceptanceCriteria being either string or array
 	let acceptanceCriteria: string | undefined;
 	if (subtask.acceptanceCriteria) {
@@ -757,7 +813,10 @@ export function subtaskToInsertData(subtask: Subtask, parentId?: string): Subtas
 	}
 
 	return {
-		id: typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10),
+		id:
+			typeof subtask.id === 'number'
+				? subtask.id
+				: parseInt(String(subtask.id), 10),
 		parent_id: String(parentId || subtask.parentId),
 		title: subtask.title || '',
 		description: subtask.description || '',
@@ -813,7 +872,7 @@ export function loadCompleteTask(
 	const subtaskRows = getSubtasks(db, taskId, tag);
 	const metadata = getTaskMetadata(db, taskId, tag);
 
-	const subtasks = subtaskRows.map(row => {
+	const subtasks = subtaskRows.map((row) => {
 		const deps = getSubtaskDependencies(db, taskId, row.id, tag);
 		return subtaskRowToSubtask(row, deps);
 	});
@@ -827,13 +886,13 @@ export function loadCompleteTask(
 export function loadAllTasks(db: Database.Database, tag: string): Task[] {
 	const taskRows = getTasks(db, tag);
 
-	return taskRows.map(taskRow => {
+	return taskRows.map((taskRow) => {
 		const dependencies = getTaskDependencies(db, taskRow.id, tag);
 		const labels = getTaskLabels(db, taskRow.id, tag);
 		const subtaskRows = getSubtasks(db, taskRow.id, tag);
 		const metadata = getTaskMetadata(db, taskRow.id, tag);
 
-		const subtasks = subtaskRows.map(row => {
+		const subtasks = subtaskRows.map((row) => {
 			const deps = getSubtaskDependencies(db, taskRow.id, row.id, tag);
 			return subtaskRowToSubtask(row, deps);
 		});
@@ -929,13 +988,16 @@ export function saveCompleteTask(
 
 	// Handle subtasks
 	const existingSubtasks = getSubtasks(db, task.id, tag);
-	const existingSubtaskIds = new Set(existingSubtasks.map(s => s.id));
+	const existingSubtaskIds = new Set(existingSubtasks.map((s) => s.id));
 
 	// Deduplicate subtasks by ID (keep last occurrence of each ID)
 	const rawSubtasks = task.subtasks || [];
 	const subtaskById = new Map<number, Subtask>();
 	for (const subtask of rawSubtasks) {
-		const id = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+		const id =
+			typeof subtask.id === 'number'
+				? subtask.id
+				: parseInt(String(subtask.id), 10);
 		if (!isNaN(id)) {
 			subtaskById.set(id, subtask);
 		}
@@ -943,7 +1005,9 @@ export function saveCompleteTask(
 	const subtasks = Array.from(subtaskById.values());
 
 	const newSubtaskIds = new Set(
-		subtasks.map(s => (typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)))
+		subtasks.map((s) =>
+			typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
+		)
 	);
 
 	// Delete removed subtasks
@@ -955,7 +1019,10 @@ export function saveCompleteTask(
 
 	// First pass: Insert or update all subtasks
 	for (const subtask of subtasks) {
-		const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+		const subtaskId =
+			typeof subtask.id === 'number'
+				? subtask.id
+				: parseInt(String(subtask.id), 10);
 		const insertData = subtaskToInsertData(subtask, task.id);
 
 		if (existingSubtaskIds.has(subtaskId)) {
@@ -967,9 +1034,9 @@ export function saveCompleteTask(
 				details: subtask.details,
 				test_strategy: subtask.testStrategy,
 				acceptance_criteria: subtask.acceptanceCriteria
-					? (Array.isArray(subtask.acceptanceCriteria)
+					? Array.isArray(subtask.acceptanceCriteria)
 						? subtask.acceptanceCriteria.join('\n')
-						: String(subtask.acceptanceCriteria))
+						: String(subtask.acceptanceCriteria)
 					: undefined,
 				assignee: subtask.assignee
 			});
@@ -982,11 +1049,14 @@ export function saveCompleteTask(
 	// Skip if requested for batch operations
 	if (!options?.skipSubtaskDependencies) {
 		for (const subtask of subtasks) {
-			const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+			const subtaskId =
+				typeof subtask.id === 'number'
+					? subtask.id
+					: parseInt(String(subtask.id), 10);
 
 			// Parse dependencies - handle both numeric IDs and dotted notation (like "21.4")
 			const deps: number[] = [];
-			for (const d of (subtask.dependencies || [])) {
+			for (const d of subtask.dependencies || []) {
 				let depId: number;
 				if (typeof d === 'number') {
 					depId = d;
@@ -1041,7 +1111,9 @@ export function getTaskCounts(
 	db: Database.Database,
 	tag: string
 ): { total: number; completed: number; byStatus: Record<string, number> } {
-	const totalStmt = db.prepare('SELECT COUNT(*) as count FROM tasks WHERE tag = ?');
+	const totalStmt = db.prepare(
+		'SELECT COUNT(*) as count FROM tasks WHERE tag = ?'
+	);
 	const total = (totalStmt.get(tag) as { count: number }).count;
 
 	const completedStmt = db.prepare(
@@ -1052,7 +1124,10 @@ export function getTaskCounts(
 	const byStatusStmt = db.prepare(
 		'SELECT status, COUNT(*) as count FROM tasks WHERE tag = ? GROUP BY status'
 	);
-	const statusRows = byStatusStmt.all(tag) as Array<{ status: string; count: number }>;
+	const statusRows = byStatusStmt.all(tag) as Array<{
+		status: string;
+		count: number;
+	}>;
 	const byStatus: Record<string, number> = {};
 	for (const row of statusRows) {
 		byStatus[row.status] = row.count;
