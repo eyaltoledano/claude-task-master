@@ -725,7 +725,7 @@ export function subtaskRowToSubtask(row: SubtaskRow, dependencies: number[]): Su
  */
 export function taskToInsertData(task: Task, tag: string): TaskInsertData {
 	return {
-		id: task.id,
+		id: String(task.id),
 		title: task.title,
 		description: task.description,
 		status: task.status,
@@ -747,17 +747,25 @@ export function taskToInsertData(task: Task, tag: string): TaskInsertData {
 /**
  * Convert a Subtask domain object to insert data
  */
-export function subtaskToInsertData(subtask: Subtask): SubtaskInsertData {
+export function subtaskToInsertData(subtask: Subtask, parentId?: string): SubtaskInsertData {
+	// Handle acceptanceCriteria being either string or array
+	let acceptanceCriteria: string | undefined;
+	if (subtask.acceptanceCriteria) {
+		acceptanceCriteria = Array.isArray(subtask.acceptanceCriteria)
+			? subtask.acceptanceCriteria.join('\n')
+			: String(subtask.acceptanceCriteria);
+	}
+
 	return {
 		id: typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10),
-		parent_id: subtask.parentId,
-		title: subtask.title,
-		description: subtask.description,
-		status: subtask.status,
-		priority: subtask.priority,
-		details: subtask.details,
-		test_strategy: subtask.testStrategy,
-		acceptance_criteria: subtask.acceptanceCriteria?.join('\n'),
+		parent_id: String(parentId || subtask.parentId),
+		title: subtask.title || '',
+		description: subtask.description || '',
+		status: subtask.status || 'pending',
+		priority: subtask.priority || 'medium',
+		details: subtask.details || '',
+		test_strategy: subtask.testStrategy || '',
+		acceptance_criteria: acceptanceCriteria,
 		assignee: subtask.assignee
 	};
 }
@@ -835,9 +843,24 @@ export function loadAllTasks(db: Database.Database, tag: string): Task[] {
 }
 
 /**
+ * Options for saving a complete task
+ */
+export interface SaveCompleteTaskOptions {
+	/** Skip setting task dependencies (useful for batch operations) */
+	skipTaskDependencies?: boolean;
+	/** Skip setting subtask dependencies (useful for batch operations) */
+	skipSubtaskDependencies?: boolean;
+}
+
+/**
  * Save a complete task with all related data
  */
-export function saveCompleteTask(db: Database.Database, task: Task, tag: string): void {
+export function saveCompleteTask(
+	db: Database.Database,
+	task: Task,
+	tag: string,
+	options?: SaveCompleteTaskOptions
+): void {
 	const insertData = taskToInsertData(task, tag);
 
 	// Insert or update the task
@@ -863,8 +886,10 @@ export function saveCompleteTask(db: Database.Database, task: Task, tag: string)
 		insertTask(db, insertData);
 	}
 
-	// Set dependencies
-	setTaskDependencies(db, task.id, tag, task.dependencies);
+	// Set dependencies (skip if requested for batch operations)
+	if (!options?.skipTaskDependencies) {
+		setTaskDependencies(db, task.id, tag, task.dependencies);
+	}
 
 	// Set labels
 	if (task.tags) {
@@ -905,8 +930,20 @@ export function saveCompleteTask(db: Database.Database, task: Task, tag: string)
 	// Handle subtasks
 	const existingSubtasks = getSubtasks(db, task.id, tag);
 	const existingSubtaskIds = new Set(existingSubtasks.map(s => s.id));
+
+	// Deduplicate subtasks by ID (keep last occurrence of each ID)
+	const rawSubtasks = task.subtasks || [];
+	const subtaskById = new Map<number, Subtask>();
+	for (const subtask of rawSubtasks) {
+		const id = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+		if (!isNaN(id)) {
+			subtaskById.set(id, subtask);
+		}
+	}
+	const subtasks = Array.from(subtaskById.values());
+
 	const newSubtaskIds = new Set(
-		task.subtasks.map(s => (typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)))
+		subtasks.map(s => (typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)))
 	);
 
 	// Delete removed subtasks
@@ -916,10 +953,10 @@ export function saveCompleteTask(db: Database.Database, task: Task, tag: string)
 		}
 	}
 
-	// Insert or update subtasks
-	for (const subtask of task.subtasks) {
+	// First pass: Insert or update all subtasks
+	for (const subtask of subtasks) {
 		const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
-		const insertData = subtaskToInsertData(subtask);
+		const insertData = subtaskToInsertData(subtask, task.id);
 
 		if (existingSubtaskIds.has(subtaskId)) {
 			updateSubtask(db, subtaskId, task.id, tag, {
@@ -929,18 +966,48 @@ export function saveCompleteTask(db: Database.Database, task: Task, tag: string)
 				priority: subtask.priority,
 				details: subtask.details,
 				test_strategy: subtask.testStrategy,
-				acceptance_criteria: subtask.acceptanceCriteria?.join('\n'),
+				acceptance_criteria: subtask.acceptanceCriteria
+					? (Array.isArray(subtask.acceptanceCriteria)
+						? subtask.acceptanceCriteria.join('\n')
+						: String(subtask.acceptanceCriteria))
+					: undefined,
 				assignee: subtask.assignee
 			});
 		} else {
 			insertSubtask(db, insertData, tag);
 		}
+	}
 
-		// Set subtask dependencies
-		const deps = subtask.dependencies?.map(d =>
-			typeof d === 'number' ? d : parseInt(String(d), 10)
-		) ?? [];
-		setSubtaskDependencies(db, task.id, subtaskId, tag, deps);
+	// Second pass: Set subtask dependencies (after all subtasks exist)
+	// Skip if requested for batch operations
+	if (!options?.skipSubtaskDependencies) {
+		for (const subtask of subtasks) {
+			const subtaskId = typeof subtask.id === 'number' ? subtask.id : parseInt(String(subtask.id), 10);
+
+			// Parse dependencies - handle both numeric IDs and dotted notation (like "21.4")
+			const deps: number[] = [];
+			for (const d of (subtask.dependencies || [])) {
+				let depId: number;
+				if (typeof d === 'number') {
+					depId = d;
+				} else {
+					const str = String(d);
+					// If it's dotted notation, extract just the subtask part
+					if (str.includes('.')) {
+						const parts = str.split('.');
+						depId = parseInt(parts[parts.length - 1], 10);
+					} else {
+						depId = parseInt(str, 10);
+					}
+				}
+				// Only include valid dependencies that exist in this task's subtasks
+				if (!isNaN(depId) && newSubtaskIds.has(depId)) {
+					deps.push(depId);
+				}
+			}
+
+			setSubtaskDependencies(db, task.id, subtaskId, tag, deps);
+		}
 	}
 }
 
