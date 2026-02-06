@@ -287,15 +287,22 @@ export function parseComplexity(
 		return undefined;
 	}
 
+	// Guard against empty or whitespace-only strings
+	// (Number('') returns 0 which would incorrectly parse empty strings as zero)
+	const trimmed = value.trim();
+	if (trimmed === '') {
+		return undefined;
+	}
+
 	// Try parsing as number first
-	const numValue = Number(value);
+	const numValue = Number(trimmed);
 	if (!isNaN(numValue)) {
 		return numValue;
 	}
 
 	// Check if it's a valid complexity enum
-	if (['simple', 'moderate', 'complex', 'very-complex'].includes(value)) {
-		return value as TaskComplexity;
+	if (['simple', 'moderate', 'complex', 'very-complex'].includes(trimmed)) {
+		return trimmed as TaskComplexity;
 	}
 
 	return undefined;

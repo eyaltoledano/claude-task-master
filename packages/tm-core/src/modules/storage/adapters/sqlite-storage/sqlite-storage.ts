@@ -44,6 +44,25 @@ import {
 	updateTask as updateTaskQuery
 } from './queries.js';
 import type { SqliteStorageConfig } from './types.js';
+import type { Subtask } from '../../../../common/types/index.js';
+
+/**
+ * Convert a Subtask to a Task-like object with safe defaults
+ * Ensures all required Task fields are present even if subtask data is incomplete
+ */
+function convertSubtaskToTask(subtask: Subtask, fullTaskId: string): Task {
+	return {
+		id: fullTaskId,
+		title: subtask.title || '',
+		description: subtask.description || '',
+		status: subtask.status || 'pending',
+		priority: subtask.priority || 'medium',
+		dependencies: subtask.dependencies || [],
+		details: subtask.details || '',
+		testStrategy: subtask.testStrategy || '',
+		subtasks: []
+	};
+}
 
 /**
  * Default paths for SQLite storage files
@@ -310,13 +329,8 @@ export class SqliteStorage implements IStorage {
 				return null;
 			}
 
-			// Return a Task-like object for the subtask with the full dotted ID
-			return {
-				...subtask,
-				id: taskId,
-				subtasks: [],
-				dependencies: subtask.dependencies || []
-			} as Task;
+			// Return a Task-like object for the subtask with safe defaults
+			return convertSubtaskToTask(subtask, taskId);
 		}
 
 		return loadCompleteTask(this.getDb().getDb(), taskId, resolvedTag);
@@ -466,8 +480,8 @@ export class SqliteStorage implements IStorage {
 			saveCompleteTask(this.getDb().getDb(), updatedTask, resolvedTag);
 		});
 
-		// Sync to JSONL
-		await this.syncToJsonl(resolvedTag);
+		// Incremental JSONL sync for single task
+		await this.jsonlSync.writeTaskWithTag(updatedTask, resolvedTag);
 	}
 
 	/**
@@ -545,8 +559,15 @@ export class SqliteStorage implements IStorage {
 			});
 		});
 
-		// Sync to JSONL
-		await this.syncToJsonl(resolvedTag);
+		// Incremental JSONL sync - reload and write the updated task
+		const updatedTask = loadCompleteTask(
+			this.getDb().getDb(),
+			taskId,
+			resolvedTag
+		);
+		if (updatedTask) {
+			await this.jsonlSync.writeTaskWithTag(updatedTask, resolvedTag);
+		}
 
 		return {
 			success: true,
@@ -612,6 +633,9 @@ export class SqliteStorage implements IStorage {
 				parentNewStatus = 'done';
 			} else if (anyInProgress || anyDone) {
 				parentNewStatus = 'in-progress';
+			} else {
+				// All subtasks are pending, revert parent to pending
+				parentNewStatus = 'pending';
 			}
 
 			if (parentNewStatus) {
@@ -648,8 +672,8 @@ export class SqliteStorage implements IStorage {
 			deleteTaskQuery(this.getDb().getDb(), taskId, resolvedTag);
 		});
 
-		// Sync to JSONL
-		await this.syncToJsonl(resolvedTag);
+		// Incremental JSONL sync for single task deletion
+		await this.jsonlSync.deleteTaskWithTag(taskId, resolvedTag);
 	}
 
 	/**
@@ -936,12 +960,11 @@ export class SqliteStorage implements IStorage {
 
 	/**
 	 * Sync tasks for a specific tag to JSONL
-	 * Uses exportAll to ensure deletions are reflected (full overwrite)
+	 * Only exports the affected tag for efficiency
 	 */
-	private async syncToJsonl(_tag: string): Promise<void> {
-		// Always sync ALL tasks from ALL tags to ensure deletions are reflected
-		// Using exportAll does a full overwrite, so deleted tasks won't resurrect
-		await this.syncAllToJsonl();
+	private async syncToJsonl(tag: string): Promise<void> {
+		const tasks = loadAllTasks(this.getDb().getDb(), tag);
+		await this.jsonlSync.syncTagTasks(tasks, tag);
 	}
 
 	/**

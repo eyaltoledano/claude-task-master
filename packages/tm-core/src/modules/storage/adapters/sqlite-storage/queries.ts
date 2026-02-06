@@ -27,6 +27,29 @@ import type {
 import { parseComplexity, serializeComplexity } from './types.js';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Safely parse JSON from a database field, returning a default value on error
+ * This prevents exceptions from corrupted or invalid JSON in metadata fields
+ */
+function safeParseJson<T>(
+	value: string | null | undefined,
+	defaultValue: T
+): T {
+	if (value === null || value === undefined) {
+		return defaultValue;
+	}
+	try {
+		return JSON.parse(value) as T;
+	} catch {
+		// Return default on parse error to prevent crashes from corrupted data
+		return defaultValue;
+	}
+}
+
+// ============================================================================
 // Task Queries
 // ============================================================================
 
@@ -652,10 +675,15 @@ export function deleteTagMetadata(db: Database.Database, tag: string): void {
 }
 
 /**
- * Get all tags
+ * Get all tags (from both tasks and tag_metadata to include empty tags)
  */
 export function getAllTags(db: Database.Database): string[] {
-	const stmt = db.prepare('SELECT DISTINCT tag FROM tasks ORDER BY tag');
+	const stmt = db.prepare(`
+		SELECT tag FROM tag_metadata
+		UNION
+		SELECT DISTINCT tag FROM tasks
+		ORDER BY tag
+	`);
 	const rows = stmt.all() as Array<{ tag: string }>;
 	return rows.map((r) => r.tag);
 }
@@ -698,48 +726,66 @@ export function taskRowToTask(
 	};
 
 	// Add implementation metadata if present
+	// Use safeParseJson to handle corrupted/invalid JSON gracefully
 	if (metadata) {
 		if (metadata.relevant_files) {
-			task.relevantFiles = JSON.parse(
-				metadata.relevant_files
-			) as RelevantFile[];
+			const parsed = safeParseJson<RelevantFile[] | undefined>(
+				metadata.relevant_files,
+				undefined
+			);
+			if (parsed) task.relevantFiles = parsed;
 		}
 		if (metadata.codebase_patterns) {
-			task.codebasePatterns = JSON.parse(
-				metadata.codebase_patterns
-			) as string[];
+			const parsed = safeParseJson<string[] | undefined>(
+				metadata.codebase_patterns,
+				undefined
+			);
+			if (parsed) task.codebasePatterns = parsed;
 		}
 		if (metadata.existing_infrastructure) {
-			task.existingInfrastructure = JSON.parse(
-				metadata.existing_infrastructure
-			) as ExistingInfrastructure[];
+			const parsed = safeParseJson<ExistingInfrastructure[] | undefined>(
+				metadata.existing_infrastructure,
+				undefined
+			);
+			if (parsed) task.existingInfrastructure = parsed;
 		}
 		if (metadata.scope_boundaries) {
-			task.scopeBoundaries = JSON.parse(
-				metadata.scope_boundaries
-			) as ScopeBoundaries;
+			const parsed = safeParseJson<ScopeBoundaries | undefined>(
+				metadata.scope_boundaries,
+				undefined
+			);
+			if (parsed) task.scopeBoundaries = parsed;
 		}
 		if (metadata.technical_constraints) {
-			task.technicalConstraints = JSON.parse(
-				metadata.technical_constraints
-			) as string[];
+			const parsed = safeParseJson<string[] | undefined>(
+				metadata.technical_constraints,
+				undefined
+			);
+			if (parsed) task.technicalConstraints = parsed;
 		}
 		if (metadata.acceptance_criteria) {
-			task.acceptanceCriteria = JSON.parse(
-				metadata.acceptance_criteria
-			) as string[];
+			const parsed = safeParseJson<string[] | undefined>(
+				metadata.acceptance_criteria,
+				undefined
+			);
+			if (parsed) task.acceptanceCriteria = parsed;
 		}
 		if (metadata.skills) {
-			task.skills = JSON.parse(metadata.skills) as string[];
+			const parsed = safeParseJson<string[] | undefined>(
+				metadata.skills,
+				undefined
+			);
+			if (parsed) task.skills = parsed;
 		}
 		if (metadata.category) {
 			task.category = metadata.category as Task['category'];
 		}
 		if (metadata.user_metadata) {
-			task.metadata = JSON.parse(metadata.user_metadata) as Record<
-				string,
-				unknown
-			>;
+			const parsed = safeParseJson<Record<string, unknown> | undefined>(
+				metadata.user_metadata,
+				undefined
+			);
+			if (parsed) task.metadata = parsed;
 		}
 	}
 
@@ -947,7 +993,9 @@ export function saveCompleteTask(
 
 	// Set dependencies (skip if requested for batch operations)
 	if (!options?.skipTaskDependencies) {
-		setTaskDependencies(db, task.id, tag, task.dependencies);
+		// Normalize dependencies to strings (JSON may have numeric IDs)
+		const normalizedDeps = (task.dependencies || []).map(String);
+		setTaskDependencies(db, task.id, tag, normalizedDeps);
 	}
 
 	// Set labels

@@ -203,7 +203,7 @@ export function registerStorageConfigTool(server: FastMCP) {
 										success: false,
 										error: {
 											message:
-												"Rebuild is only available for SQLite storage. Current type: " +
+												'Rebuild is only available for SQLite storage. Current type: ' +
 												status.currentType
 										}
 									},

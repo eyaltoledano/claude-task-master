@@ -15,6 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import type { Task } from '../../../../common/types/index.js';
+import { Logger, LogLevel } from '../../../../common/logger/logger.js';
 
 /**
  * Task with JSONL metadata fields
@@ -59,6 +60,7 @@ export interface ReadOptions {
 export class JsonlSync {
 	private readonly jsonlPath: string;
 	private readonly schemaVersion = 1;
+	private readonly logger: Logger;
 
 	/**
 	 * Create a new JsonlSync instance
@@ -66,6 +68,7 @@ export class JsonlSync {
 	 */
 	constructor(jsonlPath: string) {
 		this.jsonlPath = jsonlPath;
+		this.logger = new Logger({ prefix: 'JsonlSync', level: LogLevel.WARN });
 	}
 
 	/**
@@ -94,31 +97,36 @@ export class JsonlSync {
 			crlfDelay: Infinity
 		});
 
-		let lineNumber = 0;
-		for await (const line of rl) {
-			lineNumber++;
-			const trimmedLine = line.trim();
+		try {
+			let lineNumber = 0;
+			for await (const line of rl) {
+				lineNumber++;
+				const trimmedLine = line.trim();
 
-			// Skip empty lines
-			if (!trimmedLine) {
-				continue;
-			}
-
-			try {
-				const task = JSON.parse(trimmedLine) as JsonlTask;
-
-				// Filter out deleted tasks unless explicitly requested
-				if (!includeDeleted && task._deleted) {
+				// Skip empty lines
+				if (!trimmedLine) {
 					continue;
 				}
 
-				tasks.push(task);
-			} catch (error) {
-				// Log parse errors but continue reading
-				console.error(
-					`[JsonlSync] Failed to parse line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`
-				);
+				try {
+					const task = JSON.parse(trimmedLine) as JsonlTask;
+
+					// Filter out deleted tasks unless explicitly requested
+					if (!includeDeleted && task._deleted) {
+						continue;
+					}
+
+					tasks.push(task);
+				} catch (error) {
+					// Log parse errors but continue reading
+					this.logger.warn(
+						`Failed to parse line ${lineNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`
+					);
+				}
 			}
+		} finally {
+			// Always close resources to prevent file descriptor leaks
+			rl.close();
 		}
 
 		return tasks;
@@ -156,7 +164,8 @@ export class JsonlSync {
 
 			try {
 				const existingTask = JSON.parse(trimmedLine) as JsonlTask;
-				if (existingTask.id === task.id) {
+				// Normalize IDs to strings for comparison (JSON may have numeric IDs)
+				if (String(existingTask.id) === String(task.id)) {
 					// Replace this line with the updated task
 					updatedLines.push(newLine);
 					found = true;
@@ -188,10 +197,10 @@ export class JsonlSync {
 			return;
 		}
 
-		// Build a map of tasks to write for quick lookup
+		// Build a map of tasks to write for quick lookup (normalize IDs to strings)
 		const taskMap = new Map<string, Task>();
 		for (const task of tasks) {
-			taskMap.set(task.id, task);
+			taskMap.set(String(task.id), task);
 		}
 
 		// If file doesn't exist, just create it with all tasks
@@ -215,11 +224,13 @@ export class JsonlSync {
 
 			try {
 				const existingTask = JSON.parse(trimmedLine) as JsonlTask;
-				if (taskMap.has(existingTask.id)) {
+				// Normalize ID to string for map lookup
+				const existingIdStr = String(existingTask.id);
+				if (taskMap.has(existingIdStr)) {
 					// Replace with the new version
-					const newTask = taskMap.get(existingTask.id)!;
+					const newTask = taskMap.get(existingIdStr)!;
 					updatedLines.push(JSON.stringify(this.toJsonlTask(newTask)));
-					writtenIds.add(existingTask.id);
+					writtenIds.add(existingIdStr);
 				} else {
 					updatedLines.push(trimmedLine);
 				}
@@ -231,7 +242,7 @@ export class JsonlSync {
 
 		// Append any tasks that weren't found
 		for (const task of tasks) {
-			if (!writtenIds.has(task.id)) {
+			if (!writtenIds.has(String(task.id))) {
 				updatedLines.push(JSON.stringify(this.toJsonlTask(task)));
 			}
 		}
@@ -262,8 +273,8 @@ export class JsonlSync {
 
 			try {
 				const task = JSON.parse(trimmedLine) as JsonlTask;
-				// Skip the task we want to delete
-				if (task.id !== taskId) {
+				// Skip the task we want to delete (normalize IDs for comparison)
+				if (String(task.id) !== String(taskId)) {
 					updatedLines.push(trimmedLine);
 				}
 			} catch {
@@ -298,7 +309,8 @@ export class JsonlSync {
 
 			try {
 				const task = JSON.parse(trimmedLine) as JsonlTask;
-				if (task.id === taskId) {
+				// Normalize IDs for comparison
+				if (String(task.id) === String(taskId)) {
 					// Mark as deleted
 					task._deleted = true;
 					task._ts = new Date().toISOString();
@@ -345,6 +357,135 @@ export class JsonlSync {
 			JSON.stringify(this.toJsonlTask(task, tag))
 		);
 		await this.writeLines(lines);
+	}
+
+	/**
+	 * Write or update a single task with tag context
+	 * Matches by BOTH id AND tag to support multi-tag scenarios
+	 *
+	 * @param task - The task to write
+	 * @param tag - The tag context for this task
+	 */
+	async writeTaskWithTag(task: Task, tag: string): Promise<void> {
+		const jsonlTask = this.toJsonlTask(task, tag);
+		const newLine = JSON.stringify(jsonlTask);
+
+		if (!this.exists()) {
+			await this.ensureDirectory();
+			await this.writeLines([newLine]);
+			return;
+		}
+
+		const lines = await this.readLines();
+		let found = false;
+		const updatedLines: string[] = [];
+
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (!trimmedLine) continue;
+
+			try {
+				const existingTask = JSON.parse(trimmedLine) as JsonlTask;
+				// Match by BOTH id AND tag
+				if (
+					String(existingTask.id) === String(task.id) &&
+					(existingTask._tag || 'master') === tag
+				) {
+					updatedLines.push(newLine);
+					found = true;
+				} else {
+					updatedLines.push(trimmedLine);
+				}
+			} catch {
+				updatedLines.push(trimmedLine);
+			}
+		}
+
+		if (!found) {
+			updatedLines.push(newLine);
+		}
+
+		await this.writeLines(updatedLines);
+	}
+
+	/**
+	 * Delete a task with tag context
+	 * Matches by BOTH id AND tag
+	 *
+	 * @param taskId - ID of the task to delete
+	 * @param tag - The tag context
+	 */
+	async deleteTaskWithTag(taskId: string, tag: string): Promise<void> {
+		if (!this.exists()) return;
+
+		const lines = await this.readLines();
+		const updatedLines: string[] = [];
+
+		for (const line of lines) {
+			const trimmedLine = line.trim();
+			if (!trimmedLine) continue;
+
+			try {
+				const task = JSON.parse(trimmedLine) as JsonlTask;
+				// Keep lines that don't match both id AND tag
+				if (
+					!(
+						String(task.id) === String(taskId) &&
+						(task._tag || 'master') === tag
+					)
+				) {
+					updatedLines.push(trimmedLine);
+				}
+			} catch {
+				updatedLines.push(trimmedLine);
+			}
+		}
+
+		await this.writeLines(updatedLines);
+	}
+
+	/**
+	 * Sync all tasks for a specific tag
+	 * Removes all existing entries for the tag and replaces with new tasks
+	 * More efficient than full sync when only one tag changed
+	 *
+	 * @param tasks - Tasks to write for this tag
+	 * @param tag - The tag to sync
+	 */
+	async syncTagTasks(tasks: Task[], tag: string): Promise<void> {
+		if (!this.exists()) {
+			await this.ensureDirectory();
+			const lines = tasks.map((task) =>
+				JSON.stringify(this.toJsonlTask(task, tag))
+			);
+			await this.writeLines(lines);
+			return;
+		}
+
+		const existingLines = await this.readLines();
+		const updatedLines: string[] = [];
+
+		// Keep all lines that are NOT from this tag
+		for (const line of existingLines) {
+			const trimmedLine = line.trim();
+			if (!trimmedLine) continue;
+
+			try {
+				const existingTask = JSON.parse(trimmedLine) as JsonlTask;
+				if ((existingTask._tag || 'master') !== tag) {
+					updatedLines.push(trimmedLine);
+				}
+			} catch {
+				updatedLines.push(trimmedLine);
+			}
+		}
+
+		// Add all tasks for this tag
+		for (const task of tasks) {
+			updatedLines.push(JSON.stringify(this.toJsonlTask(task, tag)));
+		}
+
+		await this.writeLines(updatedLines);
 	}
 
 	/**
@@ -416,7 +557,8 @@ export class JsonlSync {
 
 				try {
 					const task = JSON.parse(trimmedLine) as JsonlTask;
-					if (task.id === taskId && !task._deleted) {
+					// Normalize IDs for comparison
+					if (String(task.id) === String(taskId) && !task._deleted) {
 						found = task;
 						break; // Exit loop, finally will close rl
 					}

@@ -83,52 +83,87 @@ export class MigrationRunner {
 	}
 
 	/**
-	 * Apply a single migration
+	 * Apply a single migration within a savepoint (nested transaction)
 	 * @param migration - Migration to apply
+	 * @throws Error if migration fails (savepoint is rolled back)
 	 */
 	applyMigration(migration: Migration): void {
-		// Run migration statements
-		for (const sql of migration.up) {
-			this.db.exec(sql);
-		}
+		// Use savepoint for nested transaction support
+		// (migrations may be called within database initialization transaction)
+		const savepointName = `migration_${migration.version}`;
+		this.db.exec(`SAVEPOINT ${savepointName}`);
 
-		// Record the migration in schema_version
-		const stmt = this.db.prepare(
-			"INSERT INTO schema_version (version, applied_at, description) VALUES (?, datetime('now'), ?)"
-		);
-		stmt.run(migration.version, migration.description);
+		try {
+			// Run migration statements
+			for (const sql of migration.up) {
+				this.db.exec(sql);
+			}
+
+			// Record the migration in schema_version
+			const stmt = this.db.prepare(
+				"INSERT INTO schema_version (version, applied_at, description) VALUES (?, datetime('now'), ?)"
+			);
+			stmt.run(migration.version, migration.description);
+
+			this.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+		} catch (error) {
+			// Rollback savepoint on any error to avoid partial application
+			this.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+			throw error;
+		}
 	}
 
 	/**
-	 * Revert a single migration
+	 * Revert a single migration within a savepoint (nested transaction)
 	 * @param migration - Migration to revert
-	 * @throws Error if migration doesn't have down statements
+	 * @throws Error if migration doesn't have down statements or rollback fails
 	 */
 	revertMigration(migration: Migration): void {
+		// Check for down statements before starting savepoint
 		if (!migration.down || migration.down.length === 0) {
 			throw new Error(
 				`Migration ${migration.version} does not support rollback`
 			);
 		}
 
-		// Run rollback statements
-		for (const sql of migration.down) {
-			this.db.exec(sql);
-		}
+		// Use savepoint for nested transaction support
+		const savepointName = `revert_migration_${migration.version}`;
+		this.db.exec(`SAVEPOINT ${savepointName}`);
 
-		// Remove from schema_version
-		const stmt = this.db.prepare(
-			'DELETE FROM schema_version WHERE version = ?'
-		);
-		stmt.run(migration.version);
+		try {
+			// Run rollback statements
+			for (const sql of migration.down) {
+				this.db.exec(sql);
+			}
+
+			// Remove from schema_version
+			const stmt = this.db.prepare(
+				'DELETE FROM schema_version WHERE version = ?'
+			);
+			stmt.run(migration.version);
+
+			this.db.exec(`RELEASE SAVEPOINT ${savepointName}`);
+		} catch (error) {
+			// Rollback savepoint on any error to avoid partial reversion
+			this.db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+			throw error;
+		}
 	}
 
 	/**
 	 * Migrate to a specific version
-	 * @param targetVersion - Target schema version
+	 * @param targetVersion - Target schema version (must be between 0 and CURRENT_SCHEMA_VERSION)
 	 * @returns Number of migrations applied or reverted
+	 * @throws Error if targetVersion is out of valid range
 	 */
 	migrateTo(targetVersion: number): number {
+		// Validate targetVersion is within valid bounds
+		if (targetVersion < 0 || targetVersion > CURRENT_SCHEMA_VERSION) {
+			throw new Error(
+				`Invalid target version ${targetVersion}. Must be between 0 and ${CURRENT_SCHEMA_VERSION}.`
+			);
+		}
+
 		const currentVersion = this.getCurrentVersion();
 
 		if (targetVersion === currentVersion) {

@@ -11,10 +11,7 @@ export { StorageFactory } from './services/storage-factory.js';
 // Export storage migration service
 export {
 	StorageMigration,
-	type MigrationResult,
-	type MigrationOptions,
-	type ValidationResult,
-	type StorageStatus
+	type MigrationResult
 } from './services/storage-migration.js';
 
 // Export activity logger

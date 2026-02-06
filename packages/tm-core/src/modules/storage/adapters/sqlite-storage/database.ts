@@ -28,10 +28,18 @@ export class SqliteDatabase {
 		dbPath: string,
 		options?: Partial<Omit<SqliteStorageConfig, 'dbPath'>>
 	) {
+		// Filter out undefined values from options so they don't shadow defaults
+		// (e.g., { walMode: undefined } would overwrite DEFAULT_SQLITE_CONFIG.walMode)
+		const definedOptions = options
+			? Object.fromEntries(
+					Object.entries(options).filter(([, v]) => v !== undefined)
+				)
+			: {};
+
 		this.config = {
 			dbPath,
 			...DEFAULT_SQLITE_CONFIG,
-			...options
+			...definedOptions
 		};
 
 		// Create the database connection
@@ -240,23 +248,35 @@ export class SqliteDatabase {
 	/**
 	 * Backup the database to a file
 	 * @param destPath - Destination path for the backup
-	 * @throws Error if destPath contains invalid characters
+	 * @throws Error if destPath contains invalid characters or is outside allowed directory
 	 */
 	backup(destPath: string): void {
-		// Validate path to prevent SQL injection
-		// Only allow alphanumeric, path separators, dots, underscores, hyphens, and spaces
-		const validPathPattern = /^[a-zA-Z0-9_\-./\\ ]+$/;
-		if (!validPathPattern.test(destPath)) {
+		// Resolve the path first since that's what gets used in SQL
+		const normalizedPath = path.resolve(destPath);
+
+		// Validate normalized path to prevent SQL injection
+		// Only allow alphanumeric, path separators, dots, underscores, hyphens, spaces, and drive letters (Windows)
+		const validPathPattern = /^[a-zA-Z0-9_\-./\\ :]+$/;
+		if (!validPathPattern.test(normalizedPath)) {
 			throw new Error(
-				`Invalid backup path: "${destPath}". Path contains disallowed characters.`
+				`Invalid backup path: "${destPath}". Resolved path contains disallowed characters.`
 			);
 		}
 
-		// Additional check: prevent path traversal attacks
-		const normalizedPath = path.resolve(destPath);
+		// Check for quotes which could break SQL
 		if (normalizedPath.includes("'") || normalizedPath.includes('"')) {
 			throw new Error(
 				`Invalid backup path: "${destPath}". Path cannot contain quotes.`
+			);
+		}
+
+		// Containment check: backup must be in same directory as database
+		// This prevents path traversal attacks (e.g., ../../etc/backup.db)
+		const dbDir = path.resolve(path.dirname(this.config.dbPath));
+		const backupDir = path.dirname(normalizedPath);
+		if (!backupDir.startsWith(dbDir)) {
+			throw new Error(
+				`Invalid backup path: "${destPath}". Backup must be in the database directory or subdirectory.`
 			);
 		}
 

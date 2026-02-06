@@ -210,6 +210,9 @@ export class StorageMigration {
 		let subtaskCount = 0;
 		let tagsCount = 0;
 
+		// Declare storage variable outside try for finally cleanup
+		let sqliteStorage: SqliteStorage | undefined;
+
 		try {
 			const jsonlPath = path.join(this.tasksDir, 'tasks.jsonl');
 			const sqliteDbPath = path.join(this.tasksDir, 'tasks.db');
@@ -248,7 +251,7 @@ export class StorageMigration {
 			}
 
 			// Create new SQLite storage (this will rebuild from JSONL on init)
-			const sqliteStorage = new SqliteStorage(this.projectPath);
+			sqliteStorage = new SqliteStorage(this.projectPath);
 			await sqliteStorage.initialize();
 
 			// Get stats after rebuild
@@ -262,8 +265,6 @@ export class StorageMigration {
 					subtaskCount += task.subtasks?.length || 0;
 				}
 			}
-
-			await sqliteStorage.close();
 
 			return {
 				success: true,
@@ -294,6 +295,9 @@ export class StorageMigration {
 				targetType: 'sqlite',
 				durationMs: Date.now() - startTime
 			};
+		} finally {
+			// Always close storage to prevent resource leaks
+			await sqliteStorage?.close();
 		}
 	}
 
@@ -598,7 +602,20 @@ export class StorageMigration {
 				await fs.promises.readFile(this.configPath, 'utf-8')
 			);
 
-			return (config.storage?.type as StorageType) || 'auto';
+			// Validate against known storage types to prevent invalid values
+			const validStorageTypes: StorageType[] = [
+				'auto',
+				'file',
+				'sqlite',
+				'api'
+			];
+			const configType = config.storage?.type;
+
+			if (configType && validStorageTypes.includes(configType as StorageType)) {
+				return configType as StorageType;
+			}
+
+			return 'auto';
 		} catch {
 			return 'auto';
 		}
@@ -634,6 +651,17 @@ export class StorageMigration {
 			sourceTaskCount += sourceTasks.length;
 			targetTaskCount += targetTasks.length;
 
+			// Count subtasks independently for accurate comparison
+			for (const task of sourceTasks) {
+				const uniqueSubtaskIds = new Set(
+					(task.subtasks || []).map((s) => s.id)
+				);
+				sourceSubtaskCount += uniqueSubtaskIds.size;
+			}
+			for (const task of targetTasks) {
+				targetSubtaskCount += task.subtasks?.length || 0;
+			}
+
 			// Check task count match
 			if (sourceTasks.length !== targetTasks.length) {
 				discrepancies.push(
@@ -650,19 +678,11 @@ export class StorageMigration {
 
 			// Check for missing tasks
 			for (const [id, sourceTask] of sourceMap) {
-				// Count unique subtask IDs (source may have duplicates that get deduplicated)
-				const sourceSubtaskIds = new Set(
-					(sourceTask.subtasks || []).map((s) => s.id)
-				);
-				sourceSubtaskCount += sourceSubtaskIds.size;
-
 				const targetTask = targetMap.get(id);
 				if (!targetTask) {
 					discrepancies.push(`Tag "${tag}": Task ${id} missing in target`);
 					continue;
 				}
-
-				targetSubtaskCount += targetTask.subtasks?.length || 0;
 
 				// Validate key fields
 				if (sourceTask.title !== targetTask.title) {
@@ -680,6 +700,9 @@ export class StorageMigration {
 				}
 
 				// Check subtask count (using unique IDs from source)
+				const sourceSubtaskIds = new Set(
+					(sourceTask.subtasks || []).map((s) => s.id)
+				);
 				const targetSubtasks = targetTask.subtasks?.length || 0;
 				if (sourceSubtaskIds.size !== targetSubtasks) {
 					discrepancies.push(
@@ -878,13 +901,15 @@ export class StorageMigration {
 			content = await fs.promises.readFile(this.gitignorePath, 'utf-8');
 		}
 
-		// Check if patterns already exist
-		const hasPatterns = patterns.some(
-			(pattern) => content.includes(pattern) && !pattern.startsWith('#')
+		// Check if ALL required patterns (non-comment lines) already exist
+		// Only skip adding if every pattern is already present
+		const requiredPatterns = patterns.filter((p) => !p.startsWith('#'));
+		const hasAllPatterns = requiredPatterns.every((pattern) =>
+			content.includes(pattern)
 		);
 
-		if (hasPatterns) {
-			return; // Already has the patterns
+		if (hasAllPatterns) {
+			return; // Already has all patterns
 		}
 
 		// Add patterns to .gitignore

@@ -343,4 +343,123 @@ describe('JsonlSync', () => {
 			expect(stats).toBeNull();
 		});
 	});
+
+	describe('writeTaskWithTag', () => {
+		it('should update task matching both id and tag', async () => {
+			// Write tasks with different tags
+			await sync.exportAllWithTags([
+				{
+					task: createTestTask({ id: '1', title: 'Master Task' }),
+					tag: 'master'
+				},
+				{
+					task: createTestTask({ id: '1', title: 'Feature Task' }),
+					tag: 'feature'
+				}
+			]);
+
+			// Update only the master tag version
+			await sync.writeTaskWithTag(
+				createTestTask({ id: '1', title: 'Updated Master' }),
+				'master'
+			);
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(2);
+
+			const masterTask = loaded.find((t) => t._tag === 'master');
+			const featureTask = loaded.find((t) => t._tag === 'feature');
+
+			expect(masterTask?.title).toBe('Updated Master');
+			expect(featureTask?.title).toBe('Feature Task'); // Unchanged
+		});
+
+		it('should append task if not found', async () => {
+			await sync.exportAllWithTags([
+				{ task: createTestTask({ id: '1' }), tag: 'master' }
+			]);
+
+			await sync.writeTaskWithTag(
+				createTestTask({ id: '2', title: 'New Task' }),
+				'feature'
+			);
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(2);
+		});
+	});
+
+	describe('deleteTaskWithTag', () => {
+		it('should delete task matching both id and tag', async () => {
+			await sync.exportAllWithTags([
+				{ task: createTestTask({ id: '1', title: 'Master' }), tag: 'master' },
+				{ task: createTestTask({ id: '1', title: 'Feature' }), tag: 'feature' }
+			]);
+
+			await sync.deleteTaskWithTag('1', 'master');
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(1);
+			expect(loaded[0]._tag).toBe('feature');
+		});
+
+		it('should not delete task with different tag', async () => {
+			await sync.exportAllWithTags([
+				{ task: createTestTask({ id: '1' }), tag: 'master' }
+			]);
+
+			await sync.deleteTaskWithTag('1', 'feature');
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(1);
+		});
+	});
+
+	describe('syncTagTasks', () => {
+		it('should replace all tasks for a specific tag', async () => {
+			await sync.exportAllWithTags([
+				{
+					task: createTestTask({ id: '1', title: 'Old Master 1' }),
+					tag: 'master'
+				},
+				{
+					task: createTestTask({ id: '2', title: 'Old Master 2' }),
+					tag: 'master'
+				},
+				{
+					task: createTestTask({ id: '1', title: 'Feature Task' }),
+					tag: 'feature'
+				}
+			]);
+
+			// Replace master tag tasks
+			await sync.syncTagTasks(
+				[createTestTask({ id: '3', title: 'New Master' })],
+				'master'
+			);
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(2);
+
+			const masterTasks = loaded.filter((t) => t._tag === 'master');
+			const featureTasks = loaded.filter((t) => t._tag === 'feature');
+
+			expect(masterTasks).toHaveLength(1);
+			expect(masterTasks[0].id).toBe('3');
+			expect(featureTasks).toHaveLength(1); // Unchanged
+		});
+
+		it('should handle empty task list (delete all for tag)', async () => {
+			await sync.exportAllWithTags([
+				{ task: createTestTask({ id: '1' }), tag: 'master' },
+				{ task: createTestTask({ id: '2' }), tag: 'feature' }
+			]);
+
+			await sync.syncTagTasks([], 'master');
+
+			const loaded = await sync.readAll();
+			expect(loaded).toHaveLength(1);
+			expect(loaded[0]._tag).toBe('feature');
+		});
+	});
 });

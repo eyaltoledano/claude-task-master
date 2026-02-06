@@ -108,6 +108,7 @@
 		"jsonc-parser": "^3.3.1",
 		"jsonrepair": "^3.13.0",
 		"jsonwebtoken": "^9.0.2",
+		"libsql": "^0.5.0",
 		"lru-cache": "^10.2.0",
 		"marked": "^15.0.12",
 		"marked-terminal": "^7.3.0",
