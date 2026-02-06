@@ -104,3 +104,8 @@ apps/extension/vsix-build/
 .scannerwork
 
 # OS specific
+
+# TaskMaster SQLite database (use JSONL for git sync)
+.taskmaster/tasks/tasks.db
+.taskmaster/tasks/tasks.db-shm
+.taskmaster/tasks/tasks.db-wal
