@@ -1,5 +1,65 @@
 # task-master-ai
 
+## 0.43.0
+
+### Minor Changes
+
+- [#1599](https://github.com/eyaltoledano/claude-task-master/pull/1599) [`e689fcf`](https://github.com/eyaltoledano/claude-task-master/commit/e689fcf2a20cada4a19ee31fed723b6f35f2c13d) Thanks [@triepod-ai](https://github.com/triepod-ai)! - Add MCPB bundle for single-click Claude Desktop installation
+  - Added `manifest.json` for MCP Bundle (MCPB) specification v0.3
+  - Added `.mcpbignore` to exclude development files from bundle
+  - Added `icon.png` (512x512) for Claude Desktop display
+  - Enables users to install Task Master MCP server directly in Claude Desktop without manual configuration
+
+- [#1605](https://github.com/eyaltoledano/claude-task-master/pull/1605) [`efedc85`](https://github.com/eyaltoledano/claude-task-master/commit/efedc85cb1110a75748f3df0e530f3c9e27d2155) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add verbose output mode to loop command with `--verbose` flag
+  - New `-v, --verbose` flag shows Claude's work in real-time (thinking, tool calls) rather than waiting until the iteration completes
+  - New `--no-output` flag excludes full Claude output from iteration results to save memory
+  - Improved error handling with proper validation for incompatible options (verbose + sandbox)
+
+- [#1611](https://github.com/eyaltoledano/claude-task-master/pull/1611) [`c798639`](https://github.com/eyaltoledano/claude-task-master/commit/c798639d1a6b492de1b7cc82a28a13ddfba23eb8) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add optional `metadata` field to tasks for storing user-defined custom data
+
+  Tasks and subtasks now support an optional `metadata` field that allows storing arbitrary JSON data such as:
+  - External IDs (GitHub issues, Jira tickets, Linear issues)
+  - Workflow data (sprints, story points, custom statuses)
+  - Integration data (sync timestamps, external system references)
+  - Custom tracking (UUIDs, version numbers, audit information)
+
+  Key features:
+  - **AI-Safe**: Metadata is preserved through all AI operations (update-task, expand, etc.) because AI schemas intentionally exclude this field
+  - **Flexible Schema**: Store any JSON-serializable data without schema changes
+  - **Backward Compatible**: The field is optional; existing tasks work without modification
+  - **Subtask Support**: Both tasks and subtasks can have their own metadata
+  - **MCP Tool Support**: Use `update_task` and `update_subtask` with the `metadata` parameter to update metadata (requires `TASK_MASTER_ALLOW_METADATA_UPDATES=true` in MCP server environment)
+
+  Example usage:
+
+  ```json
+  {
+    "id": 1,
+    "title": "Implement authentication",
+    "metadata": {
+      "githubIssue": 42,
+      "sprint": "Q1-S3",
+      "storyPoints": 5
+    }
+  }
+  ```
+
+  MCP metadata update example:
+
+  ```javascript
+  // With TASK_MASTER_ALLOW_METADATA_UPDATES=true set in MCP env
+  update_task({
+    id: "1",
+    metadata: '{"githubIssue": 42, "sprint": "Q1-S3"}',
+  });
+  ```
+
+### Patch Changes
+
+- [#1587](https://github.com/eyaltoledano/claude-task-master/pull/1587) [`0d628ca`](https://github.com/eyaltoledano/claude-task-master/commit/0d628ca9514f22607c0a6495b701e4cde743b45c) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Add modifyJSON function for safer file updates
+
+- [#1600](https://github.com/eyaltoledano/claude-task-master/pull/1600) [`712a078`](https://github.com/eyaltoledano/claude-task-master/commit/712a0789d6d584adf5dbb27732c783cd240014b2) Thanks [@esumerfd](https://github.com/esumerfd)! - Add --no-banner to suppress the startup banner.
+
 ## 0.42.0
 
 ### Minor Changes
