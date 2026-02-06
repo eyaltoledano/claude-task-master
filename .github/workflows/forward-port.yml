@@ -141,7 +141,7 @@ jobs:
             --label "automated" \
             --body "$BODY")
 
-          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          PR_NUMBER=$(basename "$PR_URL")
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
 
