@@ -756,7 +756,7 @@ function displayHelp() {
 				},
 				{
 					name: 'tags add',
-					args: '<name> [--description <desc>] [--copy-from <tag>]',
+					args: '<name> [--description <desc>] [--copy-from <tag>] [--from-branch]',
 					desc: 'Create a new tag (--from-branch for git branch name)'
 				},
 				{
