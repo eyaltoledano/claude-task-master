@@ -109,3 +109,6 @@ apps/extension/vsix-build/
 .taskmaster/tasks/tasks.db
 .taskmaster/tasks/tasks.db-shm
 .taskmaster/tasks/tasks.db-wal
+
+# TaskMaster backup files
+.taskmaster/tasks/*.backup-*.json

@@ -3,12 +3,12 @@
  * Simple re-exports from individual preset files with helper functions
  */
 
+import type { LoopPreset } from '../types.js';
 import { DEFAULT_PRESET } from './default.js';
-import { TEST_COVERAGE_PRESET } from './test-coverage.js';
-import { LINTING_PRESET } from './linting.js';
 import { DUPLICATION_PRESET } from './duplication.js';
 import { ENTROPY_PRESET } from './entropy.js';
-import type { LoopPreset } from '../types.js';
+import { LINTING_PRESET } from './linting.js';
+import { TEST_COVERAGE_PRESET } from './test-coverage.js';
 
 /**
  * Record of all preset names to their content

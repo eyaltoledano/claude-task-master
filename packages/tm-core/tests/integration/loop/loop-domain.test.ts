@@ -8,16 +8,16 @@
  * @integration
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ConfigManager } from '../../../src/modules/config/managers/config-manager.js';
 import {
 	LoopDomain,
-	PRESET_NAMES,
+	type LoopPreset,
 	PRESETS,
+	PRESET_NAMES,
 	getPreset,
-	isPreset,
-	type LoopPreset
+	isPreset
 } from '../../../src/modules/loop/index.js';
-import type { ConfigManager } from '../../../src/modules/config/managers/config-manager.js';
 
 // Mock ConfigManager factory
 function createMockConfigManager(projectRoot = '/test/project'): ConfigManager {

@@ -43,7 +43,7 @@
 		"zod": "^4.1.11"
 	},
 	"devDependencies": {
-				"@types/fs-extra": "^11.0.4",
+		"@types/fs-extra": "^11.0.4",
 		"@types/proper-lockfile": "^4.1.4",
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^4.0.10",

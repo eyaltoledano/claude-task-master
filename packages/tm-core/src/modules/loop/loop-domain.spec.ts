@@ -3,8 +3,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { LoopDomain } from './loop-domain.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
+import { LoopDomain } from './loop-domain.js';
 import type { LoopConfig } from './types.js';
 
 // Mock ConfigManager

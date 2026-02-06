@@ -3,18 +3,18 @@
  * Tests the synchronous spawnSync-based implementation
  */
 
+import * as childProcess from 'node:child_process';
+import * as fsPromises from 'node:fs/promises';
 import {
+	type MockInstance,
 	afterEach,
 	beforeEach,
 	describe,
 	expect,
 	it,
-	vi,
-	type MockInstance
+	vi
 } from 'vitest';
 import { LoopService, type LoopServiceOptions } from './loop.service.js';
-import * as childProcess from 'node:child_process';
-import * as fsPromises from 'node:fs/promises';
 
 // Mock child_process and fs/promises
 vi.mock('node:child_process');

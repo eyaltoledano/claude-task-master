@@ -3,11 +3,11 @@
  * Focuses on modifyJson and cross-process locking functionality
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
-import path from 'node:path';
+import fs from 'node:fs/promises';
 import os from 'node:os';
+import path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FileOperations } from './file-operations.js';
 
 describe('FileOperations', () => {

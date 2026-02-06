@@ -14,11 +14,11 @@
  * - Direct function integration (covered by the validation tests here)
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 import { validateMcpMetadata } from '@tm/mcp';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('MCP Tool Metadata Updates - Integration Tests', () => {
 	let tempDir: string;

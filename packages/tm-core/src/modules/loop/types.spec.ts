@@ -2,19 +2,19 @@
  * @fileoverview Tests for loop module type definitions
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type {
-	LoopPreset,
 	LoopConfig,
 	LoopIteration,
+	LoopPreset,
 	LoopResult
 } from './types.js';
 
 // Also verify types are exported from the barrel
 import type {
-	LoopPreset as BarrelLoopPreset,
 	LoopConfig as BarrelLoopConfig,
 	LoopIteration as BarrelLoopIteration,
+	LoopPreset as BarrelLoopPreset,
 	LoopResult as BarrelLoopResult
 } from './index.js';
 

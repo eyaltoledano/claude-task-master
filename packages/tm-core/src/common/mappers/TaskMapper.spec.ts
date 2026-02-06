@@ -6,9 +6,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { TaskMapper } from './TaskMapper.js';
 import { MetadataFixtures } from '../../testing/task-fixtures.js';
 import type { Tables } from '../types/database.types.js';
+import { TaskMapper } from './TaskMapper.js';
 
 type TaskRow = Tables<'tasks'>;
 

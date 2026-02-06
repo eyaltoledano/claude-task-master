@@ -12,8 +12,8 @@ import { getLogger } from '../../../common/logger/index.js';
 import { SupabaseSessionStorage } from '../../auth/services/supabase-session-storage.js';
 import { AuthenticationError } from '../../auth/types.js';
 import {
-	isSupabaseAuthError,
 	isRecoverableStaleSessionError,
+	isSupabaseAuthError,
 	toAuthenticationError
 } from '../../auth/utils/index.js';
 

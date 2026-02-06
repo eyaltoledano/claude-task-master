@@ -11,10 +11,10 @@ import { describe, expect, it } from 'vitest';
 
 // Import types and class from @tm/core main entry point
 import {
-	LoopDomain,
-	type LoopPreset,
 	type LoopConfig,
+	LoopDomain,
 	type LoopIteration,
+	type LoopPreset,
 	type LoopResult
 } from '../../../src/index.js';
 import type { ConfigManager } from '../../../src/modules/config/managers/config-manager.js';

@@ -5,12 +5,12 @@
  * including load, save, update, and append.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
-import { FileStorage } from '../../../src/modules/storage/adapters/file-storage/file-storage.js';
+import * as path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Task } from '../../../src/common/types/index.js';
+import { FileStorage } from '../../../src/modules/storage/adapters/file-storage/file-storage.js';
 
 /**
  * Creates a minimal valid task for testing
