@@ -65,6 +65,91 @@ function convertSubtaskToTask(subtask: Subtask, fullTaskId: string): Task {
 }
 
 /**
+ * Normalize a subtask dependency ID to a numeric value
+ * Handles both numeric IDs and dotted notation (e.g., "1.2.3" -> 3)
+ */
+function normalizeSubtaskDepId(dep: unknown): number {
+	if (typeof dep === 'number') {
+		return dep;
+	}
+	const str = String(dep);
+	if (str.includes('.')) {
+		const parts = str.split('.');
+		return parseInt(parts[parts.length - 1], 10);
+	}
+	return parseInt(str, 10);
+}
+
+/**
+ * Persist tasks using a two-pass approach for dependency resolution
+ * Pass 1: Save all tasks without dependencies (so all FKs can be satisfied)
+ * Pass 2: Set all task and subtask dependencies
+ *
+ * @param db - Raw libsql Database instance
+ * @param tasksByTag - Map of tag name to tasks array
+ */
+function persistTasksWithDependencies(
+	db: import('libsql').Database,
+	tasksByTag: Map<string, Task[]>
+): void {
+	// First pass: Save all tasks without dependencies
+	for (const [tag, tagTasks] of tasksByTag) {
+		for (const task of tagTasks) {
+			saveCompleteTask(db, task, tag, {
+				skipTaskDependencies: true,
+				skipSubtaskDependencies: true
+			});
+		}
+	}
+
+	// Second pass: Set all dependencies
+	for (const [tag, tagTasks] of tasksByTag) {
+		for (const task of tagTasks) {
+			// Set task dependencies (filter to only valid ones that exist in this tag)
+			const validDeps = (task.dependencies || [])
+				.filter((depId) =>
+					tagTasks.some((t) => String(t.id) === String(depId))
+				)
+				.map((d) => String(d));
+
+			if (
+				validDeps.length > 0 ||
+				(task.dependencies && task.dependencies.length > 0)
+			) {
+				setTaskDependencies(db, String(task.id), tag, validDeps);
+			}
+
+			// Set subtask dependencies (within the same task)
+			const subtasks = task.subtasks || [];
+			const subtaskIds = new Set(
+				subtasks.map((s) =>
+					typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
+				)
+			);
+
+			for (const subtask of subtasks) {
+				const subtaskId =
+					typeof subtask.id === 'number'
+						? subtask.id
+						: parseInt(String(subtask.id), 10);
+
+				const deps: number[] = [];
+				for (const d of subtask.dependencies || []) {
+					const depId = normalizeSubtaskDepId(d);
+					if (!isNaN(depId) && subtaskIds.has(depId)) {
+						deps.push(depId);
+					}
+				}
+
+				if (deps.length > 0) {
+					setSubtaskDependencies(db, String(task.id), subtaskId, tag, deps);
+				}
+			}
+		}
+	}
+}
+
+/**
  * Default paths for SQLite storage files
  */
 const DEFAULT_DB_FILENAME = 'tasks.db';
@@ -165,6 +250,11 @@ export class SqliteStorage implements IStorage {
 			// Remove JSONL metadata fields before saving
 			const { _v, _ts, _deleted, _tag, ...task } = jsonlTask;
 
+			// Skip soft-deleted tasks to prevent resurrecting them
+			if (_deleted) {
+				continue;
+			}
+
 			// Use stored tag or default to 'master'
 			const tag = _tag || 'master';
 
@@ -176,79 +266,7 @@ export class SqliteStorage implements IStorage {
 
 		// Save all tasks in a transaction using two-pass approach
 		this.getDb().transaction(() => {
-			// First pass: Save all tasks without dependencies
-			for (const [tag, tagTasks] of tasksByTag) {
-				for (const task of tagTasks) {
-					saveCompleteTask(this.getDb().getDb(), task, tag, {
-						skipTaskDependencies: true,
-						skipSubtaskDependencies: true
-					});
-				}
-			}
-
-			// Second pass: Set all dependencies
-			for (const [tag, tagTasks] of tasksByTag) {
-				for (const task of tagTasks) {
-					// Set task dependencies (filter to only valid ones)
-					const validDeps = (task.dependencies || [])
-						.filter((depId) =>
-							tagTasks.some((t) => String(t.id) === String(depId))
-						)
-						.map((d) => String(d)); // Ensure all deps are strings
-					if (
-						validDeps.length > 0 ||
-						(task.dependencies && task.dependencies.length > 0)
-					) {
-						setTaskDependencies(
-							this.getDb().getDb(),
-							String(task.id),
-							tag,
-							validDeps
-						);
-					}
-
-					// Set subtask dependencies
-					const subtasks = task.subtasks || [];
-					const subtaskIds = new Set(
-						subtasks.map((s) =>
-							typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
-						)
-					);
-					for (const subtask of subtasks) {
-						const subtaskId =
-							typeof subtask.id === 'number'
-								? subtask.id
-								: parseInt(String(subtask.id), 10);
-						const deps: number[] = [];
-						for (const d of subtask.dependencies || []) {
-							let depId: number;
-							if (typeof d === 'number') {
-								depId = d;
-							} else {
-								const str = String(d);
-								if (str.includes('.')) {
-									const parts = str.split('.');
-									depId = parseInt(parts[parts.length - 1], 10);
-								} else {
-									depId = parseInt(str, 10);
-								}
-							}
-							if (!isNaN(depId) && subtaskIds.has(depId)) {
-								deps.push(depId);
-							}
-						}
-						if (deps.length > 0) {
-							setSubtaskDependencies(
-								this.getDb().getDb(),
-								String(task.id),
-								subtaskId,
-								tag,
-								deps
-							);
-						}
-					}
-				}
-			}
+			persistTasksWithDependencies(this.getDb().getDb(), tasksByTag);
 		});
 	}
 
@@ -346,76 +364,10 @@ export class SqliteStorage implements IStorage {
 			// Delete all existing tasks for this tag
 			deleteAllTasksForTag(this.getDb().getDb(), resolvedTag);
 
-			// First pass: Insert all tasks without dependencies
-			// (dependencies may reference tasks that don't exist yet)
-			for (const task of tasks) {
-				saveCompleteTask(this.getDb().getDb(), task, resolvedTag, {
-					skipTaskDependencies: true,
-					skipSubtaskDependencies: true
-				});
-			}
-
-			// Second pass: Set all task and subtask dependencies
-			// (now all tasks exist, so FKs can be satisfied)
-			for (const task of tasks) {
-				// Set task dependencies (filter to only valid ones)
-				const validDeps = (task.dependencies || [])
-					.filter((depId) => tasks.some((t) => String(t.id) === String(depId)))
-					.map((d) => String(d)); // Ensure all deps are strings
-				if (
-					validDeps.length > 0 ||
-					(task.dependencies && task.dependencies.length > 0)
-				) {
-					// Only call if there are deps to set or clear
-					setTaskDependencies(
-						this.getDb().getDb(),
-						String(task.id),
-						resolvedTag,
-						validDeps
-					);
-				}
-
-				// Set subtask dependencies (within the same task)
-				const subtasks = task.subtasks || [];
-				const subtaskIds = new Set(
-					subtasks.map((s) =>
-						typeof s.id === 'number' ? s.id : parseInt(String(s.id), 10)
-					)
-				);
-				for (const subtask of subtasks) {
-					const subtaskId =
-						typeof subtask.id === 'number'
-							? subtask.id
-							: parseInt(String(subtask.id), 10);
-					const deps: number[] = [];
-					for (const d of subtask.dependencies || []) {
-						let depId: number;
-						if (typeof d === 'number') {
-							depId = d;
-						} else {
-							const str = String(d);
-							if (str.includes('.')) {
-								const parts = str.split('.');
-								depId = parseInt(parts[parts.length - 1], 10);
-							} else {
-								depId = parseInt(str, 10);
-							}
-						}
-						if (!isNaN(depId) && subtaskIds.has(depId)) {
-							deps.push(depId);
-						}
-					}
-					if (deps.length > 0) {
-						setSubtaskDependencies(
-							this.getDb().getDb(),
-							String(task.id),
-							subtaskId,
-							resolvedTag,
-							deps
-						);
-					}
-				}
-			}
+			// Use two-pass helper to save tasks with dependencies
+			const tasksByTag = new Map<string, Task[]>();
+			tasksByTag.set(resolvedTag, tasks);
+			persistTasksWithDependencies(this.getDb().getDb(), tasksByTag);
 
 			// Update tag metadata
 			setTagMetadata(this.getDb().getDb(), resolvedTag, {

@@ -73,12 +73,12 @@ describe('MigrationRunner', () => {
 			);
 		});
 
-		it('should accept target version of 0', () => {
-			// This might fail if migration 1 doesn't support rollback,
-			// but the validation should pass
-			if (ALL_MIGRATIONS[0]?.down && ALL_MIGRATIONS[0].down.length > 0) {
-				expect(() => runner.migrateTo(0)).not.toThrow(/Invalid target version/);
-			}
+		it('should throw when migrating to version 0 if migration 1 has no rollback', () => {
+			// MIGRATION_1.down is empty, so attempting to rollback to version 0 should fail
+			// The validation passes (0 is a valid target), but rollback execution fails
+			expect(() => runner.migrateTo(0)).toThrow(
+				'Migration 1 does not support rollback'
+			);
 		});
 
 		it('should accept target version equal to CURRENT_SCHEMA_VERSION', () => {

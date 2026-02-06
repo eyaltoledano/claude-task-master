@@ -503,9 +503,13 @@ export class StorageCommand extends Command {
 			const storage = new SqliteStorage(this.projectPath);
 			await storage.initialize();
 
-			// Get stats
-			const stats = await storage.getStats();
-			await storage.close();
+			let stats: { totalTasks: number; totalTags: number };
+			try {
+				// Get stats
+				stats = await storage.getStats();
+			} finally {
+				await storage.close();
+			}
 
 			spinner.succeed(
 				`Database rebuilt: ${stats.totalTasks} tasks in ${stats.totalTags} tag(s)`

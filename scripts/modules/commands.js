@@ -3561,6 +3561,11 @@ ${result.result}
 		.option('--no-git', 'Skip Git repository initialization')
 		.option('--git-tasks', 'Store tasks in Git')
 		.option('--no-git-tasks', 'No Git storage of tasks')
+		.option(
+			'--storage-backend <type>',
+			'Storage backend type for local storage: file (JSON) or sqlite',
+			'file'
+		)
 		.action(async (cmdOptions) => {
 			// cmdOptions contains parsed arguments
 			// Parse rules: accept space or comma separated, default to all available rules

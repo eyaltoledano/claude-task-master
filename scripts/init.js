@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { authenticateWithBrowserMFA, ensureOrgSelected, ui } from '@tm/cli';
-import { AuthManager } from '@tm/core';
+import { AuthManager, SqliteStorage } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
 import figlet from 'figlet';
@@ -374,6 +374,8 @@ async function initializeProject(options = {}) {
 		// Default to local storage in non-interactive mode unless explicitly specified
 		const selectedStorage = options.storage || 'local';
 		const authCredentials = null; // No auth in non-interactive mode
+		// Default to file (JSON) storage backend unless explicitly specified
+		const storageBackendType = options.storageBackend || 'file';
 
 		await createProjectStructure(
 			true, // Always add aliases
@@ -383,7 +385,8 @@ async function initializeProject(options = {}) {
 			{ ...options, preferredLanguage: 'English' }, // Default to English in non-interactive mode
 			selectedRuleProfiles,
 			selectedStorage,
-			authCredentials
+			authCredentials,
+			storageBackendType
 		);
 	} else {
 		// Interactive logic
@@ -406,6 +409,16 @@ async function initializeProject(options = {}) {
 				'debug',
 				`Storage selected: ${selectedStorage} - taskmaster_id: ${taskmasterId}`
 			);
+
+			// If local storage selected, prompt for backend type (JSON vs SQLite)
+			let storageBackendType = 'file'; // Default to JSON
+			if (selectedStorage === 'local') {
+				storageBackendType = await promptStorageBackendType();
+				log(
+					'debug',
+					`Storage backend type: ${storageBackendType} - taskmaster_id: ${taskmasterId}`
+				);
+			}
 
 			// If cloud storage selected, trigger OAuth flow
 			let authCredentials = null;
@@ -495,17 +508,21 @@ async function initializeProject(options = {}) {
 				if (options.storeTasksInGit !== undefined) {
 					storeGitPrompted = options.storeTasksInGit; // Use flag value if provided
 				} else {
+					// Dynamic prompt text based on storage backend type
+					const taskFileDesc = storageBackendType === 'sqlite'
+						? 'tasks.jsonl and tasks/ directory'
+						: 'tasks.json and tasks/ directory';
 					const gitTasksInput = await promptQuestion(
 						rl,
 						chalk.cyan(
-							'Store tasks in Git (tasks.json and tasks/ directory)? (Y/n): '
+							`Store tasks in Git (${taskFileDesc})? (Y/n): `
 						),
 						(answer) => {
 							const isYes = answer.trim().toLowerCase() !== 'n';
 							const icon = isYes ? chalk.green('✓') : chalk.red('✗');
 							return (
 								chalk.cyan(
-									'Store tasks in Git (tasks.json and tasks/ directory)?'
+									`Store tasks in Git (${taskFileDesc})?`
 								) +
 								' ' +
 								icon +
@@ -564,11 +581,17 @@ async function initializeProject(options = {}) {
 			console.log(chalk.dim('─'.repeat(50)));
 
 			// Storage
+			let storageDisplayText;
+			if (selectedStorage === 'cloud') {
+				storageDisplayText = 'Hamster Studio';
+			} else if (storageBackendType === 'sqlite') {
+				storageDisplayText = 'Local SQLite Database';
+			} else {
+				storageDisplayText = 'Local JSON File';
+			}
 			console.log(
 				'  ' + chalk.dim('Storage:'.padEnd(32)),
-				chalk.white(
-					selectedStorage === 'cloud' ? 'Hamster Studio' : 'Local File Storage'
-				)
+				chalk.white(storageDisplayText)
 			);
 
 			// AI IDE rules
@@ -648,7 +671,8 @@ async function initializeProject(options = {}) {
 				{ ...options, shouldSetupRules, preferredLanguage }, // Pass shouldSetupRules and preferredLanguage through options
 				selectedRuleProfiles,
 				selectedStorage,
-				authCredentials
+				authCredentials,
+				storageBackendType
 			);
 			rl.close();
 		} catch (error) {
@@ -693,7 +717,7 @@ function generateTaskmasterId() {
  * @param {string} selectedStorage - Storage type ('cloud' or 'local')
  * @param {object|null} authCredentials - Auth credentials if cloud storage selected
  */
-function updateStorageConfig(configPath, selectedStorage, authCredentials) {
+function updateStorageConfig(configPath, selectedStorage, authCredentials, storageBackendType = 'file') {
 	try {
 		if (!fs.existsSync(configPath)) {
 			log('warn', 'Config file does not exist, skipping storage configuration');
@@ -724,14 +748,14 @@ function updateStorageConfig(configPath, selectedStorage, authCredentials) {
 			// We don't store it in config.json for security reasons
 			log('debug', 'Connected to Hamster Studio');
 		} else {
-			// Configure for local file storage
-			config.storage.type = 'file';
+			// Configure for local storage (file or sqlite)
+			config.storage.type = storageBackendType; // 'file' or 'sqlite'
 
 			// Set operating mode to 'solo' for local storage (Taskmaster standalone)
 			// This determines which slash commands and rules are installed
 			config.storage.operatingMode = 'solo';
 
-			log('debug', 'Configured storage for local file storage');
+			log('debug', `Configured storage for local ${storageBackendType} storage`);
 		}
 
 		// Write updated config back to file
@@ -822,6 +846,63 @@ async function promptStorageSelection() {
 	}
 }
 
+/**
+ * Prompt user to select local storage backend type (JSON or SQLite)
+ * Only shown when user selects 'local' storage
+ * @returns {Promise<'file'|'sqlite'>} Selected storage backend type
+ */
+async function promptStorageBackendType() {
+	if (isSilentMode()) {
+		// Default to file (JSON) in silent mode
+		return 'file';
+	}
+
+	try {
+		const { backendType } = await inquirer.prompt([
+			{
+				type: 'list',
+				name: 'backendType',
+				message: chalk.white('Choose storage backend:\n'),
+				choices: [
+					{
+						name: [
+							chalk.bold('JSON') + chalk.dim(' (default)'),
+							chalk.white('   • Human-readable single file (tasks.json)'),
+							chalk.white('   • Git-native, easy to diff and merge'),
+							chalk.white('   • Best for smaller projects'),
+							''
+						].join('\n'),
+						value: 'file',
+						short: 'JSON'
+					},
+					{
+						name: [
+							chalk.bold('SQLite'),
+							chalk.white('   • Faster queries for large task lists'),
+							chalk.white('   • Syncs to JSONL file for git tracking'),
+							chalk.white('   • Best for projects with many tasks'),
+							''
+						].join('\n'),
+						value: 'sqlite',
+						short: 'SQLite'
+					}
+				],
+				default: 'file',
+				pageSize: 15
+			}
+		]);
+
+		return backendType;
+	} catch (error) {
+		// Handle Ctrl+C or other interruptions
+		if (error.isTtyError || error.name === 'ExitPromptError') {
+			log('warn', 'Backend selection cancelled, defaulting to JSON storage');
+			return 'file';
+		}
+		throw error;
+	}
+}
+
 // Function to create the project structure
 async function createProjectStructure(
 	addAliases,
@@ -831,7 +912,8 @@ async function createProjectStructure(
 	options,
 	selectedRuleProfiles = RULE_PROFILES,
 	selectedStorage = 'local',
-	authCredentials = null
+	authCredentials = null,
+	storageBackendType = 'file'
 ) {
 	const targetDir = process.cwd();
 	log('debug', `Initializing project in ${targetDir}`);
@@ -895,7 +977,25 @@ async function createProjectStructure(
 	}
 
 	// Update config.json with storage configuration
-	updateStorageConfig(configPath, selectedStorage, authCredentials);
+	updateStorageConfig(configPath, selectedStorage, authCredentials, storageBackendType);
+
+	// Initialize SQLite database if selected
+	if (storageBackendType === 'sqlite' && selectedStorage !== 'cloud') {
+		let storage;
+		try {
+			log('info', 'Initializing SQLite database...');
+			storage = new SqliteStorage(targetDir);
+			await storage.initialize();
+			log('success', 'SQLite database initialized');
+		} catch (error) {
+			log('error', `Failed to initialize SQLite database: ${error.message}`);
+			log('warn', 'You can switch to SQLite later using: task-master storage switch sqlite');
+		} finally {
+			if (storage) {
+				await storage.close();
+			}
+		}
+	}
 
 	// Copy .gitignore with GitTasks preference
 	try {

@@ -845,6 +845,7 @@ export function taskToInsertData(task: Task, tag: string): TaskInsertData {
 
 /**
  * Convert a Subtask domain object to insert data
+ * @throws Error if subtask.id is not a valid numeric ID
  */
 export function subtaskToInsertData(
 	subtask: Subtask,
@@ -858,11 +859,21 @@ export function subtaskToInsertData(
 			: String(subtask.acceptanceCriteria);
 	}
 
+	// Safely convert subtask.id to a numeric ID
+	// DB schema requires numeric IDs, so we must validate
+	let id: number;
+	if (typeof subtask.id === 'number') {
+		id = subtask.id;
+	} else if (typeof subtask.id === 'string' && /^\d+$/.test(subtask.id)) {
+		id = parseInt(subtask.id, 10);
+	} else {
+		throw new Error(
+			`Invalid subtask ID: ${subtask.id}. Subtask IDs must be numeric.`
+		);
+	}
+
 	return {
-		id:
-			typeof subtask.id === 'number'
-				? subtask.id
-				: parseInt(String(subtask.id), 10),
+		id,
 		parent_id: String(parentId || subtask.parentId),
 		title: subtask.title || '',
 		description: subtask.description || '',
@@ -1139,6 +1150,8 @@ export function deleteAllTasksForTag(db: Database.Database, tag: string): void {
 
 /**
  * Copy all tasks from one tag to another
+ * Runs in a single transaction to ensure atomicity - either all tasks
+ * are copied or none are (prevents partial/broken task graphs)
  */
 export function copyTasksToTag(
 	db: Database.Database,
@@ -1147,8 +1160,16 @@ export function copyTasksToTag(
 ): void {
 	const tasks = loadAllTasks(db, sourceTag);
 
-	for (const task of tasks) {
-		saveCompleteTask(db, task, targetTag);
+	// Wrap entire copy operation in a transaction
+	db.exec('BEGIN TRANSACTION');
+	try {
+		for (const task of tasks) {
+			saveCompleteTask(db, task, targetTag);
+		}
+		db.exec('COMMIT');
+	} catch (error) {
+		db.exec('ROLLBACK');
+		throw error;
 	}
 }
 
