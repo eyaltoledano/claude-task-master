@@ -375,7 +375,14 @@ async function initializeProject(options = {}) {
 		const selectedStorage = options.storage || 'local';
 		const authCredentials = null; // No auth in non-interactive mode
 		// Default to file (JSON) storage backend unless explicitly specified
-		const storageBackendType = options.storageBackend || 'file';
+		const rawBackendType = options.storageBackend || 'file';
+		// Validate storage backend type
+		const validBackendTypes = ['file', 'sqlite'];
+		if (!validBackendTypes.includes(rawBackendType)) {
+			log('error', `Invalid storage backend: "${rawBackendType}". Valid options are: ${validBackendTypes.join(', ')}`);
+			process.exit(1);
+		}
+		const storageBackendType = rawBackendType;
 
 		await createProjectStructure(
 			true, // Always add aliases

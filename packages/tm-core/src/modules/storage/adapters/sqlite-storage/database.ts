@@ -347,7 +347,12 @@ export class SqliteDatabase {
 export async function createDatabase(dbPath: string): Promise<SqliteDatabase> {
 	const db = new SqliteDatabase(dbPath);
 	await db.open();
-	db.initialize();
+	try {
+		db.initialize();
+	} catch (error) {
+		db.close();
+		throw error;
+	}
 	return db;
 }
 
@@ -358,6 +363,11 @@ export async function createDatabase(dbPath: string): Promise<SqliteDatabase> {
 export async function createInMemoryDatabase(): Promise<SqliteDatabase> {
 	const db = new SqliteDatabase(':memory:');
 	await db.open();
-	db.initialize();
+	try {
+		db.initialize();
+	} catch (error) {
+		db.close();
+		throw error;
+	}
 	return db;
 }

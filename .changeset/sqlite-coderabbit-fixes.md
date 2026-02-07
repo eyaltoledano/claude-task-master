@@ -1,6 +1,5 @@
 ---
 "task-master-ai": minor
-"@tm/core": minor
 ---
 
 Add SQLite storage backend improvements and CodeRabbit review fixes

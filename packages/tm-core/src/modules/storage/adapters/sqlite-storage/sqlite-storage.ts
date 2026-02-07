@@ -87,10 +87,13 @@ function normalizeSubtaskDepId(dep: unknown): number {
  *
  * @param db - Raw libsql Database instance
  * @param tasksByTag - Map of tag name to tasks array
+ * @param existingTaskIds - Optional map of tag to existing task IDs in the database
+ *                          Used by appendTasks to validate deps against existing tasks
  */
 function persistTasksWithDependencies(
 	db: import('libsql').Database,
-	tasksByTag: Map<string, Task[]>
+	tasksByTag: Map<string, Task[]>,
+	existingTaskIds?: Map<string, Set<string>>
 ): void {
 	// First pass: Save all tasks without dependencies
 	for (const [tag, tagTasks] of tasksByTag) {
@@ -104,10 +107,15 @@ function persistTasksWithDependencies(
 
 	// Second pass: Set all dependencies
 	for (const [tag, tagTasks] of tasksByTag) {
+		// Build set of valid task IDs: new batch + existing DB tasks
+		const newTaskIds = new Set(tagTasks.map((t) => String(t.id)));
+		const existingIds = existingTaskIds?.get(tag) || new Set<string>();
+		const allValidIds = new Set([...newTaskIds, ...existingIds]);
+
 		for (const task of tagTasks) {
-			// Set task dependencies (filter to only valid ones that exist in this tag)
+			// Set task dependencies (filter to only valid ones that exist)
 			const validDeps = (task.dependencies || [])
-				.filter((depId) => tagTasks.some((t) => String(t.id) === String(depId)))
+				.filter((depId) => allValidIds.has(String(depId)))
 				.map((d) => String(d));
 
 			if (
@@ -400,11 +408,23 @@ export class SqliteStorage implements IStorage {
 	async appendTasks(tasks: Task[], tag?: string): Promise<void> {
 		const resolvedTag = tag || 'master';
 
+		// Load existing task IDs so dependencies can reference them
+		const existingTasks = loadAllTasks(this.getDb().getDb(), resolvedTag);
+		const existingTaskIds = new Map<string, Set<string>>();
+		existingTaskIds.set(
+			resolvedTag,
+			new Set(existingTasks.map((t) => String(t.id)))
+		);
+
 		this.getDb().transaction(() => {
 			// Use two-pass helper to save tasks with dependencies
 			const tasksByTag = new Map<string, Task[]>();
 			tasksByTag.set(resolvedTag, tasks);
-			persistTasksWithDependencies(this.getDb().getDb(), tasksByTag);
+			persistTasksWithDependencies(
+				this.getDb().getDb(),
+				tasksByTag,
+				existingTaskIds
+			);
 
 			setTagMetadata(this.getDb().getDb(), resolvedTag, {
 				updated_at: new Date().toISOString()
