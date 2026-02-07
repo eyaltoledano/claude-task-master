@@ -43,15 +43,15 @@ task-master add-dependency --id=<task-id> --depends-on=<dependency-id>
 Before adding:
 1. **Verify both tasks exist**
 2. **Check for circular dependencies**
-3. **Ensure dependency makes logical sense**
-4. **Warn if creating complex chains**
+3. **Challenge necessity**: is this a hard data dependency (output blocks input) or just a preferred ordering?
+4. **Assess critical path impact**: does this dependency lengthen the longest dependency chain?
 
 ## Smart Features
 
 - Detect if dependency already exists
-- Suggest related dependencies
-- Show impact on task flow
-- Update task priorities if needed
+- Warn if this creates unnecessary serialization that lengthens the critical path
+- Show impact on task flow and parallel execution capacity
+- Suggest narrower alternatives if full task completion isn't required (e.g., interface agreement instead of full implementation)
 
 ## Post-Addition
 
@@ -67,7 +67,7 @@ After adding dependency:
 /taskmaster:add-dependency 5 needs 3
 → Task #5 now depends on Task #3
 → Task #5 is now blocked until #3 completes
-→ Suggested: Also consider if #5 needs #4
+→ Critical path impact: unchanged (task #5 was already on a longer chain)
 \`\`\``,
 	'solo'
 );

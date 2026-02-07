@@ -39,14 +39,15 @@ task-master expand --id=$ARGUMENTS
 2. **Subtask Generation**
    - Create 3-7 subtasks typically
    - Each subtask 1-4 hours
-   - Logical implementation order
+   - **Maximize independence**: only chain subtasks where output genuinely blocks input
+   - Prefer parallel-ready subtasks to reduce the critical path
    - Clear acceptance criteria
 
 3. **Smart Breakdown**
-   - Setup/configuration tasks
-   - Core implementation
-   - Testing components
-   - Integration steps
+   - Setup/configuration (often a single shared prerequisite)
+   - Core implementation components (identify which can run in parallel)
+   - Testing components (can often run alongside implementation)
+   - Integration steps (depends on implementation)
    - Documentation updates
 
 ## Enhanced Features
@@ -59,9 +60,9 @@ Based on task type:
 ## Post-Expansion
 
 After expansion:
-1. Show subtask hierarchy
-2. Update time estimates
-3. Suggest implementation order
-4. Highlight critical path`,
+1. Show subtask hierarchy with dependency graph
+2. Identify which subtasks can run in parallel vs which must be sequential
+3. Show critical path through subtasks (longest dependency chain by complexity)
+4. If critical path equals total complexity, flag opportunities to make subtasks independent`,
 	'solo'
 );
