@@ -65,7 +65,8 @@ export {
 	normalizeDependencies,
 	normalizeSubtask,
 	normalizeTask,
-	normalizeTaskIds
+	normalizeTaskIds,
+	isValidPositiveInteger
 } from './task-id-normalizer.js';
 
 // Additional utility exports

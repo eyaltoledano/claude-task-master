@@ -5,6 +5,7 @@
 
 import type { Task } from '../../../common/types/index.js';
 import type { TaskService } from './task-service.js';
+import { getLogger } from '../../../common/logger/factory.js';
 
 export interface StartTaskOptions {
 	subtaskId?: string;
@@ -40,6 +41,8 @@ export interface ConflictCheckResult {
  * TaskExecutionService handles the business logic for starting and executing tasks
  */
 export class TaskExecutionService {
+	private logger = getLogger('TaskExecutionService');
+
 	constructor(private taskService: TaskService) {}
 
 	/**
@@ -89,7 +92,7 @@ export class TaskExecutionService {
 					await this.taskService.updateTaskStatus(parentId, 'in-progress');
 				} catch (error) {
 					// Log but don't fail - status update is not critical
-					console.warn(
+					this.logger.warn(
 						`Could not update task status: ${error instanceof Error ? error.message : String(error)}`
 					);
 				}
@@ -202,9 +205,9 @@ export class TaskExecutionService {
 	/**
 	 * Get the next available task to start
 	 */
-	async getNextAvailableTask(): Promise<string | number | null> {
+	async getNextAvailableTask(): Promise<string | null> {
 		const nextTask = await this.taskService.getNextTask();
-		return nextTask?.id || null;
+		return nextTask?.id ?? null;
 	}
 
 	/**
@@ -249,7 +252,7 @@ export class TaskExecutionService {
 
 			return { executable, args, cwd };
 		} catch (error) {
-			console.warn(
+			this.logger.warn(
 				`Failed to prepare execution command: ${error instanceof Error ? error.message : String(error)}`
 			);
 			return null;

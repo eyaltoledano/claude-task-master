@@ -169,8 +169,21 @@ export class FormatHandler {
 	): any {
 		const resolvedTag = tag || 'master';
 
-		// Normalize task IDs using shared utility
-		const normalizedTasks = normalizeTaskIds(tasks);
+		// Normalize task IDs using shared utility for validation, then
+		// coerce all IDs to strings for consistent serialization
+		const normalizedTasks = normalizeTaskIds(tasks).map((task) => ({
+			...task,
+			id: String(task.id),
+			dependencies: (task.dependencies ?? []).map((dep) => String(dep)),
+			subtasks: (task.subtasks ?? []).map((subtask) => ({
+				...subtask,
+				id: String(subtask.id),
+				parentId: String(subtask.parentId),
+				dependencies: (subtask.dependencies ?? []).map((dep) =>
+					String(dep)
+				)
+			}))
+		}));
 
 		// Check if existing file uses legacy format
 		if (existingData && this.detectFormat(existingData) === 'legacy') {

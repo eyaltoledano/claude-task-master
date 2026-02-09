@@ -334,15 +334,12 @@ export class ApiStorage implements IStorage {
 		await this.ensureInitialized();
 
 		try {
-			// Convert task ID to string for API storage
-			const taskIdStr = String(task.id);
-
 			// Check if task exists
-			const existing = await this.repository.getTask(this.projectId, taskIdStr);
+			const existing = await this.repository.getTask(this.projectId, task.id);
 
 			if (existing) {
 				await this.retryOperation(() =>
-					this.repository.updateTask(this.projectId, taskIdStr, task)
+					this.repository.updateTask(this.projectId, task.id, task)
 				);
 			} else {
 				await this.retryOperation(() =>
@@ -917,7 +914,7 @@ export class ApiStorage implements IStorage {
 			if (tasks.length > 0) {
 				await this.repository.bulkDeleteTasks(
 					this.projectId,
-					tasks.map((t) => String(t.id))
+					tasks.map((t) => t.id)
 				);
 			}
 

@@ -205,7 +205,7 @@ export function displaySubtasks(
 		title: string;
 		status: any;
 		description?: string;
-		dependencies?: (string | number)[];
+		dependencies?: string[];
 	}>,
 	parentTaskId?: string | number,
 	storageType?: Exclude<StorageType, 'auto'>

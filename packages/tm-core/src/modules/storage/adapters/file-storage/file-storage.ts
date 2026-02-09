@@ -22,10 +22,7 @@ import type {
 	TaskMetadata,
 	TaskStatus
 } from '../../../../common/types/index.js';
-import {
-	normalizeTaskIds,
-	normalizeTaskId
-} from '../../../../common/utils/task-id-normalizer.js';
+import { normalizeTaskIds } from '../../../../common/utils/task-id-normalizer.js';
 import { ComplexityReportManager } from '../../../reports/managers/complexity-report-manager.js';
 import { FileOperations } from './file-operations.js';
 import { FormatHandler } from './format-handler.js';
@@ -390,8 +387,8 @@ export class FileStorage implements IStorage {
 			...existingTask,
 			...updates,
 			...(mergedSubtasks && { subtasks: mergedSubtasks }),
-			// Use normalizeTaskId to return number for numeric IDs, preserve string for API IDs
-			id: normalizeTaskId(taskId) ?? taskId
+			// Keep task ID as string for consistent serialization
+			id: String(taskId)
 		};
 		await this.saveTasks(tasks, tag);
 	}

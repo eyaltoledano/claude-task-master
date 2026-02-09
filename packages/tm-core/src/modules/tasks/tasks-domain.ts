@@ -98,17 +98,15 @@ export class TasksDomain {
 	 * @returns Discriminated union indicating task/subtask with proper typing
 	 */
 	async get(
-		taskId: string | number,
+		taskId: string,
 		tag?: string
 	): Promise<
 		| { task: Task; isSubtask: false }
 		| { task: Subtask; isSubtask: true }
 		| { task: null; isSubtask: boolean }
 	> {
-		// Convert to string for parsing (handles both numeric IDs and string subtask refs like "1.2")
-		const taskIdStr = String(taskId);
 		// Parse ID - check for dot notation (subtask)
-		const parts = taskIdStr.split('.');
+		const parts = taskId.split('.');
 		const parentId = parts[0];
 		const subtaskIdPart = parts[1];
 
@@ -294,21 +292,21 @@ export class TasksDomain {
 	/**
 	 * Start working on a task
 	 */
-	async start(taskId: string | number, options?: StartTaskOptions): Promise<StartTaskResult> {
-		return this.executionService.startTask(String(taskId), options);
+	async start(taskId: string, options?: StartTaskOptions): Promise<StartTaskResult> {
+		return this.executionService.startTask(taskId, options);
 	}
 
 	/**
 	 * Check for in-progress conflicts
 	 */
-	async checkInProgressConflicts(taskId: string | number) {
-		return this.executionService.checkInProgressConflicts(String(taskId));
+	async checkInProgressConflicts(taskId: string) {
+		return this.executionService.checkInProgressConflicts(taskId);
 	}
 
 	/**
 	 * Get next available task (from execution service)
 	 */
-	async getNextAvailable(): Promise<string | number | null> {
+	async getNextAvailable(): Promise<string | null> {
 		return this.executionService.getNextAvailableTask();
 	}
 

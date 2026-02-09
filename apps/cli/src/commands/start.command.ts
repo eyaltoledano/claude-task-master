@@ -103,7 +103,7 @@ export class StartCommand extends Command {
 
 			// Get the task ID from argument or option, or find next available task
 			const idArg = taskId || options.id || null;
-			let targetTaskId: string | number | null = idArg;
+			let targetTaskId = idArg;
 
 			if (!targetTaskId) {
 				spinner = ora('Finding next available task...').start();
@@ -196,7 +196,7 @@ export class StartCommand extends Command {
 	/**
 	 * Get the next available task using tm-core
 	 */
-	private async performGetNextTask(): Promise<string | number | null> {
+	private async performGetNextTask(): Promise<string | null> {
 		if (!this.tmCore) {
 			throw new Error('TmCore not initialized');
 		}
@@ -206,9 +206,7 @@ export class StartCommand extends Command {
 	/**
 	 * Show pre-launch message using tm-core data
 	 */
-	private async showPreLaunchMessage(
-		targetTaskId: string | number
-	): Promise<void> {
+	private async showPreLaunchMessage(targetTaskId: string): Promise<void> {
 		if (!this.tmCore) return;
 
 		const { task, isSubtask } = await this.tmCore.tasks.get(targetTaskId);
@@ -229,7 +227,7 @@ export class StartCommand extends Command {
 	 * Perform start task using tm-core business logic
 	 */
 	private async performStartTask(
-		targetTaskId: string | number,
+		targetTaskId: string,
 		options: StartCommandOptions
 	): Promise<CoreStartTaskResult> {
 		if (!this.tmCore) {

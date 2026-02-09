@@ -119,7 +119,7 @@ export interface TaskImplementationMetadata {
  * Placeholder task interface for temporary/minimal task objects
  */
 export interface PlaceholderTask {
-	id: number | string;
+	id: string;
 	title: string;
 	status: TaskStatus;
 	priority: TaskPriority;
@@ -129,12 +129,12 @@ export interface PlaceholderTask {
  * Base task interface
  */
 export interface Task extends TaskImplementationMetadata {
-	id: number | string;
+	id: string;
 	title: string;
 	description: string;
 	status: TaskStatus;
 	priority: TaskPriority;
-	dependencies: (number | string)[];
+	dependencies: string[];
 	details: string;
 	testStrategy: string;
 	subtasks: Subtask[];
@@ -171,7 +171,7 @@ export interface Task extends TaskImplementationMetadata {
  */
 export interface Subtask extends Omit<Task, 'id' | 'subtasks'> {
 	id: number | string;
-	parentId: number | string;
+	parentId: string;
 	subtasks?: never; // Subtasks cannot have their own subtasks
 }
 
@@ -203,7 +203,7 @@ export interface TaskCollection {
  */
 export interface TaskTag {
 	name: string;
-	tasks: (number | string)[]; // Task IDs belonging to this tag
+	tasks: string[]; // Task IDs belonging to this tag
 	metadata: Record<string, any>;
 }
 
@@ -265,7 +265,8 @@ export function isTaskStatus(value: unknown): value is TaskStatus {
 			'deferred',
 			'cancelled',
 			'blocked',
-			'review'
+			'review',
+			'completed'
 		].includes(value)
 	);
 }
@@ -307,7 +308,7 @@ export function isTask(obj: unknown): obj is Task {
 	const task = obj as Record<string, unknown>;
 
 	return (
-		isValidTaskIdType(task.id) &&
+		typeof task.id === 'string' &&
 		typeof task.title === 'string' &&
 		typeof task.description === 'string' &&
 		isTaskStatus(task.status) &&
@@ -328,7 +329,7 @@ export function isSubtask(obj: unknown): obj is Subtask {
 
 	return (
 		isValidTaskIdType(subtask.id) &&
-		isValidTaskIdType(subtask.parentId) &&
+		typeof subtask.parentId === 'string' &&
 		typeof subtask.title === 'string' &&
 		typeof subtask.description === 'string' &&
 		isTaskStatus(subtask.status) &&

@@ -23,6 +23,7 @@ describe('Type Guards', () => {
 			expect(isTaskStatus('cancelled')).toBe(true);
 			expect(isTaskStatus('blocked')).toBe(true);
 			expect(isTaskStatus('review')).toBe(true);
+			expect(isTaskStatus('completed')).toBe(true);
 		});
 
 		it('returns false for invalid values', () => {
@@ -88,7 +89,7 @@ describe('Type Guards', () => {
 
 	describe('isTask', () => {
 		const createValidTask = (overrides: Partial<Task> = {}): Task => ({
-			id: 1,
+			id: '1',
 			title: 'Test Task',
 			description: 'Test description',
 			status: 'pending' as TaskStatus,
@@ -100,9 +101,10 @@ describe('Type Guards', () => {
 			...overrides
 		});
 
-		it('returns true for valid task with numeric ID', () => {
-			const task = createValidTask({ id: 1 });
-			expect(isTask(task)).toBe(true);
+		it('returns false for task with numeric ID (Task.id must be string)', () => {
+			const task = createValidTask();
+			(task as any).id = 1;
+			expect(isTask(task)).toBe(false);
 		});
 
 		it('returns true for valid task with string ID', () => {
@@ -165,7 +167,7 @@ describe('Type Guards', () => {
 	describe('isSubtask', () => {
 		const createValidSubtask = (overrides: Partial<Subtask> = {}): Subtask => ({
 			id: 1,
-			parentId: 5,
+			parentId: '5',
 			title: 'Test Subtask',
 			description: 'Test description',
 			status: 'pending' as TaskStatus,
@@ -176,24 +178,25 @@ describe('Type Guards', () => {
 			...overrides
 		});
 
-		it('returns true for valid subtask with numeric ID and parentId', () => {
-			const subtask = createValidSubtask({ id: 1, parentId: 5 });
+		it('returns true for valid subtask with numeric ID and string parentId', () => {
+			const subtask = createValidSubtask({ id: 1, parentId: '5' });
 			expect(isSubtask(subtask)).toBe(true);
 		});
 
-		it('returns true for valid subtask with string ID and parentId', () => {
+		it('returns true for valid subtask with string ID and string parentId', () => {
 			const subtask = createValidSubtask({ id: '1', parentId: '5' });
 			expect(isSubtask(subtask)).toBe(true);
 		});
 
-		it('returns true for valid subtask with mixed ID types', () => {
-			// Numeric ID, string parentId
-			const subtask1 = createValidSubtask({ id: 1, parentId: '5' });
-			expect(isSubtask(subtask1)).toBe(true);
+		it('returns true for subtask with numeric ID and string parentId (Subtask.id allows number | string)', () => {
+			const subtask = createValidSubtask({ id: 1, parentId: '5' });
+			expect(isSubtask(subtask)).toBe(true);
+		});
 
-			// String ID, numeric parentId
-			const subtask2 = createValidSubtask({ id: '1', parentId: 5 });
-			expect(isSubtask(subtask2)).toBe(true);
+		it('returns false for subtask with numeric parentId (parentId must be string)', () => {
+			const subtask = createValidSubtask();
+			(subtask as any).parentId = 5;
+			expect(isSubtask(subtask)).toBe(false);
 		});
 
 		it('returns false for null/undefined', () => {

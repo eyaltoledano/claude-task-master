@@ -537,77 +537,74 @@ function hasTaggedStructure(data) {
 }
 
 /**
- * Normalizes a dependency array - converts task refs to numbers, keeps subtask refs as strings.
+ * Normalizes a dependency array - ensures all dependency references are strings.
  * This is a helper function to eliminate duplication in normalizeTaskIds.
  *
  * @param {Array} dependencies - Array of dependency values
- * @returns {Array} Normalized dependencies with task refs as numbers and subtask refs as strings
+ * @returns {Array} New array with all dependency references as strings
  */
 function normalizeDependencyArray(dependencies) {
 	if (!Array.isArray(dependencies)) return dependencies;
-	return dependencies.map((dep) => {
-		const depStr = String(dep);
-		// Keep subtask references as strings (e.g., "7.1", "1.2")
-		if (depStr.includes('.')) {
-			return depStr;
-		}
-		// Convert task references to numbers
-		const parsedDep = parseInt(depStr, 10);
-		return !isNaN(parsedDep) && parsedDep > 0 ? parsedDep : dep;
-	});
+	return dependencies.map((dep) => String(dep));
 }
 
 /**
- * Normalizes task IDs to ensure they are numbers instead of strings
+ * Normalizes task IDs to ensure they are consistently stored as strings.
+ * Returns a new array with new task/subtask objects (does not mutate in place).
  * @param {Array} tasks - Array of tasks to normalize
+ * @returns {Array} New array of tasks with string IDs
  */
 function normalizeTaskIds(tasks) {
-	if (!Array.isArray(tasks)) return;
+	if (!Array.isArray(tasks)) return tasks;
 
-	tasks.forEach((task) => {
-		// Convert task ID to number with validation
-		if (task.id !== undefined) {
-			const parsedId = parseInt(task.id, 10);
-			if (!isNaN(parsedId) && parsedId > 0) {
-				task.id = parsedId;
-			}
+	return tasks.map((task) => {
+		const normalizedTask = { ...task };
+
+		// Ensure task ID is a string
+		if (normalizedTask.id !== undefined) {
+			normalizedTask.id = String(normalizedTask.id);
 		}
 
-		// Convert dependencies using helper function
-		if (Array.isArray(task.dependencies)) {
-			task.dependencies = normalizeDependencyArray(task.dependencies);
+		// Normalize dependencies to strings
+		if (Array.isArray(normalizedTask.dependencies)) {
+			normalizedTask.dependencies = normalizeDependencyArray(
+				normalizedTask.dependencies
+			);
 		}
 
-		// Convert subtask IDs to numbers with validation
-		if (Array.isArray(task.subtasks)) {
-			task.subtasks.forEach((subtask) => {
-				if (subtask.id !== undefined) {
-					// Check for dot notation (which shouldn't exist in storage)
-					if (typeof subtask.id === 'string' && subtask.id.includes('.')) {
-						// Extract the subtask part after the dot
-						const parts = subtask.id.split('.');
-						subtask.id = parseInt(parts[parts.length - 1], 10);
+		// Normalize subtask IDs to strings
+		if (Array.isArray(normalizedTask.subtasks)) {
+			normalizedTask.subtasks = normalizedTask.subtasks.map((subtask) => {
+				const normalizedSubtask = { ...subtask };
+
+				if (normalizedSubtask.id !== undefined) {
+					// Handle dot notation (which shouldn't exist in storage)
+					if (
+						typeof normalizedSubtask.id === 'string' &&
+						normalizedSubtask.id.includes('.')
+					) {
+						const parts = normalizedSubtask.id.split('.');
+						normalizedSubtask.id = String(parts[parts.length - 1]);
 					} else {
-						const parsedSubtaskId = parseInt(subtask.id, 10);
-						if (!isNaN(parsedSubtaskId) && parsedSubtaskId > 0) {
-							subtask.id = parsedSubtaskId;
-						}
+						normalizedSubtask.id = String(normalizedSubtask.id);
 					}
 				}
 
-				// Set parentId to the parent task's ID (subtasks are nested, so we know the parent)
-				// This ensures parentId is always set correctly
-				const parsedTaskId = parseInt(task.id, 10);
-				if (!isNaN(parsedTaskId) && parsedTaskId > 0) {
-					subtask.parentId = parsedTaskId;
+				// Set parentId to the string version of the parent task's ID
+				normalizedSubtask.parentId = String(normalizedTask.id);
+
+				// Normalize subtask dependencies to strings
+				if (Array.isArray(normalizedSubtask.dependencies)) {
+					normalizedSubtask.dependencies = normalizeDependencyArray(
+						normalizedSubtask.dependencies
+					);
 				}
 
-				// Convert subtask dependencies using helper function
-				if (Array.isArray(subtask.dependencies)) {
-					subtask.dependencies = normalizeDependencyArray(subtask.dependencies);
-				}
+				return normalizedSubtask;
 			});
 		}
+
+		return normalizedTask;
 	});
 }
 
@@ -671,12 +668,12 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			console.log(`File is in legacy format, performing migration...`);
 		}
 
-		normalizeTaskIds(data.tasks);
+		const normalizedTasks = normalizeTaskIds(data.tasks);
 
 		// This is legacy format - migrate it to tagged format
 		const migratedData = {
 			master: {
-				tasks: data.tasks,
+				tasks: normalizedTasks,
 				metadata: data.metadata || {
 					created: new Date().toISOString(),
 					updated: new Date().toISOString(),
@@ -758,7 +755,10 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				originalTaggedData[tagName] &&
 				Array.isArray(originalTaggedData[tagName].tasks)
 			) {
-				normalizeTaskIds(originalTaggedData[tagName].tasks);
+				originalTaggedData[tagName] = {
+					...originalTaggedData[tagName],
+					tasks: normalizeTaskIds(originalTaggedData[tagName].tasks)
+				};
 			}
 		}
 
@@ -809,11 +809,12 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// Get the data for the resolved tag
 			const tagData = data[resolvedTag];
 			if (tagData && tagData.tasks) {
-				normalizeTaskIds(tagData.tasks);
+				const normalizedTasks = normalizeTaskIds(tagData.tasks);
 
 				// Add the _rawTaggedData property and the resolved tag to the returned data
 				const result = {
 					...tagData,
+					tasks: normalizedTasks,
 					tag: resolvedTag,
 					_rawTaggedData: originalTaggedData
 				};
@@ -827,7 +828,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 				// If the resolved tag doesn't exist, fall back to master
 				const masterData = data.master;
 				if (masterData && masterData.tasks) {
-					normalizeTaskIds(masterData.tasks);
+					const normalizedMasterTasks = normalizeTaskIds(masterData.tasks);
 
 					if (isDebug) {
 						console.log(
@@ -836,6 +837,7 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 					}
 					return {
 						...masterData,
+						tasks: normalizedMasterTasks,
 						tag: 'master',
 						_rawTaggedData: originalTaggedData
 					};
@@ -858,9 +860,9 @@ function readJSON(filepath, projectRoot = null, tag = null) {
 			// If anything goes wrong, try to return master or empty
 			const masterData = data.master;
 			if (masterData && masterData.tasks) {
-				normalizeTaskIds(masterData.tasks);
 				return {
 					...masterData,
+					tasks: normalizeTaskIds(masterData.tasks),
 					_rawTaggedData: originalTaggedData
 				};
 			}
@@ -1193,7 +1195,7 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 				}
 
 				// Normalize task IDs before writing to ensure consistency
-				// This ensures IDs are always stored as numbers in JSON
+				// This ensures IDs are always stored as strings in JSON
 				if (cleanData && typeof cleanData === 'object') {
 					// Handle tagged structure
 					if (hasTaggedStructure(cleanData)) {
@@ -1202,13 +1204,22 @@ function writeJSON(filepath, data, projectRoot = null, tag = null) {
 								cleanData[tagName] &&
 								Array.isArray(cleanData[tagName].tasks)
 							) {
-								normalizeTaskIds(cleanData[tagName].tasks);
+								cleanData = {
+									...cleanData,
+									[tagName]: {
+										...cleanData[tagName],
+										tasks: normalizeTaskIds(cleanData[tagName].tasks)
+									}
+								};
 							}
 						});
 					}
 					// Handle legacy structure
 					else if (Array.isArray(cleanData.tasks)) {
-						normalizeTaskIds(cleanData.tasks);
+						cleanData = {
+							...cleanData,
+							tasks: normalizeTaskIds(cleanData.tasks)
+						};
 					}
 				}
 

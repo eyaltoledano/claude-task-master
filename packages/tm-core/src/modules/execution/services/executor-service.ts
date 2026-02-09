@@ -38,7 +38,6 @@ export class ExecutorService {
 		task: Task,
 		executorType?: ExecutorType
 	): Promise<ExecutionResult> {
-		const taskIdStr = String(task.id);
 		try {
 			// Determine executor type
 			const type =
@@ -48,7 +47,7 @@ export class ExecutorService {
 			if (!type) {
 				return {
 					success: false,
-					taskId: taskIdStr,
+					taskId: task.id,
 					executorType: 'claude',
 					error:
 						'No executor available. Please install Claude CLI or specify an executor type.',
@@ -70,7 +69,7 @@ export class ExecutorService {
 			if (!isAvailable) {
 				return {
 					success: false,
-					taskId: taskIdStr,
+					taskId: task.id,
 					executorType: type,
 					error: `Executor ${type} is not available or not configured properly`,
 					startTime: new Date().toISOString()
@@ -78,15 +77,15 @@ export class ExecutorService {
 			}
 
 			// Execute the task
-			this.logger.info(`Starting task ${taskIdStr} with ${type} executor`);
+			this.logger.info(`Starting task ${task.id} with ${type} executor`);
 			const result = await this.currentExecutor.execute(task);
 
 			return result;
 		} catch (error: any) {
-			this.logger.error(`Failed to execute task ${taskIdStr}:`, error);
+			this.logger.error(`Failed to execute task ${task.id}:`, error);
 			return {
 				success: false,
-				taskId: taskIdStr,
+				taskId: task.id,
 				executorType: executorType || 'claude',
 				error: error.message || 'Unknown error occurred',
 				startTime: new Date().toISOString()
