@@ -22,7 +22,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -30,7 +33,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -53,7 +59,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -61,7 +70,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -69,7 +81,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -91,7 +106,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -99,7 +117,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -107,7 +128,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['2']
+					dependencies: ['2'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '4',
@@ -115,7 +139,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['3']
+					dependencies: ['3'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -137,7 +164,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['2']
+					dependencies: ['2'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -145,7 +175,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -165,7 +198,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -173,7 +209,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -181,7 +220,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1', '2']
+					dependencies: ['1', '2'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '4',
@@ -189,7 +231,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '5',
@@ -197,7 +242,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['3', '4']
+					dependencies: ['3', '4'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -227,22 +275,30 @@ describe('ClusterDetectionService', () => {
 					status: 'pending',
 					priority: 'medium',
 					dependencies: [],
+					details: '',
+					testStrategy: '',
 					subtasks: [
 						{
 							id: '1',
+							parentId: '1',
 							title: 'Subtask 1.1',
 							description: '',
 							status: 'pending',
 							priority: 'medium',
-							dependencies: []
+							dependencies: [],
+							details: '',
+							testStrategy: ''
 						},
 						{
 							id: '2',
+							parentId: '1',
 							title: 'Subtask 1.2',
 							description: '',
 							status: 'pending',
 							priority: 'medium',
-							dependencies: ['1']
+							dependencies: ['1'],
+							details: '',
+							testStrategy: ''
 						}
 					]
 				}
@@ -264,7 +320,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['999'] // Non-existent dependency
+					dependencies: ['999'], // Non-existent dependency
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -285,7 +344,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -303,7 +365,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -324,7 +389,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -343,7 +411,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -351,7 +422,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -373,7 +447,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -381,7 +458,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -414,7 +494,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -440,7 +523,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -448,7 +534,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -456,7 +545,10 @@ describe('ClusterDetectionService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['2']
+					dependencies: ['2'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 

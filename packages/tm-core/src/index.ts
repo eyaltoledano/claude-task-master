@@ -206,7 +206,7 @@ export { GitAdapter } from './modules/git/adapters/git-adapter.js';
 export { CommitMessageGenerator } from './modules/git/services/commit-message-generator.js';
 export {
 	GitHubPRService,
-	type ClusterMetadata,
+	type PRClusterInput,
 	type PRCreationResult,
 	type CreatePROptions,
 	type ClusterPRMapping

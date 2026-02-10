@@ -53,7 +53,7 @@ const CreatePRSchema = z.object({
 		.optional()
 		.describe('Labels to add to PR'),
 	metadata: z
-		.record(z.unknown())
+		.record(z.string(), z.unknown())
 		.optional()
 		.describe('Additional metadata for PR')
 });

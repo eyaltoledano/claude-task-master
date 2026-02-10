@@ -2,17 +2,28 @@
  * Cluster execution types
  */
 
-import type { Task, TaskStatus } from '../../common/types/index.js';
+import type { TaskStatus } from '../../common/types/index.js';
 
 /**
- * Cluster execution status
+ * Cluster lifecycle statuses.
+ *
+ * State transitions:
+ *   pending → ready → in-progress → delivered → done
+ *                                  ↘ failed
+ *                    ↘ blocked (upstream failure)
+ *
+ * - `delivered`: PR has been created for this cluster but not yet merged
+ * - `done`: PR merged and cluster work is complete
+ * - `failed`: Execution failed during this cluster's tasks
+ * - `blocked`: Could not start because an upstream cluster failed
  */
 export type ClusterStatus =
 	| 'pending' // Waiting for upstream clusters
 	| 'ready' // All dependencies satisfied
 	| 'in-progress' // Currently executing tasks
-	| 'delivered' // All tasks complete
-	| 'done' // Cluster fully processed
+	| 'delivered' // PR created but not yet merged
+	| 'done' // PR merged, cluster work complete
+	| 'failed' // Execution failed (distinct from blocked)
 	| 'blocked'; // Upstream dependency failed
 
 /**
@@ -20,31 +31,23 @@ export type ClusterStatus =
  */
 export interface ClusterMetadata {
 	/** Unique cluster identifier */
-	clusterId: string;
+	readonly clusterId: string;
 	/** Cluster index in topological order */
-	level: number;
+	readonly level: number;
 	/** Task IDs in this cluster */
-	taskIds: string[];
+	readonly taskIds: readonly string[];
 	/** Cluster IDs this cluster depends on */
-	upstreamClusters: string[];
+	readonly upstreamClusters: readonly string[];
 	/** Cluster IDs that depend on this cluster */
-	downstreamClusters: string[];
+	readonly downstreamClusters: readonly string[];
 	/** Current execution status */
 	status: ClusterStatus;
 	/** Start time of cluster execution */
 	startTime?: Date;
 	/** End time of cluster execution */
 	endTime?: Date;
-	/** Error message if blocked */
+	/** Error message if blocked or failed */
 	error?: string;
-}
-
-/**
- * Task with cluster assignment
- */
-export interface TaskWithCluster extends Task {
-	clusterId: string;
-	clusterLevel: number;
 }
 
 /**
@@ -103,7 +106,9 @@ export type ProgressEventType =
 	| 'task:started'
 	| 'task:completed'
 	| 'task:failed'
-	| 'progress:updated';
+	| 'progress:updated'
+	| 'execution:started'
+	| 'execution:completed';
 
 /**
  * Progress event data
@@ -123,6 +128,17 @@ export interface ProgressEventData {
 	};
 	error?: string;
 	metadata?: Record<string, unknown>;
+}
+
+/**
+ * Snapshot of execution progress at a point in time
+ */
+export interface ProgressSnapshot {
+	completedTasks: number;
+	totalTasks: number;
+	completedClusters: number;
+	totalClusters: number;
+	percentage: number;
 }
 
 /**
@@ -152,7 +168,7 @@ export interface TagExecutionContext {
 	currentClusterIndex: number;
 	startTime: Date;
 	endTime?: Date;
-	status: 'pending' | 'in-progress' | 'completed' | 'failed';
+	status: 'pending' | 'in-progress' | 'done' | 'failed';
 	checkpoint?: ExecutionCheckpoint;
 }
 
@@ -166,5 +182,5 @@ export interface ProjectExecutionContext {
 	tagContexts: Map<string, TagExecutionContext>;
 	startTime: Date;
 	endTime?: Date;
-	status: 'pending' | 'in-progress' | 'completed' | 'failed';
+	status: 'pending' | 'in-progress' | 'done' | 'failed';
 }

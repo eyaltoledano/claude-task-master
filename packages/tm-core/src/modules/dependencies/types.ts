@@ -3,11 +3,19 @@
  */
 
 /**
- * Dependency graph node
+ * A node in the dependency graph representing a task and its dependencies.
  */
 export interface DependencyNode {
-	taskId: string;
-	dependencies: string[];
+	readonly taskId: string;
+	readonly dependencies: readonly string[];
+}
+
+/**
+ * Internal traversal state for cycle detection algorithms.
+ * Extends DependencyNode with ephemeral DFS state.
+ * @internal
+ */
+export interface TraversalNode extends DependencyNode {
 	visited: boolean;
 	inStack: boolean;
 }
@@ -55,16 +63,4 @@ export interface DependencyIssue {
 	dependencyId?: string;
 	/** Human-readable message */
 	message: string;
-}
-
-/**
- * Dependency graph representation
- */
-export interface DependencyGraph {
-	/** Map of task ID to node */
-	nodes: Map<string, DependencyNode>;
-	/** Adjacency list (task ID -> dependent task IDs) */
-	adjacencyList: Map<string, string[]>;
-	/** Reverse adjacency list (task ID -> tasks that depend on it) */
-	reverseAdjacencyList: Map<string, string[]>;
 }

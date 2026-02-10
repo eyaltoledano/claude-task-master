@@ -1,6 +1,6 @@
 /**
  * @fileoverview Parallel Executor Service
- * Executes tasks within a cluster in parallel while respecting resource constraints
+ * Executes tasks within a cluster concurrently, bounded by resource constraints.
  */
 
 import type { Task } from '../../../common/types/index.js';
@@ -12,7 +12,10 @@ import type {
 	ProgressEventData
 } from '../types.js';
 import { getLogger } from '../../../common/logger/factory.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 
 /**
  * Resource constraints for parallel execution
@@ -32,7 +35,9 @@ export interface ResourceConstraints {
 export type TaskExecutor = (task: Task) => Promise<TaskExecutionResult>;
 
 /**
- * Execution context for a single task
+ * Execution context for a single task.
+ * Note: `promise` stores a sentinel value — actual execution is tracked via the worker pool.
+ * Note: `abortController` is a placeholder — its signal is not currently wired into the executor.
  */
 interface TaskExecutionContext {
 	task: Task;
@@ -47,6 +52,8 @@ interface TaskExecutionContext {
 export class ParallelExecutorService {
 	private logger = getLogger('ParallelExecutorService');
 	private eventListeners: Set<ProgressEventListener> = new Set();
+	private listenerFailureCounts: Map<ProgressEventListener, number> =
+		new Map();
 	private activeExecutions: Map<string, TaskExecutionContext> = new Map();
 	private constraints: ResourceConstraints;
 
@@ -55,7 +62,7 @@ export class ParallelExecutorService {
 	}
 
 	/**
-	 * Execute all tasks in a cluster in parallel
+	 * Execute all tasks in a cluster concurrently, bounded by resource constraints
 	 */
 	async executeCluster(
 		cluster: ClusterMetadata,
@@ -72,7 +79,6 @@ export class ParallelExecutorService {
 		const failedTasks: string[] = [];
 		const completedTasks: string[] = [];
 
-		// Emit cluster started event
 		this.emitEvent({
 			type: 'cluster:started',
 			timestamp: new Date(),
@@ -81,10 +87,8 @@ export class ParallelExecutorService {
 		});
 
 		try {
-			// Execute tasks in parallel with worker pool
 			const results = await this.executeWithWorkerPool(tasks, executor);
 
-			// Process results
 			results.forEach((result) => {
 				taskResults.push(result);
 				if (result.success) {
@@ -98,12 +102,11 @@ export class ParallelExecutorService {
 			const duration = endTime.getTime() - startTime.getTime();
 			const success = failedTasks.length === 0;
 
-			// Emit cluster completed/failed event
 			this.emitEvent({
 				type: success ? 'cluster:completed' : 'cluster:failed',
 				timestamp: new Date(),
 				clusterId: cluster.clusterId,
-				status: success ? 'delivered' : 'blocked',
+				status: success ? 'done' : 'failed',
 				metadata: {
 					completedTasks: completedTasks.length,
 					failedTasks: failedTasks.length,
@@ -142,20 +145,26 @@ export class ParallelExecutorService {
 				type: 'cluster:failed',
 				timestamp: new Date(),
 				clusterId: cluster.clusterId,
-				status: 'blocked',
+				status: 'failed',
 				error: error instanceof Error ? error.message : String(error)
 			});
 
-			return {
-				clusterId: cluster.clusterId,
-				success: false,
-				startTime,
-				endTime,
-				duration,
-				taskResults,
-				failedTasks: tasks.map((t) => String(t.id)),
-				completedTasks: []
-			};
+			// Only convert expected operational errors to result objects.
+			// Let unexpected errors propagate so the caller's retry logic can handle them.
+			if (error instanceof TaskMasterError) {
+				return {
+					clusterId: cluster.clusterId,
+					success: false,
+					startTime,
+					endTime,
+					duration,
+					taskResults,
+					failedTasks: tasks.map((t) => String(t.id)),
+					completedTasks: []
+				};
+			}
+
+			throw error;
 		}
 	}
 
@@ -168,40 +177,30 @@ export class ParallelExecutorService {
 	): Promise<TaskExecutionResult[]> {
 		const results: TaskExecutionResult[] = [];
 		const taskQueue = [...tasks];
-		const inProgress: Promise<TaskExecutionResult>[] = [];
+		const inProgress = new Map<string, Promise<TaskExecutionResult>>();
 
-		while (taskQueue.length > 0 || inProgress.length > 0) {
-			// Fill worker pool up to max concurrency
+		while (taskQueue.length > 0 || inProgress.size > 0) {
 			while (
 				taskQueue.length > 0 &&
-				inProgress.length < this.constraints.maxConcurrentTasks
+				inProgress.size < this.constraints.maxConcurrentTasks
 			) {
 				const task = taskQueue.shift()!;
+				const taskId = String(task.id);
 				const execution = this.executeTask(task, executor);
-				inProgress.push(execution);
+				inProgress.set(taskId, execution);
 			}
 
-			// Wait for at least one task to complete
-			if (inProgress.length > 0) {
-				const result = await Promise.race(inProgress);
-				results.push(result);
-
-				// Remove completed task from in-progress
-				const index = inProgress.findIndex(
-					(p) => p === Promise.resolve(result)
+			if (inProgress.size > 0) {
+				const entries = Array.from(inProgress.entries());
+				const result = await Promise.race(
+					entries.map(([id, promise]) =>
+						promise.then((r) => ({ ...r, _trackingId: id }))
+					)
 				);
-				if (index === -1) {
-					// Find by result comparison since Promise.race doesn't preserve identity
-					const completedIndex = inProgress.findIndex(async (p) => {
-						const r = await p;
-						return r.taskId === result.taskId;
-					});
-					if (completedIndex !== -1) {
-						inProgress.splice(completedIndex, 1);
-					}
-				} else {
-					inProgress.splice(index, 1);
-				}
+
+				const { _trackingId, ...taskResult } = result;
+				inProgress.delete(_trackingId);
+				results.push(taskResult);
 			}
 		}
 
@@ -221,7 +220,6 @@ export class ParallelExecutorService {
 
 		this.logger.debug('Starting task execution', { taskId });
 
-		// Emit task started event
 		this.emitEvent({
 			type: 'task:started',
 			timestamp: new Date(),
@@ -229,7 +227,6 @@ export class ParallelExecutorService {
 			status: 'in-progress'
 		});
 
-		// Store execution context
 		const context: TaskExecutionContext = {
 			task,
 			startTime,
@@ -245,7 +242,6 @@ export class ParallelExecutorService {
 		this.activeExecutions.set(taskId, context);
 
 		try {
-			// Set up timeout if configured
 			const timeoutPromise = this.constraints.taskTimeoutMs
 				? new Promise<TaskExecutionResult>((_, reject) => {
 						setTimeout(() => {
@@ -256,10 +252,9 @@ export class ParallelExecutorService {
 								)
 							);
 						}, this.constraints.taskTimeoutMs);
-				  })
+					})
 				: null;
 
-			// Execute task with timeout race
 			const result = timeoutPromise
 				? await Promise.race([executor(task), timeoutPromise])
 				: await executor(task);
@@ -267,7 +262,6 @@ export class ParallelExecutorService {
 			const endTime = new Date();
 			const duration = endTime.getTime() - startTime.getTime();
 
-			// Ensure result has all required fields
 			const finalResult: TaskExecutionResult = {
 				...result,
 				taskId,
@@ -276,12 +270,11 @@ export class ParallelExecutorService {
 				duration
 			};
 
-			// Emit task completed/failed event
 			this.emitEvent({
 				type: finalResult.success ? 'task:completed' : 'task:failed',
 				timestamp: new Date(),
 				taskId,
-				status: finalResult.success ? 'done' : 'blocked',
+				status: finalResult.success ? 'done' : 'failed',
 				error: finalResult.error
 			});
 
@@ -303,12 +296,11 @@ export class ParallelExecutorService {
 				error: errorMessage
 			});
 
-			// Emit task failed event
 			this.emitEvent({
 				type: 'task:failed',
 				timestamp: new Date(),
 				taskId,
-				status: 'blocked',
+				status: 'failed',
 				error: errorMessage
 			});
 
@@ -321,7 +313,6 @@ export class ParallelExecutorService {
 				error: errorMessage
 			};
 		} finally {
-			// Clean up execution context
 			this.activeExecutions.delete(taskId);
 		}
 	}
@@ -376,6 +367,7 @@ export class ParallelExecutorService {
 	 */
 	removeEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.delete(listener);
+		this.listenerFailureCounts.delete(listener);
 	}
 
 	/**
@@ -385,8 +377,19 @@ export class ParallelExecutorService {
 		this.eventListeners.forEach((listener) => {
 			try {
 				listener(event);
+				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				this.logger.error('Error in event listener', { error });
+				const count =
+					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				this.listenerFailureCounts.set(listener, count);
+				if (count >= 3) {
+					this.logger.error(
+						'Event listener is repeatedly failing',
+						{ failureCount: count, error }
+					);
+				} else {
+					this.logger.warn('Error in event listener', { error });
+				}
 			}
 		});
 	}

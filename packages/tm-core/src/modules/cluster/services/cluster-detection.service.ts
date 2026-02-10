@@ -40,7 +40,6 @@ export class ClusterDetectionService {
 		tasks: Task[],
 		cacheKey?: string
 	): ClusterDetectionResult {
-		// Check cache first
 		if (cacheKey && this.cache.has(cacheKey)) {
 			this.logger.debug('Returning cached cluster detection result', { cacheKey });
 			return this.cache.get(cacheKey)!;
@@ -48,13 +47,10 @@ export class ClusterDetectionService {
 
 		this.logger.info('Starting cluster detection', { taskCount: tasks.length });
 
-		// Build dependency graph
 		const graph = this.buildGraph(tasks);
-
-		// Detect circular dependencies
 		const circularPath = this.detectCircularDependencies(graph);
 		if (circularPath) {
-			const result: ClusterDetectionResult = {
+			return {
 				clusters: [],
 				totalClusters: 0,
 				totalTasks: tasks.length,
@@ -62,16 +58,11 @@ export class ClusterDetectionService {
 				hasCircularDependencies: true,
 				circularDependencyPath: circularPath
 			};
-			return result;
 		}
 
-		// Perform topological sort with level assignment
 		const levels = this.topologicalSort(graph);
-
-		// Group tasks by level into clusters
 		const clusters = this.createClusters(levels, graph);
 
-		// Build result
 		const taskToCluster = new Map<string, string>();
 		clusters.forEach((cluster) => {
 			cluster.taskIds.forEach((taskId) => {
@@ -87,7 +78,6 @@ export class ClusterDetectionService {
 			hasCircularDependencies: false
 		};
 
-		// Cache result if key provided
 		if (cacheKey) {
 			this.cache.set(cacheKey, result);
 		}
@@ -106,7 +96,6 @@ export class ClusterDetectionService {
 	private buildGraph(tasks: Task[]): Map<string, GraphNode> {
 		const graph = new Map<string, GraphNode>();
 
-		// Initialize nodes
 		tasks.forEach((task) => {
 			const taskId = String(task.id);
 			graph.set(taskId, {
@@ -117,12 +106,10 @@ export class ClusterDetectionService {
 				inStack: false
 			});
 
-			// Handle subtasks
 			if (task.subtasks && task.subtasks.length > 0) {
 				task.subtasks.forEach((subtask) => {
 					const subtaskId = `${taskId}.${subtask.id}`;
 					const subtaskDeps = (subtask.dependencies || []).map((dep) => {
-						// Convert relative subtask IDs to full notation
 						if (String(dep).includes('.')) {
 							return String(dep);
 						}
@@ -176,7 +163,6 @@ export class ClusterDetectionService {
 		if (!node) return null;
 
 		if (node.inStack) {
-			// Cycle detected - extract cycle path
 			const cycleStart = path.indexOf(taskId);
 			return path.slice(cycleStart).concat([taskId]);
 		}
@@ -188,8 +174,10 @@ export class ClusterDetectionService {
 		path.push(taskId);
 
 		for (const depId of node.dependencies) {
-			// Skip missing dependencies (they might be external or completed)
-			if (!graph.has(depId)) continue;
+			if (!graph.has(depId)) {
+				this.logger.warn(`Dependency '${depId}' referenced by task '${taskId}' not found in graph — skipping`);
+				continue;
+			}
 
 			const cycle = this.dfsDetectCycle(depId, graph, path);
 			if (cycle) return cycle;
@@ -211,7 +199,6 @@ export class ClusterDetectionService {
 		const levels = new Map<number, string[]>();
 		const inDegree = new Map<string, number>();
 
-		// Calculate in-degree for each node
 		graph.forEach((node) => {
 			inDegree.set(node.taskId, 0);
 		});
@@ -219,12 +206,11 @@ export class ClusterDetectionService {
 		graph.forEach((node) => {
 			node.dependencies.forEach((depId) => {
 				if (graph.has(depId)) {
-					inDegree.set(depId, (inDegree.get(depId) || 0) + 1);
+					inDegree.set(node.taskId, (inDegree.get(node.taskId) || 0) + 1);
 				}
 			});
 		});
 
-		// Find all nodes with in-degree 0 (level 0)
 		const queue: Array<{ taskId: string; level: number }> = [];
 		inDegree.forEach((degree, taskId) => {
 			if (degree === 0) {
@@ -234,25 +220,20 @@ export class ClusterDetectionService {
 			}
 		});
 
-		// Process queue (BFS)
 		while (queue.length > 0) {
 			const { taskId, level } = queue.shift()!;
 
-			// Add to level
 			if (!levels.has(level)) {
 				levels.set(level, []);
 			}
 			levels.get(level)!.push(taskId);
 
-			// Process dependents (tasks that depend on this one)
-			const node = graph.get(taskId)!;
 			graph.forEach((dependent) => {
 				if (dependent.dependencies.includes(taskId)) {
 					const newInDegree = (inDegree.get(dependent.taskId) || 0) - 1;
 					inDegree.set(dependent.taskId, newInDegree);
 
 					if (newInDegree === 0) {
-						// Calculate max level from dependencies
 						let maxDepLevel = -1;
 						dependent.dependencies.forEach((depId) => {
 							const depNode = graph.get(depId);
@@ -285,7 +266,6 @@ export class ClusterDetectionService {
 			const taskIds = levels.get(level) || [];
 			const clusterId = `cluster-${level}`;
 
-			// Calculate upstream clusters (clusters this one depends on)
 			const upstreamClusters = new Set<string>();
 			taskIds.forEach((taskId) => {
 				const node = graph.get(taskId)!;
@@ -297,7 +277,6 @@ export class ClusterDetectionService {
 				});
 			});
 
-			// Calculate downstream clusters (clusters that depend on this one)
 			const downstreamClusters = new Set<string>();
 			graph.forEach((node) => {
 				if (node.level > level) {
@@ -309,10 +288,9 @@ export class ClusterDetectionService {
 				}
 			});
 
-			// Determine initial status
 			let status: ClusterStatus = 'pending';
 			if (level === 0) {
-				status = 'ready'; // First cluster is always ready
+				status = 'ready';
 			}
 
 			clusters.push({
@@ -363,7 +341,10 @@ export class ClusterDetectionService {
 		allTasks: Task[]
 	): Task[] {
 		const cluster = this.getCluster(result, clusterId);
-		if (!cluster) return [];
+		if (!cluster) {
+			this.logger.warn(`Cluster not found: ${clusterId}`);
+			return [];
+		}
 
 		const taskMap = new Map(allTasks.map((t) => [String(t.id), t]));
 		return cluster.taskIds
@@ -381,7 +362,6 @@ export class ClusterDetectionService {
 		if (cluster.status === 'ready') return true;
 		if (cluster.status !== 'pending') return false;
 
-		// Check if all upstream clusters are done
 		return cluster.upstreamClusters.every((upstreamId) => {
 			const upstream = this.getCluster(result, upstreamId);
 			return upstream && upstream.status === 'done';
@@ -406,15 +386,16 @@ export class ClusterDetectionService {
 
 		cluster.status = status;
 
-		// Update timestamps
 		if (status === 'in-progress' && !cluster.startTime) {
 			cluster.startTime = new Date();
 		}
-		if ((status === 'done' || status === 'blocked') && !cluster.endTime) {
+		if (
+			(status === 'done' || status === 'failed' || status === 'blocked') &&
+			!cluster.endTime
+		) {
 			cluster.endTime = new Date();
 		}
 
-		// If cluster completes, check downstream clusters for readiness
 		if (status === 'done') {
 			cluster.downstreamClusters.forEach((downstreamId) => {
 				const downstream = this.getCluster(result, downstreamId);
@@ -424,14 +405,13 @@ export class ClusterDetectionService {
 			});
 		}
 
-		// If cluster fails/blocks, mark downstream clusters as blocked
-		if (status === 'blocked') {
+		if (status === 'failed' || status === 'blocked') {
 			this.blockDownstreamClusters(result, clusterId);
 		}
 	}
 
 	/**
-	 * Block all downstream clusters
+	 * Block all downstream clusters recursively
 	 */
 	private blockDownstreamClusters(
 		result: ClusterDetectionResult,
@@ -442,10 +422,13 @@ export class ClusterDetectionService {
 
 		cluster.downstreamClusters.forEach((downstreamId) => {
 			const downstream = this.getCluster(result, downstreamId);
-			if (downstream && downstream.status !== 'done') {
+			if (!downstream) {
+				this.logger.warn(`Downstream cluster not found: ${downstreamId} (referenced by ${clusterId})`);
+				return;
+			}
+			if (downstream.status !== 'done') {
 				downstream.status = 'blocked';
 				downstream.error = `Blocked by upstream cluster: ${clusterId}`;
-				// Recursively block downstream
 				this.blockDownstreamClusters(result, downstreamId);
 			}
 		});

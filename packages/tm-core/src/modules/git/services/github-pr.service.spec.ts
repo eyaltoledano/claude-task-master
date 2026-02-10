@@ -6,8 +6,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { WorkflowContext } from '../../workflow/types.js';
 import {
 	GitHubPRService,
-	type ClusterMetadata,
-	type CreatePROptions
+	type PRClusterInput
 } from './github-pr.service.js';
 
 describe('GitHubPRService', () => {
@@ -20,7 +19,7 @@ describe('GitHubPRService', () => {
 
 	describe('createPR - dry run mode', () => {
 		it('should validate and preview PR creation in dry-run mode', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test-branch',
 				taskId: 'TAS-123',
@@ -39,7 +38,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should generate PR title with conventional commit format', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test',
 				taskId: 'TAS-123',
@@ -55,7 +54,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should generate PR body with cluster metadata', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test',
 				taskId: 'TAS-123',
@@ -102,7 +101,7 @@ describe('GitHubPRService', () => {
 
 	describe('validation', () => {
 		it('should fail validation if clusterId is missing', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: '',
 				branchName: 'feature/test'
 			};
@@ -117,7 +116,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should fail validation if branchName is missing', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: ''
 			};
@@ -198,7 +197,7 @@ describe('GitHubPRService', () => {
 
 	describe('PR title generation', () => {
 		it('should generate title with task ID', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test',
 				taskId: 'TAS-123',
@@ -214,7 +213,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should generate title without task ID', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test',
 				tag: 'api'
@@ -229,7 +228,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should use custom title if provided', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test'
 			};
@@ -248,7 +247,7 @@ describe('GitHubPRService', () => {
 
 	describe('PR body generation', () => {
 		it('should include subtasks in body', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test'
 			};
@@ -284,7 +283,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should include test results in body', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test'
 			};
@@ -314,7 +313,7 @@ describe('GitHubPRService', () => {
 		});
 
 		it('should use custom body if provided', async () => {
-			const cluster: ClusterMetadata = {
+			const cluster: PRClusterInput = {
 				clusterId: 'cluster-1',
 				branchName: 'feature/test'
 			};

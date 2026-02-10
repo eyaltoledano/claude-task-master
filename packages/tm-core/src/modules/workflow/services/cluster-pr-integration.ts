@@ -2,7 +2,7 @@
  * ClusterPRIntegration - Integration layer between workflow orchestration and PR creation
  *
  * This service:
- * - Listens to cluster completion events from WorkflowOrchestrator
+ * - Provides handlers for cluster completion events (invoked by WorkflowOrchestrator)
  * - Invokes GitHubPRService with properly formatted inputs
  * - Handles PR creation results and updates run state
  * - Provides error handling and fallback strategies
@@ -10,12 +10,8 @@
 
 import { getLogger } from '../../../common/logger/index.js';
 import {
-	ERROR_CODES,
-	TaskMasterError
-} from '../../../common/errors/task-master-error.js';
-import {
 	GitHubPRService,
-	type ClusterMetadata,
+	type PRClusterInput,
 	type PRCreationResult
 } from '../../git/services/github-pr.service.js';
 import type { WorkflowContext, WorkflowEventData } from '../types.js';
@@ -101,7 +97,7 @@ export class ClusterPRIntegration {
 
 		try {
 			// Build cluster metadata
-			const clusterMetadata: ClusterMetadata = {
+			const clusterInput: PRClusterInput = {
 				clusterId,
 				branchName: branchName || workflowContext.branchName || '',
 				baseBranch: this.options.baseBranch,
@@ -116,7 +112,7 @@ export class ClusterPRIntegration {
 
 			// Create PR
 			const prResult = await this.prService.createPR({
-				cluster: clusterMetadata,
+				cluster: clusterInput,
 				workflowContext,
 				dryRun: this.options.dryRun,
 				autoMerge: this.options.autoMerge,
@@ -129,8 +125,18 @@ export class ClusterPRIntegration {
 				await this.logPRCreation(prResult, clusterId);
 			}
 
+			// Check if PR creation succeeded
+			if (!prResult.success) {
+				return {
+					success: false,
+					prResult,
+					error: prResult.error,
+					clusterId
+				};
+			}
+
 			// Update run state if successful
-			if (prResult.success && prResult.prUrl) {
+			if (prResult.prUrl) {
 				this.updateRunStateWithPR(workflowContext, clusterId, prResult);
 			}
 
@@ -149,7 +155,14 @@ export class ClusterPRIntegration {
 
 			// Log error activity
 			if (this.options.activityLogPath) {
-				await this.logPRError(clusterId, errorMessage);
+				try {
+					await this.logPRError(clusterId, errorMessage);
+				} catch (logError) {
+					logger.error('Failed to log PR error activity', {
+						logError,
+						originalError: error
+					});
+				}
 			}
 
 			return {
@@ -206,15 +219,21 @@ export class ClusterPRIntegration {
 		clusterId: string,
 		prResult: PRCreationResult
 	): void {
-		// Store PR info in workflow metadata for traceability
-		if (!context.metadata.prs) {
-			context.metadata.prs = {};
-		}
+		const existingPrs =
+			(context.metadata.prs as Record<string, unknown>) || {};
 
-		(context.metadata.prs as Record<string, unknown>)[clusterId] = {
-			prUrl: prResult.prUrl,
-			prNumber: prResult.prNumber,
-			createdAt: new Date().toISOString()
+		const updatedPrs = {
+			...existingPrs,
+			[clusterId]: {
+				prUrl: prResult.prUrl,
+				prNumber: prResult.prNumber,
+				createdAt: new Date().toISOString()
+			}
+		};
+
+		context.metadata = {
+			...context.metadata,
+			prs: updatedPrs
 		};
 
 		logger.debug(`Updated run state with PR info for cluster ${clusterId}`);

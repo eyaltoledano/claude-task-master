@@ -1,6 +1,7 @@
 /**
  * @fileoverview Tag Orchestrator Service
- * Manages execution of all clusters within a specific tag context
+ * Manages execution of all clusters within a specific tag context,
+ * with checkpoint-based resumability.
  */
 
 import type { Task } from '../../../common/types/index.js';
@@ -62,6 +63,9 @@ export class TagOrchestratorService {
 	private clusterSequencer: ClusterSequencerService;
 	private progressTracker: ProgressTrackerService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
+	private listenerFailureCounts: Map<ProgressEventListener, number> =
+		new Map();
+	private currentSequencerListener?: (event: ProgressEventData) => void;
 	private currentContext?: TagExecutionContext;
 
 	constructor(
@@ -74,7 +78,6 @@ export class TagOrchestratorService {
 			clusterSequencer || new ClusterSequencerService(this.clusterDetector);
 		this.progressTracker = progressTracker || new ProgressTrackerService();
 
-		// Forward events from cluster sequencer and progress tracker
 		this.clusterSequencer.addEventListener((event) => {
 			this.progressTracker.handleEvent(event);
 			this.emitEvent(event);
@@ -101,13 +104,11 @@ export class TagOrchestratorService {
 
 		const startTime = new Date();
 
-		// Detect clusters
 		const detection = this.clusterDetector.detectClusters(
 			tasks,
 			`tag:${tag}`
 		);
 
-		// Check for circular dependencies
 		if (detection.hasCircularDependencies) {
 			throw new TaskMasterError(
 				`Circular dependency detected in tag ${tag}: ${detection.circularDependencyPath?.join(' -> ')}`,
@@ -120,16 +121,18 @@ export class TagOrchestratorService {
 			);
 		}
 
-		// Initialize progress tracker
 		this.progressTracker = new ProgressTrackerService(options.checkpointPath);
 		await this.progressTracker.initialize(detection);
 
-		// Set up event forwarding
-		this.clusterSequencer.addEventListener((event) => {
-			this.progressTracker.handleEvent(event);
-		});
+		if (this.currentSequencerListener) {
+			this.clusterSequencer.removeEventListener(this.currentSequencerListener);
+		}
 
-		// Create execution context
+		this.currentSequencerListener = (event: ProgressEventData) => {
+			this.progressTracker.handleEvent(event);
+		};
+		this.clusterSequencer.addEventListener(this.currentSequencerListener);
+
 		this.currentContext = {
 			tag,
 			clusters: detection.clusters,
@@ -138,38 +141,10 @@ export class TagOrchestratorService {
 			status: 'in-progress'
 		};
 
-		// Resume from checkpoint if requested
 		if (options.resumeFromCheckpoint && options.checkpointPath) {
-			const checkpoint = await this.progressTracker.loadCheckpoint();
-			if (checkpoint) {
-				this.logger.info('Resuming from checkpoint', {
-					tag,
-					currentClusterId: checkpoint.currentClusterId,
-					completedClusters: checkpoint.completedClusters.length
-				});
-
-				// Find current cluster index
-				const currentClusterIndex = detection.clusters.findIndex(
-					(c) => c.clusterId === checkpoint.currentClusterId
-				);
-				if (currentClusterIndex >= 0) {
-					this.currentContext.currentClusterIndex = currentClusterIndex;
-				}
-
-				// Update cluster statuses
-				Object.entries(checkpoint.clusterStatuses).forEach(
-					([clusterId, status]) => {
-						this.clusterDetector.updateClusterStatus(
-							detection,
-							clusterId,
-							status
-						);
-					}
-				);
-			}
+			await this.resumeFromCheckpoint(detection);
 		}
 
-		// Execute clusters in sequence
 		const sequencerResult = await this.clusterSequencer.executeClusters(
 			tasks,
 			executor,
@@ -179,20 +154,68 @@ export class TagOrchestratorService {
 		const endTime = new Date();
 		const duration = endTime.getTime() - startTime.getTime();
 
-		// Update context
-		this.currentContext.status = sequencerResult.success
-			? 'completed'
-			: 'failed';
-		this.currentContext.endTime = endTime;
+		this.currentContext = {
+			...this.currentContext,
+			status: sequencerResult.success ? 'done' : 'failed',
+			endTime
+		};
 
-		// Get final progress
 		const progress = this.progressTracker.getProgress();
 
-		// Clean up checkpoint if successful
 		if (sequencerResult.success && options.checkpointPath) {
 			await this.progressTracker.deleteCheckpoint();
 		}
 
+		return this.buildTagResult(tag, sequencerResult, progress, startTime, endTime, duration);
+	}
+
+	/**
+	 * Resume execution state from a saved checkpoint
+	 */
+	private async resumeFromCheckpoint(
+		detection: ClusterDetectionResult
+	): Promise<void> {
+		const checkpoint = await this.progressTracker.loadCheckpoint();
+		if (!checkpoint) return;
+
+		this.logger.info('Resuming from checkpoint', {
+			currentClusterId: checkpoint.currentClusterId,
+			completedClusters: checkpoint.completedClusters.length
+		});
+
+		const currentClusterIndex = detection.clusters.findIndex(
+			(c) => c.clusterId === checkpoint.currentClusterId
+		);
+
+		if (currentClusterIndex >= 0 && this.currentContext) {
+			this.currentContext = {
+				...this.currentContext,
+				currentClusterIndex
+			};
+		}
+
+		Object.entries(checkpoint.clusterStatuses).forEach(
+			([clusterId, status]) => {
+				this.clusterDetector.updateClusterStatus(
+					detection,
+					clusterId,
+					status
+				);
+			}
+		);
+	}
+
+	/**
+	 * Build the final tag execution result
+	 */
+	private buildTagResult(
+		tag: string,
+		sequencerResult: ClusterSequencerResult,
+		progress: ExecutionProgress,
+		startTime: Date,
+		endTime: Date,
+		duration: number
+	): TagExecutionResult {
 		const result: TagExecutionResult = {
 			tag,
 			success: sequencerResult.success,
@@ -236,7 +259,6 @@ export class TagOrchestratorService {
 			clusterId
 		});
 
-		// Initialize progress tracker if not already done
 		if (!this.progressTracker) {
 			this.progressTracker = new ProgressTrackerService(
 				options.checkpointPath
@@ -244,8 +266,7 @@ export class TagOrchestratorService {
 			await this.progressTracker.initialize(detection);
 		}
 
-		// Execute cluster
-		const result = await this.clusterSequencer.executeCluster(
+		await this.clusterSequencer.executeCluster(
 			clusterId,
 			detection,
 			tasks,
@@ -253,18 +274,19 @@ export class TagOrchestratorService {
 			options
 		);
 
-		// Create checkpoint at cluster boundary
 		if (options.checkpointPath) {
 			await this.progressTracker.createCheckpoint(clusterId);
 		}
 
-		// Update context if available
 		if (this.currentContext) {
 			const clusterIndex = this.currentContext.clusters.findIndex(
 				(c) => c.clusterId === clusterId
 			);
 			if (clusterIndex >= 0) {
-				this.currentContext.currentClusterIndex = clusterIndex + 1;
+				this.currentContext = {
+					...this.currentContext,
+					currentClusterIndex: clusterIndex + 1
+				};
 			}
 		}
 	}
@@ -294,7 +316,7 @@ export class TagOrchestratorService {
 	 * Check if tag is ready to execute (all dependencies satisfied)
 	 */
 	isTagReady(
-		tag: string,
+		_tag: string,
 		dependencies: string[],
 		completedTags: Set<string>
 	): boolean {
@@ -311,10 +333,10 @@ export class TagOrchestratorService {
 	}
 
 	/**
-	 * Check if all clusters in tag are complete
+	 * Check if all clusters in tag are in a terminal state (done, failed, or blocked)
 	 */
-	areAllClustersComplete(detection: ClusterDetectionResult): boolean {
-		return this.clusterSequencer.areAllClustersComplete(detection);
+	areAllClustersTerminal(detection: ClusterDetectionResult): boolean {
+		return this.clusterSequencer.areAllClustersTerminal(detection);
 	}
 
 	/**
@@ -324,8 +346,11 @@ export class TagOrchestratorService {
 		this.logger.info('Stopping tag execution');
 
 		if (this.currentContext) {
-			this.currentContext.status = 'failed';
-			this.currentContext.endTime = new Date();
+			this.currentContext = {
+				...this.currentContext,
+				status: 'failed',
+				endTime: new Date()
+			};
 		}
 
 		await this.clusterSequencer.stopAll();
@@ -354,50 +379,44 @@ export class TagOrchestratorService {
 		return checkpoint !== null;
 	}
 
-	/**
-	 * Add progress event listener
-	 */
 	addEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.add(listener);
 	}
 
-	/**
-	 * Remove progress event listener
-	 */
 	removeEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.delete(listener);
+		this.listenerFailureCounts.delete(listener);
 	}
 
-	/**
-	 * Emit progress event to all listeners
-	 */
 	private emitEvent(event: ProgressEventData): void {
 		this.eventListeners.forEach((listener) => {
 			try {
 				listener(event);
+				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				this.logger.error('Error in event listener', { error });
+				const count =
+					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				this.listenerFailureCounts.set(listener, count);
+				if (count >= 3) {
+					this.logger.error(
+						'Event listener is repeatedly failing',
+						{ failureCount: count, error }
+					);
+				} else {
+					this.logger.warn('Error in event listener', { error });
+				}
 			}
 		});
 	}
 
-	/**
-	 * Get cluster detector instance
-	 */
 	getClusterDetector(): ClusterDetectionService {
 		return this.clusterDetector;
 	}
 
-	/**
-	 * Get cluster sequencer instance
-	 */
 	getClusterSequencer(): ClusterSequencerService {
 		return this.clusterSequencer;
 	}
 
-	/**
-	 * Get progress tracker instance
-	 */
 	getProgressTracker(): ProgressTrackerService {
 		return this.progressTracker;
 	}

@@ -1,6 +1,7 @@
 /**
  * @fileoverview Project Orchestrator Service
- * Manages execution of all tags within a project sequentially
+ * Coordinates sequential execution of dependency-ordered tags within a project,
+ * delegating per-tag cluster execution to TagOrchestratorService.
  */
 
 import type { Task } from '../../../common/types/index.js';
@@ -62,12 +63,13 @@ export class ProjectOrchestratorService {
 	private logger = getLogger('ProjectOrchestratorService');
 	private tagOrchestrator: TagOrchestratorService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
+	private listenerFailureCounts: Map<ProgressEventListener, number> =
+		new Map();
 	private currentContext?: ProjectExecutionContext;
 
 	constructor(tagOrchestrator?: TagOrchestratorService) {
 		this.tagOrchestrator = tagOrchestrator || new TagOrchestratorService();
 
-		// Forward events from tag orchestrator
 		this.tagOrchestrator.addEventListener((event) => {
 			this.emitEvent(event);
 		});
@@ -93,10 +95,8 @@ export class ProjectOrchestratorService {
 		const failedTags = new Set<string>();
 		const blockedTags = new Set<string>();
 
-		// Sort tags in topological order based on dependencies
 		const sortedTags = this.topologicalSortTags(tagData);
 
-		// Check for circular dependencies
 		if (sortedTags === null) {
 			throw new TaskMasterError(
 				'Circular dependency detected in project tag dependencies',
@@ -108,7 +108,6 @@ export class ProjectOrchestratorService {
 			);
 		}
 
-		// Create execution context
 		this.currentContext = {
 			projectId,
 			tags: sortedTags.map((t) => t.tag),
@@ -118,10 +117,9 @@ export class ProjectOrchestratorService {
 			status: 'in-progress'
 		};
 
-		// Execute tags in order
 		for (let i = 0; i < sortedTags.length; i++) {
 			const { tag, tasks, dependencies } = sortedTags[i];
-			this.currentContext.currentTagIndex = i;
+			this.currentContext = { ...this.currentContext, currentTagIndex: i };
 
 			this.logger.info('Checking tag readiness', {
 				tag,
@@ -129,7 +127,6 @@ export class ProjectOrchestratorService {
 				completedTags: Array.from(completedTags)
 			});
 
-			// Check if tag is ready (all dependencies satisfied)
 			const isReady = this.tagOrchestrator.isTagReady(
 				tag,
 				dependencies,
@@ -145,7 +142,6 @@ export class ProjectOrchestratorService {
 
 				blockedTags.add(tag);
 
-				// Emit blocked event
 				this.emitEvent({
 					type: 'cluster:blocked',
 					timestamp: new Date(),
@@ -170,7 +166,6 @@ export class ProjectOrchestratorService {
 			});
 
 			try {
-				// Execute tag
 				const result = await this.tagOrchestrator.executeTag(
 					tag,
 					tasks,
@@ -194,7 +189,6 @@ export class ProjectOrchestratorService {
 						blockedClusters: result.blockedClusters
 					});
 
-					// Block downstream tags
 					this.blockDownstreamTags(
 						tag,
 						sortedTags,
@@ -215,7 +209,6 @@ export class ProjectOrchestratorService {
 
 				failedTags.add(tag);
 
-				// Block downstream tags
 				this.blockDownstreamTags(
 					tag,
 					sortedTags,
@@ -228,7 +221,6 @@ export class ProjectOrchestratorService {
 				}
 			}
 
-			// Emit progress update
 			this.emitEvent({
 				type: 'progress:updated',
 				timestamp: new Date(),
@@ -249,7 +241,7 @@ export class ProjectOrchestratorService {
 						(sum, r) => sum + r.totalClusters,
 						0
 					),
-					percentage: ((i + 1) / sortedTags.length) * 100
+					percentage: sortedTags.length > 0 ? ((i + 1) / sortedTags.length) * 100 : 0
 				}
 			});
 		}
@@ -257,12 +249,14 @@ export class ProjectOrchestratorService {
 		const endTime = new Date();
 		const duration = endTime.getTime() - startTime.getTime();
 
-		// Update context
-		this.currentContext.status =
-			failedTags.size === 0 && completedTags.size === sortedTags.length
-				? 'completed'
-				: 'failed';
-		this.currentContext.endTime = endTime;
+		this.currentContext = {
+			...this.currentContext,
+			status:
+				failedTags.size === 0 && completedTags.size === sortedTags.length
+					? 'done'
+					: 'failed',
+			endTime
+		};
 
 		const result: ProjectExecutionResult = {
 			projectId,
@@ -313,7 +307,6 @@ export class ProjectOrchestratorService {
 		const inDegree = new Map<string, number>();
 		const result: TagWithDependencies[] = [];
 
-		// Calculate in-degree for each tag
 		tagData.forEach((t) => {
 			inDegree.set(t.tag, 0);
 		});
@@ -321,12 +314,11 @@ export class ProjectOrchestratorService {
 		tagData.forEach((t) => {
 			t.dependencies.forEach((dep) => {
 				if (tagMap.has(dep)) {
-					inDegree.set(dep, (inDegree.get(dep) || 0) + 1);
+					inDegree.set(t.tag, (inDegree.get(t.tag) || 0) + 1);
 				}
 			});
 		});
 
-		// Find all tags with in-degree 0
 		const queue: TagWithDependencies[] = [];
 		inDegree.forEach((degree, tag) => {
 			if (degree === 0) {
@@ -337,12 +329,10 @@ export class ProjectOrchestratorService {
 			}
 		});
 
-		// Process queue
 		while (queue.length > 0) {
 			const current = queue.shift()!;
 			result.push(current);
 
-			// Process dependents (tags that depend on current)
 			tagData.forEach((t) => {
 				if (t.dependencies.includes(current.tag)) {
 					const newInDegree = (inDegree.get(t.tag) || 0) - 1;
@@ -355,9 +345,8 @@ export class ProjectOrchestratorService {
 			});
 		}
 
-		// Check if all tags were processed (no circular dependency)
 		if (result.length !== tagData.length) {
-			return null; // Circular dependency detected
+			return null;
 		}
 
 		return result;
@@ -384,7 +373,6 @@ export class ProjectOrchestratorService {
 					blockedBy: failedTag
 				});
 
-				// Recursively block downstream
 				this.blockDownstreamTags(t.tag, allTags, completedTags, blockedTags);
 			}
 		});
@@ -411,36 +399,42 @@ export class ProjectOrchestratorService {
 		this.logger.info('Stopping project execution');
 
 		if (this.currentContext) {
-			this.currentContext.status = 'failed';
-			this.currentContext.endTime = new Date();
+			this.currentContext = {
+				...this.currentContext,
+				status: 'failed',
+				endTime: new Date()
+			};
 		}
 
 		await this.tagOrchestrator.stopExecution();
 	}
 
-	/**
-	 * Add progress event listener
-	 */
 	addEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.add(listener);
 	}
 
-	/**
-	 * Remove progress event listener
-	 */
 	removeEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.delete(listener);
+		this.listenerFailureCounts.delete(listener);
 	}
 
-	/**
-	 * Emit progress event to all listeners
-	 */
 	private emitEvent(event: ProgressEventData): void {
 		this.eventListeners.forEach((listener) => {
 			try {
 				listener(event);
+				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				this.logger.error('Error in event listener', { error });
+				const count =
+					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				this.listenerFailureCounts.set(listener, count);
+				if (count >= 3) {
+					this.logger.error(
+						'Event listener is repeatedly failing',
+						{ failureCount: count, error }
+					);
+				} else {
+					this.logger.warn('Error in event listener', { error });
+				}
 			}
 		});
 	}

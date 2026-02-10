@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ClusterSequencerService } from './cluster-sequencer.service.js';
 import { ClusterDetectionService } from './cluster-detection.service.js';
-import { ParallelExecutorService } from './parallel-executor.service.js';
 import type { Task } from '../../../common/types/index.js';
 
 describe('ClusterSequencerService', () => {
@@ -24,7 +23,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -32,7 +34,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -66,7 +71,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -74,7 +82,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -114,7 +125,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -122,7 +136,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -130,7 +147,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -159,7 +179,7 @@ describe('ClusterSequencerService', () => {
 			});
 
 			expect(result.failedClusters).toBe(1);
-			expect(result.completedClusters).toBe(1); // Task 2 still completed
+			expect(result.completedClusters).toBe(0); // Tasks 1 & 2 share a cluster (same level), cluster fails
 			expect(result.blockedClusters).toBe(1); // Task 3 blocked
 		});
 
@@ -171,7 +191,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['2']
+					dependencies: ['2'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -179,7 +202,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -200,7 +226,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -242,7 +271,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -276,7 +308,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -324,7 +359,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -332,7 +370,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -357,7 +398,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -365,7 +409,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: ['1']
+					dependencies: ['1'],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -388,7 +435,10 @@ describe('ClusterSequencerService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 

@@ -9,16 +9,12 @@ import type {
 	ProgressEventListener,
 	ProgressEventData,
 	ExecutionCheckpoint,
-	ClusterMetadata,
 	ClusterDetectionResult
 } from '../types.js';
 import { getLogger } from '../../../common/logger/factory.js';
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 
-/**
- * Task progress state
- */
 interface TaskProgress {
 	taskId: string;
 	status: TaskStatus;
@@ -29,9 +25,6 @@ interface TaskProgress {
 	attemptCount: number;
 }
 
-/**
- * Cluster progress state
- */
 interface ClusterProgress {
 	clusterId: string;
 	status: ClusterStatus;
@@ -43,9 +36,6 @@ interface ClusterProgress {
 	failedTasks: number;
 }
 
-/**
- * Overall execution progress
- */
 export interface ExecutionProgress {
 	currentClusterId?: string;
 	completedClusters: number;
@@ -67,18 +57,19 @@ export interface ExecutionProgress {
 export class ProgressTrackerService {
 	private logger = getLogger('ProgressTrackerService');
 	private eventListeners: Set<ProgressEventListener> = new Set();
+	private listenerFailureCounts: Map<ProgressEventListener, number> =
+		new Map();
 	private taskProgress: Map<string, TaskProgress> = new Map();
 	private clusterProgress: Map<string, ClusterProgress> = new Map();
+	private taskToClusterMap: Map<string, string> = new Map();
 	private checkpointPath?: string;
 	private startTime: Date;
-	private lastProgressUpdate: Date;
 	private totalTasks: number = 0;
 	private totalClusters: number = 0;
 
 	constructor(checkpointPath?: string) {
 		this.checkpointPath = checkpointPath;
 		this.startTime = new Date();
-		this.lastProgressUpdate = new Date();
 	}
 
 	/**
@@ -88,7 +79,6 @@ export class ProgressTrackerService {
 		this.totalClusters = detection.totalClusters;
 		this.totalTasks = detection.totalTasks;
 
-		// Initialize cluster progress
 		detection.clusters.forEach((cluster) => {
 			this.clusterProgress.set(cluster.clusterId, {
 				clusterId: cluster.clusterId,
@@ -98,13 +88,13 @@ export class ProgressTrackerService {
 				failedTasks: 0
 			});
 
-			// Initialize task progress
 			cluster.taskIds.forEach((taskId) => {
 				this.taskProgress.set(taskId, {
 					taskId,
 					status: 'pending',
 					attemptCount: 0
 				});
+				this.taskToClusterMap.set(taskId, cluster.clusterId);
 			});
 		});
 
@@ -118,8 +108,6 @@ export class ProgressTrackerService {
 	 * Handle progress event and update state
 	 */
 	async handleEvent(event: ProgressEventData): Promise<void> {
-		this.lastProgressUpdate = new Date();
-
 		switch (event.type) {
 			case 'cluster:started':
 				await this.handleClusterStarted(event);
@@ -138,7 +126,6 @@ export class ProgressTrackerService {
 				break;
 		}
 
-		// Emit progress update
 		const progress = this.getProgress();
 		this.emitEvent({
 			type: 'progress:updated',
@@ -152,13 +139,9 @@ export class ProgressTrackerService {
 			}
 		});
 
-		// Forward original event to listeners
 		this.emitEvent(event);
 	}
 
-	/**
-	 * Handle cluster started event
-	 */
 	private async handleClusterStarted(
 		event: ProgressEventData
 	): Promise<void> {
@@ -166,14 +149,14 @@ export class ProgressTrackerService {
 
 		const cluster = this.clusterProgress.get(event.clusterId);
 		if (cluster) {
-			cluster.status = 'in-progress';
-			cluster.startTime = event.timestamp;
+			this.clusterProgress.set(event.clusterId, {
+				...cluster,
+				status: 'in-progress',
+				startTime: event.timestamp
+			});
 		}
 	}
 
-	/**
-	 * Handle cluster completed event
-	 */
 	private async handleClusterCompleted(
 		event: ProgressEventData
 	): Promise<void> {
@@ -181,95 +164,96 @@ export class ProgressTrackerService {
 
 		const cluster = this.clusterProgress.get(event.clusterId);
 		if (cluster) {
-			cluster.status = event.status as ClusterStatus;
-			cluster.endTime = event.timestamp;
+			const duration =
+				cluster.startTime
+					? event.timestamp.getTime() - cluster.startTime.getTime()
+					: undefined;
 
-			if (cluster.startTime) {
-				cluster.duration =
-					event.timestamp.getTime() - cluster.startTime.getTime();
-			}
+			this.clusterProgress.set(event.clusterId, {
+				...cluster,
+				status: event.status as ClusterStatus,
+				endTime: event.timestamp,
+				duration
+			});
 		}
 
-		// Create checkpoint at cluster boundaries
 		if (this.checkpointPath) {
 			await this.createCheckpoint(event.clusterId);
 		}
 	}
 
-	/**
-	 * Handle task started event
-	 */
 	private async handleTaskStarted(event: ProgressEventData): Promise<void> {
 		if (!event.taskId) return;
 
 		const task = this.taskProgress.get(event.taskId);
 		if (task) {
-			task.status = 'in-progress';
-			task.startTime = event.timestamp;
-			task.attemptCount++;
+			this.taskProgress.set(event.taskId, {
+				...task,
+				status: 'in-progress',
+				startTime: event.timestamp,
+				attemptCount: task.attemptCount + 1
+			});
 		}
 	}
 
-	/**
-	 * Handle task completed event
-	 */
 	private async handleTaskCompleted(event: ProgressEventData): Promise<void> {
 		if (!event.taskId) return;
 
 		const task = this.taskProgress.get(event.taskId);
 		if (task) {
-			task.status = event.status as TaskStatus;
-			task.endTime = event.timestamp;
-			task.error = event.error;
+			const duration =
+				task.startTime
+					? event.timestamp.getTime() - task.startTime.getTime()
+					: undefined;
 
-			if (task.startTime) {
-				task.duration =
-					event.timestamp.getTime() - task.startTime.getTime();
-			}
-		}
+			const updatedTask: TaskProgress = {
+				...task,
+				status: event.status as TaskStatus,
+				endTime: event.timestamp,
+				error: event.error,
+				duration
+			};
+			this.taskProgress.set(event.taskId, updatedTask);
 
-		// Update cluster progress
-		const clusterId = this.findClusterForTask(event.taskId);
-		if (clusterId) {
-			const cluster = this.clusterProgress.get(clusterId);
-			if (cluster && task) {
-				if (task.status === 'done') {
-					cluster.completedTasks++;
-				} else if (task.status === 'blocked') {
-					cluster.failedTasks++;
-				}
-			}
+			this.updateClusterFromTask(event.taskId, updatedTask);
 		}
 	}
 
 	/**
-	 * Find cluster ID for a task
+	 * Update cluster counters when a task completes or fails
+	 */
+	private updateClusterFromTask(
+		taskId: string,
+		task: TaskProgress
+	): void {
+		const clusterId = this.findClusterForTask(taskId);
+		if (!clusterId) return;
+
+		const cluster = this.clusterProgress.get(clusterId);
+		if (!cluster) return;
+
+		const completedDelta = task.status === 'done' ? 1 : 0;
+		const failedDelta =
+			task.status === 'blocked' || task.status === 'cancelled' ? 1 : 0;
+
+		this.clusterProgress.set(clusterId, {
+			...cluster,
+			completedTasks: cluster.completedTasks + completedDelta,
+			failedTasks: cluster.failedTasks + failedDelta
+		});
+	}
+
+	/**
+	 * Find cluster ID for a task using pre-built lookup map
 	 */
 	private findClusterForTask(taskId: string): string | undefined {
-		for (const [clusterId, cluster] of this.clusterProgress) {
-			// Check if any task in cluster progress matches
-			let taskCount = 0;
-			this.taskProgress.forEach((task) => {
-				// Simple heuristic: tasks belong to cluster if we're tracking them
-				taskCount++;
-			});
-
-			// This is a simplification - in practice, we'd need the cluster detection result
-			// For now, return the first in-progress cluster
-			if (cluster.status === 'in-progress') {
-				return clusterId;
-			}
-		}
-		return undefined;
+		return this.taskToClusterMap.get(taskId);
 	}
 
-	/**
-	 * Get current execution progress
-	 */
 	getProgress(): ExecutionProgress {
-		const completedClusters = Array.from(this.clusterProgress.values()).filter(
-			(c) => c.status === 'done'
-		).length;
+		const completedClusters = Array.from(
+			this.clusterProgress.values()
+		).filter((c) => c.status === 'done').length;
 
 		const completedTasks = Array.from(this.taskProgress.values()).filter(
 			(t) => t.status === 'done'
@@ -283,16 +267,17 @@ export class ProgressTrackerService {
 			(t) => t.status === 'blocked'
 		).length;
 
-		const currentCluster = Array.from(this.clusterProgress.values()).find(
-			(c) => c.status === 'in-progress'
-		);
+		const currentCluster = Array.from(
+			this.clusterProgress.values()
+		).find((c) => c.status === 'in-progress');
 
 		const now = new Date();
 		const duration = now.getTime() - this.startTime.getTime();
 		const percentage =
-			this.totalTasks > 0 ? (completedTasks / this.totalTasks) * 100 : 0;
+			this.totalTasks > 0
+				? (completedTasks / this.totalTasks) * 100
+				: 0;
 
-		// Estimate time remaining based on average task duration
 		let estimatedTimeRemaining: number | undefined;
 		if (completedTasks > 0) {
 			const avgDuration = duration / completedTasks;
@@ -315,37 +300,31 @@ export class ProgressTrackerService {
 		};
 	}
 
-	/**
-	 * Get task progress
-	 */
 	getTaskProgress(taskId: string): TaskProgress | undefined {
 		return this.taskProgress.get(taskId);
 	}
 
-	/**
-	 * Get cluster progress
-	 */
 	getClusterProgress(clusterId: string): ClusterProgress | undefined {
 		return this.clusterProgress.get(clusterId);
 	}
 
 	/**
-	 * Create execution checkpoint
+	 * Create execution checkpoint (atomic write via temp file + rename)
 	 */
 	async createCheckpoint(clusterId: string): Promise<void> {
 		if (!this.checkpointPath) return;
 
 		const completedClusters = Array.from(this.clusterProgress.entries())
 			.filter(([_, c]) => c.status === 'done')
-			.map(([id, _]) => id);
+			.map(([id]) => id);
 
 		const completedTasks = Array.from(this.taskProgress.entries())
 			.filter(([_, t]) => t.status === 'done')
-			.map(([id, _]) => id);
+			.map(([id]) => id);
 
 		const failedTasks = Array.from(this.taskProgress.entries())
 			.filter(([_, t]) => t.status === 'blocked')
-			.map(([id, _]) => id);
+			.map(([id]) => id);
 
 		const clusterStatuses: Record<string, ClusterStatus> = {};
 		this.clusterProgress.forEach((cluster, id) => {
@@ -368,10 +347,8 @@ export class ProgressTrackerService {
 		};
 
 		try {
-			// Ensure directory exists
 			await fs.mkdir(dirname(this.checkpointPath), { recursive: true });
 
-			// Write checkpoint atomically (write to temp, then rename)
 			const tempPath = `${this.checkpointPath}.tmp`;
 			await fs.writeFile(
 				tempPath,
@@ -389,12 +366,10 @@ export class ProgressTrackerService {
 				error,
 				path: this.checkpointPath
 			});
+			throw error;
 		}
 	}
 
-	/**
-	 * Load checkpoint
-	 */
 	async loadCheckpoint(): Promise<ExecutionCheckpoint | null> {
 		if (!this.checkpointPath) return null;
 
@@ -402,20 +377,27 @@ export class ProgressTrackerService {
 			const content = await fs.readFile(this.checkpointPath, 'utf-8');
 			const checkpoint = JSON.parse(content) as ExecutionCheckpoint;
 
-			// Restore progress state
-			Object.entries(checkpoint.clusterStatuses).forEach(([id, status]) => {
-				const cluster = this.clusterProgress.get(id);
-				if (cluster) {
-					cluster.status = status;
+			// Restore progress state immutably
+			Object.entries(checkpoint.clusterStatuses).forEach(
+				([id, status]) => {
+					const cluster = this.clusterProgress.get(id);
+					if (cluster) {
+						this.clusterProgress.set(id, {
+							...cluster,
+							status
+						});
+					}
 				}
-			});
+			);
 
-			Object.entries(checkpoint.taskStatuses).forEach(([id, status]) => {
-				const task = this.taskProgress.get(id);
-				if (task) {
-					task.status = status;
+			Object.entries(checkpoint.taskStatuses).forEach(
+				([id, status]) => {
+					const task = this.taskProgress.get(id);
+					if (task) {
+						this.taskProgress.set(id, { ...task, status });
+					}
 				}
-			});
+			);
 
 			this.logger.info('Checkpoint loaded', {
 				currentClusterId: checkpoint.currentClusterId,
@@ -425,17 +407,20 @@ export class ProgressTrackerService {
 
 			return checkpoint;
 		} catch (error) {
-			this.logger.warn('Failed to load checkpoint', {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				this.logger.debug('No checkpoint file found', {
+					path: this.checkpointPath
+				});
+				return null;
+			}
+			this.logger.error('Failed to load checkpoint', {
 				error,
 				path: this.checkpointPath
 			});
-			return null;
+			throw error;
 		}
 	}
 
-	/**
-	 * Delete checkpoint
-	 */
 	async deleteCheckpoint(): Promise<void> {
 		if (!this.checkpointPath) return;
 
@@ -445,46 +430,47 @@ export class ProgressTrackerService {
 				path: this.checkpointPath
 			});
 		} catch (error) {
-			// Ignore errors if file doesn't exist
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-				this.logger.error('Failed to delete checkpoint', {
-					error,
-					path: this.checkpointPath
-				});
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				return; // File already gone, that's fine
 			}
+			this.logger.error('Failed to delete checkpoint', {
+				error,
+				path: this.checkpointPath
+			});
+			throw error;
 		}
 	}
 
-	/**
-	 * Add progress event listener
-	 */
 	addEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.add(listener);
 	}
 
-	/**
-	 * Remove progress event listener
-	 */
 	removeEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.delete(listener);
+		this.listenerFailureCounts.delete(listener);
 	}
 
-	/**
-	 * Emit progress event to all listeners (non-blocking)
-	 */
 	private emitEvent(event: ProgressEventData): void {
 		this.eventListeners.forEach((listener) => {
 			try {
 				listener(event);
+				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				this.logger.error('Error in event listener', { error });
+				const count =
+					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				this.listenerFailureCounts.set(listener, count);
+				if (count >= 3) {
+					this.logger.error(
+						'Event listener is repeatedly failing',
+						{ failureCount: count, error }
+					);
+				} else {
+					this.logger.warn('Error in event listener', { error });
+				}
 			}
 		});
 	}
 
-	/**
-	 * Get execution timeline
-	 */
 	getTimeline(): Array<{
 		timestamp: Date;
 		type: string;
@@ -500,7 +486,6 @@ export class ProgressTrackerService {
 			status: string;
 		}> = [];
 
-		// Add task events
 		this.taskProgress.forEach((task) => {
 			if (task.startTime) {
 				timeline.push({
@@ -513,14 +498,16 @@ export class ProgressTrackerService {
 			if (task.endTime) {
 				timeline.push({
 					timestamp: task.endTime,
-					type: task.status === 'done' ? 'task:completed' : 'task:failed',
+					type:
+						task.status === 'done'
+							? 'task:completed'
+							: 'task:failed',
 					taskId: task.taskId,
 					status: task.status
 				});
 			}
 		});
 
-		// Add cluster events
 		this.clusterProgress.forEach((cluster) => {
 			if (cluster.startTime) {
 				timeline.push({
@@ -543,20 +530,18 @@ export class ProgressTrackerService {
 			}
 		});
 
-		// Sort by timestamp
-		timeline.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+		timeline.sort(
+			(a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+		);
 
 		return timeline;
 	}
 
-	/**
-	 * Reset progress tracking
-	 */
 	reset(): void {
 		this.taskProgress.clear();
 		this.clusterProgress.clear();
+		this.taskToClusterMap.clear();
 		this.startTime = new Date();
-		this.lastProgressUpdate = new Date();
 		this.totalTasks = 0;
 		this.totalClusters = 0;
 	}

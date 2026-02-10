@@ -2,7 +2,7 @@
  * Tests for ClusterPRIntegration
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	ClusterPRIntegration,
 	type ClusterCompletionEvent,

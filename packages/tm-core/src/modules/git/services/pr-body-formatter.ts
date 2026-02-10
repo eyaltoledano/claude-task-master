@@ -6,10 +6,10 @@
  * - Test results and coverage metrics
  * - Commit history
  * - Run metadata and performance metrics
- * - Links to related tasks
+ * - Task ID references
  */
 
-import type { WorkflowContext, TestResult } from '../../workflow/types.js';
+import type { WorkflowContext } from '../../workflow/types.js';
 import type { ActivityEvent } from '../../storage/adapters/activity-logger.js';
 
 /**
@@ -368,11 +368,7 @@ export class PRBodyFormatter {
 		parts.push('');
 		parts.push(`- **Task ID**: \`${taskId}\``);
 
-		// Note: In a real implementation, you might add links to:
-		// - Task management system
-		// - CI/CD runs
-		// - Related PRs
-		// - Documentation
+		// Task ID references (hyperlinks not yet implemented)
 
 		parts.push('');
 
@@ -385,6 +381,9 @@ export class PRBodyFormatter {
 	private calculateDuration(startTime: string, endTime: string): string {
 		const start = new Date(startTime).getTime();
 		const end = new Date(endTime).getTime();
+		if (Number.isNaN(start) || Number.isNaN(end)) {
+			return 'duration unavailable';
+		}
 		const diffMs = end - start;
 
 		const hours = Math.floor(diffMs / (1000 * 60 * 60));

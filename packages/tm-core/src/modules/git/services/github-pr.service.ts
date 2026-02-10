@@ -4,7 +4,7 @@
  * This service handles:
  * - Creating PRs via gh CLI with cluster metadata
  * - Mapping clusters to PR URLs for traceability
- * - Generating PR titles and bodies from workflow state
+ * - Generating PR titles and bodies from workflow context
  * - Supporting dry-run mode for validation
  */
 
@@ -13,7 +13,7 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import type { WorkflowContext, WorkflowState } from '../../workflow/types.js';
+import type { WorkflowContext } from '../../workflow/types.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { PRBodyFormatter, type CommitInfo } from './pr-body-formatter.js';
@@ -22,9 +22,9 @@ const execAsync = promisify(exec);
 const logger = getLogger('GitHubPRService');
 
 /**
- * Cluster metadata for PR creation
+ * PR cluster input for PR creation
  */
-export interface ClusterMetadata {
+export interface PRClusterInput {
 	/** Unique cluster identifier */
 	clusterId: string;
 	/** Branch name for this cluster */
@@ -53,10 +53,16 @@ export interface PRCreationResult {
 	prNumber?: number;
 	/** Error message if creation failed */
 	error?: string;
+	/** Error code from TaskMasterError if available */
+	errorCode?: string;
 	/** Cluster ID this PR is associated with */
 	clusterId: string;
 	/** Whether this was a dry run */
 	dryRun: boolean;
+	/** Whether auto-merge was enabled */
+	autoMergeEnabled?: boolean;
+	/** Error from auto-merge attempt */
+	autoMergeError?: string;
 }
 
 /**
@@ -64,7 +70,7 @@ export interface PRCreationResult {
  */
 export interface CreatePROptions {
 	/** Cluster metadata */
-	cluster: ClusterMetadata;
+	cluster: PRClusterInput;
 	/** Workflow context with run state */
 	workflowContext?: WorkflowContext;
 	/** PR title (auto-generated if not provided) */
@@ -123,31 +129,21 @@ export class GitHubPRService {
 		} = options;
 
 		try {
-			// Validate cluster data
 			this.validateClusterData(cluster);
 
-			// Check gh CLI is available
 			if (!dryRun) {
 				await this.validateGhCLI();
 			}
 
-			// Generate PR title
-			const title = customTitle || this.generatePRTitle(cluster, workflowContext);
-
-			// Generate PR body
-			const body = customBody || this.generatePRBody(cluster, workflowContext);
+			const title =
+				customTitle || this.generatePRTitle(cluster, workflowContext);
+			const body =
+				customBody || this.generatePRBody(cluster, workflowContext);
 
 			if (dryRun) {
-				logger.info(`[DRY RUN] Would create PR with title: ${title}`);
-				logger.info(`[DRY RUN] Body:\n${body}`);
-				return {
-					success: true,
-					clusterId: cluster.clusterId,
-					dryRun: true
-				};
+				return this.handleDryRun(cluster, title, body);
 			}
 
-			// Create PR via gh CLI
 			const result = await this.createPRViaGhCLI({
 				title,
 				body,
@@ -157,7 +153,6 @@ export class GitHubPRService {
 				labels
 			});
 
-			// Store mapping
 			if (result.prUrl && result.prNumber) {
 				const mapping: ClusterPRMapping = {
 					clusterId: cluster.clusterId,
@@ -170,43 +165,73 @@ export class GitHubPRService {
 				this.clusterPRMappings.set(cluster.clusterId, mapping);
 			}
 
-			// Enable auto-merge if requested
-			if (autoMerge && result.prNumber) {
-				await this.enableAutoMerge(result.prNumber);
-			}
+			const autoMergeResult =
+				autoMerge && result.prNumber
+					? await this.enableAutoMerge(result.prNumber)
+					: undefined;
 
-			logger.info(`Successfully created PR for cluster ${cluster.clusterId}: ${result.prUrl}`);
+			logger.info(
+				`Successfully created PR for cluster ${cluster.clusterId}: ${result.prUrl}`
+			);
 
 			return {
 				success: true,
 				prUrl: result.prUrl,
 				prNumber: result.prNumber,
 				clusterId: cluster.clusterId,
-				dryRun: false
+				dryRun: false,
+				autoMergeEnabled: autoMergeResult?.enabled,
+				autoMergeError: autoMergeResult?.error
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`Failed to create PR for cluster ${cluster.clusterId}:`, error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			const errorCode =
+				error instanceof TaskMasterError ? error.code : undefined;
+			logger.error(
+				`Failed to create PR for cluster ${cluster.clusterId}:`,
+				error
+			);
 
 			return {
 				success: false,
 				error: errorMessage,
+				errorCode,
 				clusterId: cluster.clusterId,
 				dryRun
 			};
 		}
 	}
 
-	/**
-	 * Get PR mapping for a cluster
-	 */
+	private handleDryRun(
+		cluster: PRClusterInput,
+		title: string,
+		body: string
+	): PRCreationResult {
+		logger.info(`[DRY RUN] Would create PR with title: ${title}`);
+		logger.info(`[DRY RUN] Body:\n${body}`);
+
+		const dryRunMapping: ClusterPRMapping = {
+			clusterId: cluster.clusterId,
+			prUrl: '',
+			prNumber: 0,
+			branchName: cluster.branchName,
+			createdAt: new Date().toISOString(),
+			metadata: { ...cluster.metadata, dryRun: true }
+		};
+		this.clusterPRMappings.set(cluster.clusterId, dryRunMapping);
+
+		return {
+			success: true,
+			clusterId: cluster.clusterId,
+			dryRun: true
+		};
+	}
+
 	getClusterPRMapping(clusterId: string): ClusterPRMapping | undefined {
 		return this.clusterPRMappings.get(clusterId);
 	}
 
-	/**
-	 * Get all cluster PR mappings
-	 */
 	getAllClusterPRMappings(): ClusterPRMapping[] {
 		return Array.from(this.clusterPRMappings.values());
 	}
@@ -214,7 +239,7 @@ export class GitHubPRService {
 	/**
 	 * Validate cluster data before PR creation
 	 */
-	private validateClusterData(cluster: ClusterMetadata): void {
+	private validateClusterData(cluster: PRClusterInput): void {
 		if (!cluster.clusterId) {
 			throw new TaskMasterError(
 				'Cluster ID is required',
@@ -251,14 +276,13 @@ export class GitHubPRService {
 	 * Generate PR title from cluster metadata
 	 */
 	private generatePRTitle(
-		cluster: ClusterMetadata,
+		cluster: PRClusterInput,
 		workflowContext?: WorkflowContext
 	): string {
 		const taskId = cluster.taskId || workflowContext?.taskId;
 		const tag = cluster.tag || workflowContext?.tag;
 
-		// Use conventional commit format
-		const type = 'feat'; // Default to feat, can be customized
+		const type = 'feat'; // Defaults to feat; customization not yet supported
 		const scope = tag ? `${tag}` : 'cluster';
 		const description = `implement cluster ${cluster.clusterId}`;
 
@@ -270,16 +294,16 @@ export class GitHubPRService {
 	 * Uses PRBodyFormatter for comprehensive formatting
 	 */
 	private generatePRBody(
-		cluster: ClusterMetadata,
+		cluster: PRClusterInput,
 		workflowContext?: WorkflowContext
 	): string {
-		// Convert cluster commits to CommitInfo format
-		const commits: CommitInfo[] | undefined = cluster.commits?.map((sha) => ({
-			sha,
-			message: '' // Message not available in cluster metadata
-		}));
+		const commits: CommitInfo[] | undefined = cluster.commits?.map(
+			(sha) => ({
+				sha,
+				message: '' // Message not available in cluster metadata
+			})
+		);
 
-		// Format using PRBodyFormatter
 		return this.prBodyFormatter.format({
 			workflowContext,
 			commits,
@@ -287,10 +311,14 @@ export class GitHubPRService {
 			tag: cluster.tag || workflowContext?.tag,
 			taskId: cluster.taskId || workflowContext?.taskId,
 			taskTitle: cluster.metadata?.taskTitle as string | undefined,
-			taskDescription: cluster.metadata?.taskDescription as string | undefined,
+			taskDescription: cluster.metadata?.taskDescription as
+				| string
+				| undefined,
 			runStartTime: cluster.metadata?.runStartTime as string | undefined,
 			runEndTime: cluster.metadata?.runEndTime as string | undefined,
-			coveragePercent: cluster.metadata?.coveragePercent as number | undefined
+			coveragePercent: cluster.metadata?.coveragePercent as
+				| number
+				| undefined
 		});
 	}
 
@@ -307,7 +335,6 @@ export class GitHubPRService {
 	}): Promise<{ prUrl?: string; prNumber?: number }> {
 		const { title, body, baseBranch, headBranch, draft, labels } = options;
 
-		// Build gh pr create command
 		const args = [
 			'pr',
 			'create',
@@ -330,25 +357,29 @@ export class GitHubPRService {
 		}
 
 		try {
-			// Execute gh command
-			const command = `gh ${args.map((arg) => {
-				// Quote args that contain spaces or special chars
-				if (arg.includes(' ') || arg.includes('\n')) {
-					return `'${arg.replace(/'/g, "'\\''")}'`;
-				}
-				return arg;
-			}).join(' ')}`;
+			const command = `gh ${args
+				.map((arg) => {
+					if (arg.includes(' ') || arg.includes('\n')) {
+						return `'${arg.replace(/'/g, "'\\''")}'`;
+					}
+					return arg;
+				})
+				.join(' ')}`;
 
-			const { stdout } = await execAsync(command, { cwd: this.projectRoot });
+			const { stdout } = await execAsync(command, {
+				cwd: this.projectRoot
+			});
 			const prUrl = stdout.trim();
 
-			// Extract PR number from URL
 			const prNumberMatch = prUrl.match(/\/pull\/(\d+)/);
-			const prNumber = prNumberMatch ? parseInt(prNumberMatch[1], 10) : undefined;
+			const prNumber = prNumberMatch
+				? parseInt(prNumberMatch[1], 10)
+				: undefined;
 
 			return { prUrl, prNumber };
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			throw new TaskMasterError(
 				`Failed to create PR via gh CLI: ${errorMessage}`,
 				ERROR_CODES.GIT_ERROR,
@@ -358,30 +389,31 @@ export class GitHubPRService {
 	}
 
 	/**
-	 * Enable auto-merge for a PR
+	 * Enable auto-merge for a PR. Returns status so callers can report it.
 	 */
-	private async enableAutoMerge(prNumber: number): Promise<void> {
+	private async enableAutoMerge(
+		prNumber: number
+	): Promise<{ enabled: boolean; error?: string }> {
 		try {
 			await execAsync(`gh pr merge ${prNumber} --auto --squash`, {
 				cwd: this.projectRoot
 			});
 			logger.info(`Enabled auto-merge for PR #${prNumber}`);
+			return { enabled: true };
 		} catch (error) {
-			logger.warn(`Failed to enable auto-merge for PR #${prNumber}:`, error);
-			// Don't throw - auto-merge is optional
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			logger.warn(
+				`Failed to enable auto-merge for PR #${prNumber}: ${errorMessage}`
+			);
+			return { enabled: false, error: errorMessage };
 		}
 	}
 
-	/**
-	 * Update PR mapping (for resumability)
-	 */
 	setClusterPRMapping(mapping: ClusterPRMapping): void {
 		this.clusterPRMappings.set(mapping.clusterId, mapping);
 	}
 
-	/**
-	 * Clear all mappings
-	 */
 	clearMappings(): void {
 		this.clusterPRMappings.clear();
 	}

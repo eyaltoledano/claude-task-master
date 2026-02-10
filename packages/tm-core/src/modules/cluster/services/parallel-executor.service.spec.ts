@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ParallelExecutorService } from './parallel-executor.service.js';
 import type { Task } from '../../../common/types/index.js';
-import type { ClusterMetadata, TaskExecutionResult } from '../types.js';
+import type { ClusterMetadata } from '../types.js';
 
 describe('ParallelExecutorService', () => {
 	let service: ParallelExecutorService;
@@ -23,7 +23,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -31,7 +34,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -73,7 +79,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -81,7 +90,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '3',
@@ -89,7 +101,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -136,7 +151,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				},
 				{
 					id: '2',
@@ -144,7 +162,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -193,7 +214,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -224,7 +248,10 @@ describe('ParallelExecutorService', () => {
 					description: '',
 					status: 'pending',
 					priority: 'medium',
-					dependencies: []
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
 				}
 			];
 
@@ -269,7 +296,10 @@ describe('ParallelExecutorService', () => {
 				description: '',
 				status: 'pending',
 				priority: 'medium',
-				dependencies: []
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
 			};
 
 			const cluster: ClusterMetadata = {
@@ -326,7 +356,10 @@ describe('ParallelExecutorService', () => {
 				description: '',
 				status: 'pending',
 				priority: 'medium',
-				dependencies: []
+				dependencies: [],
+				details: '',
+				testStrategy: '',
+				subtasks: []
 			};
 
 			const cluster: ClusterMetadata = {

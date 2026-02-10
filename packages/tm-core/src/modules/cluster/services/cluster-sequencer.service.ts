@@ -55,6 +55,8 @@ export class ClusterSequencerService {
 	private clusterDetector: ClusterDetectionService;
 	private parallelExecutor: ParallelExecutorService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
+	private listenerFailureCounts: Map<ProgressEventListener, number> =
+		new Map();
 
 	constructor(
 		clusterDetector?: ClusterDetectionService,
@@ -64,7 +66,6 @@ export class ClusterSequencerService {
 		this.parallelExecutor =
 			parallelExecutor || new ParallelExecutorService();
 
-		// Forward events from parallel executor
 		this.parallelExecutor.addEventListener((event) => {
 			this.emitEvent(event);
 		});
@@ -84,15 +85,12 @@ export class ClusterSequencerService {
 
 		const startTime = new Date();
 
-		// Update resource constraints if provided
 		if (options.resourceConstraints) {
 			this.parallelExecutor.updateConstraints(options.resourceConstraints);
 		}
 
-		// Detect clusters
 		const detection = this.clusterDetector.detectClusters(tasks);
 
-		// Check for circular dependencies
 		if (detection.hasCircularDependencies) {
 			throw new TaskMasterError(
 				`Circular dependency detected: ${detection.circularDependencyPath?.join(' -> ')}`,
@@ -109,9 +107,7 @@ export class ClusterSequencerService {
 		let failedClusters = 0;
 		let blockedClusters = 0;
 
-		// Execute clusters in topological order
 		for (const cluster of detection.clusters) {
-			// Check if cluster is ready
 			if (!this.clusterDetector.isClusterReady(cluster, detection)) {
 				this.logger.warn('Cluster not ready, skipping', {
 					clusterId: cluster.clusterId,
@@ -124,14 +120,12 @@ export class ClusterSequencerService {
 				continue;
 			}
 
-			// Update cluster status to in-progress
 			this.clusterDetector.updateClusterStatus(
 				detection,
 				cluster.clusterId,
 				'in-progress'
 			);
 
-			// Get tasks for this cluster
 			const clusterTasks = this.clusterDetector.getClusterTasks(
 				detection,
 				cluster.clusterId,
@@ -144,7 +138,6 @@ export class ClusterSequencerService {
 				taskCount: clusterTasks.length
 			});
 
-			// Execute cluster with retries
 			let result: ClusterExecutionResult | null = null;
 			let attempts = 0;
 			const maxRetries = options.maxRetries || 0;
@@ -158,7 +151,7 @@ export class ClusterSequencerService {
 					);
 
 					if (result.success) {
-						break; // Success, no need to retry
+						break;
 					}
 
 					attempts++;
@@ -192,7 +185,6 @@ export class ClusterSequencerService {
 
 			clusterResults.push(result);
 
-			// Update cluster status based on result
 			if (result.success) {
 				this.clusterDetector.updateClusterStatus(
 					detection,
@@ -209,7 +201,7 @@ export class ClusterSequencerService {
 				this.clusterDetector.updateClusterStatus(
 					detection,
 					cluster.clusterId,
-					'blocked'
+					'failed'
 				);
 				failedClusters++;
 
@@ -218,14 +210,12 @@ export class ClusterSequencerService {
 					failedTasks: result.failedTasks
 				});
 
-				// Stop if not continuing on failure
 				if (!options.continueOnFailure) {
 					this.logger.info('Stopping execution due to cluster failure');
 					break;
 				}
 			}
 
-			// Emit progress update
 			this.emitEvent({
 				type: 'progress:updated',
 				timestamp: new Date(),
@@ -238,12 +228,13 @@ export class ClusterSequencerService {
 					completedClusters,
 					totalClusters: detection.totalClusters,
 					percentage:
-						(completedClusters / detection.totalClusters) * 100
+						detection.totalClusters > 0
+							? (completedClusters / detection.totalClusters) * 100
+							: 0
 				}
 			});
 		}
 
-		// Count remaining blocked clusters
 		blockedClusters = detection.clusters.filter(
 			(c) => c.status === 'blocked'
 		).length;
@@ -293,7 +284,6 @@ export class ClusterSequencerService {
 			);
 		}
 
-		// Check if cluster is ready
 		if (!this.clusterDetector.isClusterReady(cluster, detection)) {
 			throw new TaskMasterError(
 				`Cluster not ready: ${clusterId} (status: ${cluster.status})`,
@@ -306,33 +296,28 @@ export class ClusterSequencerService {
 			);
 		}
 
-		// Update resource constraints if provided
 		if (options.resourceConstraints) {
 			this.parallelExecutor.updateConstraints(options.resourceConstraints);
 		}
 
-		// Update cluster status
 		this.clusterDetector.updateClusterStatus(
 			detection,
 			clusterId,
 			'in-progress'
 		);
 
-		// Get cluster tasks
 		const clusterTasks = this.clusterDetector.getClusterTasks(
 			detection,
 			clusterId,
 			tasks
 		);
 
-		// Execute cluster
 		const result = await this.parallelExecutor.executeCluster(
 			cluster,
 			clusterTasks,
 			executor
 		);
 
-		// Update cluster status based on result
 		const finalStatus = result.success ? 'done' : 'blocked';
 		this.clusterDetector.updateClusterStatus(
 			detection,
@@ -357,11 +342,15 @@ export class ClusterSequencerService {
 	}
 
 	/**
-	 * Check if all clusters are complete
+	 * Check if all clusters have reached a terminal state (done, failed, or blocked).
+	 * Note: This does NOT mean all clusters succeeded — check individual statuses.
 	 */
-	areAllClustersComplete(detection: ClusterDetectionResult): boolean {
+	areAllClustersTerminal(detection: ClusterDetectionResult): boolean {
 		return detection.clusters.every(
-			(cluster) => cluster.status === 'done' || cluster.status === 'blocked'
+			(cluster) =>
+				cluster.status === 'done' ||
+				cluster.status === 'failed' ||
+				cluster.status === 'blocked'
 		);
 	}
 
@@ -385,7 +374,10 @@ export class ClusterSequencerService {
 			completedClusters,
 			totalClusters: detection.totalClusters,
 			blockedClusters,
-			percentage: (completedClusters / detection.totalClusters) * 100
+			percentage:
+				detection.totalClusters > 0
+					? (completedClusters / detection.totalClusters) * 100
+					: 0
 		};
 	}
 
@@ -397,43 +389,40 @@ export class ClusterSequencerService {
 		await this.parallelExecutor.stopAll();
 	}
 
-	/**
-	 * Add progress event listener
-	 */
 	addEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.add(listener);
 	}
 
-	/**
-	 * Remove progress event listener
-	 */
 	removeEventListener(listener: ProgressEventListener): void {
 		this.eventListeners.delete(listener);
+		this.listenerFailureCounts.delete(listener);
 	}
 
-	/**
-	 * Emit progress event to all listeners
-	 */
 	private emitEvent(event: ProgressEventData): void {
 		this.eventListeners.forEach((listener) => {
 			try {
 				listener(event);
+				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				this.logger.error('Error in event listener', { error });
+				const count =
+					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				this.listenerFailureCounts.set(listener, count);
+				if (count >= 3) {
+					this.logger.error(
+						'Event listener is repeatedly failing',
+						{ failureCount: count, error }
+					);
+				} else {
+					this.logger.warn('Error in event listener', { error });
+				}
 			}
 		});
 	}
 
-	/**
-	 * Get cluster detector instance
-	 */
 	getClusterDetector(): ClusterDetectionService {
 		return this.clusterDetector;
 	}
 
-	/**
-	 * Get parallel executor instance
-	 */
 	getParallelExecutor(): ParallelExecutorService {
 		return this.parallelExecutor;
 	}
