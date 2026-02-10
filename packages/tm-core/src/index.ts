@@ -266,6 +266,27 @@ export {
 	PROMPT_STATE_VERSION
 } from './modules/prompts/constants.js';
 
+// Cluster - Advanced
+export type * from './modules/cluster/types.js';
+export {
+	ClusterDetectionService,
+	ParallelExecutorService,
+	ClusterSequencerService,
+	ProgressTrackerService,
+	TagOrchestratorService,
+	ProjectOrchestratorService,
+	type ResourceConstraints,
+	type TaskExecutor,
+	type ClusterExecutionOptions,
+	type ClusterSequencerResult,
+	type ExecutionProgress,
+	type TagExecutionOptions,
+	type TagExecutionResult,
+	type ProjectExecutionOptions,
+	type ProjectExecutionResult,
+	type TagWithDependencies
+} from './modules/cluster/index.js';
+
 // ========== Testing Utilities ==========
 
 // Test fixtures for integration tests
