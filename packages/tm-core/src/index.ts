@@ -194,10 +194,29 @@ export {
 	type WorkflowServiceOptions
 } from './modules/workflow/services/workflow.service.js';
 export type { SubtaskInfo } from './modules/workflow/types.js';
+export {
+	ClusterPRIntegration,
+	type ClusterPRIntegrationOptions,
+	type ClusterCompletionEvent,
+	type PRIntegrationResult
+} from './modules/workflow/services/cluster-pr-integration.js';
 
 // Git - Advanced
 export { GitAdapter } from './modules/git/adapters/git-adapter.js';
 export { CommitMessageGenerator } from './modules/git/services/commit-message-generator.js';
+export {
+	GitHubPRService,
+	type ClusterMetadata,
+	type PRCreationResult,
+	type CreatePROptions,
+	type ClusterPRMapping
+} from './modules/git/services/github-pr.service.js';
+export {
+	PRBodyFormatter,
+	type PRBodyFormatterOptions,
+	type CommitInfo,
+	type TestPhaseResult
+} from './modules/git/services/pr-body-formatter.js';
 
 // Tasks - Advanced
 export { PreflightChecker } from './modules/tasks/services/preflight-checker.service.js';
