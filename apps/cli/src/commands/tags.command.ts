@@ -89,6 +89,9 @@ export class TagsCommand extends Command {
 		this.addRemoveCommand();
 		this.addRenameCommand();
 		this.addCopyCommand();
+		this.addAddDepCommand();
+		this.addRemoveDepCommand();
+		this.addDepsCommand();
 
 		// Default action: list tags (with options from parent command)
 		this.action(async (options) => {
@@ -229,6 +232,68 @@ Examples:
 			)
 			.action(async (source, target, options) => {
 				await this.executeCopy(source, target, options);
+			});
+	}
+
+	/**
+	 * Add add-dep subcommand
+	 */
+	private addAddDepCommand(): void {
+		this.command('add-dep')
+			.description('Add an inter-tag dependency')
+			.requiredOption('--tag <tag>', 'Tag that has the dependency')
+			.requiredOption('--depends-on <dep>', 'Tag that is depended upon')
+			.addHelpText(
+				'after',
+				`
+Examples:
+  $ tm tags add-dep --tag feature-auth --depends-on core-setup
+`
+			)
+			.action(async (options: { tag: string; dependsOn: string }) => {
+				await this.executeAddDep(options.tag, options.dependsOn);
+			});
+	}
+
+	/**
+	 * Add remove-dep subcommand
+	 */
+	private addRemoveDepCommand(): void {
+		this.command('remove-dep')
+			.description('Remove an inter-tag dependency')
+			.requiredOption('--tag <tag>', 'Tag to remove the dependency from')
+			.requiredOption('--depends-on <dep>', 'Dependency to remove')
+			.addHelpText(
+				'after',
+				`
+Examples:
+  $ tm tags remove-dep --tag feature-auth --depends-on core-setup
+`
+			)
+			.action(async (options: { tag: string; dependsOn: string }) => {
+				await this.executeRemoveDep(options.tag, options.dependsOn);
+			});
+	}
+
+	/**
+	 * Add deps subcommand (list dependencies)
+	 */
+	private addDepsCommand(): void {
+		this.command('deps')
+			.description('List inter-tag dependencies')
+			.option('--tag <tag>', 'Show dependencies for a specific tag')
+			.option('--json', 'Output as JSON')
+			.addHelpText(
+				'after',
+				`
+Examples:
+  $ tm tags deps                # List all tag dependencies
+  $ tm tags deps --tag auth     # Show deps for a specific tag
+  $ tm tags deps --json         # Output as JSON
+`
+			)
+			.action(async (options: { tag?: string; json?: boolean }) => {
+				await this.executeListDeps(options);
 			});
 	}
 
@@ -499,6 +564,123 @@ Examples:
 				action: 'copy',
 				message: error.message
 			});
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
+		}
+	}
+
+	/**
+	 * Execute add-dep
+	 */
+	private async executeAddDep(tag: string, dependsOn: string): Promise<void> {
+		try {
+			await this.initTmCore();
+			await this.tmCore!.tasks.addTagDependency(tag, dependsOn);
+			console.log(`Added dependency: "${tag}" depends on "${dependsOn}"`);
+		} catch (error: any) {
+			displayError(error);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
+		}
+	}
+
+	/**
+	 * Execute remove-dep
+	 */
+	private async executeRemoveDep(
+		tag: string,
+		dependsOn: string
+	): Promise<void> {
+		try {
+			await this.initTmCore();
+			await this.tmCore!.tasks.removeTagDependency(tag, dependsOn);
+			console.log(
+				`Removed dependency: "${tag}" no longer depends on "${dependsOn}"`
+			);
+		} catch (error: any) {
+			displayError(error);
+			this.handleError(
+				error instanceof Error
+					? error
+					: new Error(error.message || String(error))
+			);
+		}
+	}
+
+	/**
+	 * Execute deps list
+	 */
+	private async executeListDeps(options: {
+		tag?: string;
+		json?: boolean;
+	}): Promise<void> {
+		try {
+			await this.initTmCore();
+
+			if (options.tag) {
+				const deps = await this.tmCore!.tasks.getTagDependencies(
+					options.tag
+				);
+
+				if (options.json) {
+					console.log(
+						JSON.stringify(
+							{ tag: options.tag, dependsOn: deps },
+							null,
+							2
+						)
+					);
+					return;
+				}
+
+				if (deps.length === 0) {
+					console.log(`Tag "${options.tag}" has no dependencies.`);
+				} else {
+					console.log(`Dependencies for "${options.tag}":\n`);
+					for (const dep of deps) {
+						console.log(`  → ${dep}`);
+					}
+				}
+				return;
+			}
+
+			// All tags
+			const tagsResult = await this.tmCore!.tasks.getTagsWithStats();
+			const allDeps = tagsResult.tags.map((t) => ({
+				tag: t.name,
+				dependsOn: t.dependsOn ?? []
+			}));
+
+			if (options.json) {
+				console.log(JSON.stringify(allDeps, null, 2));
+				return;
+			}
+
+			const hasDeps = allDeps.some((d) => d.dependsOn.length > 0);
+
+			if (!hasDeps) {
+				console.log(
+					'No inter-tag dependencies defined.\n' +
+						'Use `tm tags add-dep --tag <tag> --depends-on <dep>` to add one.'
+				);
+				return;
+			}
+
+			for (const entry of allDeps) {
+				if (entry.dependsOn.length > 0) {
+					console.log(
+						`  ${entry.tag} → ${entry.dependsOn.join(', ')}`
+					);
+				}
+			}
+		} catch (error: any) {
+			displayError(error);
 			this.handleError(
 				error instanceof Error
 					? error

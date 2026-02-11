@@ -829,6 +829,41 @@ export class ApiStorage implements IStorage {
 	}
 
 	/**
+	 * Add an inter-tag dependency (not supported for API storage)
+	 */
+	async addTagDependency(
+		_tag: string,
+		_dependsOn: string
+	): Promise<void> {
+		throw new TaskMasterError(
+			'Tag dependency management is not supported with API storage. Please use Hamster Studio.',
+			ERROR_CODES.NOT_IMPLEMENTED,
+			{ storageType: 'api', operation: 'addTagDependency' }
+		);
+	}
+
+	/**
+	 * Remove an inter-tag dependency (not supported for API storage)
+	 */
+	async removeTagDependency(
+		_tag: string,
+		_dependsOn: string
+	): Promise<void> {
+		throw new TaskMasterError(
+			'Tag dependency management is not supported with API storage. Please use Hamster Studio.',
+			ERROR_CODES.NOT_IMPLEMENTED,
+			{ storageType: 'api', operation: 'removeTagDependency' }
+		);
+	}
+
+	/**
+	 * Get tag dependencies (returns empty for API storage)
+	 */
+	async getTagDependencies(_tag: string): Promise<string[]> {
+		return [];
+	}
+
+	/**
 	 * Get storage statistics
 	 */
 	async getStats(): Promise<StorageStats> {

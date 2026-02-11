@@ -33,3 +33,9 @@ export {
 	type ProjectExecutionResult,
 	type TagWithDependencies
 } from './services/project-orchestrator.service.js';
+export {
+	TagClusterService,
+	type TagDependency,
+	type TagCluster,
+	type TagClusterResult
+} from './services/tag-cluster.service.js';

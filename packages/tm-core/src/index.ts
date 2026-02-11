@@ -284,7 +284,11 @@ export {
 	type TagExecutionResult,
 	type ProjectExecutionOptions,
 	type ProjectExecutionResult,
-	type TagWithDependencies
+	type TagWithDependencies,
+	TagClusterService,
+	type TagDependency,
+	type TagCluster,
+	type TagClusterResult
 } from './modules/cluster/index.js';
 
 // ========== Testing Utilities ==========

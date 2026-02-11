@@ -304,4 +304,102 @@ export class TagService {
 	async getTagsWithStats() {
 		return await this.storage.getTagsWithStats();
 	}
+
+	// ========== Tag Dependencies ==========
+
+	/**
+	 * Add a dependency between tags (tag depends on dependsOn)
+	 * Validates both tags exist, prevents self-deps and circular deps
+	 */
+	async addTagDependency(tag: string, dependsOn: string): Promise<void> {
+		// Self-dependency check
+		if (tag === dependsOn) {
+			throw new TaskMasterError(
+				`Tag "${tag}" cannot depend on itself`,
+				ERROR_CODES.VALIDATION_ERROR,
+				{ tag, dependsOn }
+			);
+		}
+
+		// Both tags must exist
+		const allTags = await this.storage.getAllTags();
+		if (!allTags.includes(tag)) {
+			throw new TaskMasterError(
+				`Tag "${tag}" does not exist`,
+				ERROR_CODES.NOT_FOUND,
+				{ tagName: tag }
+			);
+		}
+		if (!allTags.includes(dependsOn)) {
+			throw new TaskMasterError(
+				`Tag "${dependsOn}" does not exist`,
+				ERROR_CODES.NOT_FOUND,
+				{ tagName: dependsOn }
+			);
+		}
+
+		// Circular dependency check
+		await this.checkCircularDependency(tag, dependsOn);
+
+		await this.storage.addTagDependency(tag, dependsOn);
+	}
+
+	/**
+	 * Remove a dependency between tags
+	 */
+	async removeTagDependency(tag: string, dependsOn: string): Promise<void> {
+		const allTags = await this.storage.getAllTags();
+		if (!allTags.includes(tag)) {
+			throw new TaskMasterError(
+				`Tag "${tag}" does not exist`,
+				ERROR_CODES.NOT_FOUND,
+				{ tagName: tag }
+			);
+		}
+
+		await this.storage.removeTagDependency(tag, dependsOn);
+	}
+
+	/**
+	 * Get all dependencies for a tag
+	 */
+	async getTagDependencies(tag: string): Promise<string[]> {
+		return this.storage.getTagDependencies(tag);
+	}
+
+	/**
+	 * DFS check for circular dependencies.
+	 * Walks from `dependsOn` through its transitive deps; if `tag` is reachable, it's circular.
+	 */
+	private async checkCircularDependency(
+		tag: string,
+		dependsOn: string
+	): Promise<void> {
+		const visited = new Set<string>();
+		const stack = [dependsOn];
+
+		while (stack.length > 0) {
+			const current = stack.pop()!;
+
+			if (current === tag) {
+				throw new TaskMasterError(
+					`Adding dependency "${tag}" → "${dependsOn}" would create a circular dependency`,
+					ERROR_CODES.VALIDATION_ERROR,
+					{ tag, dependsOn, circular: true }
+				);
+			}
+
+			if (visited.has(current)) {
+				continue;
+			}
+			visited.add(current);
+
+			const deps = await this.storage.getTagDependencies(current);
+			for (const dep of deps) {
+				if (!visited.has(dep)) {
+					stack.push(dep);
+				}
+			}
+		}
+	}
 }

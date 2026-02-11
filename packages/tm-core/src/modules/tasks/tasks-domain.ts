@@ -419,6 +419,28 @@ export class TasksDomain {
 		return this.tagService.getTagsWithStats();
 	}
 
+	/**
+	 * Add an inter-tag dependency (tag depends on dependsOn)
+	 * Validates both tags exist, prevents self-deps and circular deps
+	 */
+	async addTagDependency(tag: string, dependsOn: string): Promise<void> {
+		return this.tagService.addTagDependency(tag, dependsOn);
+	}
+
+	/**
+	 * Remove an inter-tag dependency
+	 */
+	async removeTagDependency(tag: string, dependsOn: string): Promise<void> {
+		return this.tagService.removeTagDependency(tag, dependsOn);
+	}
+
+	/**
+	 * Get all dependencies for a tag
+	 */
+	async getTagDependencies(tag: string): Promise<string[]> {
+		return this.tagService.getTagDependencies(tag);
+	}
+
 	// ========== Storage Information ==========
 
 	/**
