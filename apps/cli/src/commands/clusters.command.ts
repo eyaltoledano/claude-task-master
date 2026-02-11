@@ -12,6 +12,7 @@ import {
 	type TmCore,
 	createTmCore
 } from '@tm/core';
+import { ClusterStartCommand } from './cluster-start.command.js';
 import { renderMermaidAscii } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import Table from 'cli-table3';
@@ -58,6 +59,9 @@ export class ClustersCommand extends Command {
 			.action(async (options: ClustersCommandOptions) => {
 				await this.executeCommand(options);
 			});
+
+		// Register subcommands
+		this.addCommand(new ClusterStartCommand());
 	}
 
 	private async executeCommand(options: ClustersCommandOptions): Promise<void> {

@@ -231,7 +231,7 @@ describe('ClusterPRIntegration', () => {
 			expect(Array.isArray(mappings)).toBe(true);
 		});
 
-		it('should retrieve specific PR mapping', async () => {
+		it('should not store PR mapping for dry-run completions', async () => {
 			const workflowContext: WorkflowContext = {
 				taskId: 'TAS-123',
 				subtasks: [],
@@ -250,8 +250,10 @@ describe('ClusterPRIntegration', () => {
 
 			await integration.handleClusterCompletion(event);
 
+			// Dry runs intentionally skip mapping storage to avoid
+			// placeholder values misleading traceability consumers
 			const mapping = integration.getPRMapping('cluster-specific');
-			expect(mapping).toBeDefined();
+			expect(mapping).toBeUndefined();
 		});
 	});
 
