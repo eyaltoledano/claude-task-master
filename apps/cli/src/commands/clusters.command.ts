@@ -4,20 +4,22 @@
  */
 
 import {
-	ClusterDetectionService,
-	TagClusterService,
-	createTmCore,
 	type ClusterDetectionResult,
+	ClusterDetectionService,
 	type ClusterMetadata,
 	type TagClusterResult,
-	type TmCore
+	TagClusterService,
+	type TmCore,
+	createTmCore
 } from '@tm/core';
 import { renderMermaidAscii } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { Command } from 'commander';
+import { getBoxWidth } from '../ui/layout/helpers.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
+import { pageOutput } from '../utils/pager.js';
 import { getProjectRoot } from '../utils/project-root.js';
 
 /**
@@ -129,9 +131,7 @@ export class ClustersCommand extends Command {
 		} else if (options.diagram === 'mermaid-raw') {
 			this.renderMermaidRaw(detection);
 		} else if (options.diagram) {
-			console.error(
-				chalk.red(`Unsupported diagram type: ${options.diagram}`)
-			);
+			console.error(chalk.red(`Unsupported diagram type: ${options.diagram}`));
 			console.error(chalk.gray('Supported types: mermaid, mermaid-raw'));
 			process.exit(1);
 		} else {
@@ -176,7 +176,10 @@ export class ClustersCommand extends Command {
 			)
 		);
 
-		if (detection.clusters.length === 1 && detection.clusters[0].dependsOn.length === 0) {
+		if (
+			detection.clusters.length === 1 &&
+			detection.clusters[0].dependsOn.length === 0
+		) {
 			console.log(
 				chalk.gray(
 					'  All tags are independent (no inter-tag dependencies defined).\n' +
@@ -192,9 +195,7 @@ export class ClustersCommand extends Command {
 		} else if (options.diagram === 'mermaid-raw') {
 			this.renderTagMermaidRaw(detection);
 		} else if (options.diagram) {
-			console.error(
-				chalk.red(`Unsupported diagram type: ${options.diagram}`)
-			);
+			console.error(chalk.red(`Unsupported diagram type: ${options.diagram}`));
 			console.error(chalk.gray('Supported types: mermaid, mermaid-raw'));
 			process.exit(1);
 		} else {
@@ -212,6 +213,11 @@ export class ClustersCommand extends Command {
 	 * Render cluster table (default output)
 	 */
 	private renderTable(detection: ClusterDetectionResult): void {
+		const usableWidth = getBoxWidth(0.95);
+		// Cluster, Level, Parallel, Tasks, Depends On, Status
+		const widths = [0.12, 0.08, 0.18, 0.3, 0.18, 0.14];
+		const colWidths = widths.map((w) => Math.max(Math.floor(usableWidth * w), 8));
+
 		const table = new Table({
 			head: [
 				chalk.white('Cluster'),
@@ -221,6 +227,8 @@ export class ClustersCommand extends Command {
 				chalk.white('Depends On'),
 				chalk.white('Status')
 			],
+			colWidths,
+			wordWrap: true,
 			style: { head: [], border: ['gray'] }
 		});
 
@@ -261,9 +269,7 @@ export class ClustersCommand extends Command {
 			(c) => c.upstreamClusters.length === 0
 		);
 
-		const clusterMap = new Map(
-			detection.clusters.map((c) => [c.clusterId, c])
-		);
+		const clusterMap = new Map(detection.clusters.map((c) => [c.clusterId, c]));
 
 		for (let i = 0; i < roots.length; i++) {
 			const isLast = i === roots.length - 1;
@@ -311,9 +317,28 @@ export class ClustersCommand extends Command {
 	}
 
 	/**
-	 * Build compact Mermaid syntax for ASCII rendering.
-	 * Labels show cluster ID + task count only (no individual IDs)
-	 * since beautiful-mermaid doesn't support multiline labels.
+	 * Group clusters by their topological level (turn).
+	 * Clusters at the same level can execute in parallel.
+	 */
+	private groupClustersByLevel(
+		clusters: readonly ClusterMetadata[]
+	): Map<number, ClusterMetadata[]> {
+		const levels = new Map<number, ClusterMetadata[]>();
+		for (const cluster of clusters) {
+			const group = levels.get(cluster.level) ?? [];
+			group.push(cluster);
+			levels.set(cluster.level, group);
+		}
+		return levels;
+	}
+
+	/**
+	 * Build simplified Mermaid syntax using spine + skip edges.
+	 *
+	 * Instead of showing every cross-level edge (creates messy diamonds),
+	 * reduces the DAG to:
+	 *   1. A linear "spine" chain through all clusters in topological order
+	 *   2. Dotted "skip edges" for dependencies not implied by the spine
 	 */
 	private buildMermaidSyntax(
 		detection: ClusterDetectionResult,
@@ -322,53 +347,107 @@ export class ClustersCommand extends Command {
 		const direction = options?.direction ?? 'TD';
 		const lines: string[] = [`graph ${direction}`];
 
-		for (const cluster of detection.clusters) {
+		// Step 1: Sort clusters topologically (level, then clusterId for stability)
+		const sorted = [...detection.clusters].sort((a, b) => {
+			if (a.level !== b.level) return a.level - b.level;
+			return a.clusterId.localeCompare(b.clusterId);
+		});
+
+		// Step 2: Node definitions
+		for (const cluster of sorted) {
 			const count = cluster.taskIds.length;
 			const mode = count > 1 ? 'parallel' : 'seq';
 			const nodeId = cluster.clusterId.replace('-', '_');
-
 			lines.push(`  ${nodeId}[${cluster.clusterId} ${count} tasks ${mode}]`);
 		}
 
 		lines.push('');
 
-		for (const cluster of detection.clusters) {
-			const nodeId = cluster.clusterId.replace('-', '_');
-			for (const downstreamId of cluster.downstreamClusters) {
-				const downstreamNodeId = downstreamId.replace('-', '_');
-				lines.push(`  ${nodeId} --> ${downstreamNodeId}`);
+		// Step 3: Build spine — linear chain connecting all clusters in order
+		const spineSet = new Set<string>();
+		for (let i = 0; i < sorted.length - 1; i++) {
+			spineSet.add(`${sorted[i].clusterId}->${sorted[i + 1].clusterId}`);
+		}
+
+		// Step 4: Spine reachability (transitive closure of the linear chain)
+		// In a linear chain A→B→C→D, every (i,j) pair where i<j is reachable
+		const spineReachable = new Set<string>();
+		for (let i = 0; i < sorted.length; i++) {
+			for (let j = i + 1; j < sorted.length; j++) {
+				spineReachable.add(
+					`${sorted[i].clusterId}->${sorted[j].clusterId}`
+				);
 			}
+		}
+
+		// Step 5: Find skip edges — original edges not implied by the spine
+		const skipEdges: Array<{ from: string; to: string }> = [];
+		for (const cluster of detection.clusters) {
+			for (const downstreamId of cluster.downstreamClusters) {
+				const key = `${cluster.clusterId}->${downstreamId}`;
+				if (!spineSet.has(key) && !spineReachable.has(key)) {
+					skipEdges.push({ from: cluster.clusterId, to: downstreamId });
+				}
+			}
+		}
+
+		// Step 6: Emit spine as a single chained line
+		if (sorted.length > 1) {
+			const chain = sorted
+				.map((c) => c.clusterId.replace('-', '_'))
+				.join(' --> ');
+			lines.push(`  ${chain}`);
+		}
+
+		// Step 7: Emit skip edges as dotted lines
+		for (const edge of skipEdges) {
+			const fromNode = edge.from.replace('-', '_');
+			const toNode = edge.to.replace('-', '_');
+			lines.push(`  ${fromNode} -.-> ${toNode}`);
 		}
 
 		return lines.join('\n');
 	}
 
 	/**
-	 * Build raw Mermaid syntax with full multiline labels (for external renderers).
+	 * Build raw Mermaid syntax with subgraph grouping for external renderers.
+	 * Groups parallel clusters in the same subgraph to show lanes clearly.
 	 */
-	private buildMermaidRawSyntax(
-		detection: ClusterDetectionResult
-	): string {
+	private buildMermaidRawSyntax(detection: ClusterDetectionResult): string {
 		const lines: string[] = ['graph LR'];
+		const levels = this.groupClustersByLevel(detection.clusters);
 
-		for (const cluster of detection.clusters) {
-			const taskLabel = cluster.taskIds.join(', ');
-			const parallelLabel =
-				cluster.taskIds.length > 1 ? '(parallel)' : '(sequential)';
-			const nodeId = cluster.clusterId.replace('-', '_');
+		// Create subgraphs for each cluster level
+		for (const [level, clusters] of [...levels.entries()].sort(
+			(a, b) => a[0] - b[0]
+		)) {
+			lines.push(`  subgraph group_${level}[" "]`);
 
-			lines.push(
-				`  ${nodeId}["${cluster.clusterId}<br/>Tasks: ${taskLabel}<br/>${parallelLabel}"]`
-			);
+			for (const cluster of clusters) {
+				const taskLabel = cluster.taskIds.join(', ');
+				const mode = cluster.taskIds.length > 1 ? '(parallel)' : '(sequential)';
+				const nodeId = cluster.clusterId.replace('-', '_');
+				lines.push(
+					`    ${nodeId}["${cluster.clusterId}<br/>Tasks: ${taskLabel}<br/>${mode}"]`
+				);
+			}
+
+			lines.push('  end');
 		}
 
 		lines.push('');
 
+		// Only draw edges between different levels
 		for (const cluster of detection.clusters) {
 			const nodeId = cluster.clusterId.replace('-', '_');
 			for (const downstreamId of cluster.downstreamClusters) {
-				const downstreamNodeId = downstreamId.replace('-', '_');
-				lines.push(`  ${nodeId} --> ${downstreamNodeId}`);
+				const downstream = detection.clusters.find(
+					(c) => c.clusterId === downstreamId
+				);
+				if (downstream && downstream.level !== cluster.level) {
+					const downstreamNodeId = downstreamId.replace('-', '_');
+					lines.push(`  ${nodeId} --> ${downstreamNodeId}`);
+				}
 			}
 		}
 
@@ -396,15 +475,47 @@ export class ClustersCommand extends Command {
 				paddingY: 1,
 				boxBorderPadding: 1
 			});
-			console.log(ascii);
+			pageOutput(ascii);
 		} catch {
-			console.error(
-				chalk.yellow(
-					'Could not render as ASCII. Falling back to raw Mermaid syntax:\n'
-				)
-			);
-			console.log(this.buildMermaidRawSyntax(detection));
+			// Fall back to lane-based ASCII rendering
+			this.renderLaneAscii(detection);
 		}
+	}
+
+	/**
+	 * Render a lane-based ASCII diagram grouping parallel clusters by turn.
+	 * Shows turn/lane numbers on the left instead of arrows between levels.
+	 * Used as fallback when beautiful-mermaid can't render the graph.
+	 */
+	private renderLaneAscii(detection: ClusterDetectionResult): void {
+		const levels = this.groupClustersByLevel(detection.clusters);
+		const sortedLevels = [...levels.entries()].sort((a, b) => a[0] - b[0]);
+		const lines: string[] = [];
+
+		for (const [level, clusters] of sortedLevels) {
+			const turnLabel = chalk.dim(`Turn ${level}`);
+			const parallelNote =
+				clusters.length > 1
+					? chalk.green(`  ⇢ ${clusters.length} parallel`)
+					: '';
+
+			lines.push(`  ${turnLabel}${parallelNote}`);
+
+			for (const cluster of clusters) {
+				const count = cluster.taskIds.length;
+				const mode =
+					count > 1 ? chalk.green('parallel') : chalk.gray('sequential');
+				const taskList = cluster.taskIds.join(', ');
+
+				lines.push(
+					`    ${chalk.white(cluster.clusterId)} — ${count} tasks [${mode}]: ${chalk.gray(taskList)}`
+				);
+			}
+
+			lines.push('');
+		}
+
+		pageOutput(lines.join('\n'));
 	}
 
 	/**
@@ -462,6 +573,11 @@ export class ClustersCommand extends Command {
 	// ========== Tag-Level Rendering ==========
 
 	private renderTagTable(detection: TagClusterResult): void {
+		const usableWidth = getBoxWidth(0.95);
+		// Cluster, Level, Parallel, Tags, Depends On
+		const widths = [0.15, 0.1, 0.2, 0.35, 0.2];
+		const colWidths = widths.map((w) => Math.max(Math.floor(usableWidth * w), 8));
+
 		const table = new Table({
 			head: [
 				chalk.white('Cluster'),
@@ -470,6 +586,8 @@ export class ClustersCommand extends Command {
 				chalk.white('Tags'),
 				chalk.white('Depends On')
 			],
+			colWidths,
+			wordWrap: true,
 			style: { head: [], border: ['gray'] }
 		});
 
@@ -513,6 +631,9 @@ export class ClustersCommand extends Command {
 		}
 	}
 
+	/**
+	 * Build simplified Mermaid syntax for tag clusters using spine + skip edges.
+	 */
 	private buildTagMermaidSyntax(
 		detection: TagClusterResult,
 		options?: { direction?: 'LR' | 'TD' }
@@ -520,20 +641,43 @@ export class ClustersCommand extends Command {
 		const direction = options?.direction ?? 'TD';
 		const lines: string[] = [`graph ${direction}`];
 
-		for (const cluster of detection.clusters) {
+		const sorted = [...detection.clusters].sort(
+			(a, b) => a.level - b.level
+		);
+
+		for (const cluster of sorted) {
 			const count = cluster.tags.length;
 			const mode = count > 1 ? 'parallel' : 'seq';
 			const nodeId = `level_${cluster.level}`;
-
-			lines.push(`  ${nodeId}[Level ${cluster.level} ${count} tags ${mode}]`);
+			lines.push(`  ${nodeId}[${count} tags ${mode}]`);
 		}
 
 		lines.push('');
 
-		for (const cluster of detection.clusters) {
-			const nodeId = `level_${cluster.level}`;
+		// Spine chain
+		if (sorted.length > 1) {
+			const chain = sorted
+				.map((c) => `level_${c.level}`)
+				.join(' --> ');
+			lines.push(`  ${chain}`);
+		}
+
+		// Skip edges (deps not implied by spine)
+		const spineReachable = new Set<string>();
+		for (let i = 0; i < sorted.length; i++) {
+			for (let j = i + 1; j < sorted.length; j++) {
+				spineReachable.add(
+					`${sorted[i].level}->${sorted[j].level}`
+				);
+			}
+		}
+
+		for (const cluster of sorted) {
 			for (const depLevel of cluster.dependsOn) {
-				lines.push(`  level_${depLevel} --> ${nodeId}`);
+				const key = `${depLevel}->${cluster.level}`;
+				if (!spineReachable.has(key)) {
+					lines.push(`  level_${depLevel} -.-> level_${cluster.level}`);
+				}
 			}
 		}
 
@@ -546,12 +690,12 @@ export class ClustersCommand extends Command {
 		for (const cluster of detection.clusters) {
 			const tagList = cluster.tags.join(', ');
 			const parallelLabel =
-				cluster.tags.length > 1 ? '(parallel)' : '(sequential)';
+				cluster.tags.length > 1
+					? `(${cluster.tags.length} parallel)`
+					: '(sequential)';
 			const nodeId = `level_${cluster.level}`;
 
-			lines.push(
-				`  ${nodeId}["Level ${cluster.level}<br/>Tags: ${tagList}<br/>${parallelLabel}"]`
-			);
+			lines.push(`  ${nodeId}["Tags: ${tagList}<br/>${parallelLabel}"]`);
 		}
 
 		lines.push('');
@@ -582,15 +726,37 @@ export class ClustersCommand extends Command {
 				paddingY: 1,
 				boxBorderPadding: 1
 			});
-			console.log(ascii);
+			pageOutput(ascii);
 		} catch {
-			console.error(
-				chalk.yellow(
-					'Could not render as ASCII. Falling back to raw Mermaid syntax:\n'
-				)
-			);
-			console.log(this.buildTagMermaidRawSyntax(detection));
+			// Fall back to lane-based ASCII rendering for tags
+			this.renderTagLaneAscii(detection);
 		}
+	}
+
+	/**
+	 * Render a lane-based ASCII diagram for tag-level clusters.
+	 * Shows turn/lane numbers on the left instead of arrows between levels.
+	 */
+	private renderTagLaneAscii(detection: TagClusterResult): void {
+		const lines: string[] = [];
+
+		for (const cluster of detection.clusters) {
+			const turnLabel = chalk.dim(`Turn ${cluster.level}`);
+			const parallelNote =
+				cluster.tags.length > 1
+					? chalk.green(`  ⇢ ${cluster.tags.length} parallel`)
+					: '';
+
+			lines.push(`  ${turnLabel}${parallelNote}`);
+
+			for (const tag of cluster.tags) {
+				lines.push(`    ${chalk.white(tag)}`);
+			}
+
+			lines.push('');
+		}
+
+		pageOutput(lines.join('\n'));
 	}
 
 	private renderTagMermaidRaw(detection: TagClusterResult): void {

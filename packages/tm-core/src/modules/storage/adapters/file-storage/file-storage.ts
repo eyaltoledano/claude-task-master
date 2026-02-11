@@ -12,6 +12,7 @@ import type {
 	IStorage,
 	LoadTasksOptions,
 	StorageStats,
+	TagsWithStatsResult,
 	UpdateStatusResult,
 	WatchEvent,
 	WatchOptions,
@@ -871,30 +872,14 @@ export class FileStorage implements IStorage {
 	 */
 	async getTagDependencies(tag: string): Promise<string[]> {
 		const metadata = await this.loadMetadata(tag);
-		return (metadata as any)?.dependsOn || [];
+		return metadata?.dependsOn ?? [];
 	}
 
 	/**
 	 * Get all tags with detailed statistics including task counts
 	 * For file storage, reads tags from tasks.json and calculates statistics
 	 */
-	async getTagsWithStats(): Promise<{
-		tags: Array<{
-			name: string;
-			isCurrent: boolean;
-			taskCount: number;
-			completedTasks: number;
-			statusBreakdown: Record<string, number>;
-			subtaskCounts?: {
-				totalSubtasks: number;
-				subtasksByStatus: Record<string, number>;
-			};
-			created?: string;
-			description?: string;
-		}>;
-		currentTag: string | null;
-		totalTags: number;
-	}> {
+	async getTagsWithStats(): Promise<TagsWithStatsResult> {
 		const availableTags = await this.getAllTags();
 
 		// Get active tag from state.json
@@ -949,7 +934,7 @@ export class FileStorage implements IStorage {
 							subtaskCounts.totalSubtasks > 0 ? subtaskCounts : undefined,
 						created: metadata?.created,
 						description: metadata?.description,
-						dependsOn: (metadata as any)?.dependsOn || undefined
+						dependsOn: metadata?.dependsOn
 					};
 				} catch (error) {
 					// If we can't load tasks for a tag, return it with 0 tasks

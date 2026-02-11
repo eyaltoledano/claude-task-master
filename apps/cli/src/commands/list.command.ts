@@ -4,12 +4,14 @@
  */
 
 import {
+	ClusterDetectionService,
 	OUTPUT_FORMATS,
 	buildBlocksMap,
 	createTmCore,
 	filterBlockingTasks,
 	filterReadyTasks,
 	isTaskComplete,
+	type ClusterDetectionResult,
 	type InvalidDependency,
 	type OutputFormat,
 	STATUS_ICONS,
@@ -28,6 +30,7 @@ import {
 	calculateDependencyStatistics,
 	calculateSubtaskStatistics,
 	calculateTaskStatistics,
+	displayClusterPipeline,
 	displayDashboards,
 	displayRecommendedNextTask,
 	displaySuggestedNextSteps,
@@ -647,6 +650,14 @@ export class ListTasksCommand extends Command {
 			);
 		}
 
+		// Show cluster execution pipeline when tasks have dependencies
+		if (!isFiltered) {
+			const clusterSummary = this.getClusterSummary(tasks);
+			if (clusterSummary) {
+				displayClusterPipeline(clusterSummary, tasks, tag);
+			}
+		}
+
 		// Task table
 		console.log(
 			ui.createTaskTable(tasks, {
@@ -680,6 +691,29 @@ export class ListTasksCommand extends Command {
 			// Display suggested next steps at the end
 			displaySuggestedNextSteps();
 		}
+	}
+
+	/**
+	 * Detect clusters from task list and return a summary
+	 */
+	private getClusterSummary(tasks: Task[]): ClusterDetectionResult | null {
+		// Only compute clusters if there are tasks with dependencies
+		const hasDependencies = tasks.some(
+			(t) => t.dependencies && t.dependencies.length > 0
+		);
+		if (!hasDependencies || tasks.length < 2) {
+			return null;
+		}
+
+		const detector = new ClusterDetectionService();
+		const detection = detector.detectClusters(tasks);
+
+		// Don't show if circular deps or only 1 cluster (everything sequential)
+		if (detection.hasCircularDependencies || detection.totalClusters <= 1) {
+			return null;
+		}
+
+		return detection;
 	}
 
 	/**

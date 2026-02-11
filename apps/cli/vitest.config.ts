@@ -22,7 +22,8 @@ export default mergeConfig(
 			],
 			// Integration tests spawn CLI processes - 30s is reasonable with optimized startup
 			testTimeout: 30000,
-			hookTimeout: 15000
+			hookTimeout: 15000,
+			maxWorkers: 4
 		}
 	})
 );

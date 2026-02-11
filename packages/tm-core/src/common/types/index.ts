@@ -188,6 +188,7 @@ export interface TaskMetadata {
 	tags?: string[];
 	created?: string;
 	updated?: string;
+	dependsOn?: string[];
 }
 
 /**
