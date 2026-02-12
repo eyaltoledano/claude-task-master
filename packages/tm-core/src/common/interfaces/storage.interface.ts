@@ -201,6 +201,27 @@ export interface IStorage {
 	copyTag(sourceTag: string, targetTag: string): Promise<void>;
 
 	/**
+	 * Add an inter-tag dependency (tag depends on dependsOn)
+	 * @param tag - Tag that has the dependency
+	 * @param dependsOn - Tag that is depended upon
+	 */
+	addTagDependency(tag: string, dependsOn: string): Promise<void>;
+
+	/**
+	 * Remove an inter-tag dependency
+	 * @param tag - Tag to remove the dependency from
+	 * @param dependsOn - Tag dependency to remove
+	 */
+	removeTagDependency(tag: string, dependsOn: string): Promise<void>;
+
+	/**
+	 * Get all dependencies for a tag
+	 * @param tag - Tag to get dependencies for
+	 * @returns Array of tag names this tag depends on
+	 */
+	getTagDependencies(tag: string): Promise<string[]>;
+
+	/**
 	 * Initialize storage (create necessary directories, files, etc.)
 	 * @returns Promise that resolves when initialization is complete
 	 */
@@ -275,6 +296,8 @@ export interface TagInfo {
 
 	/** Tag description */
 	description?: string;
+	/** Tags this tag depends on */
+	dependsOn?: string[];
 	/** Brief/Tag status (for API storage briefs) */
 	status?: string;
 	/** Brief ID/UUID (for API storage) */
@@ -420,6 +443,9 @@ export abstract class BaseStorage implements IStorage {
 	abstract deleteTag(tag: string): Promise<void>;
 	abstract renameTag(oldTag: string, newTag: string): Promise<void>;
 	abstract copyTag(sourceTag: string, targetTag: string): Promise<void>;
+	abstract addTagDependency(tag: string, dependsOn: string): Promise<void>;
+	abstract removeTagDependency(tag: string, dependsOn: string): Promise<void>;
+	abstract getTagDependencies(tag: string): Promise<string[]>;
 	abstract initialize(): Promise<void>;
 	abstract close(): Promise<void>;
 	abstract getStats(): Promise<StorageStats>;

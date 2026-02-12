@@ -12,6 +12,7 @@ import type {
 	IStorage,
 	LoadTasksOptions,
 	StorageStats,
+	TagsWithStatsResult,
 	UpdateStatusResult,
 	WatchEvent,
 	WatchOptions,
@@ -807,26 +808,78 @@ export class FileStorage implements IStorage {
 	}
 
 	/**
+	 * Add an inter-tag dependency
+	 * Idempotent: no-op if dependency already exists
+	 */
+	async addTagDependency(tag: string, dependsOn: string): Promise<void> {
+		const filePath = this.pathResolver.getTasksPath();
+
+		await this.fileOps.modifyJson(filePath, (data: any) => {
+			const format = this.formatHandler.detectFormat(data);
+			const tagData =
+				format === 'legacy' ? data[tag] : tag === 'master' ? data : null;
+
+			if (!tagData) {
+				throw new Error(`Tag "${tag}" not found`);
+			}
+
+			const metadata = tagData.metadata || {};
+			const existing: string[] = metadata.dependsOn || [];
+
+			if (existing.includes(dependsOn)) {
+				return data; // Already present, no-op
+			}
+
+			tagData.metadata = {
+				...metadata,
+				dependsOn: [...existing, dependsOn]
+			};
+
+			return data;
+		});
+	}
+
+	/**
+	 * Remove an inter-tag dependency
+	 * Idempotent: no-op if dependency doesn't exist
+	 */
+	async removeTagDependency(tag: string, dependsOn: string): Promise<void> {
+		const filePath = this.pathResolver.getTasksPath();
+
+		await this.fileOps.modifyJson(filePath, (data: any) => {
+			const format = this.formatHandler.detectFormat(data);
+			const tagData =
+				format === 'legacy' ? data[tag] : tag === 'master' ? data : null;
+
+			if (!tagData) {
+				throw new Error(`Tag "${tag}" not found`);
+			}
+
+			const metadata = tagData.metadata || {};
+			const existing: string[] = metadata.dependsOn || [];
+
+			tagData.metadata = {
+				...metadata,
+				dependsOn: existing.filter((d) => d !== dependsOn)
+			};
+
+			return data;
+		});
+	}
+
+	/**
+	 * Get all dependencies for a tag
+	 */
+	async getTagDependencies(tag: string): Promise<string[]> {
+		const metadata = await this.loadMetadata(tag);
+		return metadata?.dependsOn ?? [];
+	}
+
+	/**
 	 * Get all tags with detailed statistics including task counts
 	 * For file storage, reads tags from tasks.json and calculates statistics
 	 */
-	async getTagsWithStats(): Promise<{
-		tags: Array<{
-			name: string;
-			isCurrent: boolean;
-			taskCount: number;
-			completedTasks: number;
-			statusBreakdown: Record<string, number>;
-			subtaskCounts?: {
-				totalSubtasks: number;
-				subtasksByStatus: Record<string, number>;
-			};
-			created?: string;
-			description?: string;
-		}>;
-		currentTag: string | null;
-		totalTags: number;
-	}> {
+	async getTagsWithStats(): Promise<TagsWithStatsResult> {
 		const availableTags = await this.getAllTags();
 
 		// Get active tag from state.json
@@ -880,7 +933,8 @@ export class FileStorage implements IStorage {
 						subtaskCounts:
 							subtaskCounts.totalSubtasks > 0 ? subtaskCounts : undefined,
 						created: metadata?.created,
-						description: metadata?.description
+						description: metadata?.description,
+						dependsOn: metadata?.dependsOn
 					};
 				} catch (error) {
 					// If we can't load tasks for a tag, return it with 0 tasks

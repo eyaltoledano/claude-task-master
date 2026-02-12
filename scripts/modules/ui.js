@@ -726,6 +726,11 @@ function displayHelp() {
 					name: 'research',
 					args: '"<prompt>" [-i=<task_ids>] [-f=<file_paths>] [-c="<context>"] [--tree] [-s=<save_file>] [-d=<detail_level>]',
 					desc: 'Perform AI-powered research queries with project context'
+				},
+				{
+					name: 'clusters',
+					args: '[--diagram <type>] [--tag <name>]',
+					desc: 'Detect and visualize task execution clusters'
 				}
 			]
 		},

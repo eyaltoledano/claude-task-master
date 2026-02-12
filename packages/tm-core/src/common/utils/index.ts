@@ -9,6 +9,7 @@ export {
 	generateTaskId as generateId, // Alias for backward compatibility
 	generateTaskId,
 	generateSubtaskId,
+	makeSubtaskId,
 	isValidTaskId,
 	isValidSubtaskId,
 	getParentTaskId

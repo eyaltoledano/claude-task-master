@@ -8,6 +8,7 @@ import { type LogLevel, type TagInfo, tryAddTagViaRemote } from '@tm/bridge';
 import type { Brief, TmCore } from '@tm/core';
 import { AuthManager, createTmCore } from '@tm/core';
 import chalk from 'chalk';
+import Table from 'cli-table3';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
@@ -260,8 +261,6 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 * Display briefs in a table format (for non-interactive mode)
 	 */
 	private displayBriefsTable(tags: TagInfo[], _showMetadata?: boolean): void {
-		const Table = require('cli-table3');
-
 		const terminalWidth = Math.max(process.stdout.columns || 120, 80);
 		const usableWidth = Math.floor(terminalWidth * 0.95);
 		const widths = [0.35, 0.25, 0.2, 0.1, 0.1];
