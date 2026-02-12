@@ -4,11 +4,16 @@ on:
   push:
     tags:
       - "extension@*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency: extension-release-${{ github.ref }}
+
+env:
+  BUN_VERSION: 1.2.6
+  NODE_VERSION: 20
 
 jobs:
   publish-extension:
@@ -19,43 +24,43 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            */*/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          path: node_modules
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install Monorepo Dependencies
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
       - name: Type Check Extension
         working-directory: apps/extension
-        run: npm run typecheck
+        run: bun run typecheck
         env:
           FORCE_COLOR: 1
 
       - name: Build Extension
         working-directory: apps/extension
-        run: npm run build
+        run: bun run build
         env:
           FORCE_COLOR: 1
 
       - name: Package Extension
         working-directory: apps/extension
-        run: npm run package
+        run: bun run package
         env:
           FORCE_COLOR: 1
 
       - name: Create VSIX Package
         working-directory: apps/extension/vsix-build
-        run: npx vsce package --no-dependencies
+        run: bunx vsce package --no-dependencies
         env:
           FORCE_COLOR: 1
 
@@ -73,17 +78,14 @@ jobs:
 
       - name: Publish to VS Code Marketplace
         working-directory: apps/extension/vsix-build
-        run: npx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
+        run: bunx vsce publish --packagePath "${{ steps.vsix-info.outputs.vsix-filename }}"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           FORCE_COLOR: 1
 
-      - name: Install Open VSX CLI
-        run: npm install -g ovsx
-
       - name: Publish to Open VSX Registry
         working-directory: apps/extension/vsix-build
-        run: ovsx publish "${{ steps.vsix-info.outputs.vsix-filename }}"
+        run: bunx ovsx publish "${{ steps.vsix-info.outputs.vsix-filename }}"
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
           FORCE_COLOR: 1

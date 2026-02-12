@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,4 +31,22 @@ assert(pkg.version, 'package.json must have a version field');
 const tag = `${pkg.name}@${pkg.version}`;
 
 // Create and push the tag if it doesn't exist
-createAndPushTag(tag);
+const tagCreated = createAndPushTag(tag);
+
+// Trigger extension release workflow via workflow_dispatch
+// (push events from GITHUB_TOKEN don't trigger workflows, but workflow_dispatch does)
+if (tagCreated) {
+	console.log(`Triggering extension-release workflow for ${tag}...`);
+	const result = spawnSync(
+		'gh',
+		['workflow', 'run', 'extension-release.yml', '--ref', tag],
+		{ encoding: 'utf8', stdio: 'inherit' }
+	);
+	if (result.status === 0) {
+		console.log(`✅ Triggered extension release workflow for ${tag}`);
+	} else {
+		console.warn(
+			`⚠️  Failed to trigger extension release workflow (non-critical)`
+		);
+	}
+}
