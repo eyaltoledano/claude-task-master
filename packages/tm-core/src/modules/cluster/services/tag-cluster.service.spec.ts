@@ -107,9 +107,7 @@ describe('TagClusterService', () => {
 	});
 
 	it('handles a single tag', () => {
-		const result = service.clusterTags([
-			{ tag: 'solo', dependencies: [] }
-		]);
+		const result = service.clusterTags([{ tag: 'solo', dependencies: [] }]);
 
 		expect(result.totalTags).toBe(1);
 		expect(result.totalClusters).toBe(1);

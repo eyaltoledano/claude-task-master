@@ -18,7 +18,10 @@ import {
 	type TaskExecutor
 } from './parallel-executor.service.js';
 import { getLogger } from '../../../common/logger/factory.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 
 /**
  * Cluster execution options
@@ -55,16 +58,14 @@ export class ClusterSequencerService {
 	private clusterDetector: ClusterDetectionService;
 	private parallelExecutor: ParallelExecutorService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
-	private listenerFailureCounts: Map<ProgressEventListener, number> =
-		new Map();
+	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 
 	constructor(
 		clusterDetector?: ClusterDetectionService,
 		parallelExecutor?: ParallelExecutorService
 	) {
 		this.clusterDetector = clusterDetector || new ClusterDetectionService();
-		this.parallelExecutor =
-			parallelExecutor || new ParallelExecutorService();
+		this.parallelExecutor = parallelExecutor || new ParallelExecutorService();
 
 		this.parallelExecutor.addEventListener((event) => {
 			this.emitEvent(event);
@@ -319,11 +320,7 @@ export class ClusterSequencerService {
 		);
 
 		const finalStatus = result.success ? 'done' : 'blocked';
-		this.clusterDetector.updateClusterStatus(
-			detection,
-			clusterId,
-			finalStatus
-		);
+		this.clusterDetector.updateClusterStatus(detection, clusterId, finalStatus);
 
 		return result;
 	}
@@ -404,14 +401,13 @@ export class ClusterSequencerService {
 				listener(event);
 				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				const count =
-					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				const count = (this.listenerFailureCounts.get(listener) || 0) + 1;
 				this.listenerFailureCounts.set(listener, count);
 				if (count >= 3) {
-					this.logger.error(
-						'Event listener is repeatedly failing',
-						{ failureCount: count, error }
-					);
+					this.logger.error('Event listener is repeatedly failing', {
+						failureCount: count,
+						error
+					});
 				} else {
 					this.logger.warn('Error in event listener', { error });
 				}

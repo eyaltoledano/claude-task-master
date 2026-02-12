@@ -150,7 +150,8 @@ export class ClusterPRIntegration {
 				clusterId
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			logger.error(`Failed to handle cluster ${clusterId}:`, error);
 
 			// Log error activity
@@ -219,8 +220,7 @@ export class ClusterPRIntegration {
 		clusterId: string,
 		prResult: PRCreationResult
 	): void {
-		const existingPrs =
-			(context.metadata.prs as Record<string, unknown>) || {};
+		const existingPrs = (context.metadata.prs as Record<string, unknown>) || {};
 
 		const updatedPrs = {
 			...existingPrs,

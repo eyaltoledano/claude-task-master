@@ -304,9 +304,7 @@ describe('ProjectOrchestratorService', () => {
 			const tagData = [makeTagData('A', [makeTask('1')], ['missing'])];
 			await service.executeProject('proj-1', tagData, noopExecutor);
 
-			const blockedEvents = events.filter(
-				(e) => e.type === 'cluster:blocked'
-			);
+			const blockedEvents = events.filter((e) => e.type === 'cluster:blocked');
 			expect(blockedEvents).toHaveLength(1);
 			expect(blockedEvents[0].metadata?.tag).toBe('A');
 		});
@@ -653,9 +651,7 @@ describe('ProjectOrchestratorService', () => {
 	describe('stopExecution', () => {
 		it('should set context status to failed', async () => {
 			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(
-				undefined
-			);
+			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(undefined);
 
 			// Start an execution to create a context
 			let resolveExecution: (() => void) | undefined;
@@ -689,9 +685,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should delegate to tagOrchestrator.stopExecution()', async () => {
-			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(
-				undefined
-			);
+			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(undefined);
 
 			await service.stopExecution();
 

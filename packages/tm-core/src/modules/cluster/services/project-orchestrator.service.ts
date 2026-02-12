@@ -17,7 +17,10 @@ import {
 } from './tag-orchestrator.service.js';
 import type { TaskExecutor } from './parallel-executor.service.js';
 import { getLogger } from '../../../common/logger/factory.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 
 /**
  * Tag with dependencies
@@ -63,8 +66,7 @@ export class ProjectOrchestratorService {
 	private logger = getLogger('ProjectOrchestratorService');
 	private tagOrchestrator: TagOrchestratorService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
-	private listenerFailureCounts: Map<ProgressEventListener, number> =
-		new Map();
+	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 	private currentContext?: ProjectExecutionContext;
 
 	constructor(tagOrchestrator?: TagOrchestratorService) {
@@ -189,12 +191,7 @@ export class ProjectOrchestratorService {
 						blockedClusters: result.blockedClusters
 					});
 
-					this.blockDownstreamTags(
-						tag,
-						sortedTags,
-						completedTags,
-						blockedTags
-					);
+					this.blockDownstreamTags(tag, sortedTags, completedTags, blockedTags);
 
 					if (options.stopOnFailure) {
 						this.logger.info('Stopping project execution due to tag failure');
@@ -209,12 +206,7 @@ export class ProjectOrchestratorService {
 
 				failedTags.add(tag);
 
-				this.blockDownstreamTags(
-					tag,
-					sortedTags,
-					completedTags,
-					blockedTags
-				);
+				this.blockDownstreamTags(tag, sortedTags, completedTags, blockedTags);
 
 				if (options.stopOnFailure) {
 					throw error;
@@ -229,10 +221,7 @@ export class ProjectOrchestratorService {
 						(sum, r) => sum + r.completedTasks,
 						0
 					),
-					totalTasks: tagData.reduce(
-						(sum, t) => sum + t.tasks.length,
-						0
-					),
+					totalTasks: tagData.reduce((sum, t) => sum + t.tasks.length, 0),
 					completedClusters: tagResults.reduce(
 						(sum, r) => sum + r.completedClusters,
 						0
@@ -241,7 +230,8 @@ export class ProjectOrchestratorService {
 						(sum, r) => sum + r.totalClusters,
 						0
 					),
-					percentage: sortedTags.length > 0 ? ((i + 1) / sortedTags.length) * 100 : 0
+					percentage:
+						sortedTags.length > 0 ? ((i + 1) / sortedTags.length) * 100 : 0
 				}
 			});
 		}
@@ -266,19 +256,13 @@ export class ProjectOrchestratorService {
 			completedTags: completedTags.size,
 			failedTags: failedTags.size,
 			blockedTags: blockedTags.size,
-			totalClusters: tagResults.reduce(
-				(sum, r) => sum + r.totalClusters,
-				0
-			),
+			totalClusters: tagResults.reduce((sum, r) => sum + r.totalClusters, 0),
 			completedClusters: tagResults.reduce(
 				(sum, r) => sum + r.completedClusters,
 				0
 			),
 			totalTasks: tagData.reduce((sum, t) => sum + t.tasks.length, 0),
-			completedTasks: tagResults.reduce(
-				(sum, r) => sum + r.completedTasks,
-				0
-			),
+			completedTasks: tagResults.reduce((sum, r) => sum + r.completedTasks, 0),
 			startTime,
 			endTime,
 			duration,
@@ -424,14 +408,13 @@ export class ProjectOrchestratorService {
 				listener(event);
 				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				const count =
-					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				const count = (this.listenerFailureCounts.get(listener) || 0) + 1;
 				this.listenerFailureCounts.set(listener, count);
 				if (count >= 3) {
-					this.logger.error(
-						'Event listener is repeatedly failing',
-						{ failureCount: count, error }
-					);
+					this.logger.error('Event listener is repeatedly failing', {
+						failureCount: count,
+						error
+					});
 				} else {
 					this.logger.warn('Error in event listener', { error });
 				}

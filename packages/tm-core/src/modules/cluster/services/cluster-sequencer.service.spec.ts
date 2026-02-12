@@ -211,9 +211,9 @@ describe('ClusterSequencerService', () => {
 
 			const executor = vi.fn();
 
-			await expect(
-				service.executeClusters(tasks, executor)
-			).rejects.toThrow('Circular dependency');
+			await expect(service.executeClusters(tasks, executor)).rejects.toThrow(
+				'Circular dependency'
+			);
 
 			expect(executor).not.toHaveBeenCalled();
 		});

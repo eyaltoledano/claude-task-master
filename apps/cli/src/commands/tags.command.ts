@@ -624,17 +624,11 @@ Examples:
 			await this.initTmCore();
 
 			if (options.tag) {
-				const deps = await this.tmCore!.tasks.getTagDependencies(
-					options.tag
-				);
+				const deps = await this.tmCore!.tasks.getTagDependencies(options.tag);
 
 				if (options.json) {
 					console.log(
-						JSON.stringify(
-							{ tag: options.tag, dependsOn: deps },
-							null,
-							2
-						)
+						JSON.stringify({ tag: options.tag, dependsOn: deps }, null, 2)
 					);
 					return;
 				}
@@ -674,9 +668,7 @@ Examples:
 
 			for (const entry of allDeps) {
 				if (entry.dependsOn.length > 0) {
-					console.log(
-						`  ${entry.tag} → ${entry.dependsOn.join(', ')}`
-					);
+					console.log(`  ${entry.tag} → ${entry.dependsOn.join(', ')}`);
 				}
 			}
 		} catch (error: any) {

@@ -57,8 +57,7 @@ export interface ExecutionProgress {
 export class ProgressTrackerService {
 	private logger = getLogger('ProgressTrackerService');
 	private eventListeners: Set<ProgressEventListener> = new Set();
-	private listenerFailureCounts: Map<ProgressEventListener, number> =
-		new Map();
+	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 	private taskProgress: Map<string, TaskProgress> = new Map();
 	private clusterProgress: Map<string, ClusterProgress> = new Map();
 	private taskToClusterMap: Map<string, string> = new Map();
@@ -142,9 +141,7 @@ export class ProgressTrackerService {
 		this.emitEvent(event);
 	}
 
-	private async handleClusterStarted(
-		event: ProgressEventData
-	): Promise<void> {
+	private async handleClusterStarted(event: ProgressEventData): Promise<void> {
 		if (!event.clusterId) return;
 
 		const cluster = this.clusterProgress.get(event.clusterId);
@@ -164,10 +161,9 @@ export class ProgressTrackerService {
 
 		const cluster = this.clusterProgress.get(event.clusterId);
 		if (cluster) {
-			const duration =
-				cluster.startTime
-					? event.timestamp.getTime() - cluster.startTime.getTime()
-					: undefined;
+			const duration = cluster.startTime
+				? event.timestamp.getTime() - cluster.startTime.getTime()
+				: undefined;
 
 			this.clusterProgress.set(event.clusterId, {
 				...cluster,
@@ -201,10 +197,9 @@ export class ProgressTrackerService {
 
 		const task = this.taskProgress.get(event.taskId);
 		if (task) {
-			const duration =
-				task.startTime
-					? event.timestamp.getTime() - task.startTime.getTime()
-					: undefined;
+			const duration = task.startTime
+				? event.timestamp.getTime() - task.startTime.getTime()
+				: undefined;
 
 			const updatedTask: TaskProgress = {
 				...task,
@@ -222,10 +217,7 @@ export class ProgressTrackerService {
 	/**
 	 * Update cluster counters when a task completes or fails
 	 */
-	private updateClusterFromTask(
-		taskId: string,
-		task: TaskProgress
-	): void {
+	private updateClusterFromTask(taskId: string, task: TaskProgress): void {
 		const clusterId = this.findClusterForTask(taskId);
 		if (!clusterId) return;
 
@@ -251,9 +243,9 @@ export class ProgressTrackerService {
 	}
 
 	getProgress(): ExecutionProgress {
-		const completedClusters = Array.from(
-			this.clusterProgress.values()
-		).filter((c) => c.status === 'done').length;
+		const completedClusters = Array.from(this.clusterProgress.values()).filter(
+			(c) => c.status === 'done'
+		).length;
 
 		const completedTasks = Array.from(this.taskProgress.values()).filter(
 			(t) => t.status === 'done'
@@ -267,16 +259,14 @@ export class ProgressTrackerService {
 			(t) => t.status === 'blocked'
 		).length;
 
-		const currentCluster = Array.from(
-			this.clusterProgress.values()
-		).find((c) => c.status === 'in-progress');
+		const currentCluster = Array.from(this.clusterProgress.values()).find(
+			(c) => c.status === 'in-progress'
+		);
 
 		const now = new Date();
 		const duration = now.getTime() - this.startTime.getTime();
 		const percentage =
-			this.totalTasks > 0
-				? (completedTasks / this.totalTasks) * 100
-				: 0;
+			this.totalTasks > 0 ? (completedTasks / this.totalTasks) * 100 : 0;
 
 		let estimatedTimeRemaining: number | undefined;
 		if (completedTasks > 0) {
@@ -378,26 +368,22 @@ export class ProgressTrackerService {
 			const checkpoint = JSON.parse(content) as ExecutionCheckpoint;
 
 			// Restore progress state immutably
-			Object.entries(checkpoint.clusterStatuses).forEach(
-				([id, status]) => {
-					const cluster = this.clusterProgress.get(id);
-					if (cluster) {
-						this.clusterProgress.set(id, {
-							...cluster,
-							status
-						});
-					}
+			Object.entries(checkpoint.clusterStatuses).forEach(([id, status]) => {
+				const cluster = this.clusterProgress.get(id);
+				if (cluster) {
+					this.clusterProgress.set(id, {
+						...cluster,
+						status
+					});
 				}
-			);
+			});
 
-			Object.entries(checkpoint.taskStatuses).forEach(
-				([id, status]) => {
-					const task = this.taskProgress.get(id);
-					if (task) {
-						this.taskProgress.set(id, { ...task, status });
-					}
+			Object.entries(checkpoint.taskStatuses).forEach(([id, status]) => {
+				const task = this.taskProgress.get(id);
+				if (task) {
+					this.taskProgress.set(id, { ...task, status });
 				}
-			);
+			});
 
 			this.logger.info('Checkpoint loaded', {
 				currentClusterId: checkpoint.currentClusterId,
@@ -456,14 +442,13 @@ export class ProgressTrackerService {
 				listener(event);
 				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				const count =
-					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				const count = (this.listenerFailureCounts.get(listener) || 0) + 1;
 				this.listenerFailureCounts.set(listener, count);
 				if (count >= 3) {
-					this.logger.error(
-						'Event listener is repeatedly failing',
-						{ failureCount: count, error }
-					);
+					this.logger.error('Event listener is repeatedly failing', {
+						failureCount: count,
+						error
+					});
 				} else {
 					this.logger.warn('Error in event listener', { error });
 				}
@@ -498,10 +483,7 @@ export class ProgressTrackerService {
 			if (task.endTime) {
 				timeline.push({
 					timestamp: task.endTime,
-					type:
-						task.status === 'done'
-							? 'task:completed'
-							: 'task:failed',
+					type: task.status === 'done' ? 'task:completed' : 'task:failed',
 					taskId: task.taskId,
 					status: task.status
 				});
@@ -521,18 +503,14 @@ export class ProgressTrackerService {
 				timeline.push({
 					timestamp: cluster.endTime,
 					type:
-						cluster.status === 'done'
-							? 'cluster:completed'
-							: 'cluster:failed',
+						cluster.status === 'done' ? 'cluster:completed' : 'cluster:failed',
 					clusterId: cluster.clusterId,
 					status: cluster.status
 				});
 			}
 		});
 
-		timeline.sort(
-			(a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-		);
+		timeline.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
 		return timeline;
 	}

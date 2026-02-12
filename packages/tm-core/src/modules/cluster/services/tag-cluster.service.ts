@@ -48,10 +48,7 @@ export class TagClusterService {
 	clusterTags(tagDeps: readonly TagDependency[]): TagClusterResult {
 		const tagSet = new Set(tagDeps.map((t) => t.tag));
 		const depMap = new Map(
-			tagDeps.map((t) => [
-				t.tag,
-				t.dependencies.filter((d) => tagSet.has(d))
-			])
+			tagDeps.map((t) => [t.tag, t.dependencies.filter((d) => tagSet.has(d))])
 		);
 		const levelMap = new Map<string, number>();
 

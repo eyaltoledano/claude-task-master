@@ -7,10 +7,7 @@ import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
 import { handleApiResult, withToolContext } from '../../shared/utils.js';
-import {
-	ClusterPRIntegration,
-	type ClusterCompletionEvent
-} from '@tm/core';
+import { ClusterPRIntegration, type ClusterCompletionEvent } from '@tm/core';
 
 const CreatePRSchema = z.object({
 	projectRoot: z
@@ -43,15 +40,8 @@ const CreatePRSchema = z.object({
 		.optional()
 		.default(false)
 		.describe('Enable auto-merge for PR'),
-	draft: z
-		.boolean()
-		.optional()
-		.default(false)
-		.describe('Create PR as draft'),
-	labels: z
-		.array(z.string())
-		.optional()
-		.describe('Labels to add to PR'),
+	draft: z.boolean().optional().default(false).describe('Create PR as draft'),
+	labels: z.array(z.string()).optional().describe('Labels to add to PR'),
 	metadata: z
 		.record(z.string(), z.unknown())
 		.optional()
@@ -123,8 +113,7 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 
 					// Generate cluster ID if not provided
 					const finalClusterId =
-						clusterId ||
-						`cluster-${workflowContext.taskId}-${Date.now()}`;
+						clusterId || `cluster-${workflowContext.taskId}-${Date.now()}`;
 
 					// Use workflow branch if not provided
 					const finalBranchName =
@@ -165,9 +154,8 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 					};
 
 					// Handle cluster completion and create PR
-					const result = await prIntegration.handleClusterCompletion(
-						clusterEvent
-					);
+					const result =
+						await prIntegration.handleClusterCompletion(clusterEvent);
 
 					if (!result.success) {
 						return handleApiResult({
@@ -209,7 +197,8 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 						projectRoot
 					});
 				} catch (error: unknown) {
-					const message = error instanceof Error ? error.message : String(error);
+					const message =
+						error instanceof Error ? error.message : String(error);
 					log.error(`Failed to create PR: ${message}`);
 
 					return handleApiResult({

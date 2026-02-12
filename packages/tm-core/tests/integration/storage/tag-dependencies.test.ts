@@ -103,9 +103,9 @@ describe('Tag Dependencies - Integration Tests', () => {
 		it('should reject self-dependency', async () => {
 			seedTagsFile(tempDir, ['a']);
 
-			await expect(
-				tagService.addTagDependency('a', 'a')
-			).rejects.toThrow(/cannot depend on itself/);
+			await expect(tagService.addTagDependency('a', 'a')).rejects.toThrow(
+				/cannot depend on itself/
+			);
 		});
 
 		it('should reject when source tag does not exist', async () => {
@@ -171,9 +171,9 @@ describe('Tag Dependencies - Integration Tests', () => {
 
 			await tagService.addTagDependency('a', 'b');
 
-			await expect(
-				tagService.addTagDependency('b', 'a')
-			).rejects.toThrow(/circular dependency/);
+			await expect(tagService.addTagDependency('b', 'a')).rejects.toThrow(
+				/circular dependency/
+			);
 		});
 
 		it('should reject transitive circular dependency (A→B→C→A)', async () => {
@@ -182,9 +182,9 @@ describe('Tag Dependencies - Integration Tests', () => {
 			await tagService.addTagDependency('a', 'b');
 			await tagService.addTagDependency('b', 'c');
 
-			await expect(
-				tagService.addTagDependency('c', 'a')
-			).rejects.toThrow(/circular dependency/);
+			await expect(tagService.addTagDependency('c', 'a')).rejects.toThrow(
+				/circular dependency/
+			);
 		});
 
 		it('should allow diamond dependencies (no cycle)', async () => {
@@ -210,9 +210,9 @@ describe('Tag Dependencies - Integration Tests', () => {
 			await tagService.addTagDependency('b', 'c');
 
 			// This should fail (would create C→A→B→C cycle)
-			await expect(
-				tagService.addTagDependency('c', 'a')
-			).rejects.toThrow(/circular dependency/);
+			await expect(tagService.addTagDependency('c', 'a')).rejects.toThrow(
+				/circular dependency/
+			);
 
 			// But adding a non-circular dep should still work
 			// d has no deps, so c→d is safe
@@ -240,12 +240,7 @@ describe('Tag Dependencies - Integration Tests', () => {
 
 			await tagService.addTagDependency('a', 'b');
 
-			const filePath = path.join(
-				tempDir,
-				'.taskmaster',
-				'tasks',
-				'tasks.json'
-			);
+			const filePath = path.join(tempDir, '.taskmaster', 'tasks', 'tasks.json');
 			const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
 			expect(raw.a.metadata.dependsOn).toEqual(['b']);

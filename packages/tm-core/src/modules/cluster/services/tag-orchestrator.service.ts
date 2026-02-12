@@ -23,7 +23,10 @@ import {
 } from './progress-tracker.service.js';
 import type { TaskExecutor } from './parallel-executor.service.js';
 import { getLogger } from '../../../common/logger/factory.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 
 /**
  * Tag execution options
@@ -63,8 +66,7 @@ export class TagOrchestratorService {
 	private clusterSequencer: ClusterSequencerService;
 	private progressTracker: ProgressTrackerService;
 	private eventListeners: Set<ProgressEventListener> = new Set();
-	private listenerFailureCounts: Map<ProgressEventListener, number> =
-		new Map();
+	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 	private currentSequencerListener?: (event: ProgressEventData) => void;
 	private currentContext?: TagExecutionContext;
 
@@ -104,10 +106,7 @@ export class TagOrchestratorService {
 
 		const startTime = new Date();
 
-		const detection = this.clusterDetector.detectClusters(
-			tasks,
-			`tag:${tag}`
-		);
+		const detection = this.clusterDetector.detectClusters(tasks, `tag:${tag}`);
 
 		if (detection.hasCircularDependencies) {
 			throw new TaskMasterError(
@@ -166,7 +165,14 @@ export class TagOrchestratorService {
 			await this.progressTracker.deleteCheckpoint();
 		}
 
-		return this.buildTagResult(tag, sequencerResult, progress, startTime, endTime, duration);
+		return this.buildTagResult(
+			tag,
+			sequencerResult,
+			progress,
+			startTime,
+			endTime,
+			duration
+		);
 	}
 
 	/**
@@ -196,11 +202,7 @@ export class TagOrchestratorService {
 
 		Object.entries(checkpoint.clusterStatuses).forEach(
 			([clusterId, status]) => {
-				this.clusterDetector.updateClusterStatus(
-					detection,
-					clusterId,
-					status
-				);
+				this.clusterDetector.updateClusterStatus(detection, clusterId, status);
 			}
 		);
 	}
@@ -260,9 +262,7 @@ export class TagOrchestratorService {
 		});
 
 		if (!this.progressTracker) {
-			this.progressTracker = new ProgressTrackerService(
-				options.checkpointPath
-			);
+			this.progressTracker = new ProgressTrackerService(options.checkpointPath);
 			await this.progressTracker.initialize(detection);
 		}
 
@@ -364,9 +364,7 @@ export class TagOrchestratorService {
 			const currentCluster =
 				this.currentContext.clusters[this.currentContext.currentClusterIndex];
 			if (currentCluster) {
-				await this.progressTracker.createCheckpoint(
-					currentCluster.clusterId
-				);
+				await this.progressTracker.createCheckpoint(currentCluster.clusterId);
 			}
 		}
 	}
@@ -394,14 +392,13 @@ export class TagOrchestratorService {
 				listener(event);
 				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				const count =
-					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				const count = (this.listenerFailureCounts.get(listener) || 0) + 1;
 				this.listenerFailureCounts.set(listener, count);
 				if (count >= 3) {
-					this.logger.error(
-						'Event listener is repeatedly failing',
-						{ failureCount: count, error }
-					);
+					this.logger.error('Event listener is repeatedly failing', {
+						failureCount: count,
+						error
+					});
 				} else {
 					this.logger.warn('Error in event listener', { error });
 				}

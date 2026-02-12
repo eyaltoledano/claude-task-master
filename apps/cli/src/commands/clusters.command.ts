@@ -216,7 +216,9 @@ export class ClustersCommand extends Command {
 		const usableWidth = getBoxWidth(0.95);
 		// Cluster, Level, Parallel, Tasks, Depends On, Status
 		const widths = [0.12, 0.08, 0.18, 0.3, 0.18, 0.14];
-		const colWidths = widths.map((w) => Math.max(Math.floor(usableWidth * w), 8));
+		const colWidths = widths.map((w) =>
+			Math.max(Math.floor(usableWidth * w), 8)
+		);
 
 		const table = new Table({
 			head: [
@@ -374,9 +376,7 @@ export class ClustersCommand extends Command {
 		const spineReachable = new Set<string>();
 		for (let i = 0; i < sorted.length; i++) {
 			for (let j = i + 1; j < sorted.length; j++) {
-				spineReachable.add(
-					`${sorted[i].clusterId}->${sorted[j].clusterId}`
-				);
+				spineReachable.add(`${sorted[i].clusterId}->${sorted[j].clusterId}`);
 			}
 		}
 
@@ -463,8 +463,7 @@ export class ClustersCommand extends Command {
 		const clusterCount = detection.clusters.length;
 
 		// LR for ≤4 clusters on wide terminals; TD otherwise
-		const direction =
-			clusterCount > 4 || termWidth < 100 ? 'TD' : 'LR';
+		const direction = clusterCount > 4 || termWidth < 100 ? 'TD' : 'LR';
 
 		const mermaidSyntax = this.buildMermaidSyntax(detection, { direction });
 		const paddingX = termWidth < 80 ? 2 : termWidth < 120 ? 3 : 5;
@@ -576,7 +575,9 @@ export class ClustersCommand extends Command {
 		const usableWidth = getBoxWidth(0.95);
 		// Cluster, Level, Parallel, Tags, Depends On
 		const widths = [0.15, 0.1, 0.2, 0.35, 0.2];
-		const colWidths = widths.map((w) => Math.max(Math.floor(usableWidth * w), 8));
+		const colWidths = widths.map((w) =>
+			Math.max(Math.floor(usableWidth * w), 8)
+		);
 
 		const table = new Table({
 			head: [
@@ -641,9 +642,7 @@ export class ClustersCommand extends Command {
 		const direction = options?.direction ?? 'TD';
 		const lines: string[] = [`graph ${direction}`];
 
-		const sorted = [...detection.clusters].sort(
-			(a, b) => a.level - b.level
-		);
+		const sorted = [...detection.clusters].sort((a, b) => a.level - b.level);
 
 		for (const cluster of sorted) {
 			const count = cluster.tags.length;
@@ -656,9 +655,7 @@ export class ClustersCommand extends Command {
 
 		// Spine chain
 		if (sorted.length > 1) {
-			const chain = sorted
-				.map((c) => `level_${c.level}`)
-				.join(' --> ');
+			const chain = sorted.map((c) => `level_${c.level}`).join(' --> ');
 			lines.push(`  ${chain}`);
 		}
 
@@ -666,9 +663,7 @@ export class ClustersCommand extends Command {
 		const spineReachable = new Set<string>();
 		for (let i = 0; i < sorted.length; i++) {
 			for (let j = i + 1; j < sorted.length; j++) {
-				spineReachable.add(
-					`${sorted[i].level}->${sorted[j].level}`
-				);
+				spineReachable.add(`${sorted[i].level}->${sorted[j].level}`);
 			}
 		}
 
@@ -714,8 +709,7 @@ export class ClustersCommand extends Command {
 		const termWidth = process.stdout.columns || 120;
 		const clusterCount = detection.clusters.length;
 
-		const direction =
-			clusterCount > 4 || termWidth < 100 ? 'TD' : 'LR';
+		const direction = clusterCount > 4 || termWidth < 100 ? 'TD' : 'LR';
 		const paddingX = termWidth < 80 ? 2 : termWidth < 120 ? 3 : 5;
 
 		const mermaidSyntax = this.buildTagMermaidSyntax(detection, { direction });

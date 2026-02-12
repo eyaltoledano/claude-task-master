@@ -52,8 +52,7 @@ interface TaskExecutionContext {
 export class ParallelExecutorService {
 	private logger = getLogger('ParallelExecutorService');
 	private eventListeners: Set<ProgressEventListener> = new Set();
-	private listenerFailureCounts: Map<ProgressEventListener, number> =
-		new Map();
+	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 	private activeExecutions: Map<string, TaskExecutionContext> = new Map();
 	private constraints: ResourceConstraints;
 
@@ -379,14 +378,13 @@ export class ParallelExecutorService {
 				listener(event);
 				this.listenerFailureCounts.delete(listener);
 			} catch (error) {
-				const count =
-					(this.listenerFailureCounts.get(listener) || 0) + 1;
+				const count = (this.listenerFailureCounts.get(listener) || 0) + 1;
 				this.listenerFailureCounts.set(listener, count);
 				if (count >= 3) {
-					this.logger.error(
-						'Event listener is repeatedly failing',
-						{ failureCount: count, error }
-					);
+					this.logger.error('Event listener is repeatedly failing', {
+						failureCount: count,
+						error
+					});
 				} else {
 					this.logger.warn('Error in event listener', { error });
 				}

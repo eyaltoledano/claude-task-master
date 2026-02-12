@@ -309,9 +309,7 @@ describe('ProgressTrackerService', () => {
 				taskId: '1'
 			});
 
-			const progressEvent = received.find(
-				(e) => e.type === 'progress:updated'
-			);
+			const progressEvent = received.find((e) => e.type === 'progress:updated');
 			expect(progressEvent).toBeDefined();
 			expect(progressEvent?.progress).toBeDefined();
 			expect(progressEvent?.progress?.totalTasks).toBe(3);
@@ -340,9 +338,7 @@ describe('ProgressTrackerService', () => {
 			});
 
 			// Cluster-0 should remain pending
-			expect(service.getClusterProgress('cluster-0')?.status).toBe(
-				'pending'
-			);
+			expect(service.getClusterProgress('cluster-0')?.status).toBe('pending');
 		});
 
 		it('should ignore events with missing taskId for task events', async () => {
@@ -513,9 +509,7 @@ describe('ProgressTrackerService', () => {
 			});
 
 			it('should include correct data in checkpoint JSON', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 				await trackerWithPath.initialize(makeDetection());
 
 				// Complete task 1 so it appears in completedTasks
@@ -545,9 +539,7 @@ describe('ProgressTrackerService', () => {
 
 		describe('loadCheckpoint', () => {
 			it('should restore progress state immutably', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 				await trackerWithPath.initialize(makeDetection());
 
 				const checkpointData = {
@@ -580,9 +572,7 @@ describe('ProgressTrackerService', () => {
 			});
 
 			it('should return null when file not found (ENOENT)', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 
 				const enoent = new Error('File not found') as NodeJS.ErrnoException;
 				enoent.code = 'ENOENT';
@@ -596,11 +586,11 @@ describe('ProgressTrackerService', () => {
 			});
 
 			it('should throw on non-ENOENT errors', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 
-				const permError = new Error('Permission denied') as NodeJS.ErrnoException;
+				const permError = new Error(
+					'Permission denied'
+				) as NodeJS.ErrnoException;
 				permError.code = 'EACCES';
 				(fsMock.readFile as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
 					permError
@@ -619,9 +609,7 @@ describe('ProgressTrackerService', () => {
 
 		describe('deleteCheckpoint', () => {
 			it('should remove the checkpoint file', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 
 				await trackerWithPath.deleteCheckpoint();
 
@@ -629,9 +617,7 @@ describe('ProgressTrackerService', () => {
 			});
 
 			it('should ignore ENOENT silently', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 
 				const enoent = new Error('Not found') as NodeJS.ErrnoException;
 				enoent.code = 'ENOENT';
@@ -645,9 +631,7 @@ describe('ProgressTrackerService', () => {
 			});
 
 			it('should throw on non-ENOENT errors', async () => {
-				const trackerWithPath = new ProgressTrackerService(
-					'/tmp/cp.json'
-				);
+				const trackerWithPath = new ProgressTrackerService('/tmp/cp.json');
 
 				const ioError = new Error('I/O error') as NodeJS.ErrnoException;
 				ioError.code = 'EIO';

@@ -45,11 +45,7 @@ export interface DependencyValidationResult {
 /**
  * Dependency issue type
  */
-export type DependencyIssueType =
-	| 'circular'
-	| 'self'
-	| 'missing'
-	| 'invalid';
+export type DependencyIssueType = 'circular' | 'self' | 'missing' | 'invalid';
 
 /**
  * Dependency validation issue

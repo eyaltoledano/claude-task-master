@@ -199,7 +199,8 @@ export class PRBodyFormatter {
 
 		subtasks.forEach((subtask) => {
 			const checkbox = subtask.status === 'completed' ? '[x]' : '[ ]';
-			const attempts = subtask.attempts > 1 ? ` (${subtask.attempts} attempts)` : '';
+			const attempts =
+				subtask.attempts > 1 ? ` (${subtask.attempts} attempts)` : '';
 			parts.push(`- ${checkbox} ${subtask.title}${attempts}`);
 		});
 

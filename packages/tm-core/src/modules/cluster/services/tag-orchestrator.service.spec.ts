@@ -14,10 +14,7 @@ import {
 	type ExecutionProgress
 } from './progress-tracker.service.js';
 import type { Task } from '../../../common/types/index.js';
-import type {
-	ClusterDetectionResult,
-	ProgressEventData
-} from '../types.js';
+import type { ClusterDetectionResult, ProgressEventData } from '../types.js';
 import { TaskMasterError } from '../../../common/errors/task-master-error.js';
 
 vi.mock('../../../common/logger/factory.js', () => ({
@@ -167,9 +164,7 @@ describe('TagOrchestratorService', () => {
 		it('should forward sequencer events to progress tracker and own listeners', () => {
 			// The constructor calls addEventListener on both sequencer and progressTracker.
 			// Capture the listener registered on the sequencer.
-			const sequencerAddListener = vi.mocked(
-				mockSequencer.addEventListener
-			);
+			const sequencerAddListener = vi.mocked(mockSequencer.addEventListener);
 			expect(sequencerAddListener).toHaveBeenCalledTimes(1);
 
 			const registeredListener = sequencerAddListener.mock.calls[0][0];
@@ -214,9 +209,7 @@ describe('TagOrchestratorService', () => {
 		const executor = vi.fn();
 
 		beforeEach(() => {
-			vi.mocked(mockDetector.detectClusters).mockReturnValue(
-				makeDetection()
-			);
+			vi.mocked(mockDetector.detectClusters).mockReturnValue(makeDetection());
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult()
 			);
@@ -245,9 +238,7 @@ describe('TagOrchestratorService', () => {
 				hasCircularDependencies: true,
 				circularDependencyPath: ['1', '2', '1']
 			};
-			vi.mocked(mockDetector.detectClusters).mockReturnValue(
-				circularDetection
-			);
+			vi.mocked(mockDetector.detectClusters).mockReturnValue(circularDetection);
 
 			await expect(
 				service.executeTag('feature', tasks, executor)
@@ -304,10 +295,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult(true)
@@ -330,10 +320,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult(false)
@@ -367,9 +356,7 @@ describe('TagOrchestratorService', () => {
 				taskStatuses: {}
 			};
 
-			vi.mocked(mockDetector.detectClusters).mockReturnValue(
-				makeDetection()
-			);
+			vi.mocked(mockDetector.detectClusters).mockReturnValue(makeDetection());
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult()
 			);
@@ -381,10 +368,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 			vi.spyOn(
 				ProgressTrackerService.prototype,
 				'deleteCheckpoint'
@@ -411,9 +397,7 @@ describe('TagOrchestratorService', () => {
 		});
 
 		it('should skip if no checkpoint found', async () => {
-			vi.mocked(mockDetector.detectClusters).mockReturnValue(
-				makeDetection()
-			);
+			vi.mocked(mockDetector.detectClusters).mockReturnValue(makeDetection());
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult()
 			);
@@ -425,10 +409,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 			vi.spyOn(
 				ProgressTrackerService.prototype,
 				'deleteCheckpoint'
@@ -506,10 +489,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 			vi.spyOn(
 				ProgressTrackerService.prototype,
 				'deleteCheckpoint'
@@ -539,32 +521,30 @@ describe('TagOrchestratorService', () => {
 		it('should return true when all dependencies completed', () => {
 			const completed = new Set(['setup', 'init']);
 
-			expect(
-				service.isTagReady('feature', ['setup', 'init'], completed)
-			).toBe(true);
+			expect(service.isTagReady('feature', ['setup', 'init'], completed)).toBe(
+				true
+			);
 		});
 
 		it('should return false when any dependency not completed', () => {
 			const completed = new Set(['setup']);
 
-			expect(
-				service.isTagReady('feature', ['setup', 'init'], completed)
-			).toBe(false);
+			expect(service.isTagReady('feature', ['setup', 'init'], completed)).toBe(
+				false
+			);
 		});
 	});
 
 	describe('areAllClustersTerminal', () => {
 		it('should delegate to sequencer', () => {
 			const detection = makeDetection();
-			vi.mocked(mockSequencer.areAllClustersTerminal).mockReturnValue(
-				true
-			);
+			vi.mocked(mockSequencer.areAllClustersTerminal).mockReturnValue(true);
 
 			const result = service.areAllClustersTerminal(detection);
 
-			expect(
-				mockSequencer.areAllClustersTerminal
-			).toHaveBeenCalledWith(detection);
+			expect(mockSequencer.areAllClustersTerminal).toHaveBeenCalledWith(
+				detection
+			);
 			expect(result).toBe(true);
 		});
 	});
@@ -579,9 +559,7 @@ describe('TagOrchestratorService', () => {
 
 			const result = service.getNextReadyCluster(detection);
 
-			expect(mockSequencer.getNextReadyCluster).toHaveBeenCalledWith(
-				detection
-			);
+			expect(mockSequencer.getNextReadyCluster).toHaveBeenCalledWith(detection);
 			expect(result).toBe(expectedCluster);
 		});
 	});
@@ -589,9 +567,7 @@ describe('TagOrchestratorService', () => {
 	describe('stopExecution', () => {
 		it('should set context status to failed with endTime', async () => {
 			// Set up context first
-			vi.mocked(mockDetector.detectClusters).mockReturnValue(
-				makeDetection()
-			);
+			vi.mocked(mockDetector.detectClusters).mockReturnValue(makeDetection());
 			vi.mocked(mockSequencer.executeClusters).mockResolvedValue(
 				makeSequencerResult()
 			);
@@ -599,10 +575,9 @@ describe('TagOrchestratorService', () => {
 				ProgressTrackerService.prototype,
 				'initialize'
 			).mockResolvedValue();
-			vi.spyOn(
-				ProgressTrackerService.prototype,
-				'getProgress'
-			).mockReturnValue(makeProgress());
+			vi.spyOn(ProgressTrackerService.prototype, 'getProgress').mockReturnValue(
+				makeProgress()
+			);
 			vi.spyOn(
 				ProgressTrackerService.prototype,
 				'deleteCheckpoint'

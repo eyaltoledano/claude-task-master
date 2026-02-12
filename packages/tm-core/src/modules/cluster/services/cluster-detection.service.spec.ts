@@ -430,11 +430,7 @@ describe('ClusterDetectionService', () => {
 			];
 
 			const result = service.detectClusters(tasks);
-			const clusterTasks = service.getClusterTasks(
-				result,
-				'cluster-0',
-				tasks
-			);
+			const clusterTasks = service.getClusterTasks(result, 'cluster-0', tasks);
 
 			expect(clusterTasks).toHaveLength(2);
 		});
@@ -468,22 +464,16 @@ describe('ClusterDetectionService', () => {
 			const result = service.detectClusters(tasks);
 
 			// First cluster should be ready
-			expect(
-				service.isClusterReady(result.clusters[0], result)
-			).toBe(true);
+			expect(service.isClusterReady(result.clusters[0], result)).toBe(true);
 
 			// Second cluster should not be ready yet
-			expect(
-				service.isClusterReady(result.clusters[1], result)
-			).toBe(false);
+			expect(service.isClusterReady(result.clusters[1], result)).toBe(false);
 
 			// Mark first cluster as done
 			service.updateClusterStatus(result, 'cluster-0', 'done');
 
 			// Now second cluster should be ready
-			expect(
-				service.isClusterReady(result.clusters[1], result)
-			).toBe(true);
+			expect(service.isClusterReady(result.clusters[1], result)).toBe(true);
 		});
 
 		it('should update cluster status', () => {

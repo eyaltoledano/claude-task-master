@@ -4,10 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { WorkflowContext } from '../../workflow/types.js';
-import {
-	GitHubPRService,
-	type PRClusterInput
-} from './github-pr.service.js';
+import { GitHubPRService, type PRClusterInput } from './github-pr.service.js';
 
 describe('GitHubPRService', () => {
 	let service: GitHubPRService;

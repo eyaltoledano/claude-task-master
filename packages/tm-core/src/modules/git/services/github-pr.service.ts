@@ -137,8 +137,7 @@ export class GitHubPRService {
 
 			const title =
 				customTitle || this.generatePRTitle(cluster, workflowContext);
-			const body =
-				customBody || this.generatePRBody(cluster, workflowContext);
+			const body = customBody || this.generatePRBody(cluster, workflowContext);
 
 			if (dryRun) {
 				return this.handleDryRun(cluster, title, body);
@@ -297,12 +296,10 @@ export class GitHubPRService {
 		cluster: PRClusterInput,
 		workflowContext?: WorkflowContext
 	): string {
-		const commits: CommitInfo[] | undefined = cluster.commits?.map(
-			(sha) => ({
-				sha,
-				message: '' // Message not available in cluster metadata
-			})
-		);
+		const commits: CommitInfo[] | undefined = cluster.commits?.map((sha) => ({
+			sha,
+			message: '' // Message not available in cluster metadata
+		}));
 
 		return this.prBodyFormatter.format({
 			workflowContext,
@@ -311,14 +308,10 @@ export class GitHubPRService {
 			tag: cluster.tag || workflowContext?.tag,
 			taskId: cluster.taskId || workflowContext?.taskId,
 			taskTitle: cluster.metadata?.taskTitle as string | undefined,
-			taskDescription: cluster.metadata?.taskDescription as
-				| string
-				| undefined,
+			taskDescription: cluster.metadata?.taskDescription as string | undefined,
 			runStartTime: cluster.metadata?.runStartTime as string | undefined,
 			runEndTime: cluster.metadata?.runEndTime as string | undefined,
-			coveragePercent: cluster.metadata?.coveragePercent as
-				| number
-				| undefined
+			coveragePercent: cluster.metadata?.coveragePercent as number | undefined
 		});
 	}
 

@@ -10,7 +10,10 @@ import type {
 	ClusterStatus
 } from '../types.js';
 import { getLogger } from '../../../common/logger/factory.js';
-import { ERROR_CODES, TaskMasterError } from '../../../common/errors/task-master-error.js';
+import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
 
 /**
  * Internal node for topological sort
@@ -36,12 +39,11 @@ export class ClusterDetectionService {
 	 * @param cacheKey - Optional cache key for result caching
 	 * @returns Cluster detection result
 	 */
-	detectClusters(
-		tasks: Task[],
-		cacheKey?: string
-	): ClusterDetectionResult {
+	detectClusters(tasks: Task[], cacheKey?: string): ClusterDetectionResult {
 		if (cacheKey && this.cache.has(cacheKey)) {
-			this.logger.debug('Returning cached cluster detection result', { cacheKey });
+			this.logger.debug('Returning cached cluster detection result', {
+				cacheKey
+			});
 			return this.cache.get(cacheKey)!;
 		}
 
@@ -175,7 +177,9 @@ export class ClusterDetectionService {
 
 		for (const depId of node.dependencies) {
 			if (!graph.has(depId)) {
-				this.logger.warn(`Dependency '${depId}' referenced by task '${taskId}' not found in graph — skipping`);
+				this.logger.warn(
+					`Dependency '${depId}' referenced by task '${taskId}' not found in graph — skipping`
+				);
 				continue;
 			}
 
@@ -423,7 +427,9 @@ export class ClusterDetectionService {
 		cluster.downstreamClusters.forEach((downstreamId) => {
 			const downstream = this.getCluster(result, downstreamId);
 			if (!downstream) {
-				this.logger.warn(`Downstream cluster not found: ${downstreamId} (referenced by ${clusterId})`);
+				this.logger.warn(
+					`Downstream cluster not found: ${downstreamId} (referenced by ${clusterId})`
+				);
 				return;
 			}
 			if (downstream.status !== 'done') {
