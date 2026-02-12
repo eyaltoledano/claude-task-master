@@ -27,6 +27,11 @@ export type ClusterStatus =
 	| 'blocked'; // Upstream dependency failed
 
 /**
+ * Execution status for tag and project contexts.
+ */
+export type ExecutionStatus = 'pending' | 'in-progress' | 'done' | 'failed';
+
+/**
  * Cluster metadata
  */
 export interface ClusterMetadata {
@@ -103,6 +108,7 @@ export type ProgressEventType =
 	| 'cluster:completed'
 	| 'cluster:failed'
 	| 'cluster:blocked'
+	| 'tag:blocked'
 	| 'task:started'
 	| 'task:completed'
 	| 'task:failed'
@@ -168,7 +174,7 @@ export interface TagExecutionContext {
 	currentClusterIndex: number;
 	startTime: Date;
 	endTime?: Date;
-	status: 'pending' | 'in-progress' | 'done' | 'failed';
+	status: ExecutionStatus;
 	checkpoint?: ExecutionCheckpoint;
 }
 
@@ -182,5 +188,5 @@ export interface ProjectExecutionContext {
 	tagContexts: Map<string, TagExecutionContext>;
 	startTime: Date;
 	endTime?: Date;
-	status: 'pending' | 'in-progress' | 'done' | 'failed';
+	status: ExecutionStatus;
 }

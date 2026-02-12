@@ -197,17 +197,28 @@ jest.unstable_mockModule(
 
 // Mock fs module
 const mockWriteFileSync = jest.fn();
+const mockFsPromises = {
+	readFile: jest.fn(),
+	writeFile: jest.fn(),
+	mkdir: jest.fn(),
+	readdir: jest.fn(),
+	stat: jest.fn(),
+	access: jest.fn(),
+	unlink: jest.fn()
+};
 jest.unstable_mockModule('fs', () => ({
 	default: {
 		existsSync: jest.fn(() => false),
 		readFileSync: jest.fn(),
 		writeFileSync: mockWriteFileSync,
-		unlinkSync: jest.fn()
+		unlinkSync: jest.fn(),
+		promises: mockFsPromises
 	},
 	existsSync: jest.fn(() => false),
 	readFileSync: jest.fn(),
 	writeFileSync: mockWriteFileSync,
-	unlinkSync: jest.fn()
+	unlinkSync: jest.fn(),
+	promises: mockFsPromises
 }));
 
 jest.unstable_mockModule(

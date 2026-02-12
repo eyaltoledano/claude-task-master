@@ -256,24 +256,92 @@ describe('ClusterPRIntegration', () => {
 	});
 
 	describe('options management', () => {
-		it('should update dry-run mode at runtime', () => {
-			expect(integration['options'].dryRun).toBe(true);
+		it('should update dry-run mode at runtime', async () => {
+			const workflowContext: WorkflowContext = {
+				taskId: 'TAS-dry',
+				subtasks: [
+					{
+						id: 'sub-1',
+						title: 'Test subtask',
+						status: 'completed',
+						attempts: 1
+					}
+				],
+				currentSubtaskIndex: 0,
+				branchName: 'feature/dry-run-toggle',
+				errors: [],
+				metadata: {}
+			};
 
+			const event: ClusterCompletionEvent = {
+				clusterId: 'cluster-dry-toggle',
+				workflowContext,
+				branchName: 'feature/dry-run-toggle',
+				commits: ['abc123']
+			};
+
+			// Initially dry-run is true, so PR creation should succeed with dryRun flag
+			const dryResult = await integration.handleClusterCompletion(event);
+			expect(dryResult.success).toBe(true);
+			expect(dryResult.prResult?.dryRun).toBe(true);
+
+			// After toggling dry-run off, gh CLI is unavailable in tests so it should fail
 			integration.setDryRun(false);
-			expect(integration['options'].dryRun).toBe(false);
+			const liveResult = await integration.handleClusterCompletion({
+				...event,
+				clusterId: 'cluster-dry-toggle-2'
+			});
+			expect(liveResult.success).toBe(false);
+			expect(liveResult.prResult?.dryRun).toBe(false);
 
+			// Toggle back to dry-run, should succeed again
 			integration.setDryRun(true);
-			expect(integration['options'].dryRun).toBe(true);
+			const dryAgainResult = await integration.handleClusterCompletion({
+				...event,
+				clusterId: 'cluster-dry-toggle-3'
+			});
+			expect(dryAgainResult.success).toBe(true);
+			expect(dryAgainResult.prResult?.dryRun).toBe(true);
 		});
 
-		it('should update options at runtime', () => {
-			expect(integration['options'].autoMerge).toBe(false);
+		it('should update options at runtime', async () => {
+			// Verify dryRun option change is observable through behavior
+			const workflowContext: WorkflowContext = {
+				taskId: 'TAS-opts',
+				subtasks: [],
+				currentSubtaskIndex: 0,
+				branchName: 'feature/opts',
+				errors: [],
+				metadata: {}
+			};
 
+			const event: ClusterCompletionEvent = {
+				clusterId: 'cluster-opts',
+				workflowContext,
+				branchName: 'feature/opts',
+				commits: []
+			};
+
+			// Update dryRun to false via updateOptions - should fail since gh CLI is unavailable
+			integration.updateOptions({ dryRun: false });
+			const liveResult = await integration.handleClusterCompletion(event);
+			expect(liveResult.success).toBe(false);
+
+			// Restore dry-run and verify it works again
+			integration.updateOptions({ dryRun: true });
+			const dryResult = await integration.handleClusterCompletion({
+				...event,
+				clusterId: 'cluster-opts-2'
+			});
+			expect(dryResult.success).toBe(true);
+			expect(dryResult.prResult?.dryRun).toBe(true);
+
+			// Bracket notation: autoMerge and labels only affect non-dry-run gh CLI
+			// calls, so their effect cannot be observed without mocking the GitHub API.
 			integration.updateOptions({
 				autoMerge: true,
 				labels: ['hotfix', 'urgent']
 			});
-
 			expect(integration['options'].autoMerge).toBe(true);
 			expect(integration['options'].labels).toEqual(['hotfix', 'urgent']);
 		});

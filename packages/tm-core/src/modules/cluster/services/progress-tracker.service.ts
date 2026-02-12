@@ -65,10 +65,18 @@ export class ProgressTrackerService {
 	private startTime: Date;
 	private totalTasks: number = 0;
 	private totalClusters: number = 0;
+	private initialized: boolean = false;
 
 	constructor(checkpointPath?: string) {
 		this.checkpointPath = checkpointPath;
 		this.startTime = new Date();
+	}
+
+	/**
+	 * Check whether progress tracking has been initialized with detection data
+	 */
+	isInitialized(): boolean {
+		return this.initialized;
 	}
 
 	/**
@@ -96,6 +104,8 @@ export class ProgressTrackerService {
 				this.taskToClusterMap.set(taskId, cluster.clusterId);
 			});
 		});
+
+		this.initialized = true;
 
 		this.logger.info('Progress tracker initialized', {
 			totalClusters: this.totalClusters,
@@ -225,8 +235,7 @@ export class ProgressTrackerService {
 		if (!cluster) return;
 
 		const completedDelta = task.status === 'done' ? 1 : 0;
-		const failedDelta =
-			task.status === 'blocked' || task.status === 'cancelled' ? 1 : 0;
+		const failedDelta = task.status === 'cancelled' ? 1 : 0;
 
 		this.clusterProgress.set(clusterId, {
 			...cluster,
@@ -252,7 +261,7 @@ export class ProgressTrackerService {
 		).length;
 
 		const failedTasks = Array.from(this.taskProgress.values()).filter(
-			(t) => t.status === 'blocked'
+			(t) => t.status === 'cancelled'
 		).length;
 
 		const blockedTasks = Array.from(this.taskProgress.values()).filter(
@@ -313,7 +322,7 @@ export class ProgressTrackerService {
 			.map(([id]) => id);
 
 		const failedTasks = Array.from(this.taskProgress.entries())
-			.filter(([_, t]) => t.status === 'blocked')
+			.filter(([_, t]) => t.status === 'cancelled')
 			.map(([id]) => id);
 
 		const clusterStatuses: Record<string, ClusterStatus> = {};
@@ -522,5 +531,6 @@ export class ProgressTrackerService {
 		this.startTime = new Date();
 		this.totalTasks = 0;
 		this.totalClusters = 0;
+		this.initialized = false;
 	}
 }

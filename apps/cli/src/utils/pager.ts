@@ -10,7 +10,9 @@ import { spawnSync } from 'node:child_process';
 const ANSI_REGEX = /\x1b\[[0-9;]*m/g;
 
 /**
- * Strip ANSI escape codes to get visible character length.
+ * Strip ANSI escape codes and return the visible character length.
+ * @param str - A string that may contain ANSI escape sequences
+ * @returns The number of visible characters after stripping ANSI codes
  */
 function visibleLength(str: string): number {
 	return str.replace(ANSI_REGEX, '').length;
@@ -50,7 +52,7 @@ export function pageOutput(content: string): void {
 	});
 
 	// If less failed or isn't available, print directly
-	if (result.status !== 0 && result.status !== null) {
-		console.log(content);
+	if (result.error || (result.status !== 0 && result.status !== null)) {
+		process.stdout.write(content + '\n');
 	}
 }

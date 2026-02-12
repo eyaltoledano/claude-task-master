@@ -142,6 +142,28 @@ export function getParentTaskId(subtaskId: string): string | null {
 }
 
 /**
+ * Composes a subtask ID from a parent task ID and subtask identifier
+ *
+ * @param parentId - The parent task ID
+ * @param subtaskId - The subtask identifier (number or string)
+ * @returns The composed subtask ID in "parentId.subtaskId" format
+ * @example
+ * ```typescript
+ * makeSubtaskId("3", 2); // "3.2"
+ * makeSubtaskId("TASK-123", 1); // "TASK-123.1"
+ * ```
+ */
+export function makeSubtaskId(
+	parentId: string,
+	subtaskId: number | string
+): string {
+	if (!parentId) {
+		throw new Error('Parent ID cannot be empty');
+	}
+	return `${parentId}.${subtaskId}`;
+}
+
+/**
  * Normalizes a display ID to the standard format (PREFIX-NUMBER)
  * Handles various input formats:
  * - "ham31" → "HAM-31"

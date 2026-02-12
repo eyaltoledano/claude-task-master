@@ -144,8 +144,10 @@ export class ProjectOrchestratorService {
 
 				blockedTags.add(tag);
 
+				// 'tag:blocked' (not 'cluster:blocked') -- this is a tag-level block
+				// due to unsatisfied inter-tag dependencies, not a cluster-level block.
 				this.emitEvent({
-					type: 'cluster:blocked',
+					type: 'tag:blocked',
 					timestamp: new Date(),
 					metadata: {
 						tag,
@@ -231,7 +233,9 @@ export class ProjectOrchestratorService {
 						0
 					),
 					percentage:
-						sortedTags.length > 0 ? ((i + 1) / sortedTags.length) * 100 : 0
+						sortedTags.length > 0
+							? (completedTags.size / sortedTags.length) * 100
+							: 0
 				}
 			});
 		}

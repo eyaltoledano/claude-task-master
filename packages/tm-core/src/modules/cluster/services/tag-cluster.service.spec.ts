@@ -84,16 +84,13 @@ describe('TagClusterService', () => {
 		expect(result.clusters[0].tags).toEqual(['auth', 'logging']);
 	});
 
-	it('handles circular dependencies gracefully via cycle guard', () => {
-		const result = service.clusterTags([
-			{ tag: 'a', dependencies: ['b'] },
-			{ tag: 'b', dependencies: ['a'] }
-		]);
-
-		// Cycle guard returns 0 when revisiting → both end up at level 0 or 1
-		// The important thing is it doesn't infinite loop
-		expect(result.totalTags).toBe(2);
-		expect(result.totalClusters).toBeGreaterThanOrEqual(1);
+	it('throws on circular dependencies with cycle path', () => {
+		expect(() =>
+			service.clusterTags([
+				{ tag: 'a', dependencies: ['b'] },
+				{ tag: 'b', dependencies: ['a'] }
+			])
+		).toThrow(/Circular dependency detected.*a.*b.*a/);
 	});
 
 	it('sorts tags alphabetically within each cluster', () => {

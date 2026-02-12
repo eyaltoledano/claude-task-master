@@ -3,10 +3,10 @@
  */
 
 import type { ClusterDetectionResult, ClusterMetadata, Task } from '@tm/core';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { displayClusterPipeline } from './cluster-pipeline.component.js';
 
-const createTask = (id: number, status: string = 'pending'): Task => ({
+const createTask = (id: number, status = 'pending'): Task => ({
 	id: String(id),
 	title: `Task ${id}`,
 	description: '',
@@ -121,28 +121,12 @@ describe('cluster-pipeline.component', () => {
 		];
 		const detection = createDetection([
 			createCluster(0, ['1']),
-			{
-				...createCluster(1, ['2', '3'], { clusterId: 'cluster-1a' }),
-				clusterId: 'cluster-1a'
-			},
-			{
-				...createCluster(1, ['4'], { clusterId: 'cluster-1b' }),
-				clusterId: 'cluster-1b'
-			},
-			createCluster(2, ['4'])
+			createCluster(1, ['2', '3'], { clusterId: 'cluster-1a' }),
+			createCluster(1, ['4'], { clusterId: 'cluster-1b' }),
+			createCluster(2, ['5'], {
+				upstreamClusters: ['cluster-1a', 'cluster-1b']
+			})
 		]);
-
-		// Ensure two clusters have the same level for parallel
-		detection.clusters[1] = {
-			...detection.clusters[1],
-			level: 1,
-			clusterId: 'cluster-1a'
-		};
-		detection.clusters[2] = {
-			...detection.clusters[2],
-			level: 1,
-			clusterId: 'cluster-1b'
-		};
 
 		displayClusterPipeline(detection, tasks);
 

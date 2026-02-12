@@ -357,6 +357,14 @@ export class TagService {
 			);
 		}
 
+		if (!allTags.includes(dependsOn)) {
+			throw new TaskMasterError(
+				`Dependency tag "${dependsOn}" does not exist`,
+				ERROR_CODES.NOT_FOUND,
+				{ tagName: dependsOn }
+			);
+		}
+
 		await this.storage.removeTagDependency(tag, dependsOn);
 	}
 

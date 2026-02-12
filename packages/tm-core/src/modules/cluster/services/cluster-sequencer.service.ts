@@ -319,7 +319,7 @@ export class ClusterSequencerService {
 			executor
 		);
 
-		const finalStatus = result.success ? 'done' : 'blocked';
+		const finalStatus = result.success ? 'done' : 'failed';
 		this.clusterDetector.updateClusterStatus(detection, clusterId, finalStatus);
 
 		return result;

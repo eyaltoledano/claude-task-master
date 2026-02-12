@@ -123,6 +123,11 @@ export class TagOrchestratorService {
 		this.progressTracker = new ProgressTrackerService(options.checkpointPath);
 		await this.progressTracker.initialize(detection);
 
+		// Re-wire the progress tracker listener for the new instance
+		this.progressTracker.addEventListener((event) => {
+			this.emitEvent(event);
+		});
+
 		if (this.currentSequencerListener) {
 			this.clusterSequencer.removeEventListener(this.currentSequencerListener);
 		}
@@ -261,8 +266,7 @@ export class TagOrchestratorService {
 			clusterId
 		});
 
-		if (!this.progressTracker) {
-			this.progressTracker = new ProgressTrackerService(options.checkpointPath);
+		if (!this.progressTracker.isInitialized()) {
 			await this.progressTracker.initialize(detection);
 		}
 

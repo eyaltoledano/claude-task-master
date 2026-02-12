@@ -46,7 +46,8 @@ function buildClusterProgress(
 
 	// Build mini progress blocks (cap visual blocks at 8 to keep compact)
 	const displayCount = Math.min(total, 8);
-	const doneBlocks = Math.round((done / total) * displayCount);
+	const doneBlocks =
+		total === 0 ? 0 : Math.round((done / total) * displayCount);
 	const remainingBlocks = displayCount - doneBlocks;
 
 	const bar =

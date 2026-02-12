@@ -14,11 +14,11 @@ import {
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
 import type { WorkflowContext } from '../../workflow/types.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { PRBodyFormatter, type CommitInfo } from './pr-body-formatter.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const logger = getLogger('GitHubPRService');
 
 /**
@@ -51,6 +51,10 @@ export interface PRCreationResult {
 	prUrl?: string;
 	/** PR number */
 	prNumber?: number;
+	/** Generated or custom PR title (included in dry-run results) */
+	title?: string;
+	/** Generated or custom PR body (included in dry-run results) */
+	body?: string;
 	/** Error message if creation failed */
 	error?: string;
 	/** Error code from TaskMasterError if available */
@@ -210,20 +214,16 @@ export class GitHubPRService {
 		logger.info(`[DRY RUN] Would create PR with title: ${title}`);
 		logger.info(`[DRY RUN] Body:\n${body}`);
 
-		const dryRunMapping: ClusterPRMapping = {
-			clusterId: cluster.clusterId,
-			prUrl: '',
-			prNumber: 0,
-			branchName: cluster.branchName,
-			createdAt: new Date().toISOString(),
-			metadata: { ...cluster.metadata, dryRun: true }
-		};
-		this.clusterPRMappings.set(cluster.clusterId, dryRunMapping);
+		// Deliberately omit storage: dry runs produce no real PR, so storing
+		// placeholder values (prUrl: '', prNumber: 0) would mislead consumers
+		// that query the mapping store for traceability.
 
 		return {
 			success: true,
 			clusterId: cluster.clusterId,
-			dryRun: true
+			dryRun: true,
+			title,
+			body
 		};
 	}
 
@@ -261,7 +261,7 @@ export class GitHubPRService {
 	 */
 	private async validateGhCLI(): Promise<void> {
 		try {
-			await execAsync('gh --version', { cwd: this.projectRoot });
+			await execFileAsync('gh', ['--version'], { cwd: this.projectRoot });
 		} catch (error) {
 			throw new TaskMasterError(
 				'GitHub CLI (gh) is not installed or not available',
@@ -350,16 +350,7 @@ export class GitHubPRService {
 		}
 
 		try {
-			const command = `gh ${args
-				.map((arg) => {
-					if (arg.includes(' ') || arg.includes('\n')) {
-						return `'${arg.replace(/'/g, "'\\''")}'`;
-					}
-					return arg;
-				})
-				.join(' ')}`;
-
-			const { stdout } = await execAsync(command, {
+			const { stdout } = await execFileAsync('gh', args, {
 				cwd: this.projectRoot
 			});
 			const prUrl = stdout.trim();
@@ -388,9 +379,11 @@ export class GitHubPRService {
 		prNumber: number
 	): Promise<{ enabled: boolean; error?: string }> {
 		try {
-			await execAsync(`gh pr merge ${prNumber} --auto --squash`, {
-				cwd: this.projectRoot
-			});
+			await execFileAsync(
+				'gh',
+				['pr', 'merge', String(prNumber), '--auto', '--squash'],
+				{ cwd: this.projectRoot }
+			);
 			logger.info(`Enabled auto-merge for PR #${prNumber}`);
 			return { enabled: true };
 		} catch (error) {

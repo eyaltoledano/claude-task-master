@@ -2,14 +2,16 @@
 "task-master-ai": minor
 ---
 
-Add automatic cluster detection and visualization for dependency-aware parallel execution
+Introduce Execution Phases — manage what gets built and in what order
 
-Tasks within tags are now automatically grouped into execution clusters via topological sort on their dependency graph. Clusters identify which tasks can run in parallel and which must run sequentially, giving users clear visibility into execution order.
+Taskmaster now understands your project's execution topology. Instead of a flat task list, your tags are automatically organized into **execution phases** — groups of work that can run in parallel, sequenced by their dependencies.
 
-New features:
+This is the foundation for Taskmaster 1.0's autonomous execution: think at the tag level, not the task level.
 
-- `task-master clusters` command to view tag-level and task-level execution clusters
-- Mermaid diagram output (`--diagram mermaid` / `--diagram mermaid-raw`) for cluster visualization
-- Inter-tag dependency tracking with circular dependency detection
-- Execution Pipeline box in `task-master list` showing per-cluster progress with lane-based visualization
-- Progress tracking and orchestration services for cluster-based execution
+New capabilities:
+
+- **`task-master clusters`** — visualize your execution plan as phases, with parallel lanes showing what runs concurrently
+- **`task-master clusters --tag <tag>`** — drill into any tag to see task-level execution order within it
+- **Execution Pipeline in `task-master list`** — see per-cluster progress at a glance with lane-based visualization
+- **Inter-tag dependencies** — tags can now depend on other tags, with automatic circular dependency detection
+- **Mermaid diagram export** (`--diagram mermaid`) — share your execution plan as a visual dependency graph

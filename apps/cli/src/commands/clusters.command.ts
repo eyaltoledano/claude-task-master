@@ -105,7 +105,7 @@ export class ClustersCommand extends Command {
 
 		if (detection.hasCircularDependencies) {
 			this.renderCircularDependencyError(detection);
-			process.exit(1);
+			throw new Error('Circular dependency detected');
 		}
 
 		if (options.json) {
@@ -131,9 +131,7 @@ export class ClustersCommand extends Command {
 		} else if (options.diagram === 'mermaid-raw') {
 			this.renderMermaidRaw(detection);
 		} else if (options.diagram) {
-			console.error(chalk.red(`Unsupported diagram type: ${options.diagram}`));
-			console.error(chalk.gray('Supported types: mermaid, mermaid-raw'));
-			process.exit(1);
+			throw new Error(`Unsupported diagram type: ${options.diagram}`);
 		} else {
 			this.renderTable(detection);
 		}
@@ -195,9 +193,7 @@ export class ClustersCommand extends Command {
 		} else if (options.diagram === 'mermaid-raw') {
 			this.renderTagMermaidRaw(detection);
 		} else if (options.diagram) {
-			console.error(chalk.red(`Unsupported diagram type: ${options.diagram}`));
-			console.error(chalk.gray('Supported types: mermaid, mermaid-raw'));
-			process.exit(1);
+			throw new Error(`Unsupported diagram type: ${options.diagram}`);
 		} else {
 			this.renderTagTable(detection);
 		}

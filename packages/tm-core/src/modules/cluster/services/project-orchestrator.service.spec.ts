@@ -1,8 +1,19 @@
 /**
  * @fileoverview Tests for ProjectOrchestratorService
+ *
+ * Uses a real TagOrchestratorService instance (with real internal sub-services)
+ * and spies only on `executeTag` to control I/O-boundary results.
+ * `isTagReady` and event wiring use real implementations.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+	describe,
+	it,
+	expect,
+	beforeEach,
+	vi,
+	type MockInstance
+} from 'vitest';
 import {
 	ProjectOrchestratorService,
 	type TagWithDependencies
@@ -97,40 +108,42 @@ const makeFailureResult = (tag: string, taskCount = 1): TagExecutionResult => ({
 	}
 });
 
-function createMockTagOrchestrator() {
-	return {
-		addEventListener: vi.fn(),
-		removeEventListener: vi.fn(),
-		executeTag: vi.fn(),
-		isTagReady: vi.fn(),
-		stopExecution: vi.fn()
-	} as unknown as TagOrchestratorService;
+/**
+ * Emit an event through the real TagOrchestratorService event system.
+ * This accesses the private emitEvent method to simulate events flowing
+ * through the real wiring (TagOrchestrator -> ProjectOrchestrator).
+ */
+function emitTagOrchestratorEvent(
+	tagOrchestrator: TagOrchestratorService,
+	event: ProgressEventData
+): void {
+	// Access the private emitEvent to trigger the real event forwarding chain
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	(tagOrchestrator as any).emitEvent(event);
 }
 
 const noopExecutor = vi.fn();
 
 describe('ProjectOrchestratorService', () => {
-	let mockTagOrchestrator: TagOrchestratorService;
+	let tagOrchestrator: TagOrchestratorService;
+	let executeTagSpy: MockInstance;
 	let service: ProjectOrchestratorService;
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-		mockTagOrchestrator = createMockTagOrchestrator();
-		service = new ProjectOrchestratorService(mockTagOrchestrator);
+		vi.restoreAllMocks();
+		tagOrchestrator = new TagOrchestratorService();
+		executeTagSpy = vi
+			.spyOn(tagOrchestrator, 'executeTag')
+			.mockResolvedValue(makeSuccessResult('default'));
+		service = new ProjectOrchestratorService(tagOrchestrator);
 	});
 
 	describe('construction', () => {
 		it('should accept an injected TagOrchestratorService', () => {
-			expect(service.getTagOrchestrator()).toBe(mockTagOrchestrator);
+			expect(service.getTagOrchestrator()).toBe(tagOrchestrator);
 		});
 
 		it('should forward events from TagOrchestratorService to own listeners', () => {
-			const addEventListenerMock = vi.mocked(
-				mockTagOrchestrator.addEventListener
-			);
-			expect(addEventListenerMock).toHaveBeenCalledOnce();
-
-			const forwardedListener = addEventListenerMock.mock.calls[0][0];
 			const receivedEvents: ProgressEventData[] = [];
 			service.addEventListener((event) => receivedEvents.push(event));
 
@@ -139,7 +152,7 @@ describe('ProjectOrchestratorService', () => {
 				timestamp: new Date(),
 				clusterId: 'c1'
 			};
-			forwardedListener(testEvent);
+			emitTagOrchestratorEvent(tagOrchestrator, testEvent);
 
 			expect(receivedEvents).toHaveLength(1);
 			expect(receivedEvents[0]).toBe(testEvent);
@@ -149,13 +162,10 @@ describe('ProjectOrchestratorService', () => {
 	describe('executeProject', () => {
 		it('should execute tags in topological order', async () => {
 			const executionOrder: string[] = [];
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
-				async (tag: string) => {
-					executionOrder.push(tag);
-					return makeSuccessResult(tag);
-				}
-			);
+			executeTagSpy.mockImplementation(async (tag: string) => {
+				executionOrder.push(tag);
+				return makeSuccessResult(tag);
+			});
 
 			const tagData = [
 				makeTagData('A', [makeTask('1')], []),
@@ -169,10 +179,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should handle single tag with no dependencies', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('solo')
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('solo'));
 
 			const tagData = [makeTagData('solo', [makeTask('1')], [])];
 
@@ -190,9 +197,8 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should handle multiple tags with linear dependencies', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
-				async (tag: string) => makeSuccessResult(tag)
+			executeTagSpy.mockImplementation(async (tag: string) =>
+				makeSuccessResult(tag)
 			);
 
 			const tagData = [
@@ -213,9 +219,8 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should handle parallel tags with no inter-dependencies', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
-				async (tag: string) => makeSuccessResult(tag)
+			executeTagSpy.mockImplementation(async (tag: string) =>
+				makeSuccessResult(tag)
 			);
 
 			const tagData = [
@@ -232,15 +237,12 @@ describe('ProjectOrchestratorService', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.completedTags).toBe(3);
-			expect(vi.mocked(mockTagOrchestrator.executeTag)).toHaveBeenCalledTimes(
-				3
-			);
+			expect(executeTagSpy).toHaveBeenCalledTimes(3);
 		});
 
 		it('should set currentContext with status in-progress during execution', async () => {
 			let capturedStatus: string | undefined;
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(async () => {
+			executeTagSpy.mockImplementation(async () => {
 				capturedStatus = service.getCurrentContext()?.status;
 				return makeSuccessResult('A');
 			});
@@ -252,10 +254,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should set currentContext status to done on full success', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('A')
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('A'));
 
 			const tagData = [makeTagData('A', [makeTask('1')], [])];
 			await service.executeProject('proj-1', tagData, noopExecutor);
@@ -264,10 +263,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should set currentContext status to failed when any tag fails', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeFailureResult('A')
-			);
+			executeTagSpy.mockResolvedValue(makeFailureResult('A'));
 
 			const tagData = [makeTagData('A', [makeTask('1')], [])];
 			await service.executeProject('proj-1', tagData, noopExecutor);
@@ -276,10 +272,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should emit progress:updated events during execution', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('A')
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('A'));
 
 			const events: ProgressEventData[] = [];
 			service.addEventListener((event) => events.push(event));
@@ -295,16 +288,16 @@ describe('ProjectOrchestratorService', () => {
 			expect(progressEvents[0].progress?.percentage).toBe(100);
 		});
 
-		it('should emit cluster:blocked when tag dependencies not satisfied', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(false);
-
+		it('should emit tag:blocked when tag dependencies not satisfied', async () => {
+			// Tag A depends on 'missing' which will never be in completedTags,
+			// so the real isTagReady returns false
 			const events: ProgressEventData[] = [];
 			service.addEventListener((event) => events.push(event));
 
 			const tagData = [makeTagData('A', [makeTask('1')], ['missing'])];
 			await service.executeProject('proj-1', tagData, noopExecutor);
 
-			const blockedEvents = events.filter((e) => e.type === 'cluster:blocked');
+			const blockedEvents = events.filter((e) => e.type === 'tag:blocked');
 			expect(blockedEvents).toHaveLength(1);
 			expect(blockedEvents[0].metadata?.tag).toBe('A');
 		});
@@ -322,13 +315,10 @@ describe('ProjectOrchestratorService', () => {
 
 		it('should correctly order tags with complex dependency graph', async () => {
 			const executionOrder: string[] = [];
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
-				async (tag: string) => {
-					executionOrder.push(tag);
-					return makeSuccessResult(tag);
-				}
-			);
+			executeTagSpy.mockImplementation(async (tag: string) => {
+				executionOrder.push(tag);
+				return makeSuccessResult(tag);
+			});
 
 			// Diamond dependency: A -> B, A -> C, B -> D, C -> D
 			const tagData = [
@@ -352,10 +342,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should populate result aggregates from tag results', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('A', 3)
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('A', 3));
 
 			const tagData = [
 				makeTagData('A', [makeTask('1'), makeTask('2'), makeTask('3')], [])
@@ -379,8 +366,7 @@ describe('ProjectOrchestratorService', () => {
 
 	describe('stopOnFailure option', () => {
 		it('should stop executing remaining tags when stopOnFailure=true', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag)
+			executeTagSpy
 				.mockResolvedValueOnce(makeFailureResult('A'))
 				.mockResolvedValueOnce(makeSuccessResult('B'));
 
@@ -397,14 +383,11 @@ describe('ProjectOrchestratorService', () => {
 			);
 
 			expect(result.failedTags).toBe(1);
-			expect(vi.mocked(mockTagOrchestrator.executeTag)).toHaveBeenCalledTimes(
-				1
-			);
+			expect(executeTagSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should block downstream tags when a tag fails', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag)
+			executeTagSpy
 				.mockResolvedValueOnce(makeFailureResult('A'))
 				.mockResolvedValueOnce(makeSuccessResult('B'));
 
@@ -425,8 +408,7 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should continue to next tag when stopOnFailure=false (default)', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag)
+			executeTagSpy
 				.mockResolvedValueOnce(makeFailureResult('A'))
 				.mockResolvedValueOnce(makeSuccessResult('B'));
 
@@ -442,18 +424,13 @@ describe('ProjectOrchestratorService', () => {
 				noopExecutor
 			);
 
-			expect(vi.mocked(mockTagOrchestrator.executeTag)).toHaveBeenCalledTimes(
-				2
-			);
+			expect(executeTagSpy).toHaveBeenCalledTimes(2);
 			expect(result.failedTags).toBe(1);
 			expect(result.completedTags).toBe(1);
 		});
 
 		it('should re-throw when executeTag throws and stopOnFailure=true', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockRejectedValue(
-				new Error('executor boom')
-			);
+			executeTagSpy.mockRejectedValue(new Error('executor boom'));
 
 			const tagData = [makeTagData('A', [makeTask('1')], [])];
 
@@ -467,14 +444,8 @@ describe('ProjectOrchestratorService', () => {
 
 	describe('blockDownstreamTags', () => {
 		it('should block all tags that depend on a failed tag', async () => {
-			// Use real isTagReady logic: deps must all be in completedTags
-			vi.mocked(mockTagOrchestrator.isTagReady).mockImplementation(
-				(_tag, deps, completed) => {
-					if (deps.length === 0) return true;
-					return deps.every((d: string) => completed.has(d));
-				}
-			);
-			vi.mocked(mockTagOrchestrator.executeTag)
+			// Real isTagReady handles dependency checking: deps must all be in completedTags
+			executeTagSpy
 				.mockResolvedValueOnce(makeFailureResult('A'))
 				.mockResolvedValueOnce(makeSuccessResult('C'));
 
@@ -497,16 +468,8 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should recursively block transitive dependents', async () => {
-			// Use real isTagReady logic: deps must all be in completedTags
-			vi.mocked(mockTagOrchestrator.isTagReady).mockImplementation(
-				(_tag, deps, completed) => {
-					if (deps.length === 0) return true;
-					return deps.every((d: string) => completed.has(d));
-				}
-			);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValueOnce(
-				makeFailureResult('A')
-			);
+			// Real isTagReady handles dependency checking
+			executeTagSpy.mockResolvedValueOnce(makeFailureResult('A'));
 
 			// A -> B -> C (transitive dependency chain)
 			const tagData = [
@@ -528,14 +491,11 @@ describe('ProjectOrchestratorService', () => {
 
 		it('should not block already-completed tags', async () => {
 			const executionOrder: string[] = [];
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
-				async (tag: string) => {
-					executionOrder.push(tag);
-					if (tag === 'B') return makeFailureResult('B');
-					return makeSuccessResult(tag);
-				}
-			);
+			executeTagSpy.mockImplementation(async (tag: string) => {
+				executionOrder.push(tag);
+				if (tag === 'B') return makeFailureResult('B');
+				return makeSuccessResult(tag);
+			});
 
 			// A has no deps, B depends on A, C depends on A
 			// A completes first, then B fails — C should not be blocked since it depends on A (not B)
@@ -563,17 +523,12 @@ describe('ProjectOrchestratorService', () => {
 			const listener = (event: ProgressEventData) => events.push(event);
 			service.addEventListener(listener);
 
-			// Trigger an event through the tag orchestrator's forwarded listener
-			const addEventListenerMock = vi.mocked(
-				mockTagOrchestrator.addEventListener
-			);
-			const forwardedListener = addEventListenerMock.mock.calls[0][0];
-
+			// Trigger an event through the real tag orchestrator's event system
 			const testEvent: ProgressEventData = {
 				type: 'cluster:completed',
 				timestamp: new Date()
 			};
-			forwardedListener(testEvent);
+			emitTagOrchestratorEvent(tagOrchestrator, testEvent);
 
 			expect(events).toHaveLength(1);
 			expect(events[0].type).toBe('cluster:completed');
@@ -585,11 +540,7 @@ describe('ProjectOrchestratorService', () => {
 			service.addEventListener(listener);
 			service.removeEventListener(listener);
 
-			const addEventListenerMock = vi.mocked(
-				mockTagOrchestrator.addEventListener
-			);
-			const forwardedListener = addEventListenerMock.mock.calls[0][0];
-			forwardedListener({
+			emitTagOrchestratorEvent(tagOrchestrator, {
 				type: 'cluster:completed',
 				timestamp: new Date()
 			});
@@ -604,10 +555,7 @@ describe('ProjectOrchestratorService', () => {
 			});
 			service.addEventListener(failingListener);
 
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('A')
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('A'));
 
 			// Execute 3 tags to trigger emitEvent multiple times
 			const tagData = [
@@ -628,14 +576,15 @@ describe('ProjectOrchestratorService', () => {
 			});
 			service.addEventListener(failingListener);
 
-			const addEventListenerMock = vi.mocked(
-				mockTagOrchestrator.addEventListener
-			);
-			const forwardedListener = addEventListenerMock.mock.calls[0][0];
-
-			// Trigger failures
-			forwardedListener({ type: 'cluster:started', timestamp: new Date() });
-			forwardedListener({ type: 'cluster:started', timestamp: new Date() });
+			// Trigger failures through the real event chain
+			emitTagOrchestratorEvent(tagOrchestrator, {
+				type: 'cluster:started',
+				timestamp: new Date()
+			});
+			emitTagOrchestratorEvent(tagOrchestrator, {
+				type: 'cluster:started',
+				timestamp: new Date()
+			});
 
 			// Remove and re-add — count should be reset
 			service.removeEventListener(failingListener);
@@ -643,19 +592,21 @@ describe('ProjectOrchestratorService', () => {
 
 			// This should trigger a warn (count 1), not an error (count 3)
 			// We cannot directly inspect the logger, but we verify it doesn't blow up
-			forwardedListener({ type: 'cluster:started', timestamp: new Date() });
+			emitTagOrchestratorEvent(tagOrchestrator, {
+				type: 'cluster:started',
+				timestamp: new Date()
+			});
 			expect(failingListener).toHaveBeenCalledTimes(3);
 		});
 	});
 
 	describe('stopExecution', () => {
 		it('should set context status to failed', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(undefined);
+			const stopSpy = vi.spyOn(tagOrchestrator, 'stopExecution');
 
 			// Start an execution to create a context
 			let resolveExecution: (() => void) | undefined;
-			vi.mocked(mockTagOrchestrator.executeTag).mockImplementation(
+			executeTagSpy.mockImplementation(
 				() =>
 					new Promise((resolve) => {
 						resolveExecution = () => resolve(makeSuccessResult('A'));
@@ -677,7 +628,7 @@ describe('ProjectOrchestratorService', () => {
 			await service.stopExecution();
 
 			expect(service.getCurrentContext()?.status).toBe('failed');
-			expect(mockTagOrchestrator.stopExecution).toHaveBeenCalledOnce();
+			expect(stopSpy).toHaveBeenCalledOnce();
 
 			// Clean up the hanging promise
 			resolveExecution?.();
@@ -685,11 +636,11 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should delegate to tagOrchestrator.stopExecution()', async () => {
-			vi.mocked(mockTagOrchestrator.stopExecution).mockResolvedValue(undefined);
+			const stopSpy = vi.spyOn(tagOrchestrator, 'stopExecution');
 
 			await service.stopExecution();
 
-			expect(mockTagOrchestrator.stopExecution).toHaveBeenCalledOnce();
+			expect(stopSpy).toHaveBeenCalledOnce();
 		});
 	});
 
@@ -699,14 +650,11 @@ describe('ProjectOrchestratorService', () => {
 		});
 
 		it('should return the injected tag orchestrator', () => {
-			expect(service.getTagOrchestrator()).toBe(mockTagOrchestrator);
+			expect(service.getTagOrchestrator()).toBe(tagOrchestrator);
 		});
 
 		it('should return context after execution', async () => {
-			vi.mocked(mockTagOrchestrator.isTagReady).mockReturnValue(true);
-			vi.mocked(mockTagOrchestrator.executeTag).mockResolvedValue(
-				makeSuccessResult('A')
-			);
+			executeTagSpy.mockResolvedValue(makeSuccessResult('A'));
 
 			const tagData = [makeTagData('A', [makeTask('1')], [])];
 			await service.executeProject('proj-1', tagData, noopExecutor);

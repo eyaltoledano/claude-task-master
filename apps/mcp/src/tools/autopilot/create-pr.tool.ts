@@ -3,11 +3,13 @@
  * Create GitHub pull requests per execution cluster
  */
 
+import { type ClusterCompletionEvent, ClusterPRIntegration } from '@tm/core';
 import type { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import type { ToolContext } from '../../shared/types.js';
 import { handleApiResult, withToolContext } from '../../shared/utils.js';
-import { ClusterPRIntegration, type ClusterCompletionEvent } from '@tm/core';
+
+const DEFAULT_ACTIVITY_LOG_PATH = '.taskmaster/state/activity.jsonl';
 
 const CreatePRSchema = z.object({
 	projectRoot: z
@@ -141,7 +143,7 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 						autoMerge,
 						draft,
 						labels: labels || ['automated', 'taskmaster'],
-						activityLogPath: '.taskmaster/state/activity.jsonl'
+						activityLogPath: DEFAULT_ACTIVITY_LOG_PATH
 					});
 
 					// Build cluster completion event
@@ -172,7 +174,6 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 
 					// Success response
 					const response = {
-						success: true,
 						clusterId: finalClusterId,
 						prUrl: result.prResult?.prUrl,
 						prNumber: result.prResult?.prNumber,
@@ -192,7 +193,7 @@ export function registerAutopilotCreatePRTool(server: FastMCP) {
 					);
 
 					return handleApiResult({
-						result: response,
+						result: { success: true, data: response },
 						log,
 						projectRoot
 					});

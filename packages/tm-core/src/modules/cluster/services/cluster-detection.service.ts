@@ -14,6 +14,7 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
+import { makeSubtaskId } from '../../../common/utils/id-generator.js';
 
 /**
  * Internal node for topological sort
@@ -30,6 +31,8 @@ interface GraphNode {
  * ClusterDetectionService implements topological sort to detect execution clusters
  */
 export class ClusterDetectionService {
+	static readonly MAX_CACHE_SIZE = 100;
+
 	private logger = getLogger('ClusterDetectionService');
 	private cache: Map<string, ClusterDetectionResult> = new Map();
 
@@ -81,7 +84,7 @@ export class ClusterDetectionService {
 		};
 
 		if (cacheKey) {
-			this.cache.set(cacheKey, result);
+			this.addToCache(cacheKey, result);
 		}
 
 		this.logger.info('Cluster detection complete', {
@@ -110,12 +113,12 @@ export class ClusterDetectionService {
 
 			if (task.subtasks && task.subtasks.length > 0) {
 				task.subtasks.forEach((subtask) => {
-					const subtaskId = `${taskId}.${subtask.id}`;
+					const subtaskId = makeSubtaskId(taskId, subtask.id);
 					const subtaskDeps = (subtask.dependencies || []).map((dep) => {
 						if (String(dep).includes('.')) {
 							return String(dep);
 						}
-						return `${taskId}.${dep}`;
+						return makeSubtaskId(taskId, dep);
 					});
 
 					graph.set(subtaskId, {
@@ -203,6 +206,10 @@ export class ClusterDetectionService {
 		const levels = new Map<number, string[]>();
 		const inDegree = new Map<string, number>();
 
+		// Build reverse adjacency map: dependency -> list of dependents
+		// This allows O(1) lookup of dependents instead of scanning the full graph
+		const dependentsOf = new Map<string, string[]>();
+
 		graph.forEach((node) => {
 			inDegree.set(node.taskId, 0);
 		});
@@ -211,6 +218,13 @@ export class ClusterDetectionService {
 			node.dependencies.forEach((depId) => {
 				if (graph.has(depId)) {
 					inDegree.set(node.taskId, (inDegree.get(node.taskId) || 0) + 1);
+
+					const list = dependentsOf.get(depId);
+					if (list) {
+						list.push(node.taskId);
+					} else {
+						dependentsOf.set(depId, [node.taskId]);
+					}
 				}
 			});
 		});
@@ -232,25 +246,25 @@ export class ClusterDetectionService {
 			}
 			levels.get(level)!.push(taskId);
 
-			graph.forEach((dependent) => {
-				if (dependent.dependencies.includes(taskId)) {
-					const newInDegree = (inDegree.get(dependent.taskId) || 0) - 1;
-					inDegree.set(dependent.taskId, newInDegree);
+			const dependents = dependentsOf.get(taskId) || [];
+			for (const dependentId of dependents) {
+				const dependent = graph.get(dependentId)!;
+				const newInDegree = (inDegree.get(dependentId) || 0) - 1;
+				inDegree.set(dependentId, newInDegree);
 
-					if (newInDegree === 0) {
-						let maxDepLevel = -1;
-						dependent.dependencies.forEach((depId) => {
-							const depNode = graph.get(depId);
-							if (depNode && depNode.level > maxDepLevel) {
-								maxDepLevel = depNode.level;
-							}
-						});
-						const dependentLevel = maxDepLevel + 1;
-						dependent.level = dependentLevel;
-						queue.push({ taskId: dependent.taskId, level: dependentLevel });
-					}
+				if (newInDegree === 0) {
+					let maxDepLevel = -1;
+					dependent.dependencies.forEach((depId) => {
+						const depNode = graph.get(depId);
+						if (depNode && depNode.level > maxDepLevel) {
+							maxDepLevel = depNode.level;
+						}
+					});
+					const dependentLevel = maxDepLevel + 1;
+					dependent.level = dependentLevel;
+					queue.push({ taskId: dependentId, level: dependentLevel });
 				}
-			});
+			}
 		}
 
 		return levels;
@@ -311,6 +325,22 @@ export class ClusterDetectionService {
 	}
 
 	/**
+	 * Add a result to the cache, evicting the oldest entry when the limit is reached
+	 */
+	private addToCache(key: string, result: ClusterDetectionResult): void {
+		if (this.cache.size >= ClusterDetectionService.MAX_CACHE_SIZE) {
+			const oldestKey = this.cache.keys().next().value;
+			if (oldestKey !== undefined) {
+				this.cache.delete(oldestKey);
+				this.logger.debug('Cache evicted oldest entry', {
+					evictedKey: oldestKey
+				});
+			}
+		}
+		this.cache.set(key, result);
+	}
+
+	/**
 	 * Invalidate cache for a specific key
 	 */
 	invalidateCache(cacheKey: string): void {
@@ -351,9 +381,30 @@ export class ClusterDetectionService {
 		}
 
 		const taskMap = new Map(allTasks.map((t) => [String(t.id), t]));
+		const seen = new Set<string | number>();
 		return cluster.taskIds
-			.map((taskId) => taskMap.get(taskId))
-			.filter((t): t is Task => t !== undefined);
+			.map((taskId) => {
+				const directMatch = taskMap.get(taskId);
+				if (directMatch) return directMatch;
+
+				// Resolve dotted subtask IDs (e.g. "1.2") to their parent Task
+				if (taskId.includes('.')) {
+					const parentId = taskId.split('.')[0];
+					const parentMatch = taskMap.get(parentId);
+					if (parentMatch) return parentMatch;
+				}
+
+				this.logger.warn(
+					`Task '${taskId}' in cluster '${clusterId}' not found in provided task list`
+				);
+				return undefined;
+			})
+			.filter((t): t is Task => {
+				if (t === undefined) return false;
+				if (seen.has(t.id)) return false;
+				seen.add(t.id);
+				return true;
+			});
 	}
 
 	/**

@@ -144,7 +144,7 @@ export class ParallelExecutorService {
 				type: 'cluster:failed',
 				timestamp: new Date(),
 				clusterId: cluster.clusterId,
-				status: 'failed',
+				status: 'cancelled',
 				error: error instanceof Error ? error.message : String(error)
 			});
 
@@ -241,9 +241,10 @@ export class ParallelExecutorService {
 		this.activeExecutions.set(taskId, context);
 
 		try {
+			let timerId: ReturnType<typeof setTimeout> | undefined;
 			const timeoutPromise = this.constraints.taskTimeoutMs
 				? new Promise<TaskExecutionResult>((_, reject) => {
-						setTimeout(() => {
+						timerId = setTimeout(() => {
 							reject(
 								new TaskMasterError(
 									`Task execution timeout: ${taskId}`,
@@ -255,7 +256,9 @@ export class ParallelExecutorService {
 				: null;
 
 			const result = timeoutPromise
-				? await Promise.race([executor(task), timeoutPromise])
+				? await Promise.race([executor(task), timeoutPromise]).finally(() => {
+						if (timerId !== undefined) clearTimeout(timerId);
+					})
 				: await executor(task);
 
 			const endTime = new Date();
@@ -273,7 +276,7 @@ export class ParallelExecutorService {
 				type: finalResult.success ? 'task:completed' : 'task:failed',
 				timestamp: new Date(),
 				taskId,
-				status: finalResult.success ? 'done' : 'failed',
+				status: finalResult.success ? 'done' : 'cancelled',
 				error: finalResult.error
 			});
 
@@ -299,7 +302,7 @@ export class ParallelExecutorService {
 				type: 'task:failed',
 				timestamp: new Date(),
 				taskId,
-				status: 'failed',
+				status: 'cancelled',
 				error: errorMessage
 			});
 
@@ -318,6 +321,8 @@ export class ParallelExecutorService {
 
 	/**
 	 * Stop a running task
+	 * @remarks Currently signals abort intent but the executor must check the signal.
+	 * If the executor ignores abort signals, the task will run to completion.
 	 */
 	async stopTask(taskId: string): Promise<void> {
 		const context = this.activeExecutions.get(taskId);

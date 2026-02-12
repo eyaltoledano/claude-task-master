@@ -10,6 +10,10 @@
 
 import { getLogger } from '../../../common/logger/index.js';
 import {
+	ERROR_CODES,
+	TaskMasterError
+} from '../../../common/errors/task-master-error.js';
+import {
 	GitHubPRService,
 	type PRClusterInput,
 	type PRCreationResult
@@ -96,10 +100,19 @@ export class ClusterPRIntegration {
 		logger.info(`Handling cluster completion for ${clusterId}`);
 
 		try {
+			const resolvedBranchName = branchName || workflowContext.branchName;
+			if (!resolvedBranchName) {
+				throw new TaskMasterError(
+					`branchName is required for createPR (cluster: ${clusterId})`,
+					ERROR_CODES.VALIDATION_ERROR,
+					{ clusterId, operation: 'handleClusterCompletion' }
+				);
+			}
+
 			// Build cluster metadata
 			const clusterInput: PRClusterInput = {
 				clusterId,
-				branchName: branchName || workflowContext.branchName || '',
+				branchName: resolvedBranchName,
 				baseBranch: this.options.baseBranch,
 				taskId: workflowContext.taskId,
 				tag: workflowContext.tag,
@@ -304,7 +317,7 @@ export class ClusterPRIntegration {
 	 * Enable PR creation (for toggling at runtime)
 	 */
 	setDryRun(dryRun: boolean): void {
-		this.options.dryRun = dryRun;
+		this.options = { ...this.options, dryRun };
 	}
 
 	/**

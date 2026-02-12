@@ -73,6 +73,12 @@ export class CommandRegistry {
 			category: 'task'
 		},
 		{
+			name: 'clusters',
+			description: 'Detect and visualize task execution clusters',
+			commandClass: ClustersCommand as any,
+			category: 'task'
+		},
+		{
 			name: 'export',
 			description: 'Export tasks to Hamster by creating a new brief',
 			commandClass: ExportCommand as any,
@@ -122,12 +128,6 @@ export class CommandRegistry {
 			description: 'Manage workspace context (organization/brief)',
 			commandClass: ContextCommand as any,
 			category: 'auth'
-		},
-		{
-			name: 'clusters',
-			description: 'Detect and visualize task execution clusters',
-			commandClass: ClustersCommand as any,
-			category: 'task'
 		},
 		{
 			name: 'tags',

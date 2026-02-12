@@ -54,7 +54,12 @@ export class TagClusterService {
 
 		const getLevel = (tag: string, visited: Set<string>): number => {
 			if (levelMap.has(tag)) return levelMap.get(tag)!;
-			if (visited.has(tag)) return 0; // cycle guard
+			if (visited.has(tag)) {
+				const cyclePath = [...visited, tag];
+				throw new Error(
+					`Circular dependency detected: ${cyclePath.join(' -> ')}`
+				);
+			}
 			visited.add(tag);
 
 			const deps = depMap.get(tag) || [];
@@ -80,11 +85,27 @@ export class TagClusterService {
 		}
 
 		const sortedLevels = [...grouped.keys()].sort((a, b) => a - b);
-		const clusters: TagCluster[] = sortedLevels.map((level) => ({
-			level,
-			tags: grouped.get(level)!.sort(),
-			dependsOn: level === 0 ? [] : [level - 1]
-		}));
+		const clusters: TagCluster[] = sortedLevels.map((level) => {
+			const clusterTags = grouped.get(level)!.sort();
+
+			// Derive dependsOn from actual tag dependencies rather than assuming contiguous levels
+			const depLevels = new Set<number>();
+			for (const tag of clusterTags) {
+				const deps = depMap.get(tag) || [];
+				for (const dep of deps) {
+					const depLevel = levelMap.get(dep);
+					if (depLevel !== undefined && depLevel !== level) {
+						depLevels.add(depLevel);
+					}
+				}
+			}
+
+			return {
+				level,
+				tags: clusterTags,
+				dependsOn: [...depLevels].sort((a, b) => a - b)
+			};
+		});
 
 		return {
 			clusters,

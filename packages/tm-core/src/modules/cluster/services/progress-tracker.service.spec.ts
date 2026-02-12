@@ -2,19 +2,21 @@
  * @fileoverview Tests for ProgressTrackerService
  */
 
+import fs from 'fs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ProgressTrackerService } from './progress-tracker.service.js';
 import type { ClusterDetectionResult, ProgressEventData } from '../types.js';
 
-vi.mock('fs', () => ({
-	promises: {
+vi.mock('fs', () => {
+	const promises = {
 		mkdir: vi.fn().mockResolvedValue(undefined),
 		writeFile: vi.fn().mockResolvedValue(undefined),
 		rename: vi.fn().mockResolvedValue(undefined),
 		readFile: vi.fn().mockResolvedValue('{}'),
 		unlink: vi.fn().mockResolvedValue(undefined)
-	}
-}));
+	};
+	return { default: { promises }, promises };
+});
 
 vi.mock('../../../common/logger/factory.js', () => ({
 	getLogger: () => ({
@@ -281,7 +283,7 @@ describe('ProgressTrackerService', () => {
 			expect(cluster?.failedTasks).toBe(0);
 		});
 
-		it('should update parent cluster failedTasks when task status is blocked', async () => {
+		it('should update parent cluster failedTasks when task status is cancelled', async () => {
 			await service.handleEvent({
 				type: 'task:started',
 				timestamp: new Date(0),
@@ -291,7 +293,7 @@ describe('ProgressTrackerService', () => {
 				type: 'task:failed',
 				timestamp: new Date(100),
 				taskId: '1',
-				status: 'blocked'
+				status: 'cancelled'
 			});
 
 			const cluster = service.getClusterProgress('cluster-0');
@@ -469,10 +471,8 @@ describe('ProgressTrackerService', () => {
 			unlink: ReturnType<typeof vi.fn>;
 		};
 
-		beforeEach(async () => {
-			// eslint-disable-next-line @typescript-eslint/no-require-imports
-			const fsModule = await import('fs');
-			fsMock = fsModule.promises as unknown as typeof fsMock;
+		beforeEach(() => {
+			fsMock = fs.promises as unknown as typeof fsMock;
 			vi.clearAllMocks();
 		});
 

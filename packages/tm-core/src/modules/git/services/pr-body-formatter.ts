@@ -10,7 +10,6 @@
  */
 
 import type { WorkflowContext } from '../../workflow/types.js';
-import type { ActivityEvent } from '../../storage/adapters/activity-logger.js';
 
 /**
  * Commit information for PR body
@@ -48,8 +47,6 @@ export interface PRBodyFormatterOptions {
 	commits?: CommitInfo[];
 	/** Test results by phase */
 	testResults?: TestPhaseResult[];
-	/** Activity log events */
-	activityLog?: ActivityEvent[];
 	/** Run start timestamp */
 	runStartTime?: string;
 	/** Run end timestamp */
@@ -299,7 +296,7 @@ export class PRBodyFormatter {
 		commits.forEach((commit) => {
 			const shortSha = commit.sha.substring(0, 7);
 			const timestamp = commit.timestamp
-				? ` (${new Date(commit.timestamp).toLocaleString()})`
+				? ` (${new Date(commit.timestamp).toISOString()})`
 				: '';
 			const author = commit.author ? ` by ${commit.author}` : '';
 
@@ -335,7 +332,7 @@ export class PRBodyFormatter {
 			const duration = this.calculateDuration(runStartTime, runEndTime);
 			parts.push(`- **Duration**: ${duration}`);
 		} else if (runStartTime) {
-			parts.push(`- **Started**: ${new Date(runStartTime).toLocaleString()}`);
+			parts.push(`- **Started**: ${new Date(runStartTime).toISOString()}`);
 		}
 
 		// Branch
@@ -386,6 +383,9 @@ export class PRBodyFormatter {
 			return 'duration unavailable';
 		}
 		const diffMs = end - start;
+		if (diffMs < 0) {
+			return 'duration unavailable';
+		}
 
 		const hours = Math.floor(diffMs / (1000 * 60 * 60));
 		const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));

@@ -388,23 +388,62 @@ describe('ParallelExecutorService', () => {
 				executor
 			);
 
-			// Wait a bit for execution to start
-			await new Promise((resolve) => setTimeout(resolve, 10));
+			// Wait for execution to start
+			await new Promise((resolve) => setTimeout(resolve, 20));
 
-			// Should have 1 active execution (note: this might be 0 if task completes quickly)
+			// Should have 1 active execution
 			const count = service.getActiveExecutionCount();
-			expect(count).toBeGreaterThanOrEqual(0);
+			expect(count).toBe(1);
 
 			await executionPromise;
 		});
 	});
 
 	describe('event listeners', () => {
-		it('should add and remove event listeners', () => {
+		it('should add and remove event listeners', async () => {
+			const tasks: Task[] = [
+				{
+					id: '1',
+					title: 'Task 1',
+					description: '',
+					status: 'pending',
+					priority: 'medium',
+					dependencies: [],
+					details: '',
+					testStrategy: '',
+					subtasks: []
+				}
+			];
+
+			const cluster: ClusterMetadata = {
+				clusterId: 'cluster-0',
+				level: 0,
+				taskIds: ['1'],
+				upstreamClusters: [],
+				downstreamClusters: [],
+				status: 'ready'
+			};
+
+			const executor = vi.fn(async (task: Task) => ({
+				taskId: String(task.id),
+				success: true,
+				startTime: new Date(),
+				endTime: new Date(),
+				duration: 10
+			}));
+
 			const listener = vi.fn();
 
+			// Add listener and execute -- listener should be called
 			service.addEventListener(listener);
+			await service.executeCluster(cluster, tasks, executor);
+
+			expect(listener).toHaveBeenCalled();
+
+			// Clear the mock, remove listener, and execute again
+			listener.mockClear();
 			service.removeEventListener(listener);
+			await service.executeCluster(cluster, tasks, executor);
 
 			// Listener should not be called after removal
 			expect(listener).not.toHaveBeenCalled();
