@@ -3,17 +3,17 @@
  * Real-time progress tracking and persistence for cluster execution
  */
 
-import type { TaskStatus } from '../../../common/types/index.js';
-import type {
-	ClusterStatus,
-	ProgressEventListener,
-	ProgressEventData,
-	ExecutionCheckpoint,
-	ClusterDetectionResult
-} from '../types.js';
-import { getLogger } from '../../../common/logger/factory.js';
 import { promises as fs } from 'fs';
 import { dirname } from 'path';
+import { getLogger } from '../../../common/logger/factory.js';
+import type { TaskStatus } from '../../../common/types/index.js';
+import type {
+	ClusterDetectionResult,
+	ClusterStatus,
+	ExecutionCheckpoint,
+	ProgressEventData,
+	ProgressEventListener
+} from '../types.js';
 
 interface TaskProgress {
 	taskId: string;

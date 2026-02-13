@@ -311,6 +311,42 @@ describe('ClusterStartCommand', () => {
 			);
 		});
 
+		it('should reject --parallel with non-integer value', async () => {
+			const cmd = new ClusterStartCommand();
+			cmd.exitOverride();
+
+			await expect(
+				cmd.parseAsync(['node', 'test', '--parallel', 'abc', '--dry-run'])
+			).rejects.toThrow('--parallel must be a positive integer');
+		});
+
+		it('should reject --parallel with zero value', async () => {
+			const cmd = new ClusterStartCommand();
+			cmd.exitOverride();
+
+			await expect(
+				cmd.parseAsync(['node', 'test', '--parallel', '0', '--dry-run'])
+			).rejects.toThrow('--parallel must be a positive integer');
+		});
+
+		it('should reject --parallel with negative value', async () => {
+			const cmd = new ClusterStartCommand();
+			cmd.exitOverride();
+
+			await expect(
+				cmd.parseAsync(['node', 'test', '--parallel', '-5', '--dry-run'])
+			).rejects.toThrow('--parallel must be a positive integer');
+		});
+
+		it('should reject --parallel with decimal value', async () => {
+			const cmd = new ClusterStartCommand();
+			cmd.exitOverride();
+
+			await expect(
+				cmd.parseAsync(['node', 'test', '--parallel', '3.5', '--dry-run'])
+			).rejects.toThrow('--parallel must be a positive integer');
+		});
+
 		it('should forward --project value to getProjectRoot', async () => {
 			const plan = buildMockPlan();
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);

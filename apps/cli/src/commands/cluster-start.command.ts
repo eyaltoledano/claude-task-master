@@ -10,7 +10,7 @@ import { type ChildProcess, spawn } from 'child_process';
 import { type ExecutionPlan, type TmCore, createTmCore } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import ora, { type Ora } from 'ora';
 import { displayExecutionPlan } from '../ui/components/execution-plan.component.js';
 import { displayError } from '../utils/error-handler.js';
@@ -60,7 +60,19 @@ export class ClusterStartCommand extends Command {
 			.option(
 				'--parallel <n>',
 				'Max concurrent tasks per level (default: 5)',
-				(v) => parseInt(v, 10)
+				(v) => {
+					const parsed = parseInt(v, 10);
+					if (
+						!Number.isInteger(parsed) ||
+						parsed <= 0 ||
+						String(parsed) !== v
+					) {
+						throw new InvalidArgumentError(
+							'--parallel must be a positive integer'
+						);
+					}
+					return parsed;
+				}
 			)
 			.option('--resume', 'Resume from a previous checkpoint')
 			.option(
@@ -83,12 +95,18 @@ export class ClusterStartCommand extends Command {
 		try {
 			// Initialize tm-core
 			const projectRoot = getProjectRoot(options.project);
-			spinner = ora('Initializing Task Master...').start();
+			if (!options.json) {
+				spinner = ora('Initializing Task Master...').start();
+			}
 			this.tmCore = await createTmCore({ projectPath: projectRoot });
-			spinner.succeed('Task Master initialized');
+			if (!options.json && spinner) {
+				spinner.succeed('Task Master initialized');
+			}
 
 			// Build execution plan (auto-detects clusters from the DAG)
-			spinner = ora('Building execution plan...').start();
+			if (!options.json) {
+				spinner = ora('Building execution plan...').start();
+			}
 			const plan = await this.tmCore.cluster.buildExecutionPlan({
 				tag: options.tag,
 				dryRun: options.dryRun,
@@ -99,16 +117,25 @@ export class ClusterStartCommand extends Command {
 			this.currentPlan = plan;
 
 			if (plan.totalTasks === 0) {
-				spinner.warn('No tasks found for the specified tag');
+				if (!options.json && spinner) {
+					spinner.warn('No tasks found for the specified tag');
+				}
 				return;
 			}
 
-			spinner.succeed(
-				`Plan ready: ${plan.totalClusters} clusters, ${plan.totalTasks} tasks, ${plan.estimatedTurns} turns`
-			);
+			if (!options.json && spinner) {
+				spinner.succeed(
+					`Plan ready: ${plan.totalClusters} clusters, ${plan.totalTasks} tasks, ${plan.estimatedTurns} turns`
+				);
+			}
 
 			// Display the plan
 			displayExecutionPlan(plan, { json: options.json });
+
+			// In JSON mode, output plan and exit immediately
+			if (options.json) {
+				return;
+			}
 
 			// Stop here for dry run
 			if (options.dryRun) {
@@ -141,6 +168,16 @@ export class ClusterStartCommand extends Command {
 				spinner.fail('Operation failed');
 			}
 			displayError(error);
+		} finally {
+			// Clean up TmCore resources
+			if (this.tmCore) {
+				try {
+					await this.tmCore.close();
+				} catch (closeError) {
+					// Silently handle close errors to avoid masking original errors
+				}
+				this.tmCore = undefined;
+			}
 		}
 	}
 

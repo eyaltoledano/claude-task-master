@@ -4,22 +4,23 @@
  * for Claude Code teams-mode cluster execution.
  */
 
-import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { getLogger } from '../../common/logger/index.js';
+import type { Task, TaskStatus } from '../../common/types/index.js';
+import { readJSON, writeJSON } from '../../common/utils/index.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import type { TasksDomain } from '../tasks/tasks-domain.js';
-import type { Task, TaskStatus } from '../../common/types/index.js';
-import type {
-	ClusterMetadata,
-	ClusterStatus,
-	ExecutionCheckpoint
-} from './types.js';
 import { ClusterDetectionService } from './services/cluster-detection.service.js';
 import {
 	PromptBuilderService,
 	type PromptContext
 } from './services/prompt-builder.service.js';
+import type {
+	ClusterMetadata,
+	ClusterStatus,
+	ExecutionCheckpoint
+} from './types.js';
 
 /**
  * Options for building a cluster execution plan
@@ -201,10 +202,7 @@ export class ClusterExecutionDomain {
 			taskStatuses
 		};
 
-		await fs.mkdir(path.dirname(checkpointPath), { recursive: true });
-		const tempPath = `${checkpointPath}.tmp`;
-		await fs.writeFile(tempPath, JSON.stringify(checkpoint, null, 2), 'utf-8');
-		await fs.rename(tempPath, checkpointPath);
+		await writeJSON(checkpointPath, checkpoint);
 
 		this.logger.info('Checkpoint saved', { checkpointPath });
 	}
@@ -240,8 +238,26 @@ export class ClusterExecutionDomain {
 		checkpointPath: string
 	): Promise<ExecutionCheckpoint | null> {
 		try {
-			const content = await fs.readFile(checkpointPath, 'utf-8');
-			return JSON.parse(content) as ExecutionCheckpoint;
+			const data = await readJSON<any>(checkpointPath);
+
+			// Validate required fields
+			if (
+				!data ||
+				typeof data !== 'object' ||
+				typeof data.timestamp === 'undefined' ||
+				typeof data.currentClusterId === 'undefined' ||
+				!Array.isArray(data.completedClusters) ||
+				!Array.isArray(data.completedTasks) ||
+				!Array.isArray(data.failedTasks) ||
+				typeof data.clusterStatuses !== 'object' ||
+				typeof data.taskStatuses !== 'object'
+			) {
+				this.logger.warn('Invalid checkpoint structure', { checkpointPath });
+				return null;
+			}
+
+			// Cast to ExecutionCheckpoint after validation
+			return data as ExecutionCheckpoint;
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 				return null;
