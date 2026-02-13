@@ -20,8 +20,6 @@
 			"@tm/cli/*": ["./apps/cli/src/*"],
 			"@tm/mcp": ["./apps/mcp/src/index.ts"],
 			"@tm/mcp/*": ["./apps/mcp/src/*"],
-			"@tm/build-config": ["./packages/build-config/src/index.ts"],
-			"@tm/build-config/*": ["./packages/build-config/src/*"],
 			"@tm/ai-sdk-provider-grok-cli": [
 				"./packages/ai-sdk-provider-grok-cli/src/index.ts"
 			],
