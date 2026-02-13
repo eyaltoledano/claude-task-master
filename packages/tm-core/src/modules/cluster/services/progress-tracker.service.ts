@@ -175,9 +175,11 @@ export class ProgressTrackerService {
 				? event.timestamp.getTime() - cluster.startTime.getTime()
 				: undefined;
 
+			const status = (event.status as ClusterStatus) ?? cluster.status;
+
 			this.clusterProgress.set(event.clusterId, {
 				...cluster,
-				status: event.status as ClusterStatus,
+				status,
 				endTime: event.timestamp,
 				duration
 			});
@@ -235,7 +237,9 @@ export class ProgressTrackerService {
 		if (!cluster) return;
 
 		const completedDelta = task.status === 'done' ? 1 : 0;
-		const failedDelta = task.status === 'cancelled' ? 1 : 0;
+		const failedDelta = ['cancelled', 'failed', 'blocked'].includes(task.status)
+			? 1
+			: 0;
 
 		this.clusterProgress.set(clusterId, {
 			...cluster,
@@ -260,8 +264,8 @@ export class ProgressTrackerService {
 			(t) => t.status === 'done'
 		).length;
 
-		const failedTasks = Array.from(this.taskProgress.values()).filter(
-			(t) => t.status === 'cancelled'
+		const failedTasks = Array.from(this.taskProgress.values()).filter((t) =>
+			['cancelled', 'failed', 'blocked'].includes(t.status)
 		).length;
 
 		const blockedTasks = Array.from(this.taskProgress.values()).filter(
@@ -322,7 +326,7 @@ export class ProgressTrackerService {
 			.map(([id]) => id);
 
 		const failedTasks = Array.from(this.taskProgress.entries())
-			.filter(([_, t]) => t.status === 'cancelled')
+			.filter(([_, t]) => ['cancelled', 'failed', 'blocked'].includes(t.status))
 			.map(([id]) => id);
 
 		const clusterStatuses: Record<string, ClusterStatus> = {};

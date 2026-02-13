@@ -117,7 +117,8 @@ describe('cluster-pipeline.component', () => {
 			createTask(1, 'done'),
 			createTask(2),
 			createTask(3),
-			createTask(4)
+			createTask(4),
+			createTask(5)
 		];
 		const detection = createDetection([
 			createCluster(0, ['1']),

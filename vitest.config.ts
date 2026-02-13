@@ -56,6 +56,9 @@ export default defineConfig({
 		testTimeout: 10000,
 		clearMocks: true,
 		restoreMocks: true,
-		mockReset: true
+		mockReset: true,
+
+		// Limit concurrency to prevent resource exhaustion
+		maxWorkers: 4
 	}
 });

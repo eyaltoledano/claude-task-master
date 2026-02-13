@@ -23,7 +23,7 @@ import {
 export interface ResourceConstraints {
 	/** Maximum number of concurrent tasks */
 	maxConcurrentTasks: number;
-	/** Maximum memory usage in MB (0 = unlimited) */
+	/** Maximum memory usage in MB (0 = unlimited). NOTE: Not yet enforced. */
 	maxMemoryMB?: number;
 	/** Task timeout in milliseconds */
 	taskTimeoutMs?: number;

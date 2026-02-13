@@ -5364,6 +5364,7 @@ function setupCLI() {
 		.description('AI-driven development task management')
 		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
+		.enablePositionalOptions()
 		.addHelpCommand(false); // Disable default help command
 
 	// Only override help for the main program, not for individual commands

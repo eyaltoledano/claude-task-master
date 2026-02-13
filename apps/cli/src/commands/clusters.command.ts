@@ -12,6 +12,7 @@ import {
 	type TmCore,
 	createTmCore
 } from '@tm/core';
+import { ClusterStartCommand } from './cluster-start.command.js';
 import { renderMermaidAscii } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import Table from 'cli-table3';
@@ -43,6 +44,8 @@ export class ClustersCommand extends Command {
 	constructor(name?: string) {
 		super(name || 'clusters');
 
+		this.enablePositionalOptions();
+
 		this.description('Detect and visualize task execution clusters')
 			.option('-t, --tag <tag>', 'Show clusters for a specific tag')
 			.option('--tree', 'Display clusters as an ASCII dependency tree')
@@ -58,6 +61,9 @@ export class ClustersCommand extends Command {
 			.action(async (options: ClustersCommandOptions) => {
 				await this.executeCommand(options);
 			});
+
+		// Register subcommands
+		this.addCommand(new ClusterStartCommand());
 	}
 
 	private async executeCommand(options: ClustersCommandOptions): Promise<void> {
@@ -355,7 +361,7 @@ export class ClustersCommand extends Command {
 		for (const cluster of sorted) {
 			const count = cluster.taskIds.length;
 			const mode = count > 1 ? 'parallel' : 'seq';
-			const nodeId = cluster.clusterId.replace('-', '_');
+			const nodeId = cluster.clusterId.replaceAll('-', '_');
 			lines.push(`  ${nodeId}[${cluster.clusterId} ${count} tasks ${mode}]`);
 		}
 
@@ -390,15 +396,15 @@ export class ClustersCommand extends Command {
 		// Step 6: Emit spine as a single chained line
 		if (sorted.length > 1) {
 			const chain = sorted
-				.map((c) => c.clusterId.replace('-', '_'))
+				.map((c) => c.clusterId.replaceAll('-', '_'))
 				.join(' --> ');
 			lines.push(`  ${chain}`);
 		}
 
 		// Step 7: Emit skip edges as dotted lines
 		for (const edge of skipEdges) {
-			const fromNode = edge.from.replace('-', '_');
-			const toNode = edge.to.replace('-', '_');
+			const fromNode = edge.from.replaceAll('-', '_');
+			const toNode = edge.to.replaceAll('-', '_');
 			lines.push(`  ${fromNode} -.-> ${toNode}`);
 		}
 
@@ -422,7 +428,7 @@ export class ClustersCommand extends Command {
 			for (const cluster of clusters) {
 				const taskLabel = cluster.taskIds.join(', ');
 				const mode = cluster.taskIds.length > 1 ? '(parallel)' : '(sequential)';
-				const nodeId = cluster.clusterId.replace('-', '_');
+				const nodeId = cluster.clusterId.replaceAll('-', '_');
 				lines.push(
 					`    ${nodeId}["${cluster.clusterId}<br/>Tasks: ${taskLabel}<br/>${mode}"]`
 				);
@@ -435,13 +441,13 @@ export class ClustersCommand extends Command {
 
 		// Only draw edges between different levels
 		for (const cluster of detection.clusters) {
-			const nodeId = cluster.clusterId.replace('-', '_');
+			const nodeId = cluster.clusterId.replaceAll('-', '_');
 			for (const downstreamId of cluster.downstreamClusters) {
 				const downstream = detection.clusters.find(
 					(c) => c.clusterId === downstreamId
 				);
 				if (downstream && downstream.level !== cluster.level) {
-					const downstreamNodeId = downstreamId.replace('-', '_');
+					const downstreamNodeId = downstreamId.replaceAll('-', '_');
 					lines.push(`  ${nodeId} --> ${downstreamNodeId}`);
 				}
 			}

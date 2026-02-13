@@ -136,7 +136,8 @@ const INTENTIONALLY_UNDOCUMENTED = [
 	'export', // Hamster export functionality
 	'export-tag', // Hamster export tag alias
 	'start', // Hamster workflow start
-	'loop' // Autonomous loop mode
+	'loop', // Autonomous loop mode
+	'clusters' // Advanced cluster execution (new, documented via --help)
 ];
 
 /**

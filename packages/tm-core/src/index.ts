@@ -288,7 +288,13 @@ export {
 	TagClusterService,
 	type TagDependency,
 	type TagCluster,
-	type TagClusterResult
+	type TagClusterResult,
+	ClusterExecutionDomain,
+	type ClusterStartOptions,
+	type ExecutionPlan,
+	type CheckpointInfo,
+	PromptBuilderService,
+	type PromptContext
 } from './modules/cluster/index.js';
 
 // ========== Testing Utilities ==========

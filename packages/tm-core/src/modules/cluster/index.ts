@@ -39,3 +39,17 @@ export {
 	type TagCluster,
 	type TagClusterResult
 } from './services/tag-cluster.service.js';
+
+// Domain facade
+export {
+	ClusterExecutionDomain,
+	type ClusterStartOptions,
+	type ExecutionPlan,
+	type CheckpointInfo
+} from './cluster-execution-domain.js';
+
+// Prompt builder
+export {
+	PromptBuilderService,
+	type PromptContext
+} from './services/prompt-builder.service.js';

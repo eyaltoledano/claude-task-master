@@ -68,6 +68,7 @@ export class TagOrchestratorService {
 	private eventListeners: Set<ProgressEventListener> = new Set();
 	private listenerFailureCounts: Map<ProgressEventListener, number> = new Map();
 	private currentSequencerListener?: (event: ProgressEventData) => void;
+	private progressTrackerListener?: (event: ProgressEventData) => void;
 	private currentContext?: TagExecutionContext;
 
 	constructor(
@@ -85,9 +86,10 @@ export class TagOrchestratorService {
 			this.emitEvent(event);
 		});
 
-		this.progressTracker.addEventListener((event) => {
+		this.progressTrackerListener = (event: ProgressEventData) => {
 			this.emitEvent(event);
-		});
+		};
+		this.progressTracker.addEventListener(this.progressTrackerListener);
 	}
 
 	/**
@@ -120,13 +122,19 @@ export class TagOrchestratorService {
 			);
 		}
 
+		// Remove old progress tracker listener before replacing the instance
+		if (this.progressTrackerListener) {
+			this.progressTracker.removeEventListener(this.progressTrackerListener);
+		}
+
 		this.progressTracker = new ProgressTrackerService(options.checkpointPath);
 		await this.progressTracker.initialize(detection);
 
 		// Re-wire the progress tracker listener for the new instance
-		this.progressTracker.addEventListener((event) => {
+		this.progressTrackerListener = (event: ProgressEventData) => {
 			this.emitEvent(event);
-		});
+		};
+		this.progressTracker.addEventListener(this.progressTrackerListener);
 
 		if (this.currentSequencerListener) {
 			this.clusterSequencer.removeEventListener(this.currentSequencerListener);

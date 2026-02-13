@@ -324,6 +324,20 @@ export class ClusterPRIntegration {
 	 * Update PR options at runtime
 	 */
 	updateOptions(options: Partial<ClusterPRIntegrationOptions>): void {
+		// Detect if baseBranch is changing
+		const baseBranchChanged =
+			options.baseBranch !== undefined &&
+			options.baseBranch !== this.options.baseBranch;
+
+		// Merge new options immutably
 		this.options = { ...this.options, ...options };
+
+		// Recreate prService if baseBranch changed
+		if (baseBranchChanged) {
+			this.prService = new GitHubPRService(
+				this.options.projectRoot,
+				this.options.baseBranch || 'main'
+			);
+		}
 	}
 }

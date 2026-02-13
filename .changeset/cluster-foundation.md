@@ -1,5 +1,5 @@
 ---
-"task-master-ai": minor
+"task-master-ai": major
 ---
 
 Introduce Execution Phases — manage what gets built and in what order
