@@ -13,9 +13,9 @@ import type { Task } from '../../common/types/index.js';
 import type { ClusterMetadata, ExecutionCheckpoint } from './types.js';
 import { ClusterDetectionService } from './services/cluster-detection.service.js';
 import {
-	SystemPromptBuilderService,
-	type SystemPromptContext
-} from './services/system-prompt-builder.service.js';
+	PromptBuilderService,
+	type PromptContext
+} from './services/prompt-builder.service.js';
 
 /**
  * Options for building a cluster execution plan
@@ -69,10 +69,10 @@ export class ClusterExecutionDomain {
 	private readonly logger = getLogger('ClusterExecutionDomain');
 	private readonly projectRoot: string;
 	private readonly detectionService = new ClusterDetectionService();
-	private readonly promptBuilder = new SystemPromptBuilderService();
+	private readonly promptBuilder = new PromptBuilderService();
 
 	constructor(
-		configManager: ConfigManager,
+		private readonly configManager: ConfigManager,
 		private readonly tasksDomain: TasksDomain
 	) {
 		this.projectRoot = configManager.getProjectRoot();
@@ -88,7 +88,7 @@ export class ClusterExecutionDomain {
 	async buildExecutionPlan(
 		options: ClusterStartOptions = {}
 	): Promise<ExecutionPlan> {
-		const tag = options.tag ?? 'master';
+		const tag = options.tag ?? this.configManager.getActiveTag();
 
 		this.logger.info('Building execution plan', { tag });
 
@@ -158,10 +158,10 @@ export class ClusterExecutionDomain {
 	}
 
 	/**
-	 * Generate the system prompt for a Claude Code teams session.
+	 * Generate the prompt for a Claude Code teams session.
 	 */
-	buildSystemPrompt(plan: ExecutionPlan): string {
-		const context: SystemPromptContext = {
+	buildPrompt(plan: ExecutionPlan): string {
+		const context: PromptContext = {
 			projectPath: this.projectRoot,
 			tag: plan.tag,
 			clusters: plan.clusters,
@@ -171,7 +171,7 @@ export class ClusterExecutionDomain {
 			checkpointPath: plan.checkpointPath
 		};
 
-		return this.promptBuilder.buildTeamsPrompt(context);
+		return this.promptBuilder.buildPrompt(context);
 	}
 
 	/**

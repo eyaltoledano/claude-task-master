@@ -1,15 +1,15 @@
 /**
- * @fileoverview System Prompt Builder Service
- * Generates the system prompt for a Claude Code teams session that executes task clusters
+ * @fileoverview Prompt Builder Service
+ * Generates the prompt for a Claude Code teams session that executes task clusters
  */
 
 import type { Task } from '../../../common/types/index.js';
 import type { ClusterMetadata } from '../types.js';
 
 /**
- * Context needed to build the system prompt
+ * Context needed to build the prompt
  */
-export interface SystemPromptContext {
+export interface PromptContext {
 	readonly projectPath: string;
 	readonly tag: string;
 	readonly clusters: readonly ClusterMetadata[];
@@ -20,16 +20,16 @@ export interface SystemPromptContext {
 }
 
 /**
- * SystemPromptBuilderService generates the system prompt used by the Claude Code
+ * PromptBuilderService generates the prompt used by the Claude Code
  * teams session to execute task clusters in parallel.
  */
-export class SystemPromptBuilderService {
+export class PromptBuilderService {
 	/**
-	 * Build a system prompt for teams mode execution.
+	 * Build a prompt for teams mode execution.
 	 * The prompt instructs Claude to create agent teams that execute
 	 * clusters level-by-level, with tasks in each level running in parallel.
 	 */
-	buildTeamsPrompt(context: SystemPromptContext): string {
+	buildPrompt(context: PromptContext): string {
 		const sections: string[] = [];
 
 		sections.push(this.buildHeader(context));
@@ -41,7 +41,7 @@ export class SystemPromptBuilderService {
 		return sections.join('\n\n');
 	}
 
-	private buildHeader(context: SystemPromptContext): string {
+	private buildHeader(context: PromptContext): string {
 		return [
 			'# Cluster Execution Session',
 			'',
@@ -53,7 +53,7 @@ export class SystemPromptBuilderService {
 		].join('\n');
 	}
 
-	private buildClusterOverview(context: SystemPromptContext): string {
+	private buildClusterOverview(context: PromptContext): string {
 		const levels = this.groupByLevel(context.clusters);
 		const sortedLevels = [...levels.entries()].sort((a, b) => a[0] - b[0]);
 
@@ -83,7 +83,7 @@ export class SystemPromptBuilderService {
 		return lines.join('\n');
 	}
 
-	private buildTaskDetails(context: SystemPromptContext): string {
+	private buildTaskDetails(context: PromptContext): string {
 		const taskMap = new Map(context.tasks.map((t) => [String(t.id), t]));
 		const lines: string[] = ['## Task Details', ''];
 
@@ -142,33 +142,33 @@ export class SystemPromptBuilderService {
 		return sections.join('\n');
 	}
 
-	private buildExecutionInstructions(context: SystemPromptContext): string {
+	private buildExecutionInstructions(context: PromptContext): string {
 		const levels = this.groupByLevel(context.clusters);
 		const totalLevels = levels.size;
 
 		return [
 			'## Execution Instructions',
 			'',
-			'You are orchestrating a cluster execution session using Claude Code teams.',
+			'You are the team lead operating in delegate mode. Your role is to coordinate and review — do NOT implement tasks yourself.',
+			'',
+			'### Setup',
+			'',
+			'1. Create a team using TeamCreate.',
+			`2. Create ${context.totalTasks} task(s) using TaskCreate — one per task listed in the Task Details section above.`,
 			'',
 			'### Workflow',
 			'',
-			`1. There are ${totalLevels} execution level(s). Process them sequentially (level 0, then level 1, etc.).`,
-			'2. Within each level, execute all clusters in parallel using agent teams.',
-			'3. For each task, create a teammate agent that:',
-			'   - Reads the task details above',
-			"   - Implements the required changes following the project's CLAUDE.md guidelines",
-			'   - Runs relevant tests to verify the implementation',
-			'   - Marks the task as done when complete',
-			'4. Wait for all tasks in a level to complete before proceeding to the next level.',
+			`There are ${totalLevels} execution level(s). Process them sequentially (Level 0, then Level 1, etc.):`,
+			'',
+			'1. For each level, spawn one teammate per task using the Task tool (subagent_type: "general-purpose") and run them in parallel.',
+			'2. Each teammate receives:',
+			'   - The full task details (description, implementation details, test strategy, subtasks)',
+			"   - Instructions to follow the project's CLAUDE.md guidelines",
+			'   - A requirement to run relevant tests before marking complete',
+			`   - The command to mark the task done: \`tm set-status --id=<task-id> --status=done --tag ${context.tag}\``,
+			'3. Wait for ALL teammates in a level to finish before moving to the next level.',
+			'4. After each level completes, shut down the teammates from that level using SendMessage with type: "shutdown_request".',
 			'5. After each level completes, save a checkpoint so execution can resume if interrupted.',
-			'',
-			'### Task Completion',
-			'',
-			'To mark a task as done, run:',
-			'```',
-			`tm set-status --id=<task-id> --status=done --tag ${context.tag}`,
-			'```',
 			'',
 			'### Error Handling',
 			'',
@@ -178,16 +178,18 @@ export class SystemPromptBuilderService {
 		].join('\n');
 	}
 
-	private buildCompletionRules(context: SystemPromptContext): string {
+	private buildCompletionRules(context: PromptContext): string {
 		return [
 			'## Rules',
 			'',
+			'- Delegate mode: coordinate and review only — do NOT write code or implement tasks yourself.',
 			"- Follow the project's CLAUDE.md instructions for code style, testing, and commit conventions.",
 			'- Make atomic commits for each task (one commit per task when possible).',
 			'- Run tests before marking a task as done.',
 			'- Do not modify tasks outside the current tag scope.',
 			`- Checkpoint path: ${context.checkpointPath}`,
-			'- If interrupted (Ctrl+C), the session can be resumed from the last checkpoint.'
+			'- If interrupted (Ctrl+C), the session can be resumed from the last checkpoint.',
+			'- After all levels complete, shut down all remaining teammates and clean up the team using TeamDelete.'
 		].join('\n');
 	}
 

@@ -44,6 +44,8 @@ export class ClustersCommand extends Command {
 	constructor(name?: string) {
 		super(name || 'clusters');
 
+		this.enablePositionalOptions();
+
 		this.description('Detect and visualize task execution clusters')
 			.option('-t, --tag <tag>', 'Show clusters for a specific tag')
 			.option('--tree', 'Display clusters as an ASCII dependency tree')

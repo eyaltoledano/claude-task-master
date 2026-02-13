@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-	SystemPromptBuilderService,
-	type SystemPromptContext
-} from './system-prompt-builder.service.js';
+	PromptBuilderService,
+	type PromptContext
+} from './prompt-builder.service.js';
 import type { ClusterMetadata } from '../types.js';
 import type { Task } from '../../../common/types/index.js';
 
@@ -35,8 +35,8 @@ function createTestCluster(
 }
 
 function buildContext(
-	overrides: Partial<SystemPromptContext> = {}
-): SystemPromptContext {
+	overrides: Partial<PromptContext> = {}
+): PromptContext {
 	return {
 		projectPath: '/test/project',
 		tag: 'sprint-1',
@@ -50,8 +50,8 @@ function buildContext(
 	};
 }
 
-describe('SystemPromptBuilderService', () => {
-	const builder = new SystemPromptBuilderService();
+describe('PromptBuilderService', () => {
+	const builder = new PromptBuilderService();
 
 	it('should include project metadata in the header', () => {
 		const context = buildContext({
@@ -61,7 +61,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 7
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('**Project**: /my/project');
 		expect(prompt).toContain('**Tag**: auth-feature');
@@ -74,7 +74,7 @@ describe('SystemPromptBuilderService', () => {
 			checkpointPath: '/my/checkpoint.json'
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('**Checkpoint**: /my/checkpoint.json');
 	});
@@ -100,7 +100,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 3
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('### Level 0');
 		expect(prompt).toContain('### Level 1');
@@ -117,7 +117,7 @@ describe('SystemPromptBuilderService', () => {
 
 		const context = buildContext({ clusters, totalClusters: 2, totalTasks: 2 });
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('### Level 0 (parallel)');
 	});
@@ -159,7 +159,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 1
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('#### Task 1: Setup auth');
 		expect(prompt).toContain('**Description**: Implement JWT auth');
@@ -184,7 +184,7 @@ describe('SystemPromptBuilderService', () => {
 			totalClusters: 1,
 			totalTasks: 1
 		});
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).not.toContain('**Implementation Details**');
 		expect(prompt).not.toContain('**Test Strategy**');
@@ -206,7 +206,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 3
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('3 execution level(s)');
 		expect(prompt).toContain(
@@ -214,13 +214,40 @@ describe('SystemPromptBuilderService', () => {
 		);
 	});
 
-	it('should include rules section', () => {
+	it('should include delegate mode instructions', () => {
 		const context = buildContext();
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
+
+		expect(prompt).toContain('delegate mode');
+		expect(prompt).toContain('do NOT implement tasks yourself');
+	});
+
+	it('should include TeamCreate and TaskCreate instructions', () => {
+		const context = buildContext({ totalTasks: 5 });
+		const prompt = builder.buildPrompt(context);
+
+		expect(prompt).toContain('TeamCreate');
+		expect(prompt).toContain('TaskCreate');
+		expect(prompt).toContain('5 task(s)');
+	});
+
+	it('should include teammate spawning and shutdown instructions', () => {
+		const context = buildContext();
+		const prompt = builder.buildPrompt(context);
+
+		expect(prompt).toContain('spawn one teammate per task');
+		expect(prompt).toContain('shutdown_request');
+		expect(prompt).toContain('TeamDelete');
+	});
+
+	it('should include rules section with delegate mode rule', () => {
+		const context = buildContext();
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('## Rules');
 		expect(prompt).toContain('CLAUDE.md');
 		expect(prompt).toContain('atomic commits');
+		expect(prompt).toContain('coordinate and review only');
 	});
 
 	it('should handle tasks not found in task map gracefully', () => {
@@ -241,7 +268,7 @@ describe('SystemPromptBuilderService', () => {
 		});
 
 		// Should not throw
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('#### Task 1: Only task');
 		expect(prompt).not.toContain('Task 99');
@@ -255,7 +282,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 0
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('0 execution level(s)');
 		expect(prompt).not.toContain('### Level');
@@ -281,7 +308,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 2
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('**cluster-0a**: Tasks [1]');
 		expect(prompt).toContain('**cluster-0b**: Tasks [2]');
@@ -302,7 +329,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 0
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('### Level 1');
 		expect(prompt).not.toContain('Depends on');
@@ -333,7 +360,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 1
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		expect(prompt).toContain('**Implementation Details**');
 		expect(prompt).not.toContain('**Test Strategy**');
@@ -358,7 +385,7 @@ describe('SystemPromptBuilderService', () => {
 			totalTasks: 1
 		});
 
-		const prompt = builder.buildTeamsPrompt(context);
+		const prompt = builder.buildPrompt(context);
 
 		const headerIdx = prompt.indexOf('# Cluster Execution Session');
 		const planIdx = prompt.indexOf('## Execution Plan');

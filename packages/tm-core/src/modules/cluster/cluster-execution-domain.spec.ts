@@ -39,9 +39,13 @@ function createTask(id: string, deps: string[] = []): Task {
 	} as Task;
 }
 
-function createMockConfigManager(projectRoot = '/test/project'): ConfigManager {
+function createMockConfigManager(
+	projectRoot = '/test/project',
+	activeTag = 'master'
+): ConfigManager {
 	return {
-		getProjectRoot: () => projectRoot
+		getProjectRoot: () => projectRoot,
+		getActiveTag: vi.fn().mockReturnValue(activeTag)
 	} as unknown as ConfigManager;
 }
 
@@ -81,18 +85,35 @@ describe('ClusterExecutionDomain', () => {
 			expect(plan.hasResumableCheckpoint).toBe(false);
 		});
 
-		it('should default to "master" tag when none provided', async () => {
+		it('should default to active tag from configManager when none provided', async () => {
 			mockTasksDomain = createMockTasksDomain([]);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
-			);
+			const mockConfig = createMockConfigManager('/test/project', 'master');
+			domain = new ClusterExecutionDomain(mockConfig, mockTasksDomain);
 
 			const plan = await domain.buildExecutionPlan();
 
+			expect(mockConfig.getActiveTag).toHaveBeenCalled();
 			expect(plan.tag).toBe('master');
 			expect(mockTasksDomain.list).toHaveBeenCalledWith({
 				tag: 'master',
+				includeSubtasks: true
+			});
+		});
+
+		it('should use configManager active tag when no tag option is provided', async () => {
+			mockTasksDomain = createMockTasksDomain([]);
+			const mockConfig = createMockConfigManager(
+				'/test/project',
+				'my-feature'
+			);
+			domain = new ClusterExecutionDomain(mockConfig, mockTasksDomain);
+
+			const plan = await domain.buildExecutionPlan();
+
+			expect(mockConfig.getActiveTag).toHaveBeenCalled();
+			expect(plan.tag).toBe('my-feature');
+			expect(mockTasksDomain.list).toHaveBeenCalledWith({
+				tag: 'my-feature',
 				includeSubtasks: true
 			});
 		});
@@ -250,7 +271,7 @@ describe('ClusterExecutionDomain', () => {
 		});
 	});
 
-	describe('buildSystemPrompt', () => {
+	describe('buildPrompt', () => {
 		it('should generate a non-empty system prompt from a plan', async () => {
 			const tasks = [createTask('1'), createTask('2', ['1'])];
 			mockTasksDomain = createMockTasksDomain(tasks);
@@ -260,7 +281,7 @@ describe('ClusterExecutionDomain', () => {
 			);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'prompt-test' });
-			const prompt = domain.buildSystemPrompt(plan);
+			const prompt = domain.buildPrompt(plan);
 
 			expect(prompt.length).toBeGreaterThan(0);
 			expect(prompt).toContain('Cluster Execution Session');
@@ -276,7 +297,7 @@ describe('ClusterExecutionDomain', () => {
 			);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'prompt-fields' });
-			const prompt = domain.buildSystemPrompt(plan);
+			const prompt = domain.buildPrompt(plan);
 
 			expect(prompt).toContain('prompt-fields');
 			expect(prompt).toContain('/test/project');

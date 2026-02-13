@@ -293,8 +293,8 @@ export {
 	type ClusterStartOptions,
 	type ExecutionPlan,
 	type CheckpointInfo,
-	SystemPromptBuilderService,
-	type SystemPromptContext
+	PromptBuilderService,
+	type PromptContext
 } from './modules/cluster/index.js';
 
 // ========== Testing Utilities ==========

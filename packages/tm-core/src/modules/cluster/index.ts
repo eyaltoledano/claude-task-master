@@ -48,8 +48,8 @@ export {
 	type CheckpointInfo
 } from './cluster-execution-domain.js';
 
-// System prompt builder
+// Prompt builder
 export {
-	SystemPromptBuilderService,
-	type SystemPromptContext
-} from './services/system-prompt-builder.service.js';
+	PromptBuilderService,
+	type PromptContext
+} from './services/prompt-builder.service.js';

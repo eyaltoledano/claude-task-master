@@ -6,7 +6,7 @@
  * Usage: tm clusters start [--tag <tag>] [--dry-run] [--parallel <n>] [--resume] [--json]
  */
 
-import { spawn, type ChildProcess } from 'child_process';
+import { type ChildProcess, spawn } from 'child_process';
 import { type ExecutionPlan, type TmCore, createTmCore } from '@tm/core';
 import boxen from 'boxen';
 import chalk from 'chalk';
@@ -45,7 +45,7 @@ export class ClusterStartCommand extends Command {
 		)
 			.option(
 				'-t, --tag <tag>',
-				'Tag to execute clusters for (default: master)'
+				'Tag to execute clusters for (default: active tag)'
 			)
 			.option('--dry-run', 'Show execution plan without launching Claude')
 			.option(
@@ -119,11 +119,11 @@ export class ClusterStartCommand extends Command {
 				return;
 			}
 
-			// Generate system prompt
-			const systemPrompt = this.tmCore.cluster.buildSystemPrompt(plan);
+			// Generate prompt
+			const prompt = this.tmCore.cluster.buildPrompt(plan);
 
 			// Launch interactive Claude session
-			await this.launchClaudeSession(systemPrompt, projectRoot);
+			await this.launchClaudeSession(prompt, projectRoot);
 
 			// Post-session message
 			this.displayPostSessionMessage(plan);
@@ -136,25 +136,63 @@ export class ClusterStartCommand extends Command {
 	}
 
 	/**
-	 * Launch an interactive Claude Code session with the system prompt.
+	 * Launch an interactive Claude Code session with the prompt.
 	 * The session inherits stdio so the user can interact with Claude directly.
 	 */
 	private async launchClaudeSession(
-		systemPrompt: string,
+		prompt: string,
 		projectRoot: string
 	): Promise<void> {
-		return new Promise((resolve, reject) => {
+		return new Promise<void>((resolve, reject) => {
 			console.log(chalk.green('Launching Claude Code teams session...'));
 			console.log();
 
-			this.childProcess = spawn('claude', ['--system-prompt', systemPrompt], {
+			this.childProcess = spawn('claude', [prompt], {
 				cwd: projectRoot,
 				stdio: 'inherit',
-				shell: false
+				shell: false,
+				env: {
+					...process.env,
+					CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
+				}
 			});
+
+			const cleanup = () => {
+				// Remove handlers immediately to prevent double-firing
+				process.removeListener('SIGINT', cleanup);
+				process.removeListener('SIGTERM', cleanup);
+
+				if (this.childProcess && !this.childProcess.killed) {
+					this.childProcess.kill('SIGTERM');
+				}
+
+				// Best-effort checkpoint save (fire-and-forget in signal handler)
+				if (this.tmCore && this.currentPlan) {
+					const tag = this.currentPlan.tag;
+					this.tmCore.cluster
+						.saveCheckpoint(tag, [], [])
+						.then(() => {
+							console.log(
+								chalk.yellow(
+									`\nCheckpoint saved. Resume with: tm clusters start --tag ${tag} --resume`
+								)
+							);
+						})
+						.catch(() => {
+							// Best-effort checkpoint save
+						});
+				}
+			};
+
+			process.on('SIGINT', cleanup);
+			process.on('SIGTERM', cleanup);
 
 			this.childProcess.on('close', (code) => {
 				this.childProcess = undefined;
+				// Clean up signal handlers on normal exit
+				process.removeListener('SIGINT', cleanup);
+				process.removeListener('SIGTERM', cleanup);
+
 				if (code === 0 || code === null) {
 					resolve();
 				} else {
@@ -164,36 +202,12 @@ export class ClusterStartCommand extends Command {
 
 			this.childProcess.on('error', (error) => {
 				this.childProcess = undefined;
+				// Clean up signal handlers on error
+				process.removeListener('SIGINT', cleanup);
+				process.removeListener('SIGTERM', cleanup);
+
 				reject(new Error(`Failed to spawn Claude Code: ${error.message}`));
 			});
-
-			// Handle SIGINT: save checkpoint and terminate child
-			const cleanup = async () => {
-				if (this.childProcess && !this.childProcess.killed) {
-					this.childProcess.kill('SIGTERM');
-				}
-
-				// Save checkpoint
-				if (this.tmCore && this.currentPlan) {
-					try {
-						await this.tmCore.cluster.saveCheckpoint(
-							this.currentPlan.tag,
-							[],
-							[]
-						);
-						console.log(
-							chalk.yellow(
-								`\nCheckpoint saved. Resume with: tm clusters start --tag ${this.currentPlan.tag} --resume`
-							)
-						);
-					} catch {
-						// Best-effort checkpoint save
-					}
-				}
-			};
-
-			process.on('SIGINT', cleanup);
-			process.on('SIGTERM', cleanup);
 		});
 	}
 

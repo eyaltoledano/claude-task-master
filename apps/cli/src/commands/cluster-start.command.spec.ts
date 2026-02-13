@@ -1,17 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClusterStartCommand } from './cluster-start.command.js';
+import { ClustersCommand } from './clusters.command.js';
 
 // Use vi.hoisted so mocks are available when vi.mock factories run
 const {
 	mockBuildExecutionPlan,
-	mockBuildSystemPrompt,
+	mockBuildPrompt,
 	mockSaveCheckpoint,
 	mockDisplayError,
 	mockCreateTmCore,
 	mockGetProjectRoot
 } = vi.hoisted(() => ({
 	mockBuildExecutionPlan: vi.fn(),
-	mockBuildSystemPrompt: vi.fn(),
+	mockBuildPrompt: vi.fn(),
 	mockSaveCheckpoint: vi.fn(),
 	mockDisplayError: vi.fn(),
 	mockCreateTmCore: vi.fn(),
@@ -70,7 +71,7 @@ describe('ClusterStartCommand', () => {
 		mockCreateTmCore.mockResolvedValue({
 			cluster: {
 				buildExecutionPlan: mockBuildExecutionPlan,
-				buildSystemPrompt: mockBuildSystemPrompt,
+				buildPrompt: mockBuildPrompt,
 				saveCheckpoint: mockSaveCheckpoint
 			}
 		});
@@ -148,7 +149,7 @@ describe('ClusterStartCommand', () => {
 					dryRun: true
 				})
 			);
-			expect(mockBuildSystemPrompt).not.toHaveBeenCalled();
+			expect(mockBuildPrompt).not.toHaveBeenCalled();
 		});
 
 		it('should return early when no tasks found', async () => {
@@ -162,29 +163,32 @@ describe('ClusterStartCommand', () => {
 
 			expect(mockDisplayError).not.toHaveBeenCalled();
 			expect(mockBuildExecutionPlan).toHaveBeenCalled();
-			expect(mockBuildSystemPrompt).not.toHaveBeenCalled();
+			expect(mockBuildPrompt).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('launch session', () => {
-		it('should build system prompt and spawn claude', async () => {
+		it('should build prompt and spawn interactive claude with teams env', async () => {
 			const plan = buildMockPlan();
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
-			mockBuildSystemPrompt.mockReturnValueOnce('test system prompt');
+			mockBuildPrompt.mockReturnValueOnce('test prompt');
 
 			const cmd = new ClusterStartCommand();
 			cmd.exitOverride();
 			await cmd.parseAsync(['node', 'test', '--tag', 'test-tag']);
 
 			expect(mockDisplayError).not.toHaveBeenCalled();
-			expect(mockBuildSystemPrompt).toHaveBeenCalledWith(plan);
+			expect(mockBuildPrompt).toHaveBeenCalledWith(plan);
 			expect(mockSpawn).toHaveBeenCalledWith(
 				'claude',
-				['--system-prompt', 'test system prompt'],
+				['test prompt'],
 				expect.objectContaining({
 					cwd: '/test/project',
 					stdio: 'inherit',
-					shell: false
+					shell: false,
+					env: expect.objectContaining({
+						CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
+					})
 				})
 			);
 		});
@@ -222,7 +226,7 @@ describe('ClusterStartCommand', () => {
 		it('should display error when Claude exits with non-zero code', async () => {
 			const plan = buildMockPlan();
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
-			mockBuildSystemPrompt.mockReturnValueOnce('prompt');
+			mockBuildPrompt.mockReturnValueOnce('prompt');
 
 			mockSpawn.mockReturnValue({
 				on: vi.fn((event: string, handler: Function) => {
@@ -248,7 +252,7 @@ describe('ClusterStartCommand', () => {
 		it('should display error when spawn emits error event', async () => {
 			const plan = buildMockPlan();
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
-			mockBuildSystemPrompt.mockReturnValueOnce('prompt');
+			mockBuildPrompt.mockReturnValueOnce('prompt');
 
 			mockSpawn.mockReturnValue({
 				on: vi.fn((event: string, handler: Function) => {
@@ -317,6 +321,28 @@ describe('ClusterStartCommand', () => {
 			]);
 
 			expect(mockGetProjectRoot).toHaveBeenCalledWith('/custom');
+		});
+	});
+
+	describe('parent command forwarding', () => {
+		it('should forward --tag to start subcommand when invoked via ClustersCommand', async () => {
+			const plan = buildMockPlan();
+			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
+
+			const parent = new ClustersCommand();
+			parent.exitOverride();
+			await parent.parseAsync([
+				'node',
+				'test',
+				'start',
+				'--tag',
+				'my-tag',
+				'--dry-run'
+			]);
+
+			expect(mockBuildExecutionPlan).toHaveBeenCalledWith(
+				expect.objectContaining({ tag: 'my-tag', dryRun: true })
+			);
 		});
 	});
 });
