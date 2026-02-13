@@ -5,6 +5,7 @@
 
 import type { Task } from '../../../common/types/index.js';
 import type { ClusterMetadata } from '../types.js';
+import { getLogger } from '../../../common/logger/factory.js';
 
 /**
  * Context needed to build the prompt
@@ -24,6 +25,8 @@ export interface PromptContext {
  * teams session to execute task clusters in parallel.
  */
 export class PromptBuilderService {
+	private logger = getLogger('PromptBuilderService');
+
 	/**
 	 * Build a prompt for teams mode execution.
 	 * The prompt instructs Claude to create agent teams that execute
@@ -93,7 +96,13 @@ export class PromptBuilderService {
 
 			for (const taskId of cluster.taskIds) {
 				const task = taskMap.get(taskId);
-				if (!task) continue;
+				if (!task) {
+					this.logger.warn('Task referenced by cluster not found', {
+						taskId,
+						clusterId: cluster.clusterId
+					});
+					continue;
+				}
 
 				lines.push(this.formatTaskPrompt(task));
 				lines.push('');

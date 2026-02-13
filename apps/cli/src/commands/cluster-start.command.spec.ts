@@ -76,16 +76,21 @@ describe('ClusterStartCommand', () => {
 			}
 		});
 
-		// Re-set spawn mock to return a process-like object
-		mockSpawn.mockReturnValue({
-			on: vi.fn((event: string, handler: Function) => {
-				if (event === 'close') {
-					setTimeout(() => handler(0), 0);
-				}
-			}),
+		// Re-set spawn mock to return a process-like object with stdin support
+		const mockStdin = { write: vi.fn(), end: vi.fn() };
+		const mockProcess = {
+			on: vi.fn(),
 			killed: false,
-			kill: vi.fn()
+			kill: vi.fn(),
+			stdin: mockStdin
+		};
+		mockProcess.on.mockImplementation((event: string, handler: Function) => {
+			if (event === 'close') {
+				setTimeout(() => handler(0), 0);
+			}
+			return mockProcess;
 		});
+		mockSpawn.mockReturnValue(mockProcess);
 	});
 
 	afterEach(() => {
@@ -181,10 +186,10 @@ describe('ClusterStartCommand', () => {
 			expect(mockBuildPrompt).toHaveBeenCalledWith(plan);
 			expect(mockSpawn).toHaveBeenCalledWith(
 				'claude',
-				['test prompt'],
+				[],
 				expect.objectContaining({
 					cwd: '/test/project',
-					stdio: 'inherit',
+					stdio: ['pipe', 'inherit', 'inherit'],
 					shell: false,
 					env: expect.objectContaining({
 						CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
@@ -228,15 +233,20 @@ describe('ClusterStartCommand', () => {
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
 			mockBuildPrompt.mockReturnValueOnce('prompt');
 
-			mockSpawn.mockReturnValue({
-				on: vi.fn((event: string, handler: Function) => {
-					if (event === 'close') {
-						setTimeout(() => handler(1), 0);
-					}
-				}),
+			const mockStdin = { write: vi.fn(), end: vi.fn() };
+			const mockProcess = {
+				on: vi.fn(),
 				killed: false,
-				kill: vi.fn()
+				kill: vi.fn(),
+				stdin: mockStdin
+			};
+			mockProcess.on.mockImplementation((event: string, handler: Function) => {
+				if (event === 'close') {
+					setTimeout(() => handler(1), 0);
+				}
+				return mockProcess;
 			});
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const cmd = new ClusterStartCommand();
 			cmd.exitOverride();
@@ -254,23 +264,28 @@ describe('ClusterStartCommand', () => {
 			mockBuildExecutionPlan.mockResolvedValueOnce(plan);
 			mockBuildPrompt.mockReturnValueOnce('prompt');
 
-			mockSpawn.mockReturnValue({
-				on: vi.fn((event: string, handler: Function) => {
-					if (event === 'error') {
-						setTimeout(
-							() =>
-								handler(
-									Object.assign(new Error('spawn ENOENT'), {
-										code: 'ENOENT'
-									})
-								),
-							0
-						);
-					}
-				}),
+			const mockStdin = { write: vi.fn(), end: vi.fn() };
+			const mockProcess = {
+				on: vi.fn(),
 				killed: false,
-				kill: vi.fn()
+				kill: vi.fn(),
+				stdin: mockStdin
+			};
+			mockProcess.on.mockImplementation((event: string, handler: Function) => {
+				if (event === 'error') {
+					setTimeout(
+						() =>
+							handler(
+								Object.assign(new Error('spawn ENOENT'), {
+									code: 'ENOENT'
+								})
+							),
+						0
+					);
+				}
+				return mockProcess;
 			});
+			mockSpawn.mockReturnValue(mockProcess);
 
 			const cmd = new ClusterStartCommand();
 			cmd.exitOverride();

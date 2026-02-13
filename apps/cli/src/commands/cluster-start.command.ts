@@ -36,6 +36,13 @@ export class ClusterStartCommand extends Command {
 	private tmCore?: TmCore;
 	private childProcess?: ChildProcess;
 	private currentPlan?: ExecutionPlan;
+	/**
+	 * Placeholders for future progress tracking.
+	 * Currently not populated because the Claude child process doesn't emit
+	 * structured progress events that we can intercept. This is a known limitation
+	 * where we spawn Claude as an interactive session (inheriting stdio), so we
+	 * cannot get real-time task completion feedback.
+	 */
 	private completedClusters: string[] = [];
 	private completedTasks: string[] = [];
 
@@ -173,6 +180,10 @@ export class ClusterStartCommand extends Command {
 				}
 
 				// Best-effort checkpoint save (fire-and-forget in signal handler)
+				// NOTE: Progress tracking is not yet wired up — completedClusters and
+				// completedTasks are empty because the Claude child process doesn't emit
+				// structured progress events we can intercept. This checkpoint still saves
+				// the plan metadata, but doesn't track actual completion progress.
 				if (this.tmCore && this.currentPlan) {
 					const tag = this.currentPlan.tag;
 					this.tmCore.cluster
@@ -199,7 +210,10 @@ export class ClusterStartCommand extends Command {
 				process.removeListener('SIGINT', cleanup);
 				process.removeListener('SIGTERM', cleanup);
 
-				if (code === 0 || code === null) {
+				if (code === 0) {
+					resolve();
+				} else if (code === null) {
+					console.log(chalk.yellow('\nSession interrupted by signal'));
 					resolve();
 				} else {
 					reject(new Error(`Claude Code exited with code ${code}`));
