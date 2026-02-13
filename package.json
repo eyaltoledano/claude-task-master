@@ -23,7 +23,6 @@
 		"turbo:test": "turbo test",
 		"turbo:test:unit": "turbo test:unit",
 		"turbo:test:integration": "turbo test:integration",
-		"build:build-config": "bun run build -w @tm/build-config",
 		"test": "turbo test",
 		"test:unit": "turbo test:unit",
 		"test:integration": "turbo test:integration",
@@ -45,7 +44,8 @@
 		"format-check": "biome format .",
 		"format": "biome format . --write",
 		"deps:check": "manypkg check || echo 'Note: Workspace package version warnings are expected for internal @tm/* packages'",
-		"deps:fix": "manypkg fix"
+		"deps:fix": "manypkg fix",
+		"fix-null-versions": "bun run scripts/fix-null-versions.ts"
 	},
 	"keywords": [
 		"claude",
