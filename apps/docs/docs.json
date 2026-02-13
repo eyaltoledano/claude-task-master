@@ -51,6 +51,7 @@
 							"capabilities/mcp",
 							"capabilities/cli-root-commands",
 							"capabilities/task-structure",
+							"capabilities/clusters",
 							"capabilities/loop"
 						]
 					},
