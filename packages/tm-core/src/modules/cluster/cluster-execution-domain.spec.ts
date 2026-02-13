@@ -102,10 +102,7 @@ describe('ClusterExecutionDomain', () => {
 
 		it('should use configManager active tag when no tag option is provided', async () => {
 			mockTasksDomain = createMockTasksDomain([]);
-			const mockConfig = createMockConfigManager(
-				'/test/project',
-				'my-feature'
-			);
+			const mockConfig = createMockConfigManager('/test/project', 'my-feature');
 			domain = new ClusterExecutionDomain(mockConfig, mockTasksDomain);
 
 			const plan = await domain.buildExecutionPlan();

@@ -10,7 +10,11 @@ import { getLogger } from '../../common/logger/index.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import type { TasksDomain } from '../tasks/tasks-domain.js';
 import type { Task, TaskStatus } from '../../common/types/index.js';
-import type { ClusterMetadata, ClusterStatus, ExecutionCheckpoint } from './types.js';
+import type {
+	ClusterMetadata,
+	ClusterStatus,
+	ExecutionCheckpoint
+} from './types.js';
 import { ClusterDetectionService } from './services/cluster-detection.service.js';
 import {
 	PromptBuilderService,
@@ -242,8 +246,9 @@ export class ClusterExecutionDomain {
 			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 				return null;
 			}
+			// Treat ALL errors as non-fatal - log and return null
 			this.logger.warn('Failed to load checkpoint', { error, checkpointPath });
-			throw error;
+			return null;
 		}
 	}
 }

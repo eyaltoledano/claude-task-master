@@ -214,9 +214,7 @@ describe('ClusterStartCommand', () => {
 		});
 
 		it('should display error and skip spawn when buildExecutionPlan rejects', async () => {
-			mockBuildExecutionPlan.mockRejectedValueOnce(
-				new Error('plan fail')
-			);
+			mockBuildExecutionPlan.mockRejectedValueOnce(new Error('plan fail'));
 
 			const cmd = new ClusterStartCommand();
 			cmd.exitOverride();
@@ -293,9 +291,7 @@ describe('ClusterStartCommand', () => {
 
 			expect(mockDisplayError).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: expect.stringContaining(
-						'Failed to spawn Claude Code'
-					)
+					message: expect.stringContaining('Failed to spawn Claude Code')
 				})
 			);
 		});
@@ -308,13 +304,7 @@ describe('ClusterStartCommand', () => {
 
 			const cmd = new ClusterStartCommand();
 			cmd.exitOverride();
-			await cmd.parseAsync([
-				'node',
-				'test',
-				'--parallel',
-				'3',
-				'--dry-run'
-			]);
+			await cmd.parseAsync(['node', 'test', '--parallel', '3', '--dry-run']);
 
 			expect(mockBuildExecutionPlan).toHaveBeenCalledWith(
 				expect.objectContaining({ parallel: 3 })

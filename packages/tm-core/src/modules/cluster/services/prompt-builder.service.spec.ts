@@ -34,9 +34,7 @@ function createTestCluster(
 	};
 }
 
-function buildContext(
-	overrides: Partial<PromptContext> = {}
-): PromptContext {
+function buildContext(overrides: Partial<PromptContext> = {}): PromptContext {
 	return {
 		projectPath: '/test/project',
 		tag: 'sprint-1',
@@ -367,9 +365,7 @@ describe('PromptBuilderService', () => {
 	});
 
 	it('should render sections in correct order', () => {
-		const tasks = [
-			createTestTask({ id: '1', title: 'Task one' })
-		];
+		const tasks = [createTestTask({ id: '1', title: 'Task one' })];
 		const clusters = [
 			createTestCluster({
 				clusterId: 'cluster-0',
