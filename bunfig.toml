@@ -9,7 +9,7 @@ preload = ["./tests/setup.ts"]
 coverage = true
 
 # Coverage thresholds
-coverageThreshold = { line = 70, function = 70, statement = 70 }
+coverageThreshold = { line = 80, function = 80, statement = 80 }
 
 # Test timeouts
 timeout = 10000

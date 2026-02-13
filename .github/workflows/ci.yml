@@ -174,7 +174,7 @@ jobs:
         timeout-minutes: 5
 
       - name: Build
-        run: bun run build
+        run: bun run turbo:build
         env:
           NODE_ENV: production
           FORCE_COLOR: 1

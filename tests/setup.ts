@@ -61,15 +61,28 @@ if (process.env.SILENCE_CONSOLE === 'true') {
 	};
 }
 
+// Track original listener counts to restore only what we added
+const originalListenerCounts: Record<string, number> = {
+	SIGINT: process.listenerCount('SIGINT'),
+	SIGTERM: process.listenerCount('SIGTERM'),
+	SIGHUP: process.listenerCount('SIGHUP')
+};
+
 // Clean up signal-exit listeners after all tests to prevent open handle warnings
 // This is needed because packages like proper-lockfile register signal handlers
 afterAll(async () => {
 	// Give any pending async operations time to complete
 	await new Promise((resolve) => setImmediate(resolve));
 
-	// Clean up any registered signal handlers from signal-exit
-	const listeners = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
-	for (const signal of listeners) {
-		process.removeAllListeners(signal);
+	// Remove only listeners added after setup, preserving framework/application listeners
+	for (const [signal, originalCount] of Object.entries(
+		originalListenerCounts
+	)) {
+		const currentListeners = process.listeners(signal as NodeJS.Signals);
+		const addedCount = currentListeners.length - originalCount;
+		for (let i = 0; i < addedCount; i++) {
+			const listener = currentListeners[currentListeners.length - 1 - i];
+			process.removeListener(signal, listener as (...args: unknown[]) => void);
+		}
 	}
 });
