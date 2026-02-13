@@ -36,6 +36,8 @@ export class ClusterStartCommand extends Command {
 	private tmCore?: TmCore;
 	private childProcess?: ChildProcess;
 	private currentPlan?: ExecutionPlan;
+	private completedClusters: string[] = [];
+	private completedTasks: string[] = [];
 
 	constructor() {
 		super('start');
@@ -147,15 +149,19 @@ export class ClusterStartCommand extends Command {
 			console.log(chalk.green('Launching Claude Code teams session...'));
 			console.log();
 
-			this.childProcess = spawn('claude', [prompt], {
+			this.childProcess = spawn('claude', [], {
 				cwd: projectRoot,
-				stdio: 'inherit',
+				stdio: ['pipe', 'inherit', 'inherit'],
 				shell: false,
 				env: {
 					...process.env,
 					CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
 				}
 			});
+
+			// Write prompt to stdin
+			this.childProcess.stdin?.write(prompt);
+			this.childProcess.stdin?.end();
 
 			const cleanup = () => {
 				// Remove handlers immediately to prevent double-firing
@@ -170,7 +176,7 @@ export class ClusterStartCommand extends Command {
 				if (this.tmCore && this.currentPlan) {
 					const tag = this.currentPlan.tag;
 					this.tmCore.cluster
-						.saveCheckpoint(tag, [], [])
+						.saveCheckpoint(tag, this.completedClusters, this.completedTasks)
 						.then(() => {
 							console.log(
 								chalk.yellow(

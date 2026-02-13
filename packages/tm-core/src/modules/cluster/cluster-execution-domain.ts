@@ -9,8 +9,8 @@ import { promises as fs } from 'node:fs';
 import { getLogger } from '../../common/logger/index.js';
 import type { ConfigManager } from '../config/managers/config-manager.js';
 import type { TasksDomain } from '../tasks/tasks-domain.js';
-import type { Task } from '../../common/types/index.js';
-import type { ClusterMetadata, ExecutionCheckpoint } from './types.js';
+import type { Task, TaskStatus } from '../../common/types/index.js';
+import type { ClusterMetadata, ClusterStatus, ExecutionCheckpoint } from './types.js';
 import { ClusterDetectionService } from './services/cluster-detection.service.js';
 import {
 	PromptBuilderService,
@@ -180,7 +180,10 @@ export class ClusterExecutionDomain {
 	async saveCheckpoint(
 		tag: string,
 		completedClusters: string[],
-		completedTasks: string[]
+		completedTasks: string[],
+		failedTasks: string[] = [],
+		clusterStatuses: Record<string, ClusterStatus> = {},
+		taskStatuses: Record<string, TaskStatus> = {}
 	): Promise<void> {
 		const checkpointPath = this.getCheckpointPath(tag);
 
@@ -189,9 +192,9 @@ export class ClusterExecutionDomain {
 			currentClusterId: completedClusters[completedClusters.length - 1] ?? '',
 			completedClusters,
 			completedTasks,
-			failedTasks: [],
-			clusterStatuses: {},
-			taskStatuses: {}
+			failedTasks,
+			clusterStatuses,
+			taskStatuses
 		};
 
 		await fs.mkdir(path.dirname(checkpointPath), { recursive: true });
@@ -240,7 +243,7 @@ export class ClusterExecutionDomain {
 				return null;
 			}
 			this.logger.warn('Failed to load checkpoint', { error, checkpointPath });
-			return null;
+			throw error;
 		}
 	}
 }

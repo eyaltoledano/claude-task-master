@@ -175,9 +175,11 @@ export class ProgressTrackerService {
 				? event.timestamp.getTime() - cluster.startTime.getTime()
 				: undefined;
 
+			const status = (event.status as ClusterStatus) ?? cluster.status;
+
 			this.clusterProgress.set(event.clusterId, {
 				...cluster,
-				status: event.status as ClusterStatus,
+				status,
 				endTime: event.timestamp,
 				duration
 			});
@@ -235,7 +237,7 @@ export class ProgressTrackerService {
 		if (!cluster) return;
 
 		const completedDelta = task.status === 'done' ? 1 : 0;
-		const failedDelta = task.status === 'cancelled' ? 1 : 0;
+		const failedDelta = ['cancelled', 'failed', 'blocked'].includes(task.status) ? 1 : 0;
 
 		this.clusterProgress.set(clusterId, {
 			...cluster,
