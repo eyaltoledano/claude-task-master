@@ -101,7 +101,11 @@ function getExternalDependencies(): string[] {
 		];
 		// Keep npm packages external, but bundle @tm/* workspace packages
 		return allDeps.filter((dep) => !dep.startsWith('@tm/'));
-	} catch {
+	} catch (error) {
+		console.warn(
+			'Could not read package.json for external dependencies:',
+			error
+		);
 		return [];
 	}
 }
@@ -149,9 +153,9 @@ const taskMasterPath = join(distDir, 'task-master.js');
 function ensureShebang(content: string): string {
 	const shebang = '#!/usr/bin/env node\n';
 	// Remove any existing shebangs (there might be multiple from bundling)
-	let cleaned = content.replace(/^(#!.*\n)+/gm, '');
-	// Also handle shebangs that appear after the first line
-	cleaned = cleaned.replace(/\n#!\/usr\/bin\/env node\n/g, '\n');
+	let cleaned = content.replace(/^(#!.*\n)+/, '');
+	// Also handle shebangs that appear after the first line (from bundled modules)
+	cleaned = cleaned.replace(/\n(#!\/usr\/bin\/env node\n)+/g, '\n');
 	return shebang + cleaned;
 }
 
