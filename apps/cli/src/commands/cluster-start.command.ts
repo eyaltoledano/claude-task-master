@@ -120,6 +120,7 @@ export class ClusterStartCommand extends Command {
 				if (!options.json && spinner) {
 					spinner.warn('No tasks found for the specified tag');
 				}
+				displayExecutionPlan(plan, { json: options.json });
 				return;
 			}
 

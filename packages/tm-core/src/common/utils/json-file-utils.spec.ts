@@ -2,103 +2,145 @@
  * @fileoverview Tests for JSON file utilities
  */
 
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { mockReadFile, mockWriteFile, mockMkdir, mockRename, mockUnlink } =
+	vi.hoisted(() => ({
+		mockReadFile: vi.fn(),
+		mockWriteFile: vi.fn(),
+		mockMkdir: vi.fn(),
+		mockRename: vi.fn(),
+		mockUnlink: vi.fn()
+	}));
+
+vi.mock('node:fs', () => ({
+	promises: {
+		readFile: mockReadFile,
+		writeFile: mockWriteFile,
+		mkdir: mockMkdir,
+		rename: mockRename,
+		unlink: mockUnlink
+	}
+}));
+
+// Suppress logger output in tests
+vi.mock('../logger/index.js', () => ({
+	getLogger: () => ({
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn()
+	})
+}));
+
 import { readJSON, writeJSON } from './json-file-utils.js';
 
 describe('JSON File Utils', () => {
-	const testDir = path.join(process.cwd(), 'test-json-utils');
-	const testFile = path.join(testDir, 'test.json');
-
-	beforeEach(async () => {
-		await fs.mkdir(testDir, { recursive: true });
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockMkdir.mockResolvedValue(undefined);
+		mockWriteFile.mockResolvedValue(undefined);
+		mockRename.mockResolvedValue(undefined);
+		mockUnlink.mockResolvedValue(undefined);
 	});
 
-	afterEach(async () => {
-		await fs.rm(testDir, { recursive: true, force: true });
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('writeJSON', () => {
-		it('should write JSON data to a file', async () => {
+		it('should write JSON data to a file and return true', async () => {
 			const data = { foo: 'bar', count: 42 };
-			await writeJSON(testFile, data);
+			const result = await writeJSON('/tmp/test.json', data);
 
-			const content = await fs.readFile(testFile, 'utf-8');
-			expect(JSON.parse(content)).toEqual(data);
+			expect(result).toBe(true);
+			expect(mockMkdir).toHaveBeenCalledWith('/tmp', { recursive: true });
+			expect(mockWriteFile).toHaveBeenCalledWith(
+				'/tmp/test.json.tmp',
+				JSON.stringify(data, null, 2),
+				'utf-8'
+			);
+			expect(mockRename).toHaveBeenCalledWith(
+				'/tmp/test.json.tmp',
+				'/tmp/test.json'
+			);
 		});
 
 		it('should create directory if it does not exist', async () => {
-			const nestedFile = path.join(testDir, 'nested', 'deep', 'test.json');
 			const data = { nested: true };
-			await writeJSON(nestedFile, data);
+			await writeJSON('/tmp/nested/deep/test.json', data);
 
-			const content = await fs.readFile(nestedFile, 'utf-8');
-			expect(JSON.parse(content)).toEqual(data);
+			expect(mockMkdir).toHaveBeenCalledWith('/tmp/nested/deep', {
+				recursive: true
+			});
 		});
 
 		it('should format JSON with 2-space indentation', async () => {
 			const data = { foo: 'bar', nested: { value: 123 } };
-			await writeJSON(testFile, data);
+			await writeJSON('/tmp/test.json', data);
 
-			const content = await fs.readFile(testFile, 'utf-8');
-			expect(content).toContain('  "foo": "bar"');
-			expect(content).toContain('  "nested": {');
+			const writtenContent = mockWriteFile.mock.calls[0][1] as string;
+			expect(writtenContent).toContain('  "foo": "bar"');
+			expect(writtenContent).toContain('  "nested": {');
 		});
 
-		it('should use atomic write (temp file + rename)', async () => {
-			const data = { atomic: true };
-			const writePromise = writeJSON(testFile, data);
+		it('should return false and clean up temp file on write error', async () => {
+			mockWriteFile.mockRejectedValue(new Error('disk full'));
 
-			// Temp file should exist during write
-			// (Note: This is hard to test reliably due to timing, so we just verify the final result)
-			await writePromise;
+			const result = await writeJSON('/tmp/test.json', { fail: true });
 
-			// Final file should exist
-			const exists = await fs
-				.access(testFile)
-				.then(() => true)
-				.catch(() => false);
-			expect(exists).toBe(true);
+			expect(result).toBe(false);
+			expect(mockUnlink).toHaveBeenCalledWith('/tmp/test.json.tmp');
+		});
 
-			// Temp file should be cleaned up
-			const tempExists = await fs
-				.access(`${testFile}.tmp`)
-				.then(() => true)
-				.catch(() => false);
-			expect(tempExists).toBe(false);
+		it('should return false on mkdir error', async () => {
+			mockMkdir.mockRejectedValue(new Error('permission denied'));
+
+			const result = await writeJSON('/tmp/test.json', { fail: true });
+
+			expect(result).toBe(false);
+		});
+
+		it('should tolerate temp file cleanup failure', async () => {
+			mockRename.mockRejectedValue(new Error('rename failed'));
+			mockUnlink.mockRejectedValue(new Error('unlink failed'));
+
+			const result = await writeJSON('/tmp/test.json', { fail: true });
+
+			expect(result).toBe(false);
 		});
 	});
 
 	describe('readJSON', () => {
 		it('should read and parse JSON file', async () => {
 			const data = { foo: 'bar', count: 42 };
-			await fs.writeFile(testFile, JSON.stringify(data, null, 2), 'utf-8');
+			mockReadFile.mockResolvedValue(JSON.stringify(data, null, 2));
 
-			const result = await readJSON(testFile);
+			const result = await readJSON('/tmp/test.json');
 			expect(result).toEqual(data);
 		});
 
-		it('should throw ENOENT error if file does not exist', async () => {
-			await expect(readJSON(testFile)).rejects.toThrow();
-			await expect(readJSON(testFile)).rejects.toMatchObject({
-				code: 'ENOENT'
-			});
+		it('should return null if file does not exist', async () => {
+			const enoent = new Error('ENOENT') as NodeJS.ErrnoException;
+			enoent.code = 'ENOENT';
+			mockReadFile.mockRejectedValue(enoent);
+
+			const result = await readJSON('/tmp/test.json');
+			expect(result).toBeNull();
 		});
 
-		it('should throw descriptive error for invalid JSON', async () => {
-			await fs.writeFile(testFile, 'invalid json {', 'utf-8');
+		it('should return null for invalid JSON', async () => {
+			mockReadFile.mockResolvedValue('invalid json {');
 
-			await expect(readJSON(testFile)).rejects.toThrow(/Invalid JSON/);
-			await expect(readJSON(testFile)).rejects.toThrow(/test\.json/);
+			const result = await readJSON('/tmp/test.json');
+			expect(result).toBeNull();
 		});
 
-		it('should throw descriptive error for read failures', async () => {
-			// Create a directory with the same name as the file to cause a read error
-			await fs.mkdir(testFile, { recursive: true });
+		it('should return null for read failures', async () => {
+			mockReadFile.mockRejectedValue(new Error('permission denied'));
 
-			await expect(readJSON(testFile)).rejects.toThrow(/Failed to read file/);
-			await expect(readJSON(testFile)).rejects.toThrow(/test\.json/);
+			const result = await readJSON('/tmp/test.json');
+			expect(result).toBeNull();
 		});
 	});
 
@@ -113,8 +155,16 @@ describe('JSON File Utils', () => {
 				object: { nested: 'data' }
 			};
 
-			await writeJSON(testFile, originalData);
-			const readData = await readJSON(testFile);
+			let capturedContent = '';
+			mockWriteFile.mockImplementation(
+				async (_path: string, content: string) => {
+					capturedContent = content;
+				}
+			);
+			mockReadFile.mockImplementation(async () => capturedContent);
+
+			await writeJSON('/tmp/test.json', originalData);
+			const readData = await readJSON('/tmp/test.json');
 
 			expect(readData).toEqual(originalData);
 		});

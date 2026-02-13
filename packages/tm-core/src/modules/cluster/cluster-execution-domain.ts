@@ -237,34 +237,77 @@ export class ClusterExecutionDomain {
 	private async loadCheckpointFile(
 		checkpointPath: string
 	): Promise<ExecutionCheckpoint | null> {
-		try {
-			const data = await readJSON<any>(checkpointPath);
+		const data = await readJSON<any>(checkpointPath);
 
-			// Validate required fields
-			if (
-				!data ||
-				typeof data !== 'object' ||
-				typeof data.timestamp === 'undefined' ||
-				typeof data.currentClusterId === 'undefined' ||
-				!Array.isArray(data.completedClusters) ||
-				!Array.isArray(data.completedTasks) ||
-				!Array.isArray(data.failedTasks) ||
-				typeof data.clusterStatuses !== 'object' ||
-				typeof data.taskStatuses !== 'object'
-			) {
-				this.logger.warn('Invalid checkpoint structure', { checkpointPath });
-				return null;
-			}
-
-			// Cast to ExecutionCheckpoint after validation
-			return data as ExecutionCheckpoint;
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-				return null;
-			}
-			// Treat ALL errors as non-fatal - log and return null
-			this.logger.warn('Failed to load checkpoint', { error, checkpointPath });
+		// readJSON returns null on any I/O or parse failure
+		if (data === null) {
 			return null;
 		}
+
+		// Validate: must be a non-null, non-array object
+		if (typeof data !== 'object' || Array.isArray(data)) {
+			this.logger.warn('Invalid checkpoint structure', { checkpointPath });
+			return null;
+		}
+
+		const {
+			timestamp,
+			currentClusterId,
+			completedClusters,
+			completedTasks,
+			failedTasks,
+			clusterStatuses,
+			taskStatuses
+		} = data;
+
+		// Validate individual fields with strict type checks
+		if (typeof timestamp !== 'number' && typeof timestamp !== 'string') {
+			this.logger.warn('Invalid checkpoint: bad timestamp', { checkpointPath });
+			return null;
+		}
+		if (typeof timestamp === 'number' && !Number.isFinite(timestamp)) {
+			this.logger.warn('Invalid checkpoint: non-finite timestamp', {
+				checkpointPath
+			});
+			return null;
+		}
+		if (typeof currentClusterId !== 'string') {
+			this.logger.warn('Invalid checkpoint: bad currentClusterId', {
+				checkpointPath
+			});
+			return null;
+		}
+		if (
+			!Array.isArray(completedClusters) ||
+			!Array.isArray(completedTasks) ||
+			!Array.isArray(failedTasks)
+		) {
+			this.logger.warn('Invalid checkpoint: arrays missing', {
+				checkpointPath
+			});
+			return null;
+		}
+		if (
+			clusterStatuses === null ||
+			typeof clusterStatuses !== 'object' ||
+			Array.isArray(clusterStatuses)
+		) {
+			this.logger.warn('Invalid checkpoint: bad clusterStatuses', {
+				checkpointPath
+			});
+			return null;
+		}
+		if (
+			taskStatuses === null ||
+			typeof taskStatuses !== 'object' ||
+			Array.isArray(taskStatuses)
+		) {
+			this.logger.warn('Invalid checkpoint: bad taskStatuses', {
+				checkpointPath
+			});
+			return null;
+		}
+
+		return data as ExecutionCheckpoint;
 	}
 }
