@@ -196,17 +196,17 @@ export class ClustersCommand extends Command {
 			detection.clusters[0].dependsOn.length === 0;
 
 		if (allIndependent) {
-			const isInteractive =
-				process.stdin.isTTY &&
-				!options.json &&
-				!options.tree &&
-				!options.diagram;
+			if (tagsResult.tags.length >= 2) {
+				const isInteractive =
+					process.stdin.isTTY &&
+					!options.json &&
+					!options.tree &&
+					!options.diagram;
 
-			if (isInteractive && tagsResult.tags.length >= 2) {
 				console.log(chalk.gray('  No inter-tag dependencies found.\n'));
 
 				const shouldGenerate =
-					options.auto || (await this.promptForGeneration());
+					options.auto || (isInteractive && (await this.promptForGeneration()));
 
 				if (shouldGenerate) {
 					await this.runInlineGenerate(options, tagsResult.tags);

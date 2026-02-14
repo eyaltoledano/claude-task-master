@@ -100,7 +100,7 @@ export class ClusterGenerationService {
 		for (let i = 0; i < uncached.length; i += MAX_CONCURRENCY) {
 			const batch = uncached.slice(i, i + MAX_CONCURRENCY);
 
-			const batchResults = await Promise.all(
+			const batchSettled = await Promise.allSettled(
 				batch.map(async (tag, batchIndex) => {
 					const globalIndex = i + batchIndex;
 					onProgress?.({
@@ -131,7 +131,17 @@ export class ClusterGenerationService {
 				})
 			);
 
-			results.push(...batchResults);
+			for (const settled of batchSettled) {
+				if (settled.status === 'fulfilled') {
+					results.push(settled.value);
+				} else {
+					const failedTag =
+						batch[batchSettled.indexOf(settled)]?.name ?? 'unknown';
+					throw new Error(
+						`Analysis failed for tag "${failedTag}": ${settled.reason instanceof Error ? settled.reason.message : String(settled.reason)}`
+					);
+				}
+			}
 		}
 
 		return [...cached, ...results];

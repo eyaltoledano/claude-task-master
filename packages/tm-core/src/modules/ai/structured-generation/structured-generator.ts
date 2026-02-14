@@ -46,15 +46,36 @@ export class BridgedStructuredGenerator implements IStructuredGenerator {
 	): Promise<AIPrimitiveResult<T>> {
 		const startTime = Date.now();
 
+		const objectName = options.objectName ?? 'generated_object';
 		const result = await this.generateObjectService({
 			role: 'main',
 			systemPrompt: options.systemPrompt ?? 'You are a helpful assistant.',
 			prompt,
 			schema,
-			objectName: options.objectName ?? 'generated_object',
+			objectName,
 			commandName: options.commandName,
 			outputType: 'cli'
 		});
+
+		// Validate that the AI service returned a valid result
+		if (
+			!result ||
+			result.mainResult === null ||
+			result.mainResult === undefined
+		) {
+			const errorContext = [
+				`objectName: ${objectName}`,
+				`commandName: ${options.commandName}`,
+				result?.modelId && `modelId: ${result.modelId}`,
+				result?.providerName && `providerName: ${result.providerName}`
+			]
+				.filter(Boolean)
+				.join(', ');
+
+			throw new Error(
+				`AI service returned null or undefined result (${errorContext})`
+			);
+		}
 
 		const duration = Date.now() - startTime;
 

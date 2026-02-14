@@ -122,17 +122,27 @@ export async function persistClusterDependencies(
 		}
 	}
 
+	// Track successful additions for rollback
+	const succeededAdds: Array<{ from: string; to: string }> = [];
+
 	try {
 		for (const dep of dependencies) {
 			await tmCore.tasks.addTagDependency(dep.from, dep.to);
+			succeededAdds.push({ from: dep.from, to: dep.to });
 		}
 	} catch (error) {
+		// Remove partially-added dependencies before restoring snapshot
+		for (const { from, to } of succeededAdds) {
+			await tmCore.tasks.removeTagDependency(from, to);
+		}
+
 		// Restore original dependencies from snapshot
 		for (const [tagName, deps] of snapshot) {
 			for (const dep of deps) {
 				await tmCore.tasks.addTagDependency(tagName, dep);
 			}
 		}
+
 		throw error;
 	}
 }
