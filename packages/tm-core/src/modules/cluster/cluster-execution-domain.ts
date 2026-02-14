@@ -202,7 +202,20 @@ export class ClusterExecutionDomain {
 			taskStatuses
 		};
 
-		await writeJSON(checkpointPath, checkpoint);
+		const ok = await writeJSON(checkpointPath, checkpoint);
+
+		if (!ok) {
+			this.logger.error('Failed to save checkpoint', {
+				checkpointPath,
+				checkpointId: checkpoint.currentClusterId,
+				checkpointState: {
+					completedClusters: checkpoint.completedClusters.length,
+					completedTasks: checkpoint.completedTasks.length,
+					failedTasks: checkpoint.failedTasks.length
+				}
+			});
+			throw new Error(`Failed to persist checkpoint to ${checkpointPath}`);
+		}
 
 		this.logger.info('Checkpoint saved', { checkpointPath });
 	}
