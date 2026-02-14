@@ -1,0 +1,27 @@
+# Bun configuration for Taskmaster
+# https://bun.sh/docs/runtime/bunfig
+
+[test]
+# Run setup file before each test suite
+preload = ["./tests/setup.ts"]
+
+# Enable coverage reporting
+coverage = true
+
+# Coverage thresholds
+coverageThreshold = { line = 80, function = 80, statement = 80 }
+
+# Test timeouts
+timeout = 10000
+
+# Test file patterns
+# Bun automatically finds *.test.ts, *.spec.ts files
+
+[install]
+# Use frozen lockfile in CI
+# frozen = true
+
+[install.lockfile]
+# Save lockfile as bun.lockb (binary) for faster parsing
+# Can also use "bun.lock" for text format
+save = true

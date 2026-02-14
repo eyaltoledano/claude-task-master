@@ -9,8 +9,9 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage=false",
+		"test:watch": "vitest --coverage=false",
+		"test:coverage": "vitest run --coverage",
 		"test:ui": "vitest --ui",
 		"typecheck": "tsc --noEmit"
 	},

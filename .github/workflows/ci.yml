@@ -19,6 +19,7 @@ env:
   DO_NOT_TRACK: 1
   NODE_ENV: development
   NODE_VERSION: 20
+  BUN_VERSION: 1.2.6
 
 jobs:
   # Single install job that caches node_modules for all other jobs
@@ -32,16 +33,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Cache node_modules
         id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
   # Fast checks that can run in parallel
@@ -56,20 +61,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Restore node_modules cache
         id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
       - name: Format Check
-        run: npm run format-check
+        run: bun run format-check
         env:
           FORCE_COLOR: 1
 
@@ -93,7 +102,6 @@ jobs:
         if: steps.changes.outputs.changesets == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
 
       - name: Validate changeset package references
         if: steps.changes.outputs.changesets == 'true'
@@ -116,20 +124,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Restore node_modules cache
         id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
       - name: Typecheck
-        run: npm run turbo:typecheck
+        run: bun run turbo:typecheck
         env:
           FORCE_COLOR: 1
 
@@ -145,20 +157,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Restore node_modules cache
         id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
       - name: Build
-        run: npm run turbo:build
+        run: bun run turbo:build
         env:
           NODE_ENV: production
           FORCE_COLOR: 1
@@ -186,16 +202,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Restore node_modules cache
         id: cache-node-modules
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-bun${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
+        run: bun install
         timeout-minutes: 5
 
       - name: Download build artifacts
@@ -205,8 +225,7 @@ jobs:
           path: dist/
 
       - name: Run Tests
-        run: |
-          npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
+        run: bun run turbo:test
         env:
           NODE_ENV: test
           CI: true

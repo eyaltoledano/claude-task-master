@@ -13,12 +13,12 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
 		"format": "biome format --write src",
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage=false",
+		"test:watch": "vitest --coverage=false",
 		"test:coverage": "vitest run --coverage",
-		"test:unit": "vitest run '**/*.spec.ts'",
-		"test:integration": "vitest run '**/*.test.ts'",
-		"test:e2e": "vitest run --dir tests/e2e",
+		"test:unit": "vitest run --coverage=false '**/*.spec.ts'",
+		"test:integration": "vitest run --coverage=false '**/*.test.ts'",
+		"test:e2e": "vitest run --coverage=false --dir tests/e2e",
 		"test:ci": "vitest run --coverage --reporter=dot"
 	},
 	"dependencies": {
@@ -44,7 +44,6 @@
 		"@types/inquirer": "^9.0.3",
 		"@types/node": "^22.10.5",
 		"@vitest/coverage-v8": "^4.0.10",
-		"tsx": "^4.20.4",
 		"typescript": "^5.9.2",
 		"vitest": "^4.0.10"
 	},

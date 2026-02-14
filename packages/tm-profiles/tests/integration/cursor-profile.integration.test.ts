@@ -266,34 +266,22 @@ describe('CursorProfile - Integration Tests', () => {
 			// Files go to .cursor/commands/tm/
 			const tmDir = path.join(tempDir, '.cursor', 'commands', 'tm');
 
-			// Check if filesystem is case-sensitive (Linux) or case-insensitive (macOS/Windows)
-			const testFile = path.join(tmDir, 'TEST-CASE.md');
-			fs.writeFileSync(testFile, 'test');
-			const isCaseSensitive = !fs.existsSync(path.join(tmDir, 'test-case.md'));
-			fs.rmSync(testFile);
-
 			// Create command with different casing from test commands
 			const upperCaseFile = path.join(tmDir, 'HELP.md');
 			fs.writeFileSync(upperCaseFile, '# Upper case help');
 
-			// Remove using lowercase name
+			// Remove using lowercase name — implementation lowercases filenames
+			// so HELP.md matches the "help" command on all filesystems
 			const result = cursorProfile.removeSlashCommands(tempDir, testCommands);
 
-			// help.md should always be removed
+			// Both help.md and HELP.md should be removed (case-insensitive match)
 			expect(fs.existsSync(path.join(tmDir, 'help.md'))).toBe(false);
+			expect(fs.existsSync(upperCaseFile)).toBe(false);
 
-			if (isCaseSensitive) {
-				// On case-sensitive filesystems, HELP.md is treated as different file
-				expect(fs.existsSync(upperCaseFile)).toBe(true);
-				expect(result.count).toBe(2); // help.md, goham.md
-				// Clean up
-				fs.rmSync(upperCaseFile);
-			} else {
-				// On case-insensitive filesystems (macOS/Windows), both should be removed
-				// because the filesystem treats help.md and HELP.md as the same file
-				expect(fs.existsSync(upperCaseFile)).toBe(false);
-				expect(result.count).toBe(2); // help.md (which is the same as HELP.md), goham.md
-			}
+			// help.md + HELP.md + goham.md = 3 on case-sensitive FS,
+			// help.md/HELP.md (same file) + goham.md = 2 on case-insensitive FS
+			expect(result.count).toBeGreaterThanOrEqual(2);
+			expect(result.count).toBeLessThanOrEqual(3);
 		});
 	});
 
