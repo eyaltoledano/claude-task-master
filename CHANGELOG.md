@@ -1,5 +1,57 @@
 # task-master-ai
 
+## 1.0.0-rc.0
+
+### Major Changes
+
+- [#1632](https://github.com/eyaltoledano/claude-task-master/pull/1632) [`3d84023`](https://github.com/eyaltoledano/claude-task-master/commit/3d8402321496ec587890ea59469cdb0c6d51d173) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - AI-powered cluster generation — no empty state, just intelligence
+
+  There's no such thing as an empty execution plan. When `tm clusters` detects no inter-tag dependencies, it doesn't error — it offers to build them for you. AI analyzes every tag in parallel, understands what each one does, and synthesizes the dependency graph that connects them into a coherent execution order.
+  - **Zero-config generation** — run `tm clusters` with no dependencies defined and Taskmaster asks if you'd like AI to figure it out
+  - **`tm clusters generate`** — explicitly trigger AI-powered dependency analysis across all tags
+  - **Interactive review** — an in-terminal editor lets you inspect, reorder, and accept or reject the suggested cluster layout before anything is saved
+  - **`--auto`** — skip the editor and accept AI suggestions directly (ideal for CI or scripted workflows)
+  - **Analysis caching** — re-runs skip already-analyzed tags, so iterating is fast and cost-efficient
+
+- [#1628](https://github.com/eyaltoledano/claude-task-master/pull/1628) [`93ef197`](https://github.com/eyaltoledano/claude-task-master/commit/93ef197a164f29d0e445f7ea8f154b5c9b410aa8) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Introduce Execution Phases — manage what gets built and in what order
+
+  Taskmaster now understands your project's execution topology. Instead of a flat task list, your tags are automatically organized into **execution phases** — groups of work that can run in parallel, sequenced by their dependencies.
+
+  This is the foundation for Taskmaster 1.0's autonomous execution: think at the tag level, not the task level.
+
+  New capabilities:
+  - **`task-master clusters`** — visualize your execution plan as phases, with parallel lanes showing what runs concurrently
+  - **`task-master clusters --tag <tag>`** — drill into any tag to see task-level execution order within it
+  - **Execution Pipeline in `task-master list`** — see per-cluster progress at a glance with lane-based visualization
+  - **Inter-tag dependencies** — tags can now depend on other tags, with automatic circular dependency detection
+  - **Mermaid diagram export** (`--diagram mermaid`) — share your execution plan as a visual dependency graph
+
+- [#1630](https://github.com/eyaltoledano/claude-task-master/pull/1630) [`f991234`](https://github.com/eyaltoledano/claude-task-master/commit/f99123418e78ce6412321a35822fcc24a442ea3d) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Agent teams — execute entire tags without babysitting
+
+  Each tag (a parsed PRD's task list) can now be executed end-to-end by an AI agent team. `tm clusters start` builds an execution plan from the tag's dependency graph and launches a Claude Code teams session — sub-agents work through task clusters in parallel, level by level, while you make your coffee.
+
+  **`tm clusters start [--tag <tag>]`** — execute a tag's task graph autonomously via Claude Code agent teams
+  - **Checkpoint & resume** — interrupted sessions save automatically; pick up where you left off with `--resume`
+  - **Dry run** — preview the full execution plan before committing with `--dry-run`
+  - **Parallel tuning** — control concurrency with `--parallel <n>` (default: 5 tasks per level)
+
+  For the best experience, open iTerm2, run `tmux -CC` (control mode), then `tm clusters start`. This gives agent teams native pane management for parallel execution.
+
+### Patch Changes
+
+- [#1623](https://github.com/eyaltoledano/claude-task-master/pull/1623) [`a1c0161`](https://github.com/eyaltoledano/claude-task-master/commit/a1c0161e6be50340bf18ea5addefd25dea107e77) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Nudge task expansion toward subtask independence and critical path reduction instead of serial ordering
+
+- [#1597](https://github.com/eyaltoledano/claude-task-master/pull/1597) [`0c1e969`](https://github.com/eyaltoledano/claude-task-master/commit/0c1e969489d853920a4623bd71fa53bb9033ea4c) Thanks [@bjcoombs](https://github.com/bjcoombs)! - Enhanced help documentation sync test to verify subcommand structure and improve test maintainability
+
+  This changeset adds comprehensive help documentation sync tests that verify:
+  - Tags subcommand documentation matches the new 'tags add/use/remove' structure
+  - Deprecated tag commands (add-tag, use-tag, delete-tag) are not documented
+  - List command options are properly documented with all variants
+
+  Also includes minor fixes:
+  - Updated 'tags add' command args to include missing --from-branch option
+  - Added clarifying comments for legacy command mappings during migration
+
 ## 0.43.0
 
 ### Minor Changes
