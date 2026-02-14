@@ -17,6 +17,7 @@ import { renderMermaidAscii } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { Command } from 'commander';
+import { ClusterGenerateCommand } from './cluster-generate.command.js';
 import { getBoxWidth } from '../ui/layout/helpers.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
@@ -64,6 +65,7 @@ export class ClustersCommand extends Command {
 
 		// Register subcommands
 		this.addCommand(new ClusterStartCommand());
+		this.addCommand(new ClusterGenerateCommand());
 	}
 
 	private async executeCommand(options: ClustersCommandOptions): Promise<void> {

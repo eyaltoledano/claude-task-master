@@ -157,6 +157,27 @@ function getTasks() {
 - ✅ MCP calls: `await tmCore.tasks.get(taskId)` (same intelligent ID parsing)
 - ✅ Single source of truth in tm-core
 
+### Module Organization Rules
+
+**Six rules for organizing modules in `packages/tm-core/src/modules/`:**
+
+1. **Domain-Driven Design**: Each module owns its domain logic end-to-end. Domain-specific code lives in the consuming module, not in shared infrastructure. Example: tag-specific AI analysis lives in `cluster/generation/`, not in `ai/`.
+
+2. **Clear Boundaries**: Infrastructure modules (like `ai/`) provide generic tools any module can use. Domain modules (like `cluster/`, `tasks/`) use those tools for their specific needs. Never put domain-specific logic in infrastructure modules.
+
+3. **Sub-Feature Isolation**: When a module has a complex sub-feature (3+ related files), group them in a dedicated sub-folder rather than adding to a flat `services/` directory. Example: `cluster/generation/` isolates AI-powered generation from pure cluster services.
+
+4. **No Flat-Folder Bloat**: A folder with 10+ files becomes hard to scan. Split into logical sub-folders when a folder grows beyond ~8 files.
+
+5. **YAGNI for Abstractions**: Don't extract shared abstractions until you have 2+ consumers. Premature abstraction into a shared module is worse than domain-specific code you can extract later when reuse is actually needed.
+
+6. **Discoverable Naming**: Use file suffixes that communicate purpose at a glance:
+   - `*.service.ts` - Business logic services
+   - `*.interface.ts` - Contracts
+   - `*.types.ts` - Type definitions
+   - `*.prompt.ts` - AI prompt templates
+   - `*.spec.ts` - Tests (alongside implementation)
+
 ## Code Quality & Reusability Guidelines
 
 Apply standard software engineering principles:

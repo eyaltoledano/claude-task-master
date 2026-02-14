@@ -294,8 +294,36 @@ export {
 	type ExecutionPlan,
 	type CheckpointInfo,
 	PromptBuilderService,
-	type PromptContext
+	type PromptContext,
+	ClusterGenerationService,
+	type TagAnalysisInput,
+	type ClusterGenerationProgress,
+	type ProgressCallback,
+	type ClusterLevel,
+	type ClusterSuggestion
 } from './modules/cluster/index.js';
+
+// AI Module (generic infrastructure)
+export {
+	BridgedStructuredGenerator,
+	PromptBuilder,
+	loadGenerateObjectService,
+	type IStructuredGenerator,
+	type AIPrimitiveOptions,
+	type AIPrimitiveResult,
+	type GenerateObjectServiceFn
+} from './modules/ai/index.js';
+
+// Cluster Generation (domain-specific AI logic)
+export {
+	BridgedTagSemanticAnalyzer,
+	BridgedTagDependencySynthesizer,
+	type ITagSemanticAnalyzer,
+	type ITagDependencySynthesizer,
+	type SemanticAnalysis,
+	type DependencySuggestion
+} from './modules/cluster/generation/index.js';
+
 
 // ========== Testing Utilities ==========
 
