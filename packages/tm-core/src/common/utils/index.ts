@@ -58,6 +58,9 @@ export {
 // Export path construction utilities
 export { getProjectPaths } from './path-helpers.js';
 
+// Export JSON file utilities
+export { readJSON, writeJSON } from './json-file-utils.js';
+
 // Additional utility exports
 
 /**

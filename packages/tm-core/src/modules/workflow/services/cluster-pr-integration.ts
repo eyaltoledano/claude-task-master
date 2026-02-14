@@ -329,11 +329,16 @@ export class ClusterPRIntegration {
 			options.baseBranch !== undefined &&
 			options.baseBranch !== this.options.baseBranch;
 
+		// Detect if projectRoot is changing
+		const projectRootChanged =
+			options.projectRoot !== undefined &&
+			options.projectRoot !== this.options.projectRoot;
+
 		// Merge new options immutably
 		this.options = { ...this.options, ...options };
 
-		// Recreate prService if baseBranch changed
-		if (baseBranchChanged) {
+		// Recreate prService if baseBranch or projectRoot changed
+		if (baseBranchChanged || projectRootChanged) {
 			this.prService = new GitHubPRService(
 				this.options.projectRoot,
 				this.options.baseBranch || 'main'

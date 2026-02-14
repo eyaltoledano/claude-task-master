@@ -1,17 +1,30 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { ClusterExecutionDomain } from './cluster-execution-domain.js';
-import type { ConfigManager } from '../config/managers/config-manager.js';
-import type { TasksDomain } from '../tasks/tasks-domain.js';
+import * as fsp from 'node:fs/promises';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { IStorage } from '../../common/interfaces/storage.interface.js';
 import type { Task } from '../../common/types/index.js';
+import { ConfigManager } from '../config/managers/config-manager.js';
+import { StorageFactory } from '../storage/services/storage-factory.js';
+import { TasksDomain } from '../tasks/tasks-domain.js';
+import { ClusterExecutionDomain } from './cluster-execution-domain.js';
 
-// Mock fs for checkpoint tests
+// ---------------------------------------------------------------------------
+// External I/O mocks
+// ---------------------------------------------------------------------------
+
+// Mock node:fs — covers checkpoint I/O in ClusterExecutionDomain (which uses
+// `import { promises as fs } from 'node:fs'`).
 vi.mock('node:fs', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('node:fs')>();
 	return {
 		...actual,
 		promises: {
 			...actual.promises,
+			access: vi
+				.fn()
+				.mockRejectedValue(
+					Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+				),
 			mkdir: vi.fn().mockResolvedValue(undefined),
 			writeFile: vi.fn().mockResolvedValue(undefined),
 			rename: vi.fn().mockResolvedValue(undefined),
@@ -24,6 +37,44 @@ vi.mock('node:fs', async (importOriginal) => {
 		}
 	};
 });
+
+// Auto-mock node:fs/promises — ConfigLoader, RuntimeStateManager, and
+// ConfigPersistence all use `import fs from 'node:fs/promises'`.
+// Auto-mocking replaces every export with vi.fn() stubs that return undefined.
+// Default behaviors (ENOENT for reads, no-op for writes) are set in beforeEach.
+vi.mock('node:fs/promises');
+
+// StorageFactory — storage is an external I/O boundary.  Mocked via vi.spyOn
+// inside buildRealDependencies (vi.mock path resolution is fragile across
+// transitive imports of built-in modules).
+
+// Mock BriefsDomain — its constructor creates AuthManager / SupabaseAuthClient
+// singletons (network I/O).
+vi.mock('../briefs/briefs-domain.js', () => ({
+	BriefsDomain: vi.fn().mockImplementation(() => ({
+		resolveBrief: vi.fn(),
+		switchBrief: vi.fn()
+	}))
+}));
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Configure node:fs/promises auto-mocks with sensible defaults for tests.
+ * readFile rejects with ENOENT (config files don't exist), write ops are no-ops.
+ */
+function setupFspMocks(): void {
+	const enoent = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+	vi.mocked(fsp.readFile).mockRejectedValue(enoent);
+	vi.mocked(fsp.access).mockRejectedValue(enoent);
+	vi.mocked(fsp.mkdir).mockResolvedValue(undefined);
+	vi.mocked(fsp.writeFile).mockResolvedValue(undefined);
+	vi.mocked(fsp.rename).mockResolvedValue(undefined);
+	vi.mocked(fsp.unlink).mockResolvedValue(undefined);
+	vi.mocked(fsp.readdir).mockResolvedValue([]);
+}
 
 function createTask(id: string, deps: string[] = []): Task {
 	return {
@@ -39,28 +90,75 @@ function createTask(id: string, deps: string[] = []): Task {
 	} as Task;
 }
 
-function createMockConfigManager(
-	projectRoot = '/test/project',
-	activeTag = 'master'
-): ConfigManager {
+/**
+ * Build an in-memory mock IStorage that returns `tasks` from loadTasks().
+ */
+function buildMockStorage(tasks: Task[] = []): IStorage {
 	return {
-		getProjectRoot: () => projectRoot,
-		getActiveTag: vi.fn().mockReturnValue(activeTag)
-	} as unknown as ConfigManager;
+		initialize: vi.fn().mockResolvedValue(undefined),
+		loadTasks: vi.fn().mockResolvedValue(tasks),
+		loadTask: vi.fn().mockResolvedValue(null),
+		saveTasks: vi.fn().mockResolvedValue(undefined),
+		appendTasks: vi.fn().mockResolvedValue(undefined),
+		updateTask: vi.fn().mockResolvedValue(undefined),
+		updateTaskStatus: vi.fn().mockResolvedValue(undefined),
+		deleteTask: vi.fn().mockResolvedValue(undefined),
+		getStorageType: vi.fn().mockReturnValue('file'),
+		getCurrentBriefName: vi.fn().mockReturnValue(undefined),
+		watch: vi.fn().mockResolvedValue({ unsubscribe: vi.fn() }),
+		close: vi.fn().mockResolvedValue(undefined)
+	} as unknown as IStorage;
 }
 
-function createMockTasksDomain(tasks: Task[] = []): TasksDomain {
-	return {
-		list: vi.fn().mockResolvedValue({ tasks, total: tasks.length })
-	} as unknown as TasksDomain;
+/**
+ * Create a real ConfigManager + real TasksDomain pair, wired with mock
+ * external I/O.  Returns everything the tests need to construct a
+ * ClusterExecutionDomain and make assertions.
+ */
+async function buildRealDependencies(
+	projectRoot = '/test/project',
+	activeTag = 'master',
+	tasks: Task[] = []
+): Promise<{
+	configManager: ConfigManager;
+	tasksDomain: TasksDomain;
+}> {
+	// Build an in-memory storage stub with the desired tasks, then spy on
+	// StorageFactory (external I/O boundary) to return it.
+	const storage = buildMockStorage(tasks);
+	vi.spyOn(StorageFactory, 'createFromStorageConfig').mockResolvedValue(
+		storage
+	);
+	vi.spyOn(StorageFactory, 'create').mockResolvedValue(storage);
+
+	// Create real ConfigManager (private ctor — use factory).
+	// ConfigLoader, RuntimeStateManager, ConfigPersistence all do file I/O
+	// that is captured by our node:fs / node:fs/promises mocks.
+	const configManager = await ConfigManager.create(projectRoot);
+
+	// Override the active tag when it differs from the default.
+	if (activeTag !== 'master') {
+		await configManager.setActiveTag(activeTag);
+	}
+
+	// Create real TasksDomain and initialize it.  StorageFactory is mocked so
+	// TaskService gets our in-memory storage stub.
+	const tasksDomain = new TasksDomain(configManager);
+	await tasksDomain.initialize();
+
+	return { configManager, tasksDomain };
 }
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('ClusterExecutionDomain', () => {
 	let domain: ClusterExecutionDomain;
-	let mockTasksDomain: TasksDomain;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setupFspMocks();
 	});
 
 	afterEach(() => {
@@ -69,11 +167,12 @@ describe('ClusterExecutionDomain', () => {
 
 	describe('buildExecutionPlan', () => {
 		it('should return an empty plan when no tasks exist', async () => {
-			mockTasksDomain = createMockTasksDomain([]);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'empty-tag' });
 
@@ -86,30 +185,40 @@ describe('ClusterExecutionDomain', () => {
 		});
 
 		it('should default to active tag from configManager when none provided', async () => {
-			mockTasksDomain = createMockTasksDomain([]);
-			const mockConfig = createMockConfigManager('/test/project', 'master');
-			domain = new ClusterExecutionDomain(mockConfig, mockTasksDomain);
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				[]
+			);
+			const getActiveTagSpy = vi.spyOn(configManager, 'getActiveTag');
+			const listSpy = vi.spyOn(tasksDomain, 'list');
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan();
 
-			expect(mockConfig.getActiveTag).toHaveBeenCalled();
+			expect(getActiveTagSpy).toHaveBeenCalled();
 			expect(plan.tag).toBe('master');
-			expect(mockTasksDomain.list).toHaveBeenCalledWith({
+			expect(listSpy).toHaveBeenCalledWith({
 				tag: 'master',
 				includeSubtasks: true
 			});
 		});
 
 		it('should use configManager active tag when no tag option is provided', async () => {
-			mockTasksDomain = createMockTasksDomain([]);
-			const mockConfig = createMockConfigManager('/test/project', 'my-feature');
-			domain = new ClusterExecutionDomain(mockConfig, mockTasksDomain);
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'my-feature',
+				[]
+			);
+			const getActiveTagSpy = vi.spyOn(configManager, 'getActiveTag');
+			const listSpy = vi.spyOn(tasksDomain, 'list');
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan();
 
-			expect(mockConfig.getActiveTag).toHaveBeenCalled();
+			expect(getActiveTagSpy).toHaveBeenCalled();
 			expect(plan.tag).toBe('my-feature');
-			expect(mockTasksDomain.list).toHaveBeenCalledWith({
+			expect(listSpy).toHaveBeenCalledWith({
 				tag: 'my-feature',
 				includeSubtasks: true
 			});
@@ -122,11 +231,12 @@ describe('ClusterExecutionDomain', () => {
 				createTask('3', ['1', '2'])
 			];
 
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'sprint-1' });
 
@@ -142,11 +252,12 @@ describe('ClusterExecutionDomain', () => {
 			// Tasks with circular deps: 1 -> 2 -> 1
 			const tasks = [createTask('1', ['2']), createTask('2', ['1'])];
 
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await expect(
 				domain.buildExecutionPlan({ tag: 'circular' })
@@ -167,11 +278,12 @@ describe('ClusterExecutionDomain', () => {
 			vi.mocked(fs.readFile).mockResolvedValueOnce(JSON.stringify(checkpoint));
 
 			const tasks = [createTask('1'), createTask('2'), createTask('3', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({
 				tag: 'resume-tag',
@@ -186,11 +298,12 @@ describe('ClusterExecutionDomain', () => {
 
 		it('should not check checkpoint when resume=false', async () => {
 			const tasks = [createTask('1')];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'no-resume' });
 
@@ -202,11 +315,12 @@ describe('ClusterExecutionDomain', () => {
 			vi.mocked(fs.readFile).mockResolvedValueOnce('not valid json');
 
 			const tasks = [createTask('1'), createTask('2', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({
 				tag: 'corrupt',
@@ -222,11 +336,12 @@ describe('ClusterExecutionDomain', () => {
 			);
 
 			const tasks = [createTask('1'), createTask('2', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({
 				tag: 'eacces',
@@ -238,11 +353,12 @@ describe('ClusterExecutionDomain', () => {
 
 		it('should return hasResumableCheckpoint=false with resume=true but no checkpoint', async () => {
 			const tasks = [createTask('1'), createTask('2', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({
 				tag: 'test',
@@ -254,11 +370,12 @@ describe('ClusterExecutionDomain', () => {
 		});
 
 		it('should set checkpointPath based on tag and project root', async () => {
-			mockTasksDomain = createMockTasksDomain([]);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/my/project'),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/my/project',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'my-tag' });
 
@@ -271,11 +388,12 @@ describe('ClusterExecutionDomain', () => {
 	describe('buildPrompt', () => {
 		it('should generate a non-empty system prompt from a plan', async () => {
 			const tasks = [createTask('1'), createTask('2', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager(),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			const plan = await domain.buildExecutionPlan({ tag: 'prompt-test' });
 			const prompt = domain.buildPrompt(plan);
@@ -287,13 +405,16 @@ describe('ClusterExecutionDomain', () => {
 
 		it('should pass plan fields to promptBuilder including project path and checkpoint path', async () => {
 			const tasks = [createTask('1'), createTask('2', ['1'])];
-			mockTasksDomain = createMockTasksDomain(tasks);
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/test/project'),
-				mockTasksDomain
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/test/project',
+				'master',
+				tasks
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
-			const plan = await domain.buildExecutionPlan({ tag: 'prompt-fields' });
+			const plan = await domain.buildExecutionPlan({
+				tag: 'prompt-fields'
+			});
 			const prompt = domain.buildPrompt(plan);
 
 			expect(prompt).toContain('prompt-fields');
@@ -306,10 +427,12 @@ describe('ClusterExecutionDomain', () => {
 
 	describe('saveCheckpoint', () => {
 		it('should write checkpoint atomically via temp file + rename', async () => {
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await domain.saveCheckpoint('my-tag', ['cluster-0'], ['1', '2']);
 
@@ -326,10 +449,12 @@ describe('ClusterExecutionDomain', () => {
 		});
 
 		it('should write correct JSON structure', async () => {
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await domain.saveCheckpoint('my-tag', ['cluster-0'], ['1', '2']);
 
@@ -344,10 +469,12 @@ describe('ClusterExecutionDomain', () => {
 		});
 
 		it('should set currentClusterId to empty string when completedClusters is empty', async () => {
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await domain.saveCheckpoint('tag', [], []);
 
@@ -360,10 +487,12 @@ describe('ClusterExecutionDomain', () => {
 
 	describe('clearCheckpoint', () => {
 		it('should delete the checkpoint file', async () => {
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await domain.clearCheckpoint('my-tag');
 
@@ -377,10 +506,12 @@ describe('ClusterExecutionDomain', () => {
 				Object.assign(new Error('EACCES'), { code: 'EACCES' })
 			);
 
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await expect(domain.clearCheckpoint('tag')).rejects.toThrow('EACCES');
 		});
@@ -390,10 +521,12 @@ describe('ClusterExecutionDomain', () => {
 				Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
 			);
 
-			domain = new ClusterExecutionDomain(
-				createMockConfigManager('/proj'),
-				createMockTasksDomain()
+			const { configManager, tasksDomain } = await buildRealDependencies(
+				'/proj',
+				'master',
+				[]
 			);
+			domain = new ClusterExecutionDomain(configManager, tasksDomain);
 
 			await expect(domain.clearCheckpoint('missing')).resolves.not.toThrow();
 		});

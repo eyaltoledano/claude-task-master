@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { Task } from '../../../common/types/index.js';
+import type { ClusterMetadata } from '../types.js';
 import {
 	PromptBuilderService,
 	type PromptContext
 } from './prompt-builder.service.js';
-import type { ClusterMetadata } from '../types.js';
-import type { Task } from '../../../common/types/index.js';
 
 function createTestTask(
 	overrides: Partial<Task> & { id: string; title: string }

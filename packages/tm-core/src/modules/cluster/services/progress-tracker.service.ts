@@ -3,17 +3,17 @@
  * Real-time progress tracking and persistence for cluster execution
  */
 
-import type { TaskStatus } from '../../../common/types/index.js';
-import type {
-	ClusterStatus,
-	ProgressEventListener,
-	ProgressEventData,
-	ExecutionCheckpoint,
-	ClusterDetectionResult
-} from '../types.js';
-import { getLogger } from '../../../common/logger/factory.js';
 import { promises as fs } from 'fs';
-import { dirname } from 'path';
+import { getLogger } from '../../../common/logger/factory.js';
+import type { TaskStatus } from '../../../common/types/index.js';
+import { readJSON, writeJSON } from '../../../common/utils/index.js';
+import type {
+	ClusterDetectionResult,
+	ClusterStatus,
+	ExecutionCheckpoint,
+	ProgressEventData,
+	ProgressEventListener
+} from '../types.js';
 
 interface TaskProgress {
 	taskId: string;
@@ -349,75 +349,80 @@ export class ProgressTrackerService {
 			taskStatuses
 		};
 
-		try {
-			await fs.mkdir(dirname(this.checkpointPath), { recursive: true });
-
-			const tempPath = `${this.checkpointPath}.tmp`;
-			await fs.writeFile(
-				tempPath,
-				JSON.stringify(checkpoint, null, 2),
-				'utf-8'
-			);
-			await fs.rename(tempPath, this.checkpointPath);
-
+		const success = await writeJSON(this.checkpointPath, checkpoint);
+		if (success) {
 			this.logger.debug('Checkpoint created', {
 				clusterId,
 				path: this.checkpointPath
 			});
-		} catch (error) {
+		} else {
 			this.logger.error('Failed to create checkpoint', {
-				error,
 				path: this.checkpointPath
 			});
-			throw error;
+			throw new Error(`Failed to write checkpoint to ${this.checkpointPath}`);
 		}
 	}
 
 	async loadCheckpoint(): Promise<ExecutionCheckpoint | null> {
 		if (!this.checkpointPath) return null;
 
-		try {
-			const content = await fs.readFile(this.checkpointPath, 'utf-8');
-			const checkpoint = JSON.parse(content) as ExecutionCheckpoint;
+		const data = await readJSON<any>(this.checkpointPath);
+		if (data === null) {
+			return null;
+		}
 
-			// Restore progress state immutably
-			Object.entries(checkpoint.clusterStatuses).forEach(([id, status]) => {
-				const cluster = this.clusterProgress.get(id);
-				if (cluster) {
-					this.clusterProgress.set(id, {
-						...cluster,
-						status
-					});
-				}
-			});
-
-			Object.entries(checkpoint.taskStatuses).forEach(([id, status]) => {
-				const task = this.taskProgress.get(id);
-				if (task) {
-					this.taskProgress.set(id, { ...task, status });
-				}
-			});
-
-			this.logger.info('Checkpoint loaded', {
-				currentClusterId: checkpoint.currentClusterId,
-				completedClusters: checkpoint.completedClusters.length,
-				completedTasks: checkpoint.completedTasks.length
-			});
-
-			return checkpoint;
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-				this.logger.debug('No checkpoint file found', {
-					path: this.checkpointPath
-				});
-				return null;
-			}
-			this.logger.error('Failed to load checkpoint', {
-				error,
+		// Validate ExecutionCheckpoint shape
+		if (
+			typeof data !== 'object' ||
+			Array.isArray(data) ||
+			(typeof data.timestamp !== 'number' &&
+				typeof data.timestamp !== 'string') ||
+			(typeof data.timestamp === 'number' &&
+				!Number.isFinite(data.timestamp)) ||
+			typeof data.currentClusterId !== 'string' ||
+			!Array.isArray(data.completedClusters) ||
+			!Array.isArray(data.completedTasks) ||
+			!Array.isArray(data.failedTasks) ||
+			data.clusterStatuses === null ||
+			typeof data.clusterStatuses !== 'object' ||
+			Array.isArray(data.clusterStatuses) ||
+			data.taskStatuses === null ||
+			typeof data.taskStatuses !== 'object' ||
+			Array.isArray(data.taskStatuses)
+		) {
+			this.logger.error('Invalid checkpoint structure', {
 				path: this.checkpointPath
 			});
-			throw error;
+			return null;
 		}
+
+		const checkpoint = data as ExecutionCheckpoint;
+
+		// Restore progress state immutably
+		Object.entries(checkpoint.clusterStatuses).forEach(([id, status]) => {
+			const cluster = this.clusterProgress.get(id);
+			if (cluster) {
+				this.clusterProgress.set(id, {
+					...cluster,
+					status
+				});
+			}
+		});
+
+		Object.entries(checkpoint.taskStatuses).forEach(([id, status]) => {
+			const task = this.taskProgress.get(id);
+			if (task) {
+				this.taskProgress.set(id, { ...task, status });
+			}
+		});
+
+		this.logger.info('Checkpoint loaded', {
+			currentClusterId: checkpoint.currentClusterId,
+			completedClusters: checkpoint.completedClusters.length,
+			completedTasks: checkpoint.completedTasks.length
+		});
+
+		return checkpoint;
 	}
 
 	async deleteCheckpoint(): Promise<void> {
