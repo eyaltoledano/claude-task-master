@@ -10,7 +10,6 @@ import {
 	ClusterGenerationService,
 	type ClusterSuggestion,
 	type DependencySuggestion,
-	type GenerateObjectServiceFn,
 	type TagAnalysisInput,
 	BridgedTagSemanticAnalyzer,
 	BridgedTagDependencySynthesizer,
@@ -18,7 +17,8 @@ import {
 	type CacheFile,
 	type CacheStorage,
 	type TmCore,
-	createTmCore
+	createTmCore,
+	loadGenerateObjectService
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -59,11 +59,7 @@ export async function runClusterGeneration(
 	const tagsResult = await tmCore.tasks.getTagsWithStats();
 	const tagInputs = await buildTagInputs(tmCore, tagsResult.tags);
 
-	const aiModule = await import(
-		/* webpackIgnore: true */
-		'../../../../scripts/modules/ai-services-unified.js'
-	);
-	const generateObjectService = aiModule.generateObjectService as GenerateObjectServiceFn;
+	const generateObjectService = await loadGenerateObjectService();
 
 	const analyzer = new BridgedTagSemanticAnalyzer(generateObjectService);
 	const synthesizer = new BridgedTagDependencySynthesizer(generateObjectService);
@@ -110,15 +106,32 @@ export async function persistClusterDependencies(
 	allTagNames: readonly string[],
 	dependencies: readonly DependencySuggestion[]
 ): Promise<void> {
+	// Snapshot existing dependencies before removal so we can restore on failure
+	const snapshot = new Map<string, readonly string[]>();
 	for (const tagName of allTagNames) {
 		const existingDeps = await tmCore.tasks.getTagDependencies(tagName);
-		for (const dep of existingDeps) {
+		snapshot.set(tagName, existingDeps);
+	}
+
+	// Remove all existing deps, then add new ones
+	for (const tagName of allTagNames) {
+		for (const dep of snapshot.get(tagName) ?? []) {
 			await tmCore.tasks.removeTagDependency(tagName, dep);
 		}
 	}
 
-	for (const dep of dependencies) {
-		await tmCore.tasks.addTagDependency(dep.from, dep.to);
+	try {
+		for (const dep of dependencies) {
+			await tmCore.tasks.addTagDependency(dep.from, dep.to);
+		}
+	} catch (error) {
+		// Restore original dependencies from snapshot
+		for (const [tagName, deps] of snapshot) {
+			for (const dep of deps) {
+				await tmCore.tasks.addTagDependency(tagName, dep);
+			}
+		}
+		throw error;
 	}
 }
 
@@ -212,6 +225,13 @@ export class ClusterGenerateCommand extends Command {
 			}
 
 			if (options.auto) {
+				const existingDeps = this.getExistingDependencyCount(tagsResult.tags);
+				if (existingDeps > 0) {
+					console.log(
+						chalk.yellow(`Replacing ${existingDeps} existing inter-tag dependencies.`)
+					);
+				}
+
 				await persistClusterDependencies(
 					tmCore,
 					tagsResult.tags.map((t) => t.name),
