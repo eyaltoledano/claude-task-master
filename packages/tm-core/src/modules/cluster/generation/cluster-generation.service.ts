@@ -8,6 +8,7 @@ import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
 import type { ITagDependencySynthesizer } from './tag-dependency-synthesizer.interface.js';
 import type { DependencySuggestion } from './tag-dependency-synthesizer.types.js';
 import { TagClusterService, type TagClusterResult } from '../services/tag-cluster.service.js';
+import { TagAnalysisCache } from './tag-analysis-cache.js';
 
 export interface TagAnalysisInput {
 	readonly name: string;
@@ -24,6 +25,7 @@ export interface ClusterGenerationProgress {
 	readonly current: number;
 	readonly total: number;
 	readonly tagName?: string;
+	readonly cached?: number;
 }
 
 export type ProgressCallback = (progress: ClusterGenerationProgress) => void;
@@ -52,7 +54,8 @@ export class ClusterGenerationService {
 
 	constructor(
 		private readonly analyzer: ITagSemanticAnalyzer,
-		private readonly synthesizer: ITagDependencySynthesizer
+		private readonly synthesizer: ITagDependencySynthesizer,
+		private readonly cache?: TagAnalysisCache
 	) {}
 
 	async generate(
@@ -67,11 +70,32 @@ export class ClusterGenerationService {
 		tags: readonly TagAnalysisInput[],
 		onProgress?: ProgressCallback
 	): Promise<readonly TagAnalysisResult[]> {
-		const results: TagAnalysisResult[] = [];
-		const total = tags.length;
+		// Split into cache hits and misses
+		const cached: TagAnalysisResult[] = [];
+		const uncached: TagAnalysisInput[] = [];
+		const hashByTag = new Map<string, string>();
 
-		for (let i = 0; i < tags.length; i += MAX_CONCURRENCY) {
-			const batch = tags.slice(i, i + MAX_CONCURRENCY);
+		for (const tag of tags) {
+			const hash = TagAnalysisCache.computeHash(tag);
+			hashByTag.set(tag.name, hash);
+
+			if (this.cache) {
+				const hit = await this.cache.get(tag.name, hash);
+				if (hit) {
+					cached.push({ label: tag.name, analysis: hit });
+					continue;
+				}
+			}
+
+			uncached.push(tag);
+		}
+
+		// Analyze only uncached tags
+		const results: TagAnalysisResult[] = [];
+		const total = uncached.length;
+
+		for (let i = 0; i < uncached.length; i += MAX_CONCURRENCY) {
+			const batch = uncached.slice(i, i + MAX_CONCURRENCY);
 
 			const batchResults = await Promise.all(
 				batch.map(async (tag, batchIndex) => {
@@ -80,7 +104,8 @@ export class ClusterGenerationService {
 						phase: 'analyzing',
 						current: globalIndex + 1,
 						total,
-						tagName: tag.name
+						tagName: tag.name,
+						cached: cached.length
 					});
 
 					const content = this.buildTagContent(tag);
@@ -92,14 +117,21 @@ export class ClusterGenerationService {
 						commandName: COMMAND_NAME
 					});
 
-					return { label: tag.name, analysis: result.data };
+					const analysis = result.data;
+
+					if (this.cache) {
+						const hash = hashByTag.get(tag.name)!;
+						await this.cache.set(tag.name, hash, analysis);
+					}
+
+					return { label: tag.name, analysis };
 				})
 			);
 
 			results.push(...batchResults);
 		}
 
-		return results;
+		return [...cached, ...results];
 	}
 
 	async suggestDependencies(

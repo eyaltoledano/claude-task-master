@@ -43,7 +43,11 @@ export class BridgedTagSemanticAnalyzer implements ITagSemanticAnalyzer {
 		});
 
 		const duration = Date.now() - startTime;
-		const data = result.mainResult as SemanticAnalysis;
+		const data = result.mainResult as SemanticAnalysis | undefined;
+
+		if (!data) {
+			throw new Error('Semantic analysis failed: no result returned from generateObjectService');
+		}
 
 		return {
 			data: {

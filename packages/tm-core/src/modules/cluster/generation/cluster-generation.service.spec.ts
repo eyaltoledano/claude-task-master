@@ -5,6 +5,7 @@ import type { ITagDependencySynthesizer } from './tag-dependency-synthesizer.int
 import type { DependencySuggestion } from './tag-dependency-synthesizer.types.js';
 import type { AIPrimitiveResult } from '../../ai/types/primitives.types.js';
 import { ClusterGenerationService, type TagAnalysisInput, type ClusterGenerationProgress } from './cluster-generation.service.js';
+import { TagAnalysisCache, type CacheFile, type CacheStorage } from './tag-analysis-cache.js';
 
 function createMockAnalysis(domain: string): SemanticAnalysis {
 	return {
@@ -213,5 +214,152 @@ describe('ClusterGenerationService', () => {
 		expect(result.clusters).toHaveLength(0);
 		expect(result.dependencies).toHaveLength(0);
 		expect(analyzer.analyze).not.toHaveBeenCalled();
+	});
+
+	describe('with cache', () => {
+		function createInMemoryStorage(): CacheStorage & { data: CacheFile | null } {
+			const store: { data: CacheFile | null } = { data: null };
+			return {
+				get data() { return store.data; },
+				set data(v) { store.data = v; },
+				load: async () => store.data,
+				save: async (file) => { store.data = file; }
+			};
+		}
+
+		it('skips AI calls for cached tags (all hits)', async () => {
+			const tags: TagAnalysisInput[] = [
+				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
+				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
+			];
+
+			const authAnalysis = createMockAnalysis('authentication');
+			const apiAnalysis = createMockAnalysis('api');
+
+			// Pre-populate cache
+			const storage = createInMemoryStorage();
+			const cache = new TagAnalysisCache(storage);
+			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
+			await cache.set('api', TagAnalysisCache.computeHash(tags[1]), apiAnalysis);
+
+			const analyzer = createMockAnalyzer({});
+			const synthesizer = createMockSynthesizer([]);
+			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+			await service.generate(tags);
+
+			expect(analyzer.analyze).not.toHaveBeenCalled();
+		});
+
+		it('calls AI only for uncached tags (mixed hits/misses)', async () => {
+			const tags: TagAnalysisInput[] = [
+				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
+				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] },
+				{ name: 'core', tasks: [{ title: 'C', description: 'C', dependencies: [] }] }
+			];
+
+			const authAnalysis = createMockAnalysis('authentication');
+
+			// Only cache 'auth'
+			const storage = createInMemoryStorage();
+			const cache = new TagAnalysisCache(storage);
+			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
+
+			const analysisMap: Record<string, SemanticAnalysis> = {
+				api: createMockAnalysis('api'),
+				core: createMockAnalysis('core')
+			};
+
+			const analyzer = createMockAnalyzer(analysisMap);
+			const synthesizer = createMockSynthesizer([]);
+			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+			const result = await service.generate(tags);
+
+			// Only 2 AI calls (api + core), not 3
+			expect(analyzer.analyze).toHaveBeenCalledTimes(2);
+			// All 3 tags still appear in results
+			const tagNames = result.clusters.flatMap((c) => [...c.tags]).sort();
+			expect(tagNames).toEqual(['api', 'auth', 'core']);
+		});
+
+		it('makes all AI calls when nothing is cached (all misses)', async () => {
+			const tags: TagAnalysisInput[] = [
+				{ name: 'x', tasks: [{ title: 'X', description: 'X', dependencies: [] }] },
+				{ name: 'y', tasks: [{ title: 'Y', description: 'Y', dependencies: [] }] }
+			];
+
+			const storage = createInMemoryStorage();
+			const cache = new TagAnalysisCache(storage);
+
+			const analysisMap: Record<string, SemanticAnalysis> = {
+				x: createMockAnalysis('x'),
+				y: createMockAnalysis('y')
+			};
+
+			const analyzer = createMockAnalyzer(analysisMap);
+			const synthesizer = createMockSynthesizer([]);
+			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+			await service.generate(tags);
+
+			expect(analyzer.analyze).toHaveBeenCalledTimes(2);
+		});
+
+		it('writes fresh AI results back to cache', async () => {
+			const tags: TagAnalysisInput[] = [
+				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] }
+			];
+
+			const storage = createInMemoryStorage();
+			const cache = new TagAnalysisCache(storage);
+
+			const analysisMap: Record<string, SemanticAnalysis> = {
+				auth: createMockAnalysis('authentication')
+			};
+
+			const analyzer = createMockAnalyzer(analysisMap);
+			const synthesizer = createMockSynthesizer([]);
+			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+			await service.generate(tags);
+
+			// Cache should now have the result
+			const hash = TagAnalysisCache.computeHash(tags[0]);
+			const cached = await cache.get('auth', hash);
+			expect(cached).toEqual(createMockAnalysis('authentication'));
+		});
+
+		it('reports cached count in progress callback', async () => {
+			const tags: TagAnalysisInput[] = [
+				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
+				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
+			];
+
+			const authAnalysis = createMockAnalysis('authentication');
+
+			// Cache 'auth' only
+			const storage = createInMemoryStorage();
+			const cache = new TagAnalysisCache(storage);
+			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
+
+			const analysisMap: Record<string, SemanticAnalysis> = {
+				api: createMockAnalysis('api')
+			};
+
+			const analyzer = createMockAnalyzer(analysisMap);
+			const synthesizer = createMockSynthesizer([]);
+			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+			const progressUpdates: ClusterGenerationProgress[] = [];
+			await service.generate(tags, (p) => progressUpdates.push(p));
+
+			const analyzingPhases = progressUpdates.filter((p) => p.phase === 'analyzing');
+			// Only 1 AI call (api), so 1 analyzing progress
+			expect(analyzingPhases).toHaveLength(1);
+			expect(analyzingPhases[0].tagName).toBe('api');
+			expect(analyzingPhases[0].cached).toBe(1);
+			expect(analyzingPhases[0].total).toBe(1);
+		});
 	});
 });

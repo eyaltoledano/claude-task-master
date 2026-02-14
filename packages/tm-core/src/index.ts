@@ -318,6 +318,10 @@ export {
 export {
 	BridgedTagSemanticAnalyzer,
 	BridgedTagDependencySynthesizer,
+	TagAnalysisCache,
+	type CacheStorage,
+	type CacheFile,
+	type CachedEntry,
 	type ITagSemanticAnalyzer,
 	type ITagDependencySynthesizer,
 	type SemanticAnalysis,

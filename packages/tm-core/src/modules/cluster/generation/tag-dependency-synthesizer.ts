@@ -52,6 +52,11 @@ export class BridgedTagDependencySynthesizer implements ITagDependencySynthesize
 		});
 
 		const duration = Date.now() - startTime;
+
+		if (!result.mainResult || !Array.isArray((result.mainResult as Record<string, unknown>).dependencies)) {
+			throw new Error('Dependency synthesis failed: invalid or missing result from generateObjectService');
+		}
+
 		const parsed = result.mainResult as { dependencies: DependencySuggestion[] };
 
 		return {

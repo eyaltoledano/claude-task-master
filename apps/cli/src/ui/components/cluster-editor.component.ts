@@ -140,7 +140,15 @@ export async function editClusters(
 
 			case 'move': {
 				const tags = getAllTags(state.clusters);
-				const maxLevel = Math.max(...state.clusters.map((c) => c.level));
+
+				if (tags.length === 0) {
+					console.log(chalk.yellow('No tags available to move.'));
+					break;
+				}
+
+				const maxLevel = state.clusters.length > 0
+					? Math.max(...state.clusters.map((c) => c.level))
+					: 0;
 
 				const { selectedTag } = await inquirer.prompt<{ selectedTag: string }>([
 					{

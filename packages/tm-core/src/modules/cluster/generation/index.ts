@@ -12,6 +12,14 @@ export {
 	type ClusterSuggestion
 } from './cluster-generation.service.js';
 
+// Cache
+export {
+	TagAnalysisCache,
+	type CacheStorage,
+	type CacheFile,
+	type CachedEntry
+} from './tag-analysis-cache.js';
+
 // Tag Semantic Analyzer
 export type { ITagSemanticAnalyzer } from './tag-semantic-analyzer.interface.js';
 export type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';

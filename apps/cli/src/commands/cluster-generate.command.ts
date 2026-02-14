@@ -3,13 +3,20 @@
  * Subcommand of 'clusters': `tm clusters generate`
  */
 
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
 import {
 	ClusterGenerationService,
+	type ClusterSuggestion,
 	type DependencySuggestion,
 	type GenerateObjectServiceFn,
 	type TagAnalysisInput,
 	BridgedTagSemanticAnalyzer,
 	BridgedTagDependencySynthesizer,
+	TagAnalysisCache,
+	type CacheFile,
+	type CacheStorage,
 	type TmCore,
 	createTmCore
 } from '@tm/core';
@@ -26,6 +33,138 @@ interface ClusterGenerateOptions {
 	auto?: boolean;
 	json?: boolean;
 	project?: string;
+	cache?: boolean;
+}
+
+/**
+ * Options for the reusable cluster generation helper
+ */
+export interface RunClusterGenerationOptions {
+	readonly tmCore: TmCore;
+	readonly projectRoot: string;
+	readonly useCache: boolean;
+}
+
+/**
+ * Reusable cluster generation core: builds tag inputs, constructs AI services,
+ * runs analysis with a spinner, and returns the suggestion.
+ *
+ * Used by both `ClusterGenerateCommand` and the inline prompt in `ClustersCommand`.
+ */
+export async function runClusterGeneration(
+	options: RunClusterGenerationOptions
+): Promise<ClusterSuggestion> {
+	const { tmCore, projectRoot, useCache } = options;
+
+	const tagsResult = await tmCore.tasks.getTagsWithStats();
+	const tagInputs = await buildTagInputs(tmCore, tagsResult.tags);
+
+	const aiModule = await import(
+		/* webpackIgnore: true */
+		'../../../../scripts/modules/ai-services-unified.js'
+	);
+	const generateObjectService = aiModule.generateObjectService as GenerateObjectServiceFn;
+
+	const analyzer = new BridgedTagSemanticAnalyzer(generateObjectService);
+	const synthesizer = new BridgedTagDependencySynthesizer(generateObjectService);
+
+	const cache = useCache
+		? new TagAnalysisCache(buildCacheStorage(projectRoot))
+		: undefined;
+
+	const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+
+	const spinner = ora('Analyzing tags...').start();
+
+	try {
+		const suggestion = await service.generate(tagInputs, (progress) => {
+			switch (progress.phase) {
+				case 'analyzing': {
+					const cachedInfo = progress.cached
+						? chalk.dim(` (${progress.cached} cached)`)
+						: '';
+					spinner.text = `Analyzing tag ${progress.current}/${progress.total}: ${progress.tagName ?? ''}${cachedInfo}`;
+					break;
+				}
+				case 'synthesizing':
+					spinner.text = 'Synthesizing dependencies...';
+					break;
+				case 'complete':
+					spinner.succeed('Analysis complete');
+					break;
+			}
+		});
+
+		return suggestion;
+	} catch (error) {
+		spinner.fail('Analysis failed');
+		throw error;
+	}
+}
+
+/**
+ * Persist generated dependencies: removes all existing inter-tag deps, then adds new ones.
+ */
+export async function persistClusterDependencies(
+	tmCore: TmCore,
+	allTagNames: readonly string[],
+	dependencies: readonly DependencySuggestion[]
+): Promise<void> {
+	for (const tagName of allTagNames) {
+		const existingDeps = await tmCore.tasks.getTagDependencies(tagName);
+		for (const dep of existingDeps) {
+			await tmCore.tasks.removeTagDependency(tagName, dep);
+		}
+	}
+
+	for (const dep of dependencies) {
+		await tmCore.tasks.addTagDependency(dep.from, dep.to);
+	}
+}
+
+function buildCacheStorage(projectRoot: string): CacheStorage {
+	const cachePath = path.join(projectRoot, '.taskmaster', 'cache', 'cluster-analysis.json');
+
+	return {
+		load: async (): Promise<CacheFile | null> => {
+			try {
+				const raw = await fs.readFile(cachePath, 'utf-8');
+				return JSON.parse(raw) as CacheFile;
+			} catch {
+				return null;
+			}
+		},
+		save: async (data: CacheFile): Promise<void> => {
+			await fs.mkdir(path.dirname(cachePath), { recursive: true });
+			await fs.writeFile(cachePath, JSON.stringify(data, null, 2), 'utf-8');
+		}
+	};
+}
+
+async function buildTagInputs(
+	tmCore: TmCore,
+	tags: readonly { name: string; description?: string }[]
+): Promise<TagAnalysisInput[]> {
+	const inputs: TagAnalysisInput[] = [];
+
+	for (const tag of tags) {
+		const taskResult = await tmCore.tasks.list({
+			tag: tag.name,
+			includeSubtasks: false
+		});
+
+		inputs.push({
+			name: tag.name,
+			description: tag.description,
+			tasks: taskResult.tasks.map((t) => ({
+				title: t.title,
+				description: t.description,
+				dependencies: t.dependencies?.map(String) ?? []
+			}))
+		});
+	}
+
+	return inputs;
 }
 
 export class ClusterGenerateCommand extends Command {
@@ -35,6 +174,7 @@ export class ClusterGenerateCommand extends Command {
 		this.description('Use AI to suggest inter-tag dependencies and cluster ordering')
 			.option('--auto', 'Auto-accept AI suggestions without interactive review')
 			.option('--json', 'Output suggestions as JSON (non-interactive)')
+			.option('--no-cache', 'Skip analysis cache and re-analyze all tags')
 			.option(
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
@@ -59,35 +199,10 @@ export class ClusterGenerateCommand extends Command {
 				return;
 			}
 
-			// Build tag analysis inputs
-			const tagInputs = await this.buildTagInputs(tmCore, tagsResult.tags);
-
-			// Import legacy AI service (cast to typed interface)
-			const aiModule = await import(
-				/* webpackIgnore: true */
-				'../../../../scripts/modules/ai-services-unified.js'
-			);
-			const generateObjectService = aiModule.generateObjectService as GenerateObjectServiceFn;
-
-			const analyzer = new BridgedTagSemanticAnalyzer(generateObjectService);
-			const synthesizer = new BridgedTagDependencySynthesizer(generateObjectService);
-			const service = new ClusterGenerationService(analyzer, synthesizer);
-
-			// Run generation with progress spinner
-			const spinner = ora('Analyzing tags...').start();
-
-			const suggestion = await service.generate(tagInputs, (progress) => {
-				switch (progress.phase) {
-					case 'analyzing':
-						spinner.text = `Analyzing tag ${progress.current}/${progress.total}: ${progress.tagName ?? ''}`;
-						break;
-					case 'synthesizing':
-						spinner.text = 'Synthesizing dependencies...';
-						break;
-					case 'complete':
-						spinner.succeed('Analysis complete');
-						break;
-				}
+			const suggestion = await runClusterGeneration({
+				tmCore,
+				projectRoot,
+				useCache: options.cache !== false
 			});
 
 			// Handle output modes
@@ -97,7 +212,7 @@ export class ClusterGenerateCommand extends Command {
 			}
 
 			if (options.auto) {
-				await this.persistDependencies(
+				await persistClusterDependencies(
 					tmCore,
 					tagsResult.tags.map((t) => t.name),
 					suggestion.dependencies
@@ -148,7 +263,7 @@ export class ClusterGenerateCommand extends Command {
 				}
 			}
 
-			await this.persistDependencies(
+			await persistClusterDependencies(
 				tmCore,
 				tagsResult.tags.map((t) => t.name),
 				result.dependencies
@@ -157,32 +272,6 @@ export class ClusterGenerateCommand extends Command {
 		} catch (error: unknown) {
 			displayError(error);
 		}
-	}
-
-	private async buildTagInputs(
-		tmCore: TmCore,
-		tags: readonly { name: string; description?: string }[]
-	): Promise<TagAnalysisInput[]> {
-		const inputs: TagAnalysisInput[] = [];
-
-		for (const tag of tags) {
-			const taskResult = await tmCore.tasks.list({
-				tag: tag.name,
-				includeSubtasks: false
-			});
-
-			inputs.push({
-				name: tag.name,
-				description: tag.description,
-				tasks: taskResult.tasks.map((t) => ({
-					title: t.title,
-					description: t.description,
-					dependencies: t.dependencies?.map(String) ?? []
-				}))
-			});
-		}
-
-		return inputs;
 	}
 
 	private getExistingDependencyCount(
@@ -194,24 +283,5 @@ export class ClusterGenerateCommand extends Command {
 			count += deps.length;
 		}
 		return count;
-	}
-
-	private async persistDependencies(
-		tmCore: TmCore,
-		allTagNames: readonly string[],
-		dependencies: readonly DependencySuggestion[]
-	): Promise<void> {
-		// Remove all existing inter-tag deps
-		for (const tagName of allTagNames) {
-			const existingDeps = await tmCore.tasks.getTagDependencies(tagName);
-			for (const dep of existingDeps) {
-				await tmCore.tasks.removeTagDependency(tagName, dep);
-			}
-		}
-
-		// Add new deps
-		for (const dep of dependencies) {
-			await tmCore.tasks.addTagDependency(dep.from, dep.to);
-		}
 	}
 }

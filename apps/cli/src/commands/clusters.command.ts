@@ -17,7 +17,14 @@ import { renderMermaidAscii } from 'beautiful-mermaid';
 import chalk from 'chalk';
 import Table from 'cli-table3';
 import { Command } from 'commander';
-import { ClusterGenerateCommand } from './cluster-generate.command.js';
+import inquirer from 'inquirer';
+import {
+	ClusterGenerateCommand,
+	runClusterGeneration,
+	persistClusterDependencies
+} from './cluster-generate.command.js';
+import { editClusters } from '../ui/components/cluster-editor.component.js';
+import { renderTagClusterLayout } from '../ui/components/cluster-layout-renderer.js';
 import { getBoxWidth } from '../ui/layout/helpers.js';
 import { displayCommandHeader } from '../utils/display-helpers.js';
 import { displayError } from '../utils/error-handler.js';
@@ -32,6 +39,7 @@ interface ClustersCommandOptions {
 	tree?: boolean;
 	diagram?: string;
 	json?: boolean;
+	auto?: boolean;
 	project?: string;
 }
 
@@ -55,6 +63,7 @@ export class ClustersCommand extends Command {
 				'Output a diagram (supported: mermaid, mermaid-raw)'
 			)
 			.option('--json', 'Output raw cluster detection result as JSON')
+			.option('--auto', 'Auto-accept AI generation when no dependencies exist')
 			.option(
 				'-p, --project <path>',
 				'Project root directory (auto-detected if not provided)'
@@ -182,16 +191,36 @@ export class ClustersCommand extends Command {
 			)
 		);
 
-		if (
+		const allIndependent =
 			detection.clusters.length === 1 &&
-			detection.clusters[0].dependsOn.length === 0
-		) {
-			console.log(
-				chalk.gray(
-					'  All tags are independent (no inter-tag dependencies defined).\n' +
-						'  Define tag dependencies with `tm tags add-dep` to see sequential ordering.\n'
-				)
-			);
+			detection.clusters[0].dependsOn.length === 0;
+
+		if (allIndependent) {
+			const isInteractive =
+				process.stdin.isTTY &&
+				!options.json &&
+				!options.tree &&
+				!options.diagram;
+
+			if (isInteractive && tagsResult.tags.length >= 2) {
+				console.log(
+					chalk.gray('  No inter-tag dependencies found.\n')
+				);
+
+				const shouldGenerate = options.auto || await this.promptForGeneration();
+
+				if (shouldGenerate) {
+					await this.runInlineGenerate(options, tagsResult.tags);
+					return;
+				}
+			} else {
+				console.log(
+					chalk.gray(
+						'  All tags are independent (no inter-tag dependencies defined).\n' +
+							'  Define tag dependencies with `tm tags add-dep` to see sequential ordering.\n'
+					)
+				);
+			}
 		}
 
 		if (options.tree) {
@@ -205,6 +234,82 @@ export class ClustersCommand extends Command {
 		} else {
 			this.renderTagTable(detection);
 		}
+	}
+
+	private async promptForGeneration(): Promise<boolean> {
+		const { generate } = await inquirer.prompt<{ generate: boolean }>([
+			{
+				type: 'confirm',
+				name: 'generate',
+				message: 'Generate cluster ordering with AI?',
+				default: true
+			}
+		]);
+		return generate;
+	}
+
+	private async runInlineGenerate(
+		options: ClustersCommandOptions,
+		tags: readonly { name: string; description?: string; dependsOn?: string[] }[]
+	): Promise<void> {
+		const projectRoot = getProjectRoot(options.project);
+
+		const suggestion = await runClusterGeneration({
+			tmCore: this.tmCore!,
+			projectRoot,
+			useCache: true
+		});
+
+		if (options.auto) {
+			await persistClusterDependencies(
+				this.tmCore!,
+				tags.map((t) => t.name),
+				suggestion.dependencies
+			);
+			console.log(renderTagClusterLayout(
+				suggestion.clusters,
+				suggestion.dependencies,
+				suggestion.reasoning
+			));
+			console.log(chalk.green('\nDependencies saved successfully.'));
+			return;
+		}
+
+		// Interactive editor
+		const result = await editClusters(
+			suggestion.clusters,
+			suggestion.dependencies,
+			suggestion.reasoning
+		);
+
+		if (!result.accepted) {
+			console.log(chalk.yellow('\nCancelled. No changes were made.'));
+			return;
+		}
+
+		await persistClusterDependencies(
+			this.tmCore!,
+			tags.map((t) => t.name),
+			result.dependencies
+		);
+		console.log(chalk.green('\nDependencies saved successfully.'));
+
+		// Re-render clusters with the new dependencies
+		console.log('');
+		const freshTags = await this.tmCore!.tasks.getTagsWithStats();
+		const tagDeps = freshTags.tags.map((t) => ({
+			tag: t.name,
+			dependencies: t.dependsOn ?? []
+		}));
+		const tagClusterService = new TagClusterService();
+		const newDetection = tagClusterService.clusterTags(tagDeps);
+
+		console.log(
+			chalk.bold(
+				`\nTag Clusters — ${newDetection.totalTags} tags → ${newDetection.totalClusters} cluster(s)\n`
+			)
+		);
+		this.renderTagTable(newDetection);
 	}
 
 	private async initializeCore(projectRoot: string): Promise<void> {
