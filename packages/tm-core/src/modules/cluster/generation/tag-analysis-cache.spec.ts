@@ -1,15 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { TagAnalysisCache, type CacheFile, type CacheStorage } from './tag-analysis-cache.js';
+import {
+	TagAnalysisCache,
+	type CacheFile,
+	type CacheStorage
+} from './tag-analysis-cache.js';
 import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
 import type { TagAnalysisInput } from './cluster-generation.service.js';
 
 function createInMemoryStorage(): CacheStorage & { data: CacheFile | null } {
 	const store: { data: CacheFile | null } = { data: null };
 	return {
-		get data() { return store.data; },
-		set data(v) { store.data = v; },
+		get data() {
+			return store.data;
+		},
+		set data(v) {
+			store.data = v;
+		},
 		load: async () => store.data,
-		save: async (file) => { store.data = file; }
+		save: async (file) => {
+			store.data = file;
+		}
 	};
 }
 
@@ -109,7 +119,9 @@ describe('TagAnalysisCache', () => {
 
 		expect(storage.data?.version).toBe(1);
 		expect(storage.data?.entries['auth'].analyzedAt).toBeDefined();
-		expect(new Date(storage.data!.entries['auth'].analyzedAt).getTime()).not.toBeNaN();
+		expect(
+			new Date(storage.data!.entries['auth'].analyzedAt).getTime()
+		).not.toBeNaN();
 	});
 });
 
@@ -125,7 +137,11 @@ describe('TagAnalysisCache.computeHash', () => {
 		const modified: TagAnalysisInput = {
 			...sampleInput,
 			tasks: [
-				{ title: 'Login flow', description: 'Changed description', dependencies: [] }
+				{
+					title: 'Login flow',
+					description: 'Changed description',
+					dependencies: []
+				}
 			]
 		};
 
@@ -164,7 +180,9 @@ describe('TagAnalysisCache.computeHash', () => {
 			]
 		};
 
-		expect(TagAnalysisCache.computeHash(input1)).toBe(TagAnalysisCache.computeHash(input2));
+		expect(TagAnalysisCache.computeHash(input1)).toBe(
+			TagAnalysisCache.computeHash(input2)
+		);
 	});
 
 	it('produces same hash regardless of dependency order', () => {
@@ -182,7 +200,9 @@ describe('TagAnalysisCache.computeHash', () => {
 			]
 		};
 
-		expect(TagAnalysisCache.computeHash(input1)).toBe(TagAnalysisCache.computeHash(input2));
+		expect(TagAnalysisCache.computeHash(input1)).toBe(
+			TagAnalysisCache.computeHash(input2)
+		);
 	});
 
 	it('returns a 64-char hex string (SHA-256)', () => {

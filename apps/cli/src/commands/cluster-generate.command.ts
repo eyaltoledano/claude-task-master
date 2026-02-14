@@ -62,7 +62,9 @@ export async function runClusterGeneration(
 	const generateObjectService = await loadGenerateObjectService();
 
 	const analyzer = new BridgedTagSemanticAnalyzer(generateObjectService);
-	const synthesizer = new BridgedTagDependencySynthesizer(generateObjectService);
+	const synthesizer = new BridgedTagDependencySynthesizer(
+		generateObjectService
+	);
 
 	const cache = useCache
 		? new TagAnalysisCache(buildCacheStorage(projectRoot))
@@ -136,7 +138,12 @@ export async function persistClusterDependencies(
 }
 
 function buildCacheStorage(projectRoot: string): CacheStorage {
-	const cachePath = path.join(projectRoot, '.taskmaster', 'cache', 'cluster-analysis.json');
+	const cachePath = path.join(
+		projectRoot,
+		'.taskmaster',
+		'cache',
+		'cluster-analysis.json'
+	);
 
 	return {
 		load: async (): Promise<CacheFile | null> => {
@@ -184,7 +191,9 @@ export class ClusterGenerateCommand extends Command {
 	constructor() {
 		super('generate');
 
-		this.description('Use AI to suggest inter-tag dependencies and cluster ordering')
+		this.description(
+			'Use AI to suggest inter-tag dependencies and cluster ordering'
+		)
 			.option('--auto', 'Auto-accept AI suggestions without interactive review')
 			.option('--json', 'Output suggestions as JSON (non-interactive)')
 			.option('--no-cache', 'Skip analysis cache and re-analyze all tags')
@@ -228,7 +237,9 @@ export class ClusterGenerateCommand extends Command {
 				const existingDeps = this.getExistingDependencyCount(tagsResult.tags);
 				if (existingDeps > 0) {
 					console.log(
-						chalk.yellow(`Replacing ${existingDeps} existing inter-tag dependencies.`)
+						chalk.yellow(
+							`Replacing ${existingDeps} existing inter-tag dependencies.`
+						)
 					);
 				}
 
@@ -237,11 +248,13 @@ export class ClusterGenerateCommand extends Command {
 					tagsResult.tags.map((t) => t.name),
 					suggestion.dependencies
 				);
-				console.log(renderTagClusterLayout(
-					suggestion.clusters,
-					suggestion.dependencies,
-					suggestion.reasoning
-				));
+				console.log(
+					renderTagClusterLayout(
+						suggestion.clusters,
+						suggestion.dependencies,
+						suggestion.reasoning
+					)
+				);
 				console.log(chalk.green('\nDependencies saved successfully.'));
 				return;
 			}

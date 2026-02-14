@@ -1,0 +1,328 @@
+{
+	"version": 1,
+	"entries": {
+		"test-tag": {
+			"contentHash": "6dc3db5000c67ed3de105280c6aaf5fa38831873b5c391ef175c954c8bc40354",
+			"analysis": {
+				"summary": "A tag for implementing text-to-speech (TTS) functionality in Taskmaster CLI commands, enabling voice output with configurable options.",
+				"themes": [
+					"accessibility",
+					"audio output",
+					"CLI enhancement",
+					"text-to-speech integration"
+				],
+				"capabilities": [
+					"voice synthesis for command output",
+					"configurable voice options",
+					"audio output settings management"
+				],
+				"technicalDomain": "CLI/accessibility",
+				"keyEntities": [
+					"TTS engine",
+					"voice configuration",
+					"audio output handler",
+					"taskmaster commands"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:28:43.516Z"
+		},
+		"tm-start": {
+			"contentHash": "80a43a32717a71e5532422264314d09a4fea75ee66036f1e42b05192cbbdab26",
+			"analysis": {
+				"summary": "CLI command implementation for starting task execution via claude-code integration, following Commander pattern with prompt building and execution flow orchestration.",
+				"themes": [
+					"CLI command architecture",
+					"External process execution",
+					"Prompt construction",
+					"Component integration"
+				],
+				"capabilities": [
+					"Execute tasks via claude-code CLI",
+					"Build standardized prompts with task details",
+					"Register and invoke start command"
+				],
+				"technicalDomain": "CLI",
+				"keyEntities": [
+					"StartCommand",
+					"PromptBuilder",
+					"ClaudeCodeExecutor",
+					"CLI registry"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:28:44.535Z"
+		},
+		"tm-core-phase-1": {
+			"contentHash": "c2212e0b81f4977a891ada64ee9dca998123ba36a540c2f0512c1714958098d0",
+			"analysis": {
+				"summary": "Foundation phase for tm-core package establishing the core architecture with AI provider abstraction, storage layer, configuration management, and a facade pattern entry point for task management operations.",
+				"themes": [
+					"Package initialization and structure",
+					"TypeScript type system design",
+					"AI provider abstraction layer",
+					"Repository pattern for storage",
+					"Factory pattern for provider instantiation",
+					"Configuration management with validation",
+					"Facade pattern for API surface",
+					"Dependency injection architecture"
+				],
+				"capabilities": [
+					"Task persistence via FileStorage",
+					"Multi-provider AI integration (Anthropic, OpenAI, Google)",
+					"Dynamic provider loading",
+					"Prompt building and task parsing",
+					"Configuration validation with Zod",
+					"Custom error handling",
+					"Unified TaskMasterCore API"
+				],
+				"technicalDomain": "core-architecture",
+				"keyEntities": [
+					"TaskMasterCore",
+					"BaseProvider",
+					"ProviderFactory",
+					"AnthropicProvider",
+					"FileStorage",
+					"IStorage",
+					"ConfigManager",
+					"PromptBuilder",
+					"TaskParser",
+					"Zod schemas"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:28:47.988Z"
+		},
+		"master": {
+			"contentHash": "dda6377d4c55860059614a2b1efbabc872fe74d7fb9a3d7613cf6e162f0a9d28",
+			"analysis": {
+				"summary": "Core tag encompassing the complete Task Master AI project - a CLI-based task management system with AI-powered task generation, expansion, and project planning capabilities using multiple LLM providers.",
+				"themes": [
+					"AI-powered task generation and expansion",
+					"Multi-provider LLM integration (Claude, OpenAI, Gemini, Perplexity, Ollama)",
+					"CLI and MCP server interfaces",
+					"Task dependency management and visualization",
+					"PRD parsing and project initialization",
+					"Research-backed task creation",
+					"External integrations (GitHub, webhooks)",
+					"Configuration and model management"
+				],
+				"capabilities": [
+					"Parse PRDs into structured task hierarchies",
+					"AI-driven task expansion with subtask generation",
+					"Multiple AI provider support with fallback chains",
+					"MCP server for IDE integration",
+					"Task dependency tracking and validation",
+					"Research-backed task generation via Perplexity/Grok",
+					"GitHub issue import/export with bidirectional linking",
+					"Interactive REPL for project exploration",
+					"Visual dependency graphs in terminal",
+					"Tagged task lists for multi-context management",
+					"Complexity analysis and ICE prioritization",
+					"Git branch management for tasks"
+				],
+				"technicalDomain": "task-management",
+				"keyEntities": [
+					"tasks.json",
+					"CLI commands (task-master)",
+					"MCP server (FastMCP)",
+					"AI services (Claude, OpenAI, Gemini, Perplexity, Ollama, Grok)",
+					"PRD parser",
+					"ContextManager",
+					"Dependency graph",
+					"Tagged task lists",
+					"GitHub integration",
+					"Configuration system (.taskmaster/)"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:28:50.611Z"
+		},
+		"cc-kiro-hooks": {
+			"contentHash": "c5d51b2f95422599c40b990c8fb454325f5ffa758d9bbe236e468e90679eb702",
+			"analysis": {
+				"summary": "Task Integration Layer for Kiro IDE hooks and Taskmaster coordination, providing automated task lifecycle management, dependency monitoring, multi-source hook processing (event/prompt/update-based), safety controls, and a real-time React dashboard for orchestrating AI-assisted development workflows.",
+				"themes": [
+					"Task lifecycle orchestration",
+					"Hook-based automation (event, prompt, update)",
+					"Dependency monitoring and circular detection",
+					"Safety constraints and emergency controls",
+					"Priority queue execution with parallelism",
+					"AI prompt interception and context injection",
+					"Real-time dashboard visualization",
+					"Configuration management with version control"
+				],
+				"capabilities": [
+					"Coordinate Kiro hooks with Taskmaster task lifecycle",
+					"Monitor dependencies in real-time via MCP integration",
+					"Execute tasks with priority scheduling and parallel processing",
+					"Enforce safety limits with user approval workflows and emergency stop",
+					"Process file system, Git, and build system events",
+					"Intercept AI prompts to inject task context and suggest tasks",
+					"Track code changes and validate acceptance criteria automatically",
+					"Visualize automation status, dependency graphs, and execution history",
+					"Manage hook configurations with import/export and validation"
+				],
+				"technicalDomain": "automation-orchestration",
+				"keyEntities": [
+					"TaskIntegrationLayer (TIL)",
+					"DependencyMonitor",
+					"ExecutionManager",
+					"SafetyManager",
+					"EventHookProcessor",
+					"PromptHookProcessor",
+					"UpdateHookProcessor",
+					"AutomationDashboard",
+					"ConfigurationEditor",
+					"Taskmaster MCP",
+					"Kiro IDE hooks"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:28:51.244Z"
+		},
+		"loop": {
+			"contentHash": "3f4af30053fa70cdbd93fdcd184509ed6c7896ad49dd9cfb91d6edc8098cb27b",
+			"analysis": {
+				"summary": "A loop module implementing an iterative Claude Code CLI execution framework with preset-based prompts, progress tracking, and completion detection for automated development workflows like test coverage, linting, and code quality tasks.",
+				"themes": [
+					"iterative execution orchestration",
+					"preset-based workflow automation",
+					"progress persistence and tracking",
+					"completion state detection",
+					"CLI/MCP tool integration"
+				],
+				"capabilities": [
+					"spawn and manage Claude Code CLI iterations",
+					"resolve preset names to prompt content",
+					"detect loop completion or blocked states",
+					"track progress across iterations via progress.txt",
+					"expose loop operations via CLI command and MCP tool"
+				],
+				"technicalDomain": "automation",
+				"keyEntities": [
+					"LoopService",
+					"LoopDomain",
+					"LoopPresetService",
+					"LoopProgressService",
+					"LoopCompletionService",
+					"LoopExecutorService",
+					"LoopPromptService",
+					"LoopCommand"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:29:18.202Z"
+		},
+		"tdd-phase-1-core-rails": {
+			"contentHash": "af346d4b8c27f6ca14b979af9835b3788b8a02397c507dd32649d775c6ab4f5f",
+			"analysis": {
+				"summary": "TDD automation infrastructure providing AI-orchestrated test-driven development workflows with state machine management, git safety, and multi-interface agent integration (CLI/MCP).",
+				"themes": [
+					"Test-Driven Development automation",
+					"AI agent orchestration",
+					"State machine workflow management",
+					"Git operations with safety gates",
+					"Multi-interface tooling (CLI/MCP)"
+				],
+				"capabilities": [
+					"Global runtime state and artifact storage",
+					"Safe git branching/committing/pushing with confirmation gates",
+					"TDD phase enforcement (RED/GREEN/COMMIT validation)",
+					"Workflow state machine (Preflight→BranchSetup→SubtaskLoop→Finalize→Complete)",
+					"Conventional commit generation with task metadata",
+					"CLI and MCP interfaces for AI agent integration"
+				],
+				"technicalDomain": "developer-tooling",
+				"keyEntities": [
+					"GlobalStorage",
+					"GitAdapter",
+					"TestResultValidator",
+					"WorkflowOrchestrator",
+					"CommitMessageGenerator",
+					"SubtaskTDDLoop",
+					"AutopilotCLI",
+					"AutopilotMCPTools",
+					"ConfigSystem"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:29:21.777Z"
+		},
+		"tdd-workflow-phase-0": {
+			"contentHash": "f1095c0773e51d16b51050c505e8b6a440d8d888dd8e7a9a23ff668ca94fe258",
+			"analysis": {
+				"summary": "CLI command infrastructure for an \"autopilot\" feature that automates Test-Driven Development (TDD) workflows, including preflight checks, task validation, execution planning, and dry-run mode for previewing automated development cycles.",
+				"themes": [
+					"CLI command scaffolding",
+					"TDD automation",
+					"Execution planning and ordering",
+					"Preflight validation",
+					"Dry-run simulation",
+					"Dependency-aware task scheduling"
+				],
+				"capabilities": [
+					"Autopilot command with dry-run mode",
+					"Test runner and git state detection",
+					"Task loading and structural validation",
+					"Execution plan visualization",
+					"Branch and tag generation",
+					"Subtask dependency ordering",
+					"RED/GREEN/COMMIT phase planning",
+					"Finalization step orchestration",
+					"CLI registry integration",
+					"Comprehensive error handling"
+				],
+				"technicalDomain": "CLI / DevOps Automation",
+				"keyEntities": [
+					"autopilot command",
+					"preflight detection system",
+					"execution plan",
+					"subtask execution order",
+					"TDD phases (RED/GREEN/COMMIT)",
+					"branch/tag planning",
+					"CLI command registry",
+					"TaskMaster state"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:29:22.721Z"
+		},
+		"autonomous-tdd-git-workflow": {
+			"contentHash": "bcb6518cdfd91b94778c3a61c920bd038d7b2550c6649bda76eaa6d17aa0e342",
+			"analysis": {
+				"summary": "An autonomous Test-Driven Development workflow orchestration system that manages the complete Red-Green-Commit cycle, integrating git operations, test execution, coverage enforcement, and PR creation into a state-machine-driven automation pipeline.",
+				"themes": [
+					"TDD automation (Red-Green-Commit cycle)",
+					"Git workflow orchestration",
+					"Test framework abstraction and multi-framework support",
+					"Coverage enforcement and validation",
+					"State machine workflow management",
+					"Resume/checkpoint functionality for interrupted runs",
+					"Real-time monitoring via event streaming and TUI",
+					"Intelligent test targeting and subtask dependency resolution",
+					"Automated PR creation with run reports"
+				],
+				"capabilities": [
+					"Autonomous TDD cycle execution for subtasks",
+					"Git operations via adapter pattern (commit, branch, PR)",
+					"Multi-framework test detection and execution",
+					"Code coverage threshold enforcement",
+					"Run state persistence and logging for traceability",
+					"Checkpoint/resume for interrupted workflows",
+					"Tag-branch mapping with automatic context switching",
+					"Conventional commit message generation",
+					"Dry-run visualization with execution timeline",
+					"Real-time workflow progress monitoring via event streaming",
+					"tmux-based TUI for interactive navigation"
+				],
+				"technicalDomain": "automation-workflow",
+				"keyEntities": [
+					"WorkflowOrchestrator",
+					"GitAdapter",
+					"TestRunnerAdapter",
+					"autopilot CLI command",
+					"surgical test generator",
+					"run state persistence system",
+					"prompt composition system",
+					"coverage validator",
+					"event streaming system",
+					"tmux TUI navigator"
+				]
+			},
+			"analyzedAt": "2026-02-14T16:29:24.759Z"
+		}
+	}
+}

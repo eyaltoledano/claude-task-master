@@ -6,7 +6,9 @@ import { PromptBuilder } from '../../ai/prompts/index.js';
 
 export const tagDependencySynthesisPrompt = () =>
 	new PromptBuilder()
-		.setRole('software architecture analyst specializing in dependency analysis')
+		.setRole(
+			'software architecture analyst specializing in dependency analysis'
+		)
 		.setTask(
 			'Given semantic analyses of multiple project tags, determine which tags should depend on which other tags.'
 		)

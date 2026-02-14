@@ -4,7 +4,10 @@
  */
 
 import type { z } from 'zod';
-import type { AIPrimitiveOptions, AIPrimitiveResult } from '../types/primitives.types.js';
+import type {
+	AIPrimitiveOptions,
+	AIPrimitiveResult
+} from '../types/primitives.types.js';
 import type { IStructuredGenerator } from './structured-generator.interface.js';
 
 interface GenerateObjectServiceParams {
@@ -32,7 +35,9 @@ export type GenerateObjectServiceFn = (
 ) => Promise<GenerateObjectServiceResult>;
 
 export class BridgedStructuredGenerator implements IStructuredGenerator {
-	constructor(private readonly generateObjectService: GenerateObjectServiceFn) {}
+	constructor(
+		private readonly generateObjectService: GenerateObjectServiceFn
+	) {}
 
 	async generate<T>(
 		prompt: string,

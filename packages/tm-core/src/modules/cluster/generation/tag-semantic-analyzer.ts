@@ -5,7 +5,10 @@
 
 import { z } from 'zod';
 import type { GenerateObjectServiceFn } from '../../ai/structured-generation/structured-generator.js';
-import type { AIPrimitiveOptions, AIPrimitiveResult } from '../../ai/types/primitives.types.js';
+import type {
+	AIPrimitiveOptions,
+	AIPrimitiveResult
+} from '../../ai/types/primitives.types.js';
 import type { ITagSemanticAnalyzer } from './tag-semantic-analyzer.interface.js';
 import { tagSemanticAnalysisPrompt } from './tag-semantic-analyzer.prompt.js';
 import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
@@ -13,15 +16,23 @@ import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
 const semanticAnalysisSchema = z.object({
 	summary: z.string().describe('A concise summary of the tag and its tasks'),
 	themes: z.array(z.string()).describe('Key themes or categories of work'),
-	capabilities: z.array(z.string()).describe('What this tag provides or enables'),
-	technicalDomain: z.string().describe('The primary technical domain (e.g., "backend", "auth", "UI")'),
-	keyEntities: z.array(z.string()).describe('Key entities, modules, or concepts involved')
+	capabilities: z
+		.array(z.string())
+		.describe('What this tag provides or enables'),
+	technicalDomain: z
+		.string()
+		.describe('The primary technical domain (e.g., "backend", "auth", "UI")'),
+	keyEntities: z
+		.array(z.string())
+		.describe('Key entities, modules, or concepts involved')
 });
 
 const DEFAULT_SYSTEM_PROMPT = tagSemanticAnalysisPrompt().build();
 
 export class BridgedTagSemanticAnalyzer implements ITagSemanticAnalyzer {
-	constructor(private readonly generateObjectService: GenerateObjectServiceFn) {}
+	constructor(
+		private readonly generateObjectService: GenerateObjectServiceFn
+	) {}
 
 	async analyze(
 		content: string,
@@ -46,7 +57,9 @@ export class BridgedTagSemanticAnalyzer implements ITagSemanticAnalyzer {
 		const data = result.mainResult as SemanticAnalysis | undefined;
 
 		if (!data) {
-			throw new Error('Semantic analysis failed: no result returned from generateObjectService');
+			throw new Error(
+				'Semantic analysis failed: no result returned from generateObjectService'
+			);
 		}
 
 		return {

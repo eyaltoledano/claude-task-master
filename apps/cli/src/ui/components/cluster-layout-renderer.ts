@@ -48,13 +48,15 @@ export function renderTagClusterLayout(
 
 		for (const dep of dependencies) {
 			const confidenceColor =
-				dep.confidence === 'high' ? chalk.green :
-				dep.confidence === 'medium' ? chalk.yellow :
-				chalk.gray;
+				dep.confidence === 'high'
+					? chalk.green
+					: dep.confidence === 'medium'
+						? chalk.yellow
+						: chalk.gray;
 
 			lines.push(
 				`    ${chalk.white(dep.from)} ${chalk.gray('->')} ${chalk.white(dep.to)} ` +
-				`${confidenceColor(`[${dep.confidence}]`)} ${chalk.gray(dep.reason)}`
+					`${confidenceColor(`[${dep.confidence}]`)} ${chalk.gray(dep.reason)}`
 			);
 		}
 	}

@@ -7,7 +7,10 @@ import type { ITagSemanticAnalyzer } from './tag-semantic-analyzer.interface.js'
 import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
 import type { ITagDependencySynthesizer } from './tag-dependency-synthesizer.interface.js';
 import type { DependencySuggestion } from './tag-dependency-synthesizer.types.js';
-import { TagClusterService, type TagClusterResult } from '../services/tag-cluster.service.js';
+import {
+	TagClusterService,
+	type TagClusterResult
+} from '../services/tag-cluster.service.js';
 import { TagAnalysisCache } from './tag-analysis-cache.js';
 
 export interface TagAnalysisInput {
@@ -174,9 +177,10 @@ export class ClusterGenerationService {
 	private buildTagContent(tag: TagAnalysisInput): string {
 		const taskDescriptions = tag.tasks
 			.map((t) => {
-				const deps = t.dependencies.length > 0
-					? ` (depends on: ${t.dependencies.join(', ')})`
-					: '';
+				const deps =
+					t.dependencies.length > 0
+						? ` (depends on: ${t.dependencies.join(', ')})`
+						: '';
 				return `- ${t.title}: ${t.description}${deps}`;
 			})
 			.join('\n');
@@ -232,7 +236,9 @@ export class ClusterGenerationService {
 		clusterResult: TagClusterResult
 	): string {
 		const depSummary = dependencies
-			.map((d) => `"${d.from}" depends on "${d.to}" (${d.confidence}): ${d.reason}`)
+			.map(
+				(d) => `"${d.from}" depends on "${d.to}" (${d.confidence}): ${d.reason}`
+			)
 			.join('\n');
 
 		const levelSummary = clusterResult.clusters

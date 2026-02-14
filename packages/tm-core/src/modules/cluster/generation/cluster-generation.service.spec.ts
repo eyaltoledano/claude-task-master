@@ -4,8 +4,16 @@ import type { SemanticAnalysis } from './tag-semantic-analyzer.types.js';
 import type { ITagDependencySynthesizer } from './tag-dependency-synthesizer.interface.js';
 import type { DependencySuggestion } from './tag-dependency-synthesizer.types.js';
 import type { AIPrimitiveResult } from '../../ai/types/primitives.types.js';
-import { ClusterGenerationService, type TagAnalysisInput, type ClusterGenerationProgress } from './cluster-generation.service.js';
-import { TagAnalysisCache, type CacheFile, type CacheStorage } from './tag-analysis-cache.js';
+import {
+	ClusterGenerationService,
+	type TagAnalysisInput,
+	type ClusterGenerationProgress
+} from './cluster-generation.service.js';
+import {
+	TagAnalysisCache,
+	type CacheFile,
+	type CacheStorage
+} from './tag-analysis-cache.js';
 
 function createMockAnalysis(domain: string): SemanticAnalysis {
 	return {
@@ -30,7 +38,9 @@ function wrapResult<T>(data: T): AIPrimitiveResult<T> {
 	};
 }
 
-function createMockAnalyzer(analysisMap: Record<string, SemanticAnalysis>): ITagSemanticAnalyzer {
+function createMockAnalyzer(
+	analysisMap: Record<string, SemanticAnalysis>
+): ITagSemanticAnalyzer {
 	return {
 		analyze: vi.fn(async (_content: string, context: string) => {
 			const match = context.match(/Tag "([^"]+)"/);
@@ -41,7 +51,9 @@ function createMockAnalyzer(analysisMap: Record<string, SemanticAnalysis>): ITag
 	};
 }
 
-function createMockSynthesizer(deps: readonly DependencySuggestion[]): ITagDependencySynthesizer {
+function createMockSynthesizer(
+	deps: readonly DependencySuggestion[]
+): ITagDependencySynthesizer {
 	return {
 		synthesize: vi.fn(async () => wrapResult(deps))
 	};
@@ -59,14 +71,22 @@ const sampleTags: readonly TagAnalysisInput[] = [
 	{
 		name: 'core',
 		tasks: [
-			{ title: 'Config loader', description: 'Load project config', dependencies: [] }
+			{
+				title: 'Config loader',
+				description: 'Load project config',
+				dependencies: []
+			}
 		]
 	},
 	{
 		name: 'api',
 		description: 'API endpoints',
 		tasks: [
-			{ title: 'REST endpoints', description: 'Build REST API', dependencies: ['1'] }
+			{
+				title: 'REST endpoints',
+				description: 'Build REST API',
+				dependencies: ['1']
+			}
 		]
 	}
 ];
@@ -80,8 +100,18 @@ describe('ClusterGenerationService', () => {
 		};
 
 		const deps: DependencySuggestion[] = [
-			{ from: 'auth', to: 'core', reason: 'Auth needs config', confidence: 'high' },
-			{ from: 'api', to: 'auth', reason: 'API needs auth', confidence: 'medium' }
+			{
+				from: 'auth',
+				to: 'core',
+				reason: 'Auth needs config',
+				confidence: 'high'
+			},
+			{
+				from: 'api',
+				to: 'auth',
+				reason: 'API needs auth',
+				confidence: 'medium'
+			}
 		];
 
 		const analyzer = createMockAnalyzer(analysisMap);
@@ -112,9 +142,18 @@ describe('ClusterGenerationService', () => {
 		const service = new ClusterGenerationService(analyzer, synthesizer);
 
 		const tags: TagAnalysisInput[] = [
-			{ name: 'auth', tasks: [{ title: 'Auth', description: 'Auth', dependencies: [] }] },
-			{ name: 'logging', tasks: [{ title: 'Log', description: 'Log', dependencies: [] }] },
-			{ name: 'config', tasks: [{ title: 'Cfg', description: 'Cfg', dependencies: [] }] }
+			{
+				name: 'auth',
+				tasks: [{ title: 'Auth', description: 'Auth', dependencies: [] }]
+			},
+			{
+				name: 'logging',
+				tasks: [{ title: 'Log', description: 'Log', dependencies: [] }]
+			},
+			{
+				name: 'config',
+				tasks: [{ title: 'Cfg', description: 'Cfg', dependencies: [] }]
+			}
 		];
 
 		const result = await service.generate(tags);
@@ -141,8 +180,14 @@ describe('ClusterGenerationService', () => {
 		const service = new ClusterGenerationService(analyzer, synthesizer);
 
 		const tags: TagAnalysisInput[] = [
-			{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
-			{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
+			{
+				name: 'auth',
+				tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+			},
+			{
+				name: 'api',
+				tasks: [{ title: 'B', description: 'B', dependencies: [] }]
+			}
 		];
 
 		const result = await service.generate(tags);
@@ -163,7 +208,10 @@ describe('ClusterGenerationService', () => {
 		const service = new ClusterGenerationService(analyzer, synthesizer);
 
 		const tags: TagAnalysisInput[] = [
-			{ name: 'a', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
+			{
+				name: 'a',
+				tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+			},
 			{ name: 'b', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
 		];
 
@@ -193,8 +241,14 @@ describe('ClusterGenerationService', () => {
 		const service = new ClusterGenerationService(analyzer, synthesizer);
 
 		const tags: TagAnalysisInput[] = [
-			{ name: 'x', tasks: [{ title: 'X', description: 'X', dependencies: [] }] },
-			{ name: 'y', tasks: [{ title: 'Y', description: 'Y', dependencies: [] }] },
+			{
+				name: 'x',
+				tasks: [{ title: 'X', description: 'X', dependencies: [] }]
+			},
+			{
+				name: 'y',
+				tasks: [{ title: 'Y', description: 'Y', dependencies: [] }]
+			},
 			{ name: 'z', tasks: [{ title: 'Z', description: 'Z', dependencies: [] }] }
 		];
 
@@ -217,20 +271,34 @@ describe('ClusterGenerationService', () => {
 	});
 
 	describe('with cache', () => {
-		function createInMemoryStorage(): CacheStorage & { data: CacheFile | null } {
+		function createInMemoryStorage(): CacheStorage & {
+			data: CacheFile | null;
+		} {
 			const store: { data: CacheFile | null } = { data: null };
 			return {
-				get data() { return store.data; },
-				set data(v) { store.data = v; },
+				get data() {
+					return store.data;
+				},
+				set data(v) {
+					store.data = v;
+				},
 				load: async () => store.data,
-				save: async (file) => { store.data = file; }
+				save: async (file) => {
+					store.data = file;
+				}
 			};
 		}
 
 		it('skips AI calls for cached tags (all hits)', async () => {
 			const tags: TagAnalysisInput[] = [
-				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
-				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
+				{
+					name: 'auth',
+					tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+				},
+				{
+					name: 'api',
+					tasks: [{ title: 'B', description: 'B', dependencies: [] }]
+				}
 			];
 
 			const authAnalysis = createMockAnalysis('authentication');
@@ -239,12 +307,24 @@ describe('ClusterGenerationService', () => {
 			// Pre-populate cache
 			const storage = createInMemoryStorage();
 			const cache = new TagAnalysisCache(storage);
-			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
-			await cache.set('api', TagAnalysisCache.computeHash(tags[1]), apiAnalysis);
+			await cache.set(
+				'auth',
+				TagAnalysisCache.computeHash(tags[0]),
+				authAnalysis
+			);
+			await cache.set(
+				'api',
+				TagAnalysisCache.computeHash(tags[1]),
+				apiAnalysis
+			);
 
 			const analyzer = createMockAnalyzer({});
 			const synthesizer = createMockSynthesizer([]);
-			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+			const service = new ClusterGenerationService(
+				analyzer,
+				synthesizer,
+				cache
+			);
 
 			await service.generate(tags);
 
@@ -253,9 +333,18 @@ describe('ClusterGenerationService', () => {
 
 		it('calls AI only for uncached tags (mixed hits/misses)', async () => {
 			const tags: TagAnalysisInput[] = [
-				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
-				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] },
-				{ name: 'core', tasks: [{ title: 'C', description: 'C', dependencies: [] }] }
+				{
+					name: 'auth',
+					tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+				},
+				{
+					name: 'api',
+					tasks: [{ title: 'B', description: 'B', dependencies: [] }]
+				},
+				{
+					name: 'core',
+					tasks: [{ title: 'C', description: 'C', dependencies: [] }]
+				}
 			];
 
 			const authAnalysis = createMockAnalysis('authentication');
@@ -263,7 +352,11 @@ describe('ClusterGenerationService', () => {
 			// Only cache 'auth'
 			const storage = createInMemoryStorage();
 			const cache = new TagAnalysisCache(storage);
-			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
+			await cache.set(
+				'auth',
+				TagAnalysisCache.computeHash(tags[0]),
+				authAnalysis
+			);
 
 			const analysisMap: Record<string, SemanticAnalysis> = {
 				api: createMockAnalysis('api'),
@@ -272,7 +365,11 @@ describe('ClusterGenerationService', () => {
 
 			const analyzer = createMockAnalyzer(analysisMap);
 			const synthesizer = createMockSynthesizer([]);
-			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+			const service = new ClusterGenerationService(
+				analyzer,
+				synthesizer,
+				cache
+			);
 
 			const result = await service.generate(tags);
 
@@ -285,8 +382,14 @@ describe('ClusterGenerationService', () => {
 
 		it('makes all AI calls when nothing is cached (all misses)', async () => {
 			const tags: TagAnalysisInput[] = [
-				{ name: 'x', tasks: [{ title: 'X', description: 'X', dependencies: [] }] },
-				{ name: 'y', tasks: [{ title: 'Y', description: 'Y', dependencies: [] }] }
+				{
+					name: 'x',
+					tasks: [{ title: 'X', description: 'X', dependencies: [] }]
+				},
+				{
+					name: 'y',
+					tasks: [{ title: 'Y', description: 'Y', dependencies: [] }]
+				}
 			];
 
 			const storage = createInMemoryStorage();
@@ -299,7 +402,11 @@ describe('ClusterGenerationService', () => {
 
 			const analyzer = createMockAnalyzer(analysisMap);
 			const synthesizer = createMockSynthesizer([]);
-			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+			const service = new ClusterGenerationService(
+				analyzer,
+				synthesizer,
+				cache
+			);
 
 			await service.generate(tags);
 
@@ -308,7 +415,10 @@ describe('ClusterGenerationService', () => {
 
 		it('writes fresh AI results back to cache', async () => {
 			const tags: TagAnalysisInput[] = [
-				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] }
+				{
+					name: 'auth',
+					tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+				}
 			];
 
 			const storage = createInMemoryStorage();
@@ -320,7 +430,11 @@ describe('ClusterGenerationService', () => {
 
 			const analyzer = createMockAnalyzer(analysisMap);
 			const synthesizer = createMockSynthesizer([]);
-			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+			const service = new ClusterGenerationService(
+				analyzer,
+				synthesizer,
+				cache
+			);
 
 			await service.generate(tags);
 
@@ -332,8 +446,14 @@ describe('ClusterGenerationService', () => {
 
 		it('reports cached count in progress callback', async () => {
 			const tags: TagAnalysisInput[] = [
-				{ name: 'auth', tasks: [{ title: 'A', description: 'A', dependencies: [] }] },
-				{ name: 'api', tasks: [{ title: 'B', description: 'B', dependencies: [] }] }
+				{
+					name: 'auth',
+					tasks: [{ title: 'A', description: 'A', dependencies: [] }]
+				},
+				{
+					name: 'api',
+					tasks: [{ title: 'B', description: 'B', dependencies: [] }]
+				}
 			];
 
 			const authAnalysis = createMockAnalysis('authentication');
@@ -341,7 +461,11 @@ describe('ClusterGenerationService', () => {
 			// Cache 'auth' only
 			const storage = createInMemoryStorage();
 			const cache = new TagAnalysisCache(storage);
-			await cache.set('auth', TagAnalysisCache.computeHash(tags[0]), authAnalysis);
+			await cache.set(
+				'auth',
+				TagAnalysisCache.computeHash(tags[0]),
+				authAnalysis
+			);
 
 			const analysisMap: Record<string, SemanticAnalysis> = {
 				api: createMockAnalysis('api')
@@ -349,12 +473,18 @@ describe('ClusterGenerationService', () => {
 
 			const analyzer = createMockAnalyzer(analysisMap);
 			const synthesizer = createMockSynthesizer([]);
-			const service = new ClusterGenerationService(analyzer, synthesizer, cache);
+			const service = new ClusterGenerationService(
+				analyzer,
+				synthesizer,
+				cache
+			);
 
 			const progressUpdates: ClusterGenerationProgress[] = [];
 			await service.generate(tags, (p) => progressUpdates.push(p));
 
-			const analyzingPhases = progressUpdates.filter((p) => p.phase === 'analyzing');
+			const analyzingPhases = progressUpdates.filter(
+				(p) => p.phase === 'analyzing'
+			);
 			// Only 1 AI call (api), so 1 analyzing progress
 			expect(analyzingPhases).toHaveLength(1);
 			expect(analyzingPhases[0].tagName).toBe('api');

@@ -3,7 +3,10 @@
  */
 
 import type { z } from 'zod';
-import type { AIPrimitiveOptions, AIPrimitiveResult } from '../types/primitives.types.js';
+import type {
+	AIPrimitiveOptions,
+	AIPrimitiveResult
+} from '../types/primitives.types.js';
 
 export interface IStructuredGenerator {
 	generate<T>(

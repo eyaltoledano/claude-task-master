@@ -39,9 +39,7 @@ export function moveTagToLevel(
 	let updated: ClusterLevel[];
 	if (existing) {
 		updated = nonEmpty.map((c) =>
-			c.level === targetLevel
-				? { ...c, tags: [...c.tags, tag].sort() }
-				: c
+			c.level === targetLevel ? { ...c, tags: [...c.tags, tag].sort() } : c
 		);
 	} else {
 		updated = [...nonEmpty, { level: targetLevel, tags: [tag] }];
@@ -102,7 +100,9 @@ export async function editClusters(
 	while (true) {
 		// Clear terminal and render current layout
 		console.clear();
-		console.log(renderTagClusterLayout(state.clusters, state.dependencies, reasoning));
+		console.log(
+			renderTagClusterLayout(state.clusters, state.dependencies, reasoning)
+		);
 		console.log('');
 
 		const { action } = await inquirer.prompt<{ action: string }>([
@@ -146,9 +146,10 @@ export async function editClusters(
 					break;
 				}
 
-				const maxLevel = state.clusters.length > 0
-					? Math.max(...state.clusters.map((c) => c.level))
-					: 0;
+				const maxLevel =
+					state.clusters.length > 0
+						? Math.max(...state.clusters.map((c) => c.level))
+						: 0;
 
 				const { selectedTag } = await inquirer.prompt<{ selectedTag: string }>([
 					{
@@ -162,16 +163,15 @@ export async function editClusters(
 					}
 				]);
 
-				const levelChoices = Array.from(
-					{ length: maxLevel + 2 },
-					(_, i) => {
-						const tagsAtLevel = state.clusters.find((c) => c.level === i)?.tags ?? [];
-						const label = tagsAtLevel.length > 0
+				const levelChoices = Array.from({ length: maxLevel + 2 }, (_, i) => {
+					const tagsAtLevel =
+						state.clusters.find((c) => c.level === i)?.tags ?? [];
+					const label =
+						tagsAtLevel.length > 0
 							? `Level ${i} (${tagsAtLevel.join(', ')})`
 							: `Level ${i} (new level)`;
-						return { name: label, value: i };
-					}
-				);
+					return { name: label, value: i };
+				});
 
 				const { targetLevel } = await inquirer.prompt<{ targetLevel: number }>([
 					{
@@ -182,7 +182,11 @@ export async function editClusters(
 					}
 				]);
 
-				const newClusters = moveTagToLevel(state.clusters, selectedTag, targetLevel);
+				const newClusters = moveTagToLevel(
+					state.clusters,
+					selectedTag,
+					targetLevel
+				);
 				const newDeps = recalculateDependencies(newClusters);
 				state = { clusters: newClusters, dependencies: newDeps };
 				break;

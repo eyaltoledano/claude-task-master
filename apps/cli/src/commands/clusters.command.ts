@@ -203,11 +203,10 @@ export class ClustersCommand extends Command {
 				!options.diagram;
 
 			if (isInteractive && tagsResult.tags.length >= 2) {
-				console.log(
-					chalk.gray('  No inter-tag dependencies found.\n')
-				);
+				console.log(chalk.gray('  No inter-tag dependencies found.\n'));
 
-				const shouldGenerate = options.auto || await this.promptForGeneration();
+				const shouldGenerate =
+					options.auto || (await this.promptForGeneration());
 
 				if (shouldGenerate) {
 					await this.runInlineGenerate(options, tagsResult.tags);
@@ -250,7 +249,11 @@ export class ClustersCommand extends Command {
 
 	private async runInlineGenerate(
 		options: ClustersCommandOptions,
-		tags: readonly { name: string; description?: string; dependsOn?: string[] }[]
+		tags: readonly {
+			name: string;
+			description?: string;
+			dependsOn?: string[];
+		}[]
 	): Promise<void> {
 		const projectRoot = getProjectRoot(options.project);
 
@@ -266,11 +269,13 @@ export class ClustersCommand extends Command {
 				tags.map((t) => t.name),
 				suggestion.dependencies
 			);
-			console.log(renderTagClusterLayout(
-				suggestion.clusters,
-				suggestion.dependencies,
-				suggestion.reasoning
-			));
+			console.log(
+				renderTagClusterLayout(
+					suggestion.clusters,
+					suggestion.dependencies,
+					suggestion.reasoning
+				)
+			);
 			console.log(chalk.green('\nDependencies saved successfully.'));
 			return;
 		}

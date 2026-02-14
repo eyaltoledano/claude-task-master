@@ -7908,8 +7908,7 @@
       "updated": "2025-09-12T04:02:07.346Z",
       "description": "Tasks for tm-start context",
       "dependsOn": [
-        "tm-core-phase-1",
-        "master"
+        "tm-core-phase-1"
       ]
     }
   },
@@ -9391,7 +9390,7 @@
       "description": "Tasks for autonomous-tdd-git-workflow context",
       "dependsOn": [
         "tdd-phase-1-core-rails",
-        "tdd-workflow-phase-0"
+        "loop"
       ]
     }
   },
@@ -10089,7 +10088,7 @@
       "updated": "2025-10-07T15:23:43.279Z",
       "description": "Tasks for tdd-workflow-phase-0 context",
       "dependsOn": [
-        "master"
+        "tm-core-phase-1"
       ]
     }
   },
@@ -10880,8 +10879,7 @@
       "description": "Tasks for tdd-phase-1-core-rails context",
       "updated": "2025-10-10T16:07:52.412Z",
       "dependsOn": [
-        "tdd-workflow-phase-0",
-        "tm-core-phase-1"
+        "tdd-workflow-phase-0"
       ]
     }
   },
@@ -12093,7 +12091,6 @@
       "description": "Tasks for loop context",
       "updated": "2026-02-14T15:38:03.563Z",
       "dependsOn": [
-        "master",
         "tm-core-phase-1"
       ]
     }

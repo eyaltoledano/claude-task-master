@@ -27,7 +27,10 @@ export interface CacheFile {
 export class TagAnalysisCache {
 	constructor(private readonly storage: CacheStorage) {}
 
-	async get(tagName: string, contentHash: string): Promise<SemanticAnalysis | null> {
+	async get(
+		tagName: string,
+		contentHash: string
+	): Promise<SemanticAnalysis | null> {
 		const file = await this.storage.load();
 		if (!file) return null;
 
@@ -37,7 +40,11 @@ export class TagAnalysisCache {
 		return entry.analysis;
 	}
 
-	async set(tagName: string, contentHash: string, analysis: SemanticAnalysis): Promise<void> {
+	async set(
+		tagName: string,
+		contentHash: string,
+		analysis: SemanticAnalysis
+	): Promise<void> {
 		const file = await this.storage.load();
 		const existing = file?.entries ?? {};
 
