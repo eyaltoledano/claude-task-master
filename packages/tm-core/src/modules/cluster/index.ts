@@ -53,3 +53,6 @@ export {
 	PromptBuilderService,
 	type PromptContext
 } from './services/prompt-builder.service.js';
+
+// AI-powered cluster generation
+export * from './generation/index.js';

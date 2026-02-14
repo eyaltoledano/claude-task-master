@@ -6371,7 +6371,10 @@
     "metadata": {
       "created": "2025-06-14T21:30:21.214Z",
       "updated": "2025-06-14T21:31:06.388Z",
-      "description": "Tag created on 6/14/2025"
+      "description": "Tag created on 6/14/2025",
+      "dependsOn": [
+        "master"
+      ]
     }
   },
   "cc-kiro-hooks": {
@@ -7057,7 +7060,11 @@
     "metadata": {
       "created": "2025-07-22T09:35:48.856Z",
       "updated": "2025-07-22T09:38:19.341Z",
-      "description": "Tasks for cc-kiro-hooks context"
+      "description": "Tasks for cc-kiro-hooks context",
+      "dependsOn": [
+        "master",
+        "tm-core-phase-1"
+      ]
     }
   },
   "tm-core-phase-1": {
@@ -7899,7 +7906,10 @@
     "metadata": {
       "created": "2025-09-12T01:56:37.713Z",
       "updated": "2025-09-12T04:02:07.346Z",
-      "description": "Tasks for tm-start context"
+      "description": "Tasks for tm-start context",
+      "dependsOn": [
+        "tm-core-phase-1"
+      ]
     }
   },
   "autonomous-tdd-git-workflow": {
@@ -9377,7 +9387,11 @@
     "metadata": {
       "created": "2025-09-30T13:32:28.649Z",
       "updated": "2025-10-06T17:44:07.207Z",
-      "description": "Tasks for autonomous-tdd-git-workflow context"
+      "description": "Tasks for autonomous-tdd-git-workflow context",
+      "dependsOn": [
+        "tdd-phase-1-core-rails",
+        "loop"
+      ]
     }
   },
   "tdd-workflow-phase-0": {
@@ -10072,7 +10086,10 @@
     "metadata": {
       "created": "2025-10-07T14:08:52.047Z",
       "updated": "2025-10-07T15:23:43.279Z",
-      "description": "Tasks for tdd-workflow-phase-0 context"
+      "description": "Tasks for tdd-workflow-phase-0 context",
+      "dependsOn": [
+        "tm-core-phase-1"
+      ]
     }
   },
   "tdd-phase-1-core-rails": {
@@ -10860,13 +10877,16 @@
       ],
       "created": "2025-10-10T13:35:33.065Z",
       "description": "Tasks for tdd-phase-1-core-rails context",
-      "updated": "2025-10-10T16:07:52.412Z"
+      "updated": "2025-10-10T16:07:52.412Z",
+      "dependsOn": [
+        "tdd-workflow-phase-0"
+      ]
     }
   },
   "loop": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Define Loop Module Types and Interfaces",
         "description": "Create TypeScript types and interfaces for the loop module in tm-core, including LoopConfig, LoopIteration, LoopResult, and LoopPreset types.",
         "details": "Create `packages/tm-core/src/modules/loop/types.ts` with:\n\n```typescript\nexport type LoopPreset = 'default' | 'test-coverage' | 'linting' | 'duplication' | 'entropy';\n\nexport interface LoopConfig {\n  iterations: number;\n  prompt: LoopPreset | string;  // Preset name or file path\n  progressFile: string;\n  sleepSeconds: number;\n  onComplete?: string;\n  tag?: string;\n  status?: string;\n}\n\nexport interface LoopIteration {\n  iteration: number;\n  taskId?: string;\n  status: 'success' | 'blocked' | 'error' | 'complete';\n  message?: string;\n  duration?: number;\n}\n\nexport interface LoopResult {\n  iterations: LoopIteration[];\n  totalIterations: number;\n  tasksCompleted: number;\n  finalStatus: 'all_complete' | 'max_iterations' | 'blocked' | 'error';\n}\n\nexport interface LoopCompletionMarker {\n  type: 'complete' | 'blocked';\n  reason: string;\n}\n```\n\nFollow existing patterns from `packages/tm-core/src/modules/workflow/types.ts` and `packages/tm-core/src/modules/execution/types.ts`.",
@@ -10947,7 +10967,7 @@
         "updatedAt": "2026-01-08T21:49:59.115Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Create Preset Markdown Files",
         "description": "Create bundled markdown preset files for default, test-coverage, linting, duplication, and entropy workflows in tm-core assets.",
         "details": "Create directory `packages/tm-core/src/modules/loop/presets/` with markdown files:\n\n1. `default.md` - Standard task completion workflow (as specified in PRD)\n2. `test-coverage.md` - Test coverage workflow\n3. `linting.md` - Lint/type error fixing workflow\n4. `duplication.md` - Code duplication refactoring workflow\n5. `entropy.md` - Code smell cleanup workflow\n\nEach preset should contain:\n- Clear instructions for the agent\n- File references using `@` syntax for progress file\n- Process steps numbered 1-7\n- Completion criteria with `<loop-complete>` and `<loop-blocked>` markers\n- Important notes about single-task-per-iteration constraint\n\nAdd `packages/tm-core/src/modules/loop/presets/index.ts` exporting preset names and file paths for bundling.",
@@ -11001,7 +11021,7 @@
         "updatedAt": "2026-01-08T22:06:11.126Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Implement Preset Resolution Service",
         "description": "Create LoopPresetService in tm-core to resolve preset names to prompt content and detect whether a string is a preset name or file path.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop-preset.service.ts`:\n\n```typescript\nimport { readFile } from 'node:fs/promises';\nimport path from 'node:path';\nimport type { LoopPreset } from '../types.js';\n\nexport class LoopPresetService {\n  private readonly presetsDir: string;\n  private readonly validPresets: Set<LoopPreset> = new Set([\n    'default', 'test-coverage', 'linting', 'duplication', 'entropy'\n  ]);\n\n  constructor() {\n    // Get presets directory relative to this file (bundled)\n    this.presetsDir = path.join(__dirname, '../presets');\n  }\n\n  isPreset(prompt: string): prompt is LoopPreset {\n    return this.validPresets.has(prompt as LoopPreset);\n  }\n\n  isFilePath(prompt: string): boolean {\n    // File path if contains / or \\ or has common file extension\n    return prompt.includes('/') || \n           prompt.includes('\\\\') || \n           /\\.(md|txt|markdown)$/i.test(prompt);\n  }\n\n  async resolvePrompt(prompt: LoopPreset | string): Promise<string> {\n    if (this.isPreset(prompt)) {\n      return this.loadPreset(prompt);\n    }\n    return this.loadCustomPrompt(prompt);\n  }\n\n  private async loadPreset(preset: LoopPreset): Promise<string> {\n    const presetPath = path.join(this.presetsDir, `${preset}.md`);\n    return readFile(presetPath, 'utf-8');\n  }\n\n  private async loadCustomPrompt(filePath: string): Promise<string> {\n    return readFile(filePath, 'utf-8');\n  }\n}\n```\n\nHandle error cases: file not found, invalid preset name, empty content.",
@@ -11044,7 +11064,7 @@
         "updatedAt": "2026-01-08T22:39:21.258Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Implement Progress File Service",
         "description": "Create LoopProgressService in tm-core to manage the progress.txt file - appending notes, reading history, and initializing new progress files.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop-progress.service.ts`:\n\n```typescript\nimport { appendFile, readFile, writeFile, access } from 'node:fs/promises';\nimport path from 'node:path';\n\nexport interface ProgressEntry {\n  timestamp: string;\n  iteration: number;\n  taskId?: string;\n  note: string;\n}\n\nexport class LoopProgressService {\n  private readonly projectRoot: string;\n  \n  constructor(projectRoot: string) {\n    this.projectRoot = projectRoot;\n  }\n\n  getDefaultProgressPath(): string {\n    return path.join(this.projectRoot, '.taskmaster', 'loop-progress.txt');\n  }\n\n  async initializeProgressFile(progressFile: string, config: { preset: string; iterations: number; tag?: string }): Promise<void> {\n    const header = `# Task Master Loop Progress\\n# Started: ${new Date().toISOString()}\\n# Preset: ${config.preset}\\n# Max Iterations: ${config.iterations}\\n${config.tag ? `# Tag: ${config.tag}\\n` : ''}\\n---\\n\\n`;\n    await writeFile(progressFile, header, 'utf-8');\n  }\n\n  async appendProgress(progressFile: string, entry: ProgressEntry): Promise<void> {\n    const line = `[${entry.timestamp}] Iteration ${entry.iteration}${entry.taskId ? ` (Task ${entry.taskId})` : ''}: ${entry.note}\\n`;\n    await appendFile(progressFile, line, 'utf-8');\n  }\n\n  async readProgress(progressFile: string): Promise<string> {\n    try {\n      return await readFile(progressFile, 'utf-8');\n    } catch {\n      return '';\n    }\n  }\n\n  async exists(progressFile: string): Promise<boolean> {\n    try {\n      await access(progressFile);\n      return true;\n    } catch {\n      return false;\n    }\n  }\n}\n```",
@@ -11128,7 +11148,7 @@
         "updatedAt": "2026-01-08T22:28:05.277Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Implement Loop Completion Detection",
         "description": "Create LoopCompletionService in tm-core to parse Claude output for completion markers (<loop-complete>, <loop-blocked>) and determine loop state.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop-completion.service.ts`:\n\n```typescript\nimport type { LoopCompletionMarker } from '../types.js';\n\nexport interface CompletionCheckResult {\n  isComplete: boolean;\n  isBlocked: boolean;\n  marker?: LoopCompletionMarker;\n  rawMatch?: string;\n}\n\nexport class LoopCompletionService {\n  private readonly completePattern = /<loop-complete>([^<]+)<\\/loop-complete>/i;\n  private readonly blockedPattern = /<loop-blocked>([^<]+)<\\/loop-blocked>/i;\n\n  parseOutput(output: string): CompletionCheckResult {\n    const completeMatch = output.match(this.completePattern);\n    if (completeMatch) {\n      return {\n        isComplete: true,\n        isBlocked: false,\n        marker: { type: 'complete', reason: completeMatch[1].trim() },\n        rawMatch: completeMatch[0]\n      };\n    }\n\n    const blockedMatch = output.match(this.blockedPattern);\n    if (blockedMatch) {\n      return {\n        isComplete: false,\n        isBlocked: true,\n        marker: { type: 'blocked', reason: blockedMatch[1].trim() },\n        rawMatch: blockedMatch[0]\n      };\n    }\n\n    return { isComplete: false, isBlocked: false };\n  }\n\n  extractCompletionReason(marker: LoopCompletionMarker): string {\n    return marker.reason;\n  }\n}\n```\n\nHandle edge cases: multiple markers (use first), malformed markers, case insensitivity.",
@@ -11210,7 +11230,7 @@
         "updatedAt": "2026-01-08T22:33:16.024Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Implement Loop Prompt Generator",
         "description": "Create LoopPromptService in tm-core to generate the full Claude prompt by combining preset content with file context references.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop-prompt.service.ts`:\n\n```typescript\nimport type { LoopConfig } from '../types.js';\nimport { LoopPresetService } from './loop-preset.service.js';\n\nexport interface PromptGenerationOptions {\n  config: LoopConfig;\n  iteration: number;\n  projectRoot: string;\n}\n\nexport class LoopPromptService {\n  private readonly presetService: LoopPresetService;\n\n  constructor(presetService: LoopPresetService) {\n    this.presetService = presetService;\n  }\n\n  async generatePrompt(options: PromptGenerationOptions): Promise<string> {\n    const { config, iteration, projectRoot } = options;\n    \n    // Get base prompt from preset or file\n    const basePrompt = await this.presetService.resolvePrompt(config.prompt);\n    \n    // Build context header\n    const contextHeader = this.buildContextHeader(config, iteration);\n    \n    // Combine with file references already in preset\n    return `${contextHeader}\\n\\n${basePrompt}`;\n  }\n\n  private buildContextHeader(config: LoopConfig, iteration: number): string {\n    const lines = [\n      `# Loop Iteration ${iteration} of ${config.iterations}`,\n      ``,\n      `## Context`,\n      `- Progress file: @${config.progressFile}`,\n      `- Tasks file: @.taskmaster/tasks/tasks.json`\n    ];\n    \n    if (config.tag) {\n      lines.push(`- Tag filter: ${config.tag}`);\n    }\n    \n    return lines.join('\\n');\n  }\n}\n```",
@@ -11299,7 +11319,7 @@
         "updatedAt": "2026-01-08T23:09:45.708Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Implement Loop Executor Service",
         "description": "Create LoopExecutorService in tm-core to spawn Claude Code CLI with the generated prompt and capture output for completion detection.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop-executor.service.ts`:\n\n```typescript\nimport { spawn } from 'node:child_process';\nimport type { LoopIteration } from '../types.js';\nimport { LoopCompletionService, type CompletionCheckResult } from './loop-completion.service.js';\n\nexport interface ExecutionResult {\n  iteration: LoopIteration;\n  output: string;\n  completionCheck: CompletionCheckResult;\n  exitCode: number;\n}\n\nexport class LoopExecutorService {\n  private readonly completionService: LoopCompletionService;\n  private currentProcess: any = null;\n\n  constructor(completionService: LoopCompletionService) {\n    this.completionService = completionService;\n  }\n\n  async executeIteration(\n    prompt: string,\n    iteration: number,\n    projectRoot: string\n  ): Promise<ExecutionResult> {\n    const startTime = Date.now();\n    let output = '';\n\n    return new Promise((resolve) => {\n      // Use claude -p for print mode (non-interactive)\n      this.currentProcess = spawn('claude', ['-p', prompt], {\n        cwd: projectRoot,\n        shell: false,\n        stdio: ['ignore', 'pipe', 'pipe']\n      });\n\n      this.currentProcess.stdout?.on('data', (data: Buffer) => {\n        output += data.toString();\n      });\n\n      this.currentProcess.stderr?.on('data', (data: Buffer) => {\n        output += data.toString();\n      });\n\n      this.currentProcess.on('close', (code: number) => {\n        this.currentProcess = null;\n        const duration = Date.now() - startTime;\n        const completionCheck = this.completionService.parseOutput(output);\n\n        const iterationResult: LoopIteration = {\n          iteration,\n          status: this.determineStatus(code, completionCheck),\n          duration,\n          message: completionCheck.marker?.reason\n        };\n\n        resolve({\n          iteration: iterationResult,\n          output,\n          completionCheck,\n          exitCode: code\n        });\n      });\n\n      this.currentProcess.on('error', (error: Error) => {\n        this.currentProcess = null;\n        resolve({\n          iteration: {\n            iteration,\n            status: 'error',\n            message: error.message\n          },\n          output,\n          completionCheck: { isComplete: false, isBlocked: false },\n          exitCode: 1\n        });\n      });\n    });\n  }\n\n  private determineStatus(code: number, check: CompletionCheckResult): LoopIteration['status'] {\n    if (check.isComplete) return 'complete';\n    if (check.isBlocked) return 'blocked';\n    if (code !== 0) return 'error';\n    return 'success';\n  }\n\n  async stop(): Promise<void> {\n    if (this.currentProcess) {\n      this.currentProcess.kill('SIGTERM');\n      this.currentProcess = null;\n    }\n  }\n}\n```\n\nFollow patterns from `packages/tm-core/src/modules/execution/executors/claude-executor.ts`.",
@@ -11372,7 +11392,7 @@
         "updatedAt": "2026-01-08T23:16:59.635Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Implement Loop Service (Main Orchestrator)",
         "description": "Create LoopService in tm-core as the main orchestrator that coordinates preset resolution, prompt generation, execution, progress tracking, and completion detection.",
         "details": "Create `packages/tm-core/src/modules/loop/services/loop.service.ts`:\n\n```typescript\nimport type { LoopConfig, LoopResult, LoopIteration } from '../types.js';\nimport { LoopPresetService } from './loop-preset.service.js';\nimport { LoopProgressService } from './loop-progress.service.js';\nimport { LoopCompletionService } from './loop-completion.service.js';\nimport { LoopPromptService } from './loop-prompt.service.js';\nimport { LoopExecutorService } from './loop-executor.service.js';\n\nexport interface LoopServiceOptions {\n  projectRoot: string;\n}\n\nexport class LoopService {\n  private readonly projectRoot: string;\n  private readonly presetService: LoopPresetService;\n  private readonly progressService: LoopProgressService;\n  private readonly completionService: LoopCompletionService;\n  private readonly promptService: LoopPromptService;\n  private readonly executorService: LoopExecutorService;\n  private isRunning = false;\n\n  constructor(options: LoopServiceOptions) {\n    this.projectRoot = options.projectRoot;\n    this.presetService = new LoopPresetService();\n    this.progressService = new LoopProgressService(options.projectRoot);\n    this.completionService = new LoopCompletionService();\n    this.promptService = new LoopPromptService(this.presetService);\n    this.executorService = new LoopExecutorService(this.completionService);\n  }\n\n  async run(config: LoopConfig): Promise<LoopResult> {\n    this.isRunning = true;\n    const iterations: LoopIteration[] = [];\n    let tasksCompleted = 0;\n\n    // Initialize progress file\n    await this.progressService.initializeProgressFile(config.progressFile, {\n      preset: config.prompt,\n      iterations: config.iterations,\n      tag: config.tag\n    });\n\n    for (let i = 1; i <= config.iterations && this.isRunning; i++) {\n      // Generate prompt for this iteration\n      const prompt = await this.promptService.generatePrompt({\n        config,\n        iteration: i,\n        projectRoot: this.projectRoot\n      });\n\n      // Execute iteration\n      const result = await this.executorService.executeIteration(\n        prompt,\n        i,\n        this.projectRoot\n      );\n\n      iterations.push(result.iteration);\n\n      // Log progress\n      await this.progressService.appendProgress(config.progressFile, {\n        timestamp: new Date().toISOString(),\n        iteration: i,\n        taskId: result.iteration.taskId,\n        note: result.iteration.message || 'Iteration completed'\n      });\n\n      // Check for completion\n      if (result.completionCheck.isComplete) {\n        return this.buildResult(iterations, tasksCompleted + 1, 'all_complete');\n      }\n\n      if (result.completionCheck.isBlocked) {\n        return this.buildResult(iterations, tasksCompleted, 'blocked');\n      }\n\n      if (result.iteration.status === 'success') {\n        tasksCompleted++;\n      }\n\n      // Sleep between iterations (except last)\n      if (i < config.iterations && config.sleepSeconds > 0) {\n        await this.sleep(config.sleepSeconds * 1000);\n      }\n    }\n\n    return this.buildResult(iterations, tasksCompleted, 'max_iterations');\n  }\n\n  async stop(): Promise<void> {\n    this.isRunning = false;\n    await this.executorService.stop();\n  }\n\n  private buildResult(\n    iterations: LoopIteration[],\n    tasksCompleted: number,\n    finalStatus: LoopResult['finalStatus']\n  ): LoopResult {\n    return {\n      iterations,\n      totalIterations: iterations.length,\n      tasksCompleted,\n      finalStatus\n    };\n  }\n\n  private sleep(ms: number): Promise<void> {\n    return new Promise((resolve) => setTimeout(resolve, ms));\n  }\n}\n```",
@@ -11447,7 +11467,7 @@
         "updatedAt": "2026-01-08T23:27:20.723Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Create Loop Domain Facade",
         "description": "Create LoopDomain in tm-core as the public API facade for loop operations, following the pattern of other domains (TasksDomain, WorkflowDomain).",
         "details": "Create `packages/tm-core/src/modules/loop/loop-domain.ts`:\n\n```typescript\nimport type { ConfigManager } from '../config/managers/config-manager.js';\nimport type { TasksDomain } from '../tasks/tasks-domain.js';\nimport { LoopService, type LoopServiceOptions } from './services/loop.service.js';\nimport { LoopPresetService } from './services/loop-preset.service.js';\nimport type { LoopConfig, LoopResult, LoopPreset } from './types.js';\n\nexport class LoopDomain {\n  private loopService: LoopService | null = null;\n  private readonly projectRoot: string;\n  private readonly presetService: LoopPresetService;\n  private tasksDomain: TasksDomain | null = null;\n\n  constructor(configManager: ConfigManager) {\n    this.projectRoot = configManager.getProjectRoot();\n    this.presetService = new LoopPresetService();\n  }\n\n  setTasksDomain(tasksDomain: TasksDomain): void {\n    this.tasksDomain = tasksDomain;\n  }\n\n  // ========== Loop Operations ==========\n\n  async run(config: Partial<LoopConfig>): Promise<LoopResult> {\n    const fullConfig = this.buildConfig(config);\n    this.loopService = new LoopService({ projectRoot: this.projectRoot });\n    return this.loopService.run(fullConfig);\n  }\n\n  async stop(): Promise<void> {\n    if (this.loopService) {\n      await this.loopService.stop();\n      this.loopService = null;\n    }\n  }\n\n  // ========== Preset Operations ==========\n\n  isPreset(prompt: string): prompt is LoopPreset {\n    return this.presetService.isPreset(prompt);\n  }\n\n  async resolvePrompt(prompt: LoopPreset | string): Promise<string> {\n    return this.presetService.resolvePrompt(prompt);\n  }\n\n  getAvailablePresets(): LoopPreset[] {\n    return ['default', 'test-coverage', 'linting', 'duplication', 'entropy'];\n  }\n\n  // ========== Task Completion Check ==========\n\n  async checkAllTasksComplete(options: { tag?: string }): Promise<boolean> {\n    if (!this.tasksDomain) {\n      throw new Error('TasksDomain not set');\n    }\n    const result = await this.tasksDomain.list({ tag: options.tag });\n    return result.tasks.every(t => t.status === 'done' || t.status === 'cancelled');\n  }\n\n  private buildConfig(partial: Partial<LoopConfig>): LoopConfig {\n    return {\n      iterations: partial.iterations ?? 10,\n      prompt: partial.prompt ?? 'default',\n      progressFile: partial.progressFile ?? `${this.projectRoot}/.taskmaster/loop-progress.txt`,\n      sleepSeconds: partial.sleepSeconds ?? 5,\n      onComplete: partial.onComplete,\n      tag: partial.tag,\n      status: partial.status ?? 'pending'\n    };\n  }\n}\n```\n\nCreate `packages/tm-core/src/modules/loop/index.ts` exporting all public APIs.",
@@ -11489,7 +11509,7 @@
         "updatedAt": "2026-01-08T23:34:08.164Z"
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Integrate Loop Domain into TmCore",
         "description": "Add LoopDomain to TmCore facade, wiring it up with TasksDomain for task completion checking.",
         "details": "Modify `packages/tm-core/src/tm-core.ts`:\n\n1. Import LoopDomain:\n```typescript\nimport { LoopDomain } from './modules/loop/loop-domain.js';\n```\n\n2. Add private property and getter:\n```typescript\nprivate _loop!: LoopDomain;\n\nget loop(): LoopDomain {\n  return this._loop;\n}\n```\n\n3. Initialize in `initialize()` method after TasksDomain:\n```typescript\n// Initialize loop domain\nthis._loop = new LoopDomain(this._configManager);\nthis._loop.setTasksDomain(this._tasks);\n```\n\n4. Update `packages/tm-core/src/index.ts` to export loop types:\n```typescript\n// Loop types\nexport type { LoopConfig, LoopResult, LoopIteration, LoopPreset } from './modules/loop/types.js';\nexport { LoopDomain } from './modules/loop/loop-domain.js';\n```",
@@ -11571,7 +11591,7 @@
         "updatedAt": "2026-01-08T23:43:52.065Z"
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Implement Loop CLI Command",
         "description": "Create the loop command in apps/cli following the established command pattern with Commander.js, implementing all CLI options specified in the PRD.",
         "details": "Create `apps/cli/src/commands/loop.command.ts`:\n\n```typescript\nimport { createTmCore, type LoopConfig, type LoopResult } from '@tm/core';\nimport chalk from 'chalk';\nimport { Command } from 'commander';\nimport { exec } from 'node:child_process';\nimport { promisify } from 'node:util';\nimport { displayCommandHeader } from '../utils/display-helpers.js';\nimport { displayError } from '../utils/error-handler.js';\nimport { getProjectRoot } from '../utils/project-root.js';\n\nconst execAsync = promisify(exec);\n\nexport interface LoopCommandOptions {\n  iterations?: string;\n  prompt?: string;\n  progressFile?: string;\n  sleep?: string;\n  onComplete?: string;\n  tag?: string;\n  status?: string;\n  project?: string;\n  json?: boolean;\n}\n\nexport class LoopCommand extends Command {\n  constructor() {\n    super('loop');\n\n    this.description('Run Claude Code in a loop, one task per iteration')\n      .option('-n, --iterations <number>', 'Maximum iterations', '10')\n      .option('-p, --prompt <preset|path>', 'Preset name or path to prompt file', 'default')\n      .option('--progress-file <path>', 'Path to progress log')\n      .option('--sleep <seconds>', 'Seconds between iterations', '5')\n      .option('--on-complete <command>', 'Command to run when complete')\n      .option('-t, --tag <tag>', 'Only work on tasks with this tag')\n      .option('--status <status>', 'Only work on tasks with this status', 'pending')\n      .option('--project <path>', 'Project root directory')\n      .option('--json', 'Output results as JSON')\n      .action(async (options: LoopCommandOptions) => {\n        await this.executeLoop(options);\n      });\n  }\n\n  private async executeLoop(options: LoopCommandOptions): Promise<void> {\n    try {\n      const projectRoot = getProjectRoot(options.project);\n      const tmCore = await createTmCore({ projectPath: projectRoot });\n\n      if (!options.json) {\n        displayCommandHeader(tmCore, { tag: options.tag || 'master' });\n        console.log(chalk.cyan('Starting Task Master Loop...'));\n        console.log(chalk.dim(`Preset: ${options.prompt}`));\n        console.log(chalk.dim(`Max iterations: ${options.iterations}`));\n        console.log();\n      }\n\n      const config: Partial<LoopConfig> = {\n        iterations: parseInt(options.iterations || '10', 10),\n        prompt: options.prompt || 'default',\n        progressFile: options.progressFile,\n        sleepSeconds: parseInt(options.sleep || '5', 10),\n        onComplete: options.onComplete,\n        tag: options.tag,\n        status: options.status\n      };\n\n      const result = await tmCore.loop.run(config);\n\n      if (options.json) {\n        console.log(JSON.stringify(result, null, 2));\n      } else {\n        this.displayResult(result);\n      }\n\n      // Run on-complete command if specified\n      if (options.onComplete && result.finalStatus === 'all_complete') {\n        console.log(chalk.dim(`\\nRunning on-complete command: ${options.onComplete}`));\n        await execAsync(options.onComplete);\n      }\n\n    } catch (error) {\n      displayError(error as Error);\n      process.exit(1);\n    }\n  }\n\n  private displayResult(result: LoopResult): void {\n    console.log();\n    console.log(chalk.bold('Loop Complete'));\n    console.log(chalk.dim('─'.repeat(40)));\n    console.log(`Total iterations: ${result.totalIterations}`);\n    console.log(`Tasks completed: ${result.tasksCompleted}`);\n    console.log(`Final status: ${this.formatStatus(result.finalStatus)}`);\n  }\n\n  private formatStatus(status: LoopResult['finalStatus']): string {\n    switch (status) {\n      case 'all_complete': return chalk.green('All tasks complete');\n      case 'max_iterations': return chalk.yellow('Max iterations reached');\n      case 'blocked': return chalk.red('Blocked');\n      case 'error': return chalk.red('Error');\n    }\n  }\n\n  static register(program: Command): LoopCommand {\n    const loopCommand = new LoopCommand();\n    program.addCommand(loopCommand);\n    return loopCommand;\n  }\n}\n```",
@@ -11626,7 +11646,7 @@
         "updatedAt": "2026-01-08T23:51:39.149Z"
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Register Loop Command in CLI",
         "description": "Register the LoopCommand in the command registry and update exports in apps/cli.",
         "details": "1. Update `apps/cli/src/command-registry.ts`:\n\n```typescript\n// Add import\nimport { LoopCommand } from './commands/loop.command.js';\n\n// Add to commands array in CommandRegistry class\n{\n  name: 'loop',\n  description: 'Run Claude Code in a loop, one task per iteration',\n  commandClass: LoopCommand as any,\n  category: 'development'\n}\n```\n\n2. Update `apps/cli/src/index.ts`:\n\n```typescript\n// Add export\nexport { LoopCommand } from './commands/loop.command.js';\n```\n\n3. Verify the command is registered by running:\n```bash\ntask-master --help\n```\n\nThe `loop` command should appear under Development category.",
@@ -11701,7 +11721,7 @@
         "expansionPrompt": "No expansion needed - this is a trivial registration task."
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Add Loop MCP Tool",
         "description": "Create MCP tool for loop operations in apps/mcp, following the pattern of existing tools like autopilot.",
         "details": "Create `apps/mcp/src/tools/loop/index.ts`:\n\n```typescript\nimport { createTmCore, type LoopConfig } from '@tm/core';\nimport { z } from 'zod';\nimport type { FastMCPTool } from '../../shared/types.js';\nimport { resolveProjectRoot } from '../../shared/utils.js';\n\nconst loopStartSchema = z.object({\n  projectRoot: z.string().optional(),\n  iterations: z.number().optional().default(10),\n  prompt: z.string().optional().default('default'),\n  progressFile: z.string().optional(),\n  sleepSeconds: z.number().optional().default(5),\n  tag: z.string().optional(),\n  status: z.string().optional().default('pending')\n});\n\nexport const loopStartTool: FastMCPTool = {\n  name: 'loop_start',\n  description: 'Start a Task Master loop to work through tasks automatically',\n  schema: loopStartSchema,\n  async execute(args, log) {\n    const projectRoot = resolveProjectRoot(args.projectRoot);\n    const tmCore = await createTmCore({ projectPath: projectRoot });\n\n    log('info', `Starting loop with preset: ${args.prompt}`);\n\n    const config: Partial<LoopConfig> = {\n      iterations: args.iterations,\n      prompt: args.prompt,\n      progressFile: args.progressFile,\n      sleepSeconds: args.sleepSeconds,\n      tag: args.tag,\n      status: args.status\n    };\n\n    const result = await tmCore.loop.run(config);\n\n    return {\n      success: true,\n      result: {\n        totalIterations: result.totalIterations,\n        tasksCompleted: result.tasksCompleted,\n        finalStatus: result.finalStatus,\n        iterations: result.iterations\n      }\n    };\n  }\n};\n\nexport const loopPresetsTool: FastMCPTool = {\n  name: 'loop_presets',\n  description: 'List available loop presets',\n  schema: z.object({}),\n  async execute(_, log) {\n    return {\n      success: true,\n      presets: ['default', 'test-coverage', 'linting', 'duplication', 'entropy']\n    };\n  }\n};\n\nexport const loopTools = [loopStartTool, loopPresetsTool];\n```\n\nRegister tools in `apps/mcp/src/index.ts` tool registration.",
@@ -11740,7 +11760,7 @@
         "expansionPrompt": "Break down into: 1) Implement loop_start and loop_presets tools following autopilot tool patterns with Zod schemas, 2) Register tools in MCP server and write unit tests with mocked TmCore"
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Write Unit Tests for Loop Module",
         "description": "Create comprehensive unit test suite for all loop module services in tm-core.",
         "details": "Create test files in `packages/tm-core/src/modules/loop/`:\n\n1. `services/loop-preset.service.spec.ts`:\n   - Test `isPreset()` with valid presets, invalid names, file paths\n   - Test `isFilePath()` with various path patterns\n   - Test `resolvePrompt()` loading built-in presets\n   - Test custom file loading with mock fs\n\n2. `services/loop-progress.service.spec.ts`:\n   - Test progress file initialization with correct header\n   - Test appending entries preserves format\n   - Test reading non-existent file returns empty string\n   - Test file existence checks\n\n3. `services/loop-completion.service.spec.ts`:\n   - Test parsing `<loop-complete>` with various reasons\n   - Test parsing `<loop-blocked>` with various reasons\n   - Test output with no markers\n   - Test output with multiple markers (first wins)\n   - Test case insensitivity\n\n4. `services/loop-prompt.service.spec.ts`:\n   - Test prompt generation includes iteration number\n   - Test prompt includes file references\n   - Test tag inclusion when specified\n\n5. `services/loop.service.spec.ts`:\n   - Test full loop execution with mocked executor\n   - Test early termination on complete marker\n   - Test early termination on blocked marker\n   - Test max iterations reached\n   - Test progress file updated each iteration\n\nFollow patterns from existing tests in `packages/tm-core/src/modules/workflow/managers/workflow-state-manager.spec.ts`.",
@@ -11812,7 +11832,7 @@
         "expansionPrompt": "Break down into: 1) Write tests for loop-preset.service.spec.ts, 2) Write tests for loop-progress.service.spec.ts, 3) Write tests for loop-completion.service.spec.ts, 4) Write tests for loop-prompt.service.spec.ts, 5) Write tests for loop.service.spec.ts with mocked sub-services"
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Write Integration Tests for Loop CLI",
         "description": "Create integration tests for the loop CLI command in apps/cli.",
         "details": "Create `apps/cli/tests/integration/commands/loop.command.test.ts`:\n\n```typescript\nimport { execSync } from 'node:child_process';\nimport { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';\nimport { join } from 'node:path';\nimport { describe, it, expect, beforeEach, afterEach } from 'vitest';\n\ndescribe('loop command integration', () => {\n  const testDir = join(__dirname, 'test-project');\n  const tasksDir = join(testDir, '.taskmaster', 'tasks');\n\n  beforeEach(() => {\n    // Create test project structure\n    mkdirSync(tasksDir, { recursive: true });\n    writeFileSync(\n      join(tasksDir, 'tasks.json'),\n      JSON.stringify({ tasks: [], tags: { master: {} } })\n    );\n  });\n\n  afterEach(() => {\n    if (existsSync(testDir)) {\n      rmSync(testDir, { recursive: true });\n    }\n  });\n\n  it('shows help with --help', () => {\n    const output = execSync('task-master loop --help', { encoding: 'utf-8' });\n    expect(output).toContain('--iterations');\n    expect(output).toContain('--prompt');\n    expect(output).toContain('--tag');\n  });\n\n  it('lists available presets', () => {\n    // This could be a separate command or option\n  });\n\n  // Note: Full loop execution tests require mocking Claude Code\n  // or running in a CI environment with Claude available\n});\n```\n\nFollow patterns from existing integration tests in `apps/cli/tests/integration/commands/`.",
@@ -11851,7 +11871,7 @@
         "expansionPrompt": "Break down into: 1) Set up test infrastructure following apps/cli/tests/integration patterns with temp directory setup and CLI execution helpers, 2) Write integration tests for help, preset listing, and basic loop execution scenarios"
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Add Documentation for Loop Command",
         "description": "Create documentation for the loop command in the docs site (apps/docs) explaining usage, presets, and customization.",
         "details": "Create `apps/docs/commands/loop.mdx` (or appropriate docs format):\n\n1. Overview section explaining the Ralph Wiggum pattern\n2. Basic usage examples:\n   - `task-master loop -n 10`\n   - `task-master loop -n 5 --prompt test-coverage`\n   - `task-master loop -n 10 --prompt ./custom-prompt.md`\n\n3. Options reference table with all CLI options\n\n4. Built-in presets section:\n   - `default` - Task completion workflow\n   - `test-coverage` - Write meaningful tests\n   - `linting` - Fix lint/type errors\n   - `duplication` - Refactor duplicated code\n   - `entropy` - Clean up code smells\n\n5. Custom prompt guide:\n   - Required structure\n   - Completion markers (`<loop-complete>`, `<loop-blocked>`)\n   - File references with `@` syntax\n   - Progress file usage\n\n6. Progress file format explanation\n\n7. Examples section with real-world use cases\n\nFollow existing docs structure in `apps/docs/`.",
@@ -11929,7 +11949,7 @@
         "expansionPrompt": "No expansion needed - this is a focused documentation task with clear structure."
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Bundle Presets with Package Distribution",
         "description": "Configure build system to include preset markdown files in the published npm package.",
         "details": "Update build configuration to include presets:\n\n1. In `packages/tm-core/package.json`, ensure presets directory is included in `files`:\n```json\n{\n  \"files\": [\n    \"dist/**\",\n    \"src/modules/loop/presets/**\"\n  ]\n}\n```\n\n2. Update tsdown/tsup configuration if needed to copy asset files:\n```typescript\n// In build config\nexport default {\n  // ... existing config\n  publicDir: 'src/modules/loop/presets',\n  // or use copy plugin\n}\n```\n\n3. Alternative: Use raw-loader or inline the preset content:\n```typescript\n// In loop-preset.service.ts\nconst PRESETS: Record<LoopPreset, string> = {\n  'default': `# Task Master Loop - Default...`,\n  'test-coverage': `# Task Master Loop - Test Coverage...`,\n  // etc.\n};\n```\n\n4. Test that presets are accessible after `npm run build`.\n\nFollow patterns from how other assets are bundled in the monorepo.",
@@ -11984,7 +12004,7 @@
         "updatedAt": "2026-01-08T22:57:45.565Z"
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "Add Loop Tool to MCP Tool Tiers",
         "description": "Register loop tools in the appropriate MCP tool tier (standard or all) for visibility in MCP integrations.",
         "details": "Update MCP tool tier configuration:\n\n1. Locate tool tier definitions (likely in `apps/mcp/src/` or config files)\n\n2. Add loop tools to 'standard' tier since it's a common workflow tool:\n```typescript\n// Tool tier definitions\nconst TOOL_TIERS = {\n  core: [...],\n  standard: [\n    ...existingStandardTools,\n    'loop_start',\n    'loop_presets'\n  ],\n  all: [...]\n};\n```\n\n3. Update documentation in `.taskmaster/CLAUDE.md` to include loop tools in the tool tier table.\n\n4. Test with MCP inspector:\n```bash\nnpm run inspector\n```\n\nVerify loop tools appear when `TASK_MASTER_TOOLS=standard` is set.",
@@ -12066,6 +12086,12 @@
       "completedCount": 11,
       "tags": [
         "loop"
+      ],
+      "created": "2026-02-14T15:38:03.563Z",
+      "description": "Tasks for loop context",
+      "updated": "2026-02-14T15:38:03.563Z",
+      "dependsOn": [
+        "tm-core-phase-1"
       ]
     }
   }
