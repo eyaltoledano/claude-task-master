@@ -85,7 +85,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				_claudeCliAvailable = false;
 				log(
 					'warn',
-					'Claude Code CLI not detected. Install it with: npm install -g @anthropic-ai/claude-code'
+					'Claude Code CLI not detected. Install it from: https://docs.anthropic.com/en/docs/claude-code/overview'
 				);
 			} finally {
 				_claudeCliChecked = true;
@@ -147,7 +147,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 			const code = error?.code;
 			if (code === 'ENOENT' || /claude/i.test(msg)) {
 				const enhancedError = new Error(
-					`Claude Code CLI not available. Please install Claude Code CLI first. Original error: ${error.message}`
+					`Claude Code CLI not available. Install it from: https://docs.anthropic.com/en/docs/claude-code/overview - Original error: ${error.message}`
 				);
 				enhancedError.cause = error;
 				this.handleError('Claude Code CLI initialization', enhancedError);

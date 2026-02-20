@@ -586,7 +586,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		if (error.code === 'ENOENT') {
 			return sandbox
 				? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
-				: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
+				: 'Claude CLI is not installed. Install it from: https://docs.anthropic.com/en/docs/claude-code/overview';
 		}
 
 		if (error.code === 'EACCES') {
