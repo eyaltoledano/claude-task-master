@@ -11,9 +11,9 @@
  *
  */
 
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 import {
@@ -97,10 +97,13 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				const found = commonPaths.find((p) => existsSync(p));
 				if (found) {
 					try {
-						execSync(`"${found}" --version`, {
+						execFileSync(found, ['--version'], {
 							stdio: 'pipe',
 							timeout: 1000
 						});
+						// Add the binary's directory to PATH so the SDK can find it
+						const binDir = dirname(found);
+						process.env.PATH = `${binDir}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH || ''}`;
 						_claudeCliAvailable = true;
 					} catch {
 						_claudeCliAvailable = false;
