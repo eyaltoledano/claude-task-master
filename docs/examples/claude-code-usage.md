@@ -59,16 +59,15 @@ task-master set-status --id=task-001 --status=in-progress
 
 ## Requirements
 
-1. Claude Code CLI must be installed and authenticated on your system
-2. Install the optional `@anthropic-ai/claude-code` package if you enable this provider:
+1. Claude Code CLI must be installed and authenticated on your system. Install from the [official docs](https://docs.anthropic.com/en/docs/claude-code/overview) or run:
    ```bash
-   npm install @anthropic-ai/claude-code
+   curl -fsSL https://claude.ai/install.sh | bash
    ```
-3. Run Claude Code for the first time and authenticate with your Anthropic account:
+2. Run Claude Code for the first time and authenticate with your Anthropic account:
    ```bash
    claude
    ```
-4. No API key is required in your environment variables or MCP configuration
+3. No API key is required in your environment variables or MCP configuration
 
 ## Advanced Settings
 
