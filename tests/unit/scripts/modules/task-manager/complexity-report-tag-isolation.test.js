@@ -1135,10 +1135,30 @@ describe('Complexity Report Tag Isolation', () => {
 			// After Run 2, tasks 1-2 should still be in the report.
 			const tasksForTag = {
 				tasks: [
-					{ id: 1, title: 'Task 1', description: 'First task', status: 'pending' },
-					{ id: 2, title: 'Task 2', description: 'Second task', status: 'pending' },
-					{ id: 3, title: 'Task 3', description: 'Third task', status: 'pending' },
-					{ id: 4, title: 'Task 4', description: 'Fourth task', status: 'pending' }
+					{
+						id: 1,
+						title: 'Task 1',
+						description: 'First task',
+						status: 'pending'
+					},
+					{
+						id: 2,
+						title: 'Task 2',
+						description: 'Second task',
+						status: 'pending'
+					},
+					{
+						id: 3,
+						title: 'Task 3',
+						description: 'Third task',
+						status: 'pending'
+					},
+					{
+						id: 4,
+						title: 'Task 4',
+						description: 'Fourth task',
+						status: 'pending'
+					}
 				]
 			};
 
@@ -1230,7 +1250,9 @@ describe('Complexity Report Tag Isolation', () => {
 			// Verify the written report contains ALL 4 tasks (merged)
 			expect(mockWriteFileSync).toHaveBeenCalled();
 			const writtenData = JSON.parse(mockWriteFileSync.mock.calls[0][1]);
-			const taskIds = writtenData.complexityAnalysis.map((a) => a.taskId).sort();
+			const taskIds = writtenData.complexityAnalysis
+				.map((a) => a.taskId)
+				.sort();
 
 			expect(taskIds).toEqual([1, 2, 3, 4]);
 
@@ -1246,9 +1268,24 @@ describe('Complexity Report Tag Isolation', () => {
 		test('should update existing entries when re-analyzed in overlapping range', async () => {
 			const tasksForTag = {
 				tasks: [
-					{ id: 1, title: 'Task 1', description: 'First task', status: 'pending' },
-					{ id: 2, title: 'Task 2', description: 'Second task', status: 'pending' },
-					{ id: 3, title: 'Task 3', description: 'Third task', status: 'pending' }
+					{
+						id: 1,
+						title: 'Task 1',
+						description: 'First task',
+						status: 'pending'
+					},
+					{
+						id: 2,
+						title: 'Task 2',
+						description: 'Second task',
+						status: 'pending'
+					},
+					{
+						id: 3,
+						title: 'Task 3',
+						description: 'Third task',
+						status: 'pending'
+					}
 				]
 			};
 
@@ -1336,7 +1373,9 @@ describe('Complexity Report Tag Isolation', () => {
 			});
 
 			const writtenData = JSON.parse(mockWriteFileSync.mock.calls[0][1]);
-			const taskIds = writtenData.complexityAnalysis.map((a) => a.taskId).sort();
+			const taskIds = writtenData.complexityAnalysis
+				.map((a) => a.taskId)
+				.sort();
 
 			// All 3 tasks should be present
 			expect(taskIds).toEqual([1, 2, 3]);
