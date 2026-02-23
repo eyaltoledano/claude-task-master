@@ -1129,6 +1129,272 @@ describe('Complexity Report Tag Isolation', () => {
 		});
 	});
 
+	describe('Report Merge With --from/--to Ranges', () => {
+		test('should preserve existing entries outside the current analysis range', async () => {
+			// Simulate: Run 1 analyzed tasks 1-2, Run 2 analyzes tasks 3-4.
+			// After Run 2, tasks 1-2 should still be in the report.
+			const tasksForTag = {
+				tasks: [
+					{
+						id: 1,
+						title: 'Task 1',
+						description: 'First task',
+						status: 'pending'
+					},
+					{
+						id: 2,
+						title: 'Task 2',
+						description: 'Second task',
+						status: 'pending'
+					},
+					{
+						id: 3,
+						title: 'Task 3',
+						description: 'Third task',
+						status: 'pending'
+					},
+					{
+						id: 4,
+						title: 'Task 4',
+						description: 'Fourth task',
+						status: 'pending'
+					}
+				]
+			};
+
+			readJSON.mockReturnValue(tasksForTag);
+
+			// Existing report from "Run 1" that analyzed tasks 1-2
+			const existingReport = {
+				meta: { generatedAt: new Date().toISOString(), tasksAnalyzed: 2 },
+				complexityAnalysis: [
+					{
+						taskId: 1,
+						taskTitle: 'Task 1',
+						complexityScore: 7,
+						recommendedSubtasks: 4,
+						expansionPrompt: 'Break down task 1',
+						reasoning: 'From run 1'
+					},
+					{
+						taskId: 2,
+						taskTitle: 'Task 2',
+						complexityScore: 5,
+						recommendedSubtasks: 3,
+						expansionPrompt: 'Break down task 2',
+						reasoning: 'From run 1'
+					}
+				]
+			};
+
+			// Mock: existing report file exists and returns run-1 data
+			mockExistsSync.mockReturnValue(true);
+			mockReadFileSync.mockReturnValue(JSON.stringify(existingReport));
+
+			// Mock AI response for "Run 2" (tasks 3-4 only)
+			generateObjectService.mockResolvedValueOnce({
+				mainResult: {
+					complexityAnalysis: [
+						{
+							taskId: 3,
+							taskTitle: 'Task 3',
+							complexityScore: 8,
+							recommendedSubtasks: 5,
+							expansionPrompt: 'Break down task 3',
+							reasoning: 'From run 2'
+						},
+						{
+							taskId: 4,
+							taskTitle: 'Task 4',
+							complexityScore: 6,
+							recommendedSubtasks: 4,
+							expansionPrompt: 'Break down task 4',
+							reasoning: 'From run 2'
+						}
+					]
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'analyze-complexity',
+					modelUsed: 'claude-3-5-sonnet',
+					providerName: 'anthropic',
+					inputTokens: 1000,
+					outputTokens: 500,
+					totalTokens: 1500,
+					totalCost: 0.012414,
+					currency: 'USD'
+				}
+			});
+
+			// Run 2: analyze only tasks 3-4
+			const options = {
+				file: 'tasks/tasks.json',
+				threshold: '5',
+				projectRoot,
+				tag: 'master',
+				from: 3,
+				to: 4
+			};
+
+			await analyzeTaskComplexity(options, {
+				projectRoot,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			// Verify the written report contains ALL 4 tasks (merged)
+			expect(mockWriteFileSync).toHaveBeenCalled();
+			const writtenData = JSON.parse(mockWriteFileSync.mock.calls[0][1]);
+			const taskIds = writtenData.complexityAnalysis
+				.map((a) => a.taskId)
+				.sort();
+
+			expect(taskIds).toEqual([1, 2, 3, 4]);
+
+			// Verify tasks 1-2 are preserved from run 1
+			const task1 = writtenData.complexityAnalysis.find((a) => a.taskId === 1);
+			expect(task1.reasoning).toBe('From run 1');
+
+			// Verify tasks 3-4 are from run 2
+			const task3 = writtenData.complexityAnalysis.find((a) => a.taskId === 3);
+			expect(task3.reasoning).toBe('From run 2');
+		});
+
+		test('should update existing entries when re-analyzed in overlapping range', async () => {
+			const tasksForTag = {
+				tasks: [
+					{
+						id: 1,
+						title: 'Task 1',
+						description: 'First task',
+						status: 'pending'
+					},
+					{
+						id: 2,
+						title: 'Task 2',
+						description: 'Second task',
+						status: 'pending'
+					},
+					{
+						id: 3,
+						title: 'Task 3',
+						description: 'Third task',
+						status: 'pending'
+					}
+				]
+			};
+
+			readJSON.mockReturnValue(tasksForTag);
+
+			// Existing report with tasks 1-2
+			const existingReport = {
+				meta: { generatedAt: new Date().toISOString(), tasksAnalyzed: 2 },
+				complexityAnalysis: [
+					{
+						taskId: 1,
+						taskTitle: 'Task 1',
+						complexityScore: 5,
+						recommendedSubtasks: 3,
+						expansionPrompt: 'Old prompt',
+						reasoning: 'Old analysis'
+					},
+					{
+						taskId: 2,
+						taskTitle: 'Task 2',
+						complexityScore: 3,
+						recommendedSubtasks: 2,
+						expansionPrompt: 'Old prompt',
+						reasoning: 'Old analysis'
+					}
+				]
+			};
+
+			mockExistsSync.mockReturnValue(true);
+			mockReadFileSync.mockReturnValue(JSON.stringify(existingReport));
+
+			// AI response for overlapping range (tasks 2-3)
+			generateObjectService.mockResolvedValueOnce({
+				mainResult: {
+					complexityAnalysis: [
+						{
+							taskId: 2,
+							taskTitle: 'Task 2',
+							complexityScore: 8,
+							recommendedSubtasks: 5,
+							expansionPrompt: 'Updated prompt',
+							reasoning: 'Updated analysis'
+						},
+						{
+							taskId: 3,
+							taskTitle: 'Task 3',
+							complexityScore: 6,
+							recommendedSubtasks: 4,
+							expansionPrompt: 'New prompt',
+							reasoning: 'New analysis'
+						}
+					]
+				},
+				telemetryData: {
+					timestamp: new Date().toISOString(),
+					commandName: 'analyze-complexity',
+					modelUsed: 'claude-3-5-sonnet',
+					providerName: 'anthropic',
+					inputTokens: 1000,
+					outputTokens: 500,
+					totalTokens: 1500,
+					totalCost: 0.012414,
+					currency: 'USD'
+				}
+			});
+
+			const options = {
+				file: 'tasks/tasks.json',
+				threshold: '5',
+				projectRoot,
+				tag: 'master',
+				from: 2,
+				to: 3
+			};
+
+			await analyzeTaskComplexity(options, {
+				projectRoot,
+				mcpLog: {
+					info: jest.fn(),
+					warn: jest.fn(),
+					error: jest.fn(),
+					debug: jest.fn(),
+					success: jest.fn()
+				}
+			});
+
+			const writtenData = JSON.parse(mockWriteFileSync.mock.calls[0][1]);
+			const taskIds = writtenData.complexityAnalysis
+				.map((a) => a.taskId)
+				.sort();
+
+			// All 3 tasks should be present
+			expect(taskIds).toEqual([1, 2, 3]);
+
+			// Task 1 preserved from old report
+			const task1 = writtenData.complexityAnalysis.find((a) => a.taskId === 1);
+			expect(task1.reasoning).toBe('Old analysis');
+
+			// Task 2 updated with new analysis
+			const task2 = writtenData.complexityAnalysis.find((a) => a.taskId === 2);
+			expect(task2.reasoning).toBe('Updated analysis');
+			expect(task2.complexityScore).toBe(8);
+
+			// Task 3 added from new analysis
+			const task3 = writtenData.complexityAnalysis.find((a) => a.taskId === 3);
+			expect(task3.reasoning).toBe('New analysis');
+		});
+	});
+
 	describe('Edge Cases', () => {
 		test('should handle empty tag gracefully', async () => {
 			const options = {
