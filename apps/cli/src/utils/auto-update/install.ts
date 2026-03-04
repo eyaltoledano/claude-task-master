@@ -12,6 +12,7 @@ import chalk from 'chalk';
 import cliProgress from 'cli-progress';
 import ora from 'ora';
 
+import { clearUpdateCache } from './check-update.js';
 import { downloadTarballWithProgress, fetchTarballInfo } from './download.js';
 
 /** Installation phases with weights (how much of the progress bar each phase takes) */
@@ -373,6 +374,9 @@ export async function performAutoUpdate(
 		);
 		return false;
 	}
+
+	// Clear the update cache so subsequent runs don't use stale version data
+	clearUpdateCache();
 
 	console.log(
 		chalk.green(`Successfully updated to version ${chalk.bold(latestVersion)}`)

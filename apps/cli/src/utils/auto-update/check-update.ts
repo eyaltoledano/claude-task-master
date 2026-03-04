@@ -58,6 +58,22 @@ function readCache(): UpdateCache | null {
 }
 
 /**
+ * Clear the update cache file.
+ * Called after a successful auto-update to prevent stale cache
+ * from triggering another update cycle on restart.
+ */
+export function clearUpdateCache(): void {
+	try {
+		const cachePath = getCachePath();
+		if (fs.existsSync(cachePath)) {
+			fs.unlinkSync(cachePath);
+		}
+	} catch {
+		// Cache deletion failures are non-critical
+	}
+}
+
+/**
  * Write update info to cache
  */
 function writeCache(latestVersion: string, highlights?: string[]): void {

@@ -18,7 +18,7 @@ export { compareVersions } from './version.js';
 export { parseChangelogHighlights } from './changelog.js';
 
 // Re-export update checking
-export { checkForUpdate } from './check-update.js';
+export { checkForUpdate, clearUpdateCache } from './check-update.js';
 
 // Re-export display utilities
 export { displayUpgradeNotification } from './display.js';
