@@ -61,6 +61,13 @@ export { getProjectPaths } from './path-helpers.js';
 // Export JSON file utilities
 export { readJSON, writeJSON } from './json-file-utils.js';
 
+// Export workspace path utilities
+export {
+	getProjectIdentifier,
+	getWorkspaceDir,
+	getWorkspaceContextPath
+} from './workspace-path.js';
+
 // Additional utility exports
 
 /**

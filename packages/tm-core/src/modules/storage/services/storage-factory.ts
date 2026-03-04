@@ -2,6 +2,8 @@
  * @fileoverview Storage factory for creating appropriate storage implementations
  */
 
+import fsSync from 'node:fs';
+import path from 'node:path';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -114,6 +116,16 @@ export class StorageFactory {
 				if (StorageFactory.isHamsterAvailable(config)) {
 					logger.info('☁️  Using API storage (configured)');
 					return StorageFactory.createApiStorage(config);
+				}
+
+				// If local task files exist, this project was initialized for
+				// local/file storage (solo mode). Don't auto-escalate to API
+				// storage based on global auth state from another project.
+				if (StorageFactory.hasLocalTaskFiles(projectPath)) {
+					logger.debug(
+						'📁 Local task files found, using file storage (solo mode)'
+					);
+					return StorageFactory.createFileStorage(projectPath, config);
 				}
 
 				// Then check if authenticated via Supabase
@@ -247,6 +259,21 @@ export class StorageFactory {
 			isValid: errors.length === 0,
 			errors
 		};
+	}
+
+	/**
+	 * Check if local task files exist in the project.
+	 * If they do, the project was initialized for local/file storage (solo mode)
+	 * and should not auto-escalate to API storage based on global auth state.
+	 */
+	static hasLocalTaskFiles(projectPath: string): boolean {
+		const tasksJsonPath = path.join(
+			projectPath,
+			'.taskmaster',
+			'tasks',
+			'tasks.json'
+		);
+		return fsSync.existsSync(tasksJsonPath);
 	}
 
 	/**

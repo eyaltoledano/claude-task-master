@@ -40,8 +40,10 @@ export class AuthManager {
 	public supabaseClient: SupabaseAuthClient;
 	private organizationService?: OrganizationService;
 
-	private constructor(config?: Partial<AuthConfig>) {
-		this.contextStore = ContextStore.getInstance();
+	private constructor(config?: Partial<AuthConfig & { projectRoot?: string }>) {
+		this.contextStore = ContextStore.getInstance(
+			config?.projectRoot ? { projectRoot: config.projectRoot } : undefined
+		);
 		// Use singleton SupabaseAuthClient to prevent refresh token race conditions
 		this.supabaseClient = SupabaseAuthClient.getInstance();
 
@@ -62,7 +64,9 @@ export class AuthManager {
 	/**
 	 * Get singleton instance
 	 */
-	static getInstance(config?: Partial<AuthConfig>): AuthManager {
+	static getInstance(
+		config?: Partial<AuthConfig & { projectRoot?: string }>
+	): AuthManager {
 		if (!AuthManager.instance) {
 			AuthManager.instance = new AuthManager(config);
 		} else if (config) {
@@ -82,6 +86,15 @@ export class AuthManager {
 		AuthManager.instance = null;
 		ContextStore.resetInstance();
 		SupabaseAuthClient.resetInstance();
+	}
+
+	/**
+	 * Scope context storage to a specific workspace.
+	 * Must be called before reading/writing brief context to ensure
+	 * workspace isolation. Safe to call multiple times.
+	 */
+	setProjectRoot(projectRoot: string): void {
+		this.contextStore.setProjectRoot(projectRoot);
 	}
 
 	/**

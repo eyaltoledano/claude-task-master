@@ -12,13 +12,21 @@
 import fs from 'fs';
 import path from 'path';
 import { getLogger } from '../../../common/logger/index.js';
+import { getWorkspaceContextPath } from '../../../common/utils/workspace-path.js';
 import { AuthenticationError, UserContext } from '../types.js';
 
-const DEFAULT_CONTEXT_FILE = path.join(
+const GLOBAL_CONTEXT_FILE = path.join(
 	process.env.HOME || process.env.USERPROFILE || '~',
 	'.taskmaster',
 	'context.json'
 );
+
+export interface ContextStoreOptions {
+	/** Project root for workspace-scoped context. If omitted, uses global path. */
+	projectRoot?: string;
+	/** Explicit context file path (overrides projectRoot). For testing. */
+	contextPath?: string;
+}
 
 export interface StoredContext {
 	userId?: string;
@@ -32,16 +40,30 @@ export class ContextStore {
 	private logger = getLogger('ContextStore');
 	private contextPath: string;
 
-	private constructor(contextPath: string = DEFAULT_CONTEXT_FILE) {
-		this.contextPath = contextPath;
+	private constructor(options: ContextStoreOptions = {}) {
+		if (options.contextPath) {
+			this.contextPath = options.contextPath;
+		} else if (options.projectRoot) {
+			this.contextPath = getWorkspaceContextPath(options.projectRoot);
+		} else {
+			this.contextPath = GLOBAL_CONTEXT_FILE;
+		}
 	}
 
 	/**
 	 * Get singleton instance
+	 *
+	 * @param options - Configuration options. projectRoot scopes context
+	 *   to a workspace directory (~/.taskmaster/{projectId}/context.json).
+	 *   Without projectRoot, falls back to global ~/.taskmaster/context.json.
 	 */
-	static getInstance(contextPath?: string): ContextStore {
+	static getInstance(options?: ContextStoreOptions | string): ContextStore {
+		// Backwards compat: accept a string as contextPath
+		const opts: ContextStoreOptions =
+			typeof options === 'string' ? { contextPath: options } : options ?? {};
+
 		if (!ContextStore.instance) {
-			ContextStore.instance = new ContextStore(contextPath);
+			ContextStore.instance = new ContextStore(opts);
 		}
 		return ContextStore.instance;
 	}
@@ -170,6 +192,21 @@ export class ContextStore {
 	 */
 	hasContext(): boolean {
 		return this.getContext() !== null;
+	}
+
+	/**
+	 * Scope context storage to a specific workspace.
+	 * Call this before any read/write to ensure context is workspace-isolated.
+	 * Safe to call multiple times — only updates if path actually changes.
+	 */
+	setProjectRoot(projectRoot: string): void {
+		const scopedPath = getWorkspaceContextPath(projectRoot);
+		if (this.contextPath !== scopedPath) {
+			this.logger.debug(
+				`Scoping context to workspace: ${scopedPath}`
+			);
+			this.contextPath = scopedPath;
+		}
 	}
 
 	/**

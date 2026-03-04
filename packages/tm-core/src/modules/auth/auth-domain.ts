@@ -39,8 +39,18 @@ export interface StorageDisplayInfo {
 export class AuthDomain {
 	private authManager: AuthManager;
 
-	constructor() {
-		this.authManager = AuthManager.getInstance();
+	constructor(projectRoot?: string) {
+		this.authManager = AuthManager.getInstance(
+			projectRoot ? { projectRoot } : undefined
+		);
+
+		// Always re-scope context to this project.
+		// AuthManager is a singleton — getInstance() ignores projectRoot if already
+		// initialized. setProjectRoot() ensures the ContextStore reads/writes from
+		// the correct workspace-scoped context file.
+		if (projectRoot) {
+			this.authManager.setProjectRoot(projectRoot);
+		}
 	}
 
 	// ========== Authentication ==========

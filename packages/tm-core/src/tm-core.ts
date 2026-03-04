@@ -180,7 +180,7 @@ export class TmCore {
 			}
 
 			// Initialize domain facades
-			this._auth = new AuthDomain();
+			this._auth = new AuthDomain(this._projectPath);
 			this._tasks = new TasksDomain(this._configManager, this._auth);
 			this._workflow = new WorkflowDomain(this._configManager);
 			this._git = new GitDomain(this._projectPath);
