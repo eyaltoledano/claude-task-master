@@ -20,6 +20,42 @@ export function getCurrentVersion(): string {
 }
 
 /**
+ * Compare pre-release identifiers per semver spec.
+ * Splits on '.' and compares each segment: numeric segments compare
+ * as integers (so rc.9 < rc.10), string segments compare lexicographically.
+ */
+function comparePrereleaseIdentifiers(a: string, b: string): number {
+	const aParts = a.split('.');
+	const bParts = b.split('.');
+	const len = Math.max(aParts.length, bParts.length);
+
+	for (let i = 0; i < len; i++) {
+		// Fewer fields = lower precedence (per semver spec)
+		if (i >= aParts.length) return -1;
+		if (i >= bParts.length) return 1;
+
+		const aNum = Number.parseInt(aParts[i], 10);
+		const bNum = Number.parseInt(bParts[i], 10);
+		const aIsNum = !Number.isNaN(aNum);
+		const bIsNum = !Number.isNaN(bNum);
+
+		// Numeric identifiers always have lower precedence than string identifiers
+		if (aIsNum && !bIsNum) return -1;
+		if (!aIsNum && bIsNum) return 1;
+
+		if (aIsNum && bIsNum) {
+			if (aNum !== bNum) return aNum < bNum ? -1 : 1;
+		} else {
+			if (aParts[i] !== bParts[i]) {
+				return aParts[i] < bParts[i] ? -1 : 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
  * Compare semantic versions with proper pre-release handling
  * @param v1 - First version
  * @param v2 - Second version
@@ -46,5 +82,5 @@ export function compareVersions(v1: string, v2: string): number {
 	if (a.pre && !b.pre) return -1; // prerelease < release
 	if (!a.pre && b.pre) return 1; // release > prerelease
 	if (a.pre === b.pre) return 0; // same or both empty
-	return a.pre < b.pre ? -1 : 1; // basic prerelease tie-break
+	return comparePrereleaseIdentifiers(a.pre, b.pre);
 }
