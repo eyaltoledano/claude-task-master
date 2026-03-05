@@ -64,12 +64,9 @@ function readCache(): UpdateCache | null {
  */
 export function clearUpdateCache(): void {
 	try {
-		const cachePath = getCachePath();
-		if (fs.existsSync(cachePath)) {
-			fs.unlinkSync(cachePath);
-		}
+		fs.unlinkSync(getCachePath());
 	} catch {
-		// Cache deletion failures are non-critical
+		// Cache deletion failures are non-critical (includes ENOENT)
 	}
 }
 
