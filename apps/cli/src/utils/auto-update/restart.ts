@@ -16,11 +16,17 @@ export function restartWithNewVersion(argv: string[]): void {
 
 	console.log(chalk.dim('Restarting with updated version...\n'));
 
-	// Spawn the updated task-master command
+	// Spawn the updated task-master command with auto-update disabled
+	// to prevent an infinite restart loop if the new binary still
+	// detects a version mismatch (e.g. PATH resolution, stale cache)
 	const child = spawn('task-master', args, {
-		stdio: 'inherit', // Inherit stdin/stdout/stderr so it looks seamless
+		stdio: 'inherit',
 		detached: false,
-		shell: process.platform === 'win32' // Windows compatibility
+		shell: process.platform === 'win32',
+		env: {
+			...process.env,
+			TASKMASTER_SKIP_AUTO_UPDATE: '1'
+		}
 	});
 
 	child.on('exit', (code, signal) => {

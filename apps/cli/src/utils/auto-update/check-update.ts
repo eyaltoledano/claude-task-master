@@ -58,6 +58,21 @@ function readCache(): UpdateCache | null {
 }
 
 /**
+ * Clear the update cache file.
+ * Called after a successful auto-update to prevent stale cache
+ * from triggering another update cycle on restart.
+ */
+export function clearUpdateCache(): void {
+	try {
+		fs.unlinkSync(getCachePath());
+	} catch (error: unknown) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			console.warn('Failed to clear update cache:', (error as Error).message);
+		}
+	}
+}
+
+/**
  * Write update info to cache
  */
 function writeCache(latestVersion: string, highlights?: string[]): void {
