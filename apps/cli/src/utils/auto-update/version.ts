@@ -64,7 +64,12 @@ function comparePrereleaseIdentifiers(a: string, b: string): number {
  */
 export function compareVersions(v1: string, v2: string): number {
 	const toParts = (v: string) => {
-		const [core, pre = ''] = v.split('-', 2);
+		// Strip build metadata (semver ignores it for precedence)
+		const withoutBuild = v.split('+')[0];
+		// Split on first '-' only — prerelease may contain inner hyphens
+		const dashIdx = withoutBuild.indexOf('-');
+		const core = dashIdx === -1 ? withoutBuild : withoutBuild.slice(0, dashIdx);
+		const pre = dashIdx === -1 ? '' : withoutBuild.slice(dashIdx + 1);
 		const nums = core.split('.').map((n) => Number.parseInt(n, 10) || 0);
 		return { nums, pre };
 	};

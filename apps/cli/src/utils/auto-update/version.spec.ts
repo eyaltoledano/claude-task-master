@@ -73,5 +73,17 @@ describe('compareVersions', () => {
 			// Numeric < string per semver spec
 			expect(compareVersions('1.0.0-1', '1.0.0-1a')).toBe(-1);
 		});
+
+		it('preserves inner hyphens in prerelease (e.g. rc-1 vs rc-2)', () => {
+			expect(compareVersions('1.0.0-rc-1', '1.0.0-rc-2')).toBe(-1);
+			expect(compareVersions('1.0.0-rc-2', '1.0.0-rc-1')).toBe(1);
+			expect(compareVersions('1.0.0-rc-1', '1.0.0-rc-1')).toBe(0);
+		});
+
+		it('ignores build metadata for precedence', () => {
+			expect(compareVersions('1.0.0+build1', '1.0.0+build2')).toBe(0);
+			expect(compareVersions('1.0.0-rc.1+build', '1.0.0-rc.1')).toBe(0);
+			expect(compareVersions('1.0.0+build', '1.0.1')).toBe(-1);
+		});
 	});
 });
