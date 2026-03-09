@@ -343,7 +343,9 @@ export async function performAutoUpdate(
 
 	if (!tarballInfo) {
 		// Fall back to direct npm install if we can't get tarball info
-		return performDirectNpmInstall(latestVersion);
+		const success = await performDirectNpmInstall(latestVersion);
+		if (success) clearUpdateCache();
+		return success;
 	}
 
 	// Create temp directory for tarball
@@ -360,7 +362,9 @@ export async function performAutoUpdate(
 	if (!downloadSuccess) {
 		// Fall back to direct npm install on download failure
 		console.log(chalk.dim('Falling back to npm install...'));
-		return performDirectNpmInstall(latestVersion);
+		const success = await performDirectNpmInstall(latestVersion);
+		if (success) clearUpdateCache();
+		return success;
 	}
 
 	// Install from tarball

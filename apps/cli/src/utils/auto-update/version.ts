@@ -28,22 +28,23 @@ function comparePrereleaseIdentifiers(a: string, b: string): number {
 	const aParts = a.split('.');
 	const bParts = b.split('.');
 	const len = Math.max(aParts.length, bParts.length);
+	const isAllDigits = (v: string): boolean => /^\d+$/.test(v);
 
 	for (let i = 0; i < len; i++) {
 		// Fewer fields = lower precedence (per semver spec)
 		if (i >= aParts.length) return -1;
 		if (i >= bParts.length) return 1;
 
-		const aNum = Number.parseInt(aParts[i], 10);
-		const bNum = Number.parseInt(bParts[i], 10);
-		const aIsNum = !Number.isNaN(aNum);
-		const bIsNum = !Number.isNaN(bNum);
+		const aIsNum = isAllDigits(aParts[i]);
+		const bIsNum = isAllDigits(bParts[i]);
 
 		// Numeric identifiers always have lower precedence than string identifiers
 		if (aIsNum && !bIsNum) return -1;
 		if (!aIsNum && bIsNum) return 1;
 
 		if (aIsNum && bIsNum) {
+			const aNum = Number(aParts[i]);
+			const bNum = Number(bParts[i]);
 			if (aNum !== bNum) return aNum < bNum ? -1 : 1;
 		} else {
 			if (aParts[i] !== bParts[i]) {

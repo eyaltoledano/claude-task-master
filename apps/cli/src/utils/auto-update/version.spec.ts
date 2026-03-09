@@ -65,5 +65,13 @@ describe('compareVersions', () => {
 			expect(compareVersions('1.0.0-rc', '1.0.0-rc.1')).toBe(-1);
 			expect(compareVersions('1.0.0-rc.1', '1.0.0-rc')).toBe(1);
 		});
+
+		it('treats mixed alphanumeric identifiers as strings, not numbers', () => {
+			// "1a" should be string-compared, not parsed as numeric 1
+			expect(compareVersions('1.0.0-1a', '1.0.0-1b')).toBe(-1);
+			expect(compareVersions('1.0.0-1b', '1.0.0-1a')).toBe(1);
+			// Numeric < string per semver spec
+			expect(compareVersions('1.0.0-1', '1.0.0-1a')).toBe(-1);
+		});
 	});
 });

@@ -65,8 +65,10 @@ function readCache(): UpdateCache | null {
 export function clearUpdateCache(): void {
 	try {
 		fs.unlinkSync(getCachePath());
-	} catch {
-		// Cache deletion failures are non-critical (includes ENOENT)
+	} catch (error: unknown) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			console.warn('Failed to clear update cache:', (error as Error).message);
+		}
 	}
 }
 
