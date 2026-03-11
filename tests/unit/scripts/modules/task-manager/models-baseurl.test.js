@@ -54,6 +54,7 @@ jest.unstable_mockModule('@tm/core', () => ({
 		CLAUDE_CODE: 'claude-code',
 		AZURE: 'azure',
 		VERTEX: 'vertex',
+		VERTEX_ANTHROPIC: 'vertex-anthropic',
 		GEMINI_CLI: 'gemini-cli',
 		CODEX_CLI: 'codex-cli',
 		OPENAI_COMPATIBLE: 'openai-compatible'

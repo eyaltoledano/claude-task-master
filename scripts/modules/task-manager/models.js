@@ -583,6 +583,11 @@ async function setModel(role, modelId, options = {}) {
 					determinedProvider = CUSTOM_PROVIDERS.VERTEX;
 					warningMessage = `Warning: Custom Vertex AI model '${modelId}' set. Please ensure the model is valid and accessible in your Google Cloud project.`;
 					report('warn', warningMessage);
+				} else if (providerHint === CUSTOM_PROVIDERS.VERTEX_ANTHROPIC) {
+					// Set provider without model validation since Vertex Anthropic models are managed by Google Cloud
+					determinedProvider = CUSTOM_PROVIDERS.VERTEX_ANTHROPIC;
+					warningMessage = `Warning: Custom Vertex AI Anthropic model '${modelId}' set. Please ensure the model is valid and accessible in your Google Cloud project.`;
+					report('warn', warningMessage);
 				} else if (providerHint === CUSTOM_PROVIDERS.GEMINI_CLI) {
 					// Gemini CLI provider - check if model exists in our list
 					determinedProvider = CUSTOM_PROVIDERS.GEMINI_CLI;
