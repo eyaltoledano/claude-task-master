@@ -46,6 +46,7 @@ import {
 	GroqProvider,
 	LMStudioProvider,
 	OllamaAIProvider,
+	MiniMaxProvider,
 	OpenAICompatibleProvider,
 	OpenAIProvider,
 	OpenRouterAIProvider,
@@ -72,6 +73,7 @@ const PROVIDERS = {
 	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
+	minimax: new MiniMaxProvider(),
 	'openai-compatible': new OpenAICompatibleProvider({
 		name: 'OpenAI Compatible',
 		apiKeyEnvVar: 'OPENAI_COMPATIBLE_API_KEY',
