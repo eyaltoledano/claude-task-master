@@ -51,7 +51,8 @@ export interface AuthGuardResult {
  *
  * @example
  * ```typescript
- * const result = await ensureAuthenticated({
+ * const authDomain = tmCore.auth; // or new AuthDomain(projectRoot)
+ * const result = await ensureAuthenticated(authDomain, {
  *   actionName: 'export tasks'
  * });
  *
