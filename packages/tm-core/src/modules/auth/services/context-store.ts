@@ -76,6 +76,23 @@ export class ContextStore {
 	}
 
 	/**
+	 * Atomically write data to the context file.
+	 * Ensures directory exists and uses temp-file + rename for crash safety.
+	 */
+	private writeContextFile(data: StoredContext): void {
+		const dir = path.dirname(this.contextPath);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+		}
+
+		const tempFile = `${this.contextPath}.tmp`;
+		fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), {
+			mode: 0o600
+		});
+		fs.renameSync(tempFile, this.contextPath);
+	}
+
+	/**
 	 * Get stored context
 	 */
 	getContext(): StoredContext | null {
@@ -94,33 +111,17 @@ export class ContextStore {
 	}
 
 	/**
-	 * Save context
+	 * Save context (merges with existing data on disk)
 	 */
 	saveContext(context: Partial<StoredContext>): void {
 		try {
-			// Load existing context
 			const existing = this.getContext() || {};
-
-			// Merge with new data
 			const updated: StoredContext = {
 				...existing,
 				...context,
 				lastUpdated: new Date().toISOString()
 			};
-
-			// Ensure directory exists
-			const dir = path.dirname(this.contextPath);
-			if (!fs.existsSync(dir)) {
-				fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-			}
-
-			// Write atomically
-			const tempFile = `${this.contextPath}.tmp`;
-			fs.writeFileSync(tempFile, JSON.stringify(updated, null, 2), {
-				mode: 0o600
-			});
-			fs.renameSync(tempFile, this.contextPath);
-
+			this.writeContextFile(updated);
 			this.logger.debug('Saved context to disk');
 		} catch (error) {
 			throw new AuthenticationError(
@@ -159,13 +160,20 @@ export class ContextStore {
 	}
 
 	/**
-	 * Clear user context
+	 * Clear user context (org/brief selection)
+	 *
+	 * Writes directly via writeContextFile instead of saveContext(),
+	 * which re-merges with existing data and would restore selectedContext.
 	 */
 	clearUserContext(): void {
 		const existing = this.getContext();
 		if (existing) {
 			const { selectedContext, ...rest } = existing;
-			this.saveContext(rest);
+			this.writeContextFile({
+				...rest,
+				lastUpdated: new Date().toISOString()
+			} as StoredContext);
+			this.logger.debug('Cleared user context from disk');
 		}
 	}
 

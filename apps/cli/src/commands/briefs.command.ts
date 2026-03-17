@@ -668,6 +668,13 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	}
 
 	/**
+	 * Clean up resources
+	 */
+	async cleanup(): Promise<void> {
+		await this.tmCore?.close();
+	}
+
+	/**
 	 * Register this command on an existing program
 	 */
 	static register(program: Command, name?: string): BriefsCommand {
