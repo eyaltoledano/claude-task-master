@@ -231,6 +231,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => null),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
+	VertexAnthropicProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => null),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
 	ClaudeCodeProvider: jest.fn(() => mockClaudeProvider),
 	GeminiCliProvider: jest.fn(() => ({
 		generateText: jest.fn(),
