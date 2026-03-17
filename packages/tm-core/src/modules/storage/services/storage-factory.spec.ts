@@ -80,14 +80,13 @@ describe('StorageFactory', () => {
 	});
 
 	describe('auto storage type - solo mode detection (HAM-1167)', () => {
-		it('should use file storage when local task files exist, even with valid global session', async () => {
-			// Simulate: user logged into Hamster in another repo (global session exists)
+		it('should use file storage when local task files exist and no brief is selected', async () => {
+			// Simulate: user logged in but no brief selected for this workspace
 			mockHasValidSession.mockResolvedValue(true);
-			mockGetAccessToken.mockResolvedValue('token-from-other-repo');
+			mockGetAccessToken.mockResolvedValue('some-token');
 			mockGetContext.mockReturnValue({
-				briefId: 'brief-from-other-repo',
-				briefName: 'Other Brief',
-				orgSlug: 'other-org'
+				orgId: 'some-org'
+				// No briefId — user hasn't selected a brief
 			});
 
 			// Simulate: current project has local task files (solo mode)
@@ -96,11 +95,30 @@ describe('StorageFactory', () => {
 			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
 			await StorageFactory.create(config, '/solo/project');
 
-			// Should use FileStorage, NOT ApiStorage
+			// Should use FileStorage because no brief is selected
 			expect(FileStorage).toHaveBeenCalled();
 			expect(ApiStorage).not.toHaveBeenCalled();
-			// Should NOT have checked the session at all
-			expect(mockHasValidSession).not.toHaveBeenCalled();
+		});
+
+		it('should use API storage when local task files exist but brief is explicitly selected', async () => {
+			// Simulate: user has selected a brief for this workspace
+			mockHasValidSession.mockResolvedValue(true);
+			mockGetAccessToken.mockResolvedValue('valid-token');
+			mockGetContext.mockReturnValue({
+				briefId: 'my-brief',
+				briefName: 'My Brief',
+				orgSlug: 'my-org'
+			});
+
+			// Simulate: current project also has local task files
+			vi.mocked(fsSync.existsSync).mockReturnValue(true);
+
+			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
+			await StorageFactory.create(config, '/solo/project');
+
+			// Should use ApiStorage because brief is explicitly selected
+			expect(ApiStorage).toHaveBeenCalled();
+			expect(FileStorage).not.toHaveBeenCalled();
 		});
 
 		it('should use API storage when no local task files and valid session with brief', async () => {

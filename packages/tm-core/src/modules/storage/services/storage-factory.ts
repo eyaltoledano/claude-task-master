@@ -4,6 +4,7 @@
 
 import fsSync from 'node:fs';
 import path from 'node:path';
+import { TASKMASTER_TASKS_FILE } from '../../../common/constants/paths.js';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -108,7 +109,7 @@ export class StorageFactory {
 				logger.info('☁️  Using API storage');
 				return StorageFactory.createApiStorage(config);
 
-			case 'auto':
+			case 'auto': {
 				// Auto-detect based on authentication status
 				const authManager = AuthManager.getInstance();
 
@@ -118,9 +119,38 @@ export class StorageFactory {
 					return StorageFactory.createApiStorage(config);
 				}
 
-				// If local task files exist, this project was initialized for
-				// local/file storage (solo mode). Don't auto-escalate to API
-				// storage based on global auth state from another project.
+				// Check if authenticated with a brief explicitly selected
+				// for this workspace. If so, the user intentionally chose
+				// API storage — honor that even if local task files exist.
+				const hasSession = await authManager.hasValidSession();
+				if (hasSession) {
+					const context = authManager.getContext();
+
+					if (context?.briefId) {
+						const accessToken = await authManager.getAccessToken();
+						if (accessToken) {
+							const nextStorage: StorageSettings = {
+								...(config.storage as StorageSettings),
+								type: 'api',
+								apiAccessToken: accessToken,
+								apiEndpoint:
+									config.storage?.apiEndpoint ||
+									process.env.TM_BASE_DOMAIN ||
+									process.env.TM_PUBLIC_BASE_DOMAIN ||
+									'https://tryhamster.com/api'
+							};
+							config.storage = nextStorage;
+							logger.info(
+								'☁️  Using API storage (brief selected)'
+							);
+							return StorageFactory.createApiStorage(config);
+						}
+					}
+				}
+
+				// No brief selected — if local task files exist, this project
+				// was initialized for local/file storage (solo mode). Don't
+				// auto-escalate to API storage based on global auth state.
 				if (StorageFactory.hasLocalTaskFiles(projectPath)) {
 					logger.debug(
 						'📁 Local task files found, using file storage (solo mode)'
@@ -128,41 +158,17 @@ export class StorageFactory {
 					return StorageFactory.createFileStorage(projectPath, config);
 				}
 
-				// Then check if authenticated via Supabase
-				const hasSession = await authManager.hasValidSession();
+				// Authenticated but no brief selected
 				if (hasSession) {
-					const accessToken = await authManager.getAccessToken();
-					const context = authManager.getContext();
-
-					// Validate we have the necessary context for API storage
-					if (!context?.briefId) {
-						logger.debug(
-							'📁 User authenticated but no brief selected, using file storage'
-						);
-						return StorageFactory.createFileStorage(projectPath, config);
-					}
-
-					if (accessToken) {
-						// Configure API storage with Supabase session token
-						const nextStorage: StorageSettings = {
-							...(config.storage as StorageSettings),
-							type: 'api',
-							apiAccessToken: accessToken,
-							apiEndpoint:
-								config.storage?.apiEndpoint ||
-								process.env.TM_BASE_DOMAIN ||
-								process.env.TM_PUBLIC_BASE_DOMAIN ||
-								'https://tryhamster.com/api'
-						};
-						config.storage = nextStorage;
-						logger.info('☁️  Using API storage (authenticated)');
-						return StorageFactory.createApiStorage(config);
-					}
+					logger.debug(
+						'📁 User authenticated but no brief selected, using file storage'
+					);
 				}
 
 				// Default to file storage
 				logger.debug('📁 Using local file storage');
 				return StorageFactory.createFileStorage(projectPath, config);
+			}
 
 			default:
 				throw new TaskMasterError(
@@ -267,12 +273,7 @@ export class StorageFactory {
 	 * and should not auto-escalate to API storage based on global auth state.
 	 */
 	static hasLocalTaskFiles(projectPath: string): boolean {
-		const tasksJsonPath = path.join(
-			projectPath,
-			'.taskmaster',
-			'tasks',
-			'tasks.json'
-		);
+		const tasksJsonPath = path.join(projectPath, TASKMASTER_TASKS_FILE);
 		return fsSync.existsSync(tasksJsonPath);
 	}
 
