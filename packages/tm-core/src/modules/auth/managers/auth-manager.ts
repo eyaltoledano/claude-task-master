@@ -7,7 +7,6 @@ import {
 	ERROR_CODES,
 	TaskMasterError
 } from '../../../common/errors/task-master-error.js';
-import { getLogger } from '../../../common/logger/index.js';
 import type { Brief } from '../../briefs/types.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { ContextStore } from '../services/context-store.js';
@@ -33,7 +32,6 @@ import {
  */
 export class AuthManager {
 	private static instance: AuthManager | null = null;
-	private static readonly staticLogger = getLogger('AuthManager');
 	private contextStore: ContextStore;
 	private oauthService: OAuthService;
 	private sessionManager: SessionManager;
@@ -69,11 +67,10 @@ export class AuthManager {
 	): AuthManager {
 		if (!AuthManager.instance) {
 			AuthManager.instance = new AuthManager(config);
-		} else if (config) {
-			// Warn if config is provided after initialization
-			AuthManager.staticLogger.warn(
-				'getInstance called with config after initialization; config is ignored.'
-			);
+		} else if (config?.projectRoot) {
+			// Rescope to the requested workspace so context reads/writes
+			// target the correct per-project directory.
+			AuthManager.instance.setProjectRoot(config.projectRoot);
 		}
 		return AuthManager.instance;
 	}

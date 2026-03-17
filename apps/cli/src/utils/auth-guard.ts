@@ -87,7 +87,7 @@ export async function ensureAuthenticated(
 
 		if (!orgResult.success) {
 			return {
-				authenticated: true,
+				authenticated: false,
 				error: orgResult.message || 'Organization selection required'
 			};
 		}
@@ -141,7 +141,7 @@ export async function ensureAuthenticated(
 
 		if (!orgResult.success) {
 			return {
-				authenticated: true, // Auth succeeded, but org selection failed
+				authenticated: false,
 				credentials,
 				error: orgResult.message || 'Organization selection required'
 			};

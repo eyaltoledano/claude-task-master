@@ -5,6 +5,7 @@
  */
 
 import fsSync from 'node:fs';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockHasValidSession, mockGetAccessToken, mockGetContext } = vi.hoisted(
@@ -68,7 +69,7 @@ describe('StorageFactory', () => {
 
 			expect(StorageFactory.hasLocalTaskFiles('/my/project')).toBe(true);
 			expect(fsSync.existsSync).toHaveBeenCalledWith(
-				expect.stringContaining('.taskmaster/tasks/tasks.json')
+				expect.stringContaining(path.join('.taskmaster', 'tasks', 'tasks.json'))
 			);
 		});
 

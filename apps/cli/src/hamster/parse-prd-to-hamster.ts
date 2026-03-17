@@ -214,14 +214,26 @@ export async function parsePrdToHamster(
 		showInviteUrl(result.brief.url);
 
 		// 8. Set context to the new brief
-		await setContextToBrief(taskMasterCore, result.brief.url);
-
-		console.log(
-			chalk.green('  ✓ ') +
-				chalk.white('Context set to new brief. Run ') +
-				chalk.cyan('tm list') +
-				chalk.white(' to see your tasks.')
+		const contextSet = await setContextToBrief(
+			taskMasterCore,
+			result.brief.url
 		);
+
+		if (contextSet) {
+			console.log(
+				chalk.green('  ✓ ') +
+					chalk.white('Context set to new brief. Run ') +
+					chalk.cyan('tm list') +
+					chalk.white(' to see your tasks.')
+			);
+		} else {
+			console.log(
+				chalk.yellow('  ⚠ ') +
+					chalk.white('Could not auto-set context. Run ') +
+					chalk.cyan(`tm context ${result.brief.url}`) +
+					chalk.white(' to set it manually.')
+			);
+		}
 		console.log('');
 
 		return {
@@ -316,11 +328,12 @@ function showInviteUrl(briefUrl: string): void {
 async function setContextToBrief(
 	core: TmCore,
 	briefUrl: string
-): Promise<void> {
+): Promise<boolean> {
 	try {
-		await selectBriefFromInput(core.auth, briefUrl, core);
+		const result = await selectBriefFromInput(core.auth, briefUrl, core);
+		return result.success;
 	} catch {
-		// Silently fail - context setting is nice-to-have
+		return false;
 	}
 }
 

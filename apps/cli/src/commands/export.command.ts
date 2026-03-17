@@ -154,9 +154,6 @@ export class ExportCommand extends Command {
 				return;
 			}
 
-			// Initialize services
-			await this.initializeServices();
-
 			// Check if a brief is already in context (meaning we're working with remote tasks)
 			const context = this.taskMasterCore!.auth.getContext();
 			if (context?.briefId) {

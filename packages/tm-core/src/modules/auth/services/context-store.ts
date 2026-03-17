@@ -9,6 +9,7 @@
  * Stored at: ~/.taskmaster/context.json
  */
 
+import crypto from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import { getLogger } from '../../../common/logger/index.js';
@@ -36,7 +37,7 @@ export interface StoredContext {
 }
 
 export class ContextStore {
-	private static instance: ContextStore | null = null;
+	private static instances = new Map<string, ContextStore>();
 	private logger = getLogger('ContextStore');
 	private contextPath: string;
 
@@ -51,7 +52,9 @@ export class ContextStore {
 	}
 
 	/**
-	 * Get singleton instance
+	 * Get a ContextStore instance scoped to the resolved contextPath.
+	 * Returns the same instance for the same path, preventing
+	 * cross-workspace state leaks.
 	 *
 	 * @param options - Configuration options. projectRoot scopes context
 	 *   to a workspace directory (~/.taskmaster/{projectId}/context.json).
@@ -62,17 +65,28 @@ export class ContextStore {
 		const opts: ContextStoreOptions =
 			typeof options === 'string' ? { contextPath: options } : (options ?? {});
 
-		if (!ContextStore.instance) {
-			ContextStore.instance = new ContextStore(opts);
+		// Resolve the path so we can use it as a map key
+		const resolvedPath = opts.contextPath
+			? opts.contextPath
+			: opts.projectRoot
+				? getWorkspaceContextPath(opts.projectRoot)
+				: GLOBAL_CONTEXT_FILE;
+
+		const existing = ContextStore.instances.get(resolvedPath);
+		if (existing) {
+			return existing;
 		}
-		return ContextStore.instance;
+
+		const instance = new ContextStore(opts);
+		ContextStore.instances.set(resolvedPath, instance);
+		return instance;
 	}
 
 	/**
-	 * Reset singleton (for testing)
+	 * Reset all instances (for testing)
 	 */
 	static resetInstance(): void {
-		ContextStore.instance = null;
+		ContextStore.instances.clear();
 	}
 
 	/**
@@ -85,7 +99,8 @@ export class ContextStore {
 			fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 		}
 
-		const tempFile = `${this.contextPath}.tmp`;
+		const suffix = `${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+		const tempFile = `${this.contextPath}.${suffix}.tmp`;
 		fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), {
 			mode: 0o600
 		});
@@ -204,14 +219,18 @@ export class ContextStore {
 
 	/**
 	 * Scope context storage to a specific workspace.
-	 * Call this before any read/write to ensure context is workspace-isolated.
+	 * Updates contextPath and re-registers this instance in the instance map.
 	 * Safe to call multiple times — only updates if path actually changes.
 	 */
 	setProjectRoot(projectRoot: string): void {
 		const scopedPath = getWorkspaceContextPath(projectRoot);
 		if (this.contextPath !== scopedPath) {
+			// Remove old key from the instance map
+			ContextStore.instances.delete(this.contextPath);
 			this.logger.debug(`Scoping context to workspace: ${scopedPath}`);
 			this.contextPath = scopedPath;
+			// Re-register under the new key
+			ContextStore.instances.set(scopedPath, this);
 		}
 	}
 
