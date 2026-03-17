@@ -54,8 +54,20 @@ export async function parsePrdToHamster(
 	let taskMasterCore: TmCore | undefined;
 
 	try {
-		// 1. Ensure user is authenticated
-		const authResult = await ensureAuthenticated({
+		// 1. Initialize TmCore first (doesn't require auth)
+		const projectRoot = getProjectRoot();
+		if (!projectRoot) {
+			return {
+				success: false,
+				action: 'error',
+				message: 'Could not find project root'
+			};
+		}
+
+		taskMasterCore = await createTmCore({ projectPath: projectRoot });
+
+		// 2. Ensure user is authenticated
+		const authResult = await ensureAuthenticated(taskMasterCore.auth, {
 			actionName: 'create a brief from your PRD'
 		});
 
@@ -73,18 +85,6 @@ export async function parsePrdToHamster(
 				message: 'Authentication required'
 			};
 		}
-
-		// 2. Initialize TmCore
-		const projectRoot = getProjectRoot();
-		if (!projectRoot) {
-			return {
-				success: false,
-				action: 'error',
-				message: 'Could not find project root'
-			};
-		}
-
-		taskMasterCore = await createTmCore({ projectPath: projectRoot });
 
 		// 3. Read PRD file content
 		const prdPath = path.isAbsolute(options.prdPath)
@@ -214,14 +214,26 @@ export async function parsePrdToHamster(
 		showInviteUrl(result.brief.url);
 
 		// 8. Set context to the new brief
-		await setContextToBrief(taskMasterCore, result.brief.url);
-
-		console.log(
-			chalk.green('  ✓ ') +
-				chalk.white('Context set to new brief. Run ') +
-				chalk.cyan('tm list') +
-				chalk.white(' to see your tasks.')
+		const contextSet = await setContextToBrief(
+			taskMasterCore,
+			result.brief.url
 		);
+
+		if (contextSet) {
+			console.log(
+				chalk.green('  ✓ ') +
+					chalk.white('Context set to new brief. Run ') +
+					chalk.cyan('tm list') +
+					chalk.white(' to see your tasks.')
+			);
+		} else {
+			console.log(
+				chalk.yellow('  ⚠ ') +
+					chalk.white('Could not auto-set context. Run ') +
+					chalk.cyan(`tm context ${result.brief.url}`) +
+					chalk.white(' to set it manually.')
+			);
+		}
 		console.log('');
 
 		return {
@@ -316,14 +328,12 @@ function showInviteUrl(briefUrl: string): void {
 async function setContextToBrief(
 	core: TmCore,
 	briefUrl: string
-): Promise<void> {
+): Promise<boolean> {
 	try {
-		const authManager = (core.auth as any).authManager;
-		if (!authManager) return;
-
-		await selectBriefFromInput(authManager, briefUrl, core);
+		const result = await selectBriefFromInput(core.auth, briefUrl, core);
+		return result.success;
 	} catch {
-		// Silently fail - context setting is nice-to-have
+		return false;
 	}
 }
 

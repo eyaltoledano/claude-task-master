@@ -2,7 +2,7 @@
  * @fileoverview Authentication helpers for CLI commands
  */
 
-import type { AuthManager } from '@tm/core';
+import type { AuthDomain } from '@tm/core';
 import { displayCardBox } from '../ui/components/cardBox.component.js';
 
 /**
@@ -21,13 +21,13 @@ export interface CheckAuthOptions {
  * Check if user is authenticated and display a friendly card box if not.
  * Used by commands that require Hamster authentication (briefs, context, etc.)
  *
- * @param authManager - AuthManager instance
+ * @param authDomain - AuthDomain instance
  * @param options - Optional customization for the authentication prompt
  * @returns true if authenticated, false if not
  *
  * @example
  * ```typescript
- * const isAuthenticated = await checkAuthentication(authManager, {
+ * const isAuthenticated = await checkAuthentication(authDomain, {
  *   message: 'The "briefs" command requires you to be logged in to your Hamster account.',
  *   footer: 'Working locally instead?\n  → Use "tm tags" for local tag management.'
  * });
@@ -38,10 +38,10 @@ export interface CheckAuthOptions {
  * ```
  */
 export async function checkAuthentication(
-	authManager: AuthManager,
+	authDomain: AuthDomain,
 	options: CheckAuthOptions = {}
 ): Promise<boolean> {
-	const hasSession = await authManager.hasValidSession();
+	const hasSession = await authDomain.hasValidSession();
 
 	if (!hasSession) {
 		const {
