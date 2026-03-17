@@ -9,7 +9,7 @@
  * After successful authentication, ensures org selection is completed.
  */
 
-import { type AuthCredentials, AuthDomain, AuthManager } from '@tm/core';
+import { type AuthCredentials, AuthDomain } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { authenticateWithBrowserMFA } from './auth-ui.js';
@@ -67,25 +67,23 @@ export interface AuthGuardResult {
  * ```
  */
 export async function ensureAuthenticated(
+	authDomain: AuthDomain,
 	options: AuthGuardOptions = {}
 ): Promise<AuthGuardResult> {
-	const authDomain = new AuthDomain();
 
 	// Check if already authenticated
 	const hasSession = await authDomain.hasValidSession();
 	if (hasSession) {
-		// Only get AuthManager when we need to check org selection
-		const authManager = AuthManager.getInstance();
 
 		// Check if org is already selected (quick check before any API calls)
-		const context = authManager.getContext();
+		const context = authDomain.getContext();
 		if (context?.orgId) {
 			// Org already selected, return immediately without further API calls
 			return { authenticated: true };
 		}
 
 		// Org not selected, need to prompt
-		const orgResult = await ensureOrgSelected(authManager, {
+		const orgResult = await ensureOrgSelected(authDomain, {
 			promptMessage: 'Select an organization to continue:'
 		});
 
@@ -139,8 +137,7 @@ export async function ensureAuthenticated(
 
 		// After successful authentication, ensure org is selected
 		// This is REQUIRED for all Hamster operations
-		const authManager = AuthManager.getInstance();
-		const orgResult = await ensureOrgSelected(authManager, {
+		const orgResult = await ensureOrgSelected(authDomain, {
 			promptMessage: 'Select an organization to continue:'
 		});
 
@@ -182,11 +179,12 @@ export async function ensureAuthenticated(
  * ```
  */
 export function withAuth<T extends (...args: any[]) => Promise<void>>(
+	authDomain: AuthDomain,
 	action: T,
 	options: AuthGuardOptions = {}
 ): T {
 	return (async (...args: Parameters<T>) => {
-		const result = await ensureAuthenticated(options);
+		const result = await ensureAuthenticated(authDomain, options);
 
 		if (!result.authenticated) {
 			if (result.cancelled) {

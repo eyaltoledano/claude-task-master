@@ -6,7 +6,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
-	AuthManager,
 	FileStorage,
 	type GenerateBriefResult,
 	type InvitationResult,
@@ -136,10 +135,14 @@ export class ExportCommand extends Command {
 	 */
 	private async executeExport(options?: any): Promise<void> {
 		try {
+			// Initialize TmCore first (doesn't require auth)
+			await this.initializeServices();
+
 			// Ensure user is authenticated (will prompt and trigger OAuth if not)
-			const authResult = await ensureAuthenticated({
-				actionName: 'export tasks to Hamster'
-			});
+			const authResult = await ensureAuthenticated(
+				this.taskMasterCore!.auth,
+				{ actionName: 'export tasks to Hamster' }
+			);
 
 			if (!authResult.authenticated) {
 				if (authResult.cancelled) {
@@ -338,8 +341,7 @@ export class ExportCommand extends Command {
 
 			// Force org selection after tag selection
 			// User can choose which org to export to, with current org pre-selected
-			const authManager = AuthManager.getInstance();
-			const orgResult = await ensureOrgSelected(authManager, {
+			const orgResult = await ensureOrgSelected(this.taskMasterCore!.auth, {
 				promptMessage: 'Select an organization to export to:',
 				forceSelection: true
 			});
@@ -991,13 +993,10 @@ export class ExportCommand extends Command {
 		try {
 			if (!this.taskMasterCore) return;
 
-			// Get AuthManager singleton
-			const authManager = AuthManager.getInstance();
-
 			// Use the selectBriefFromInput utility which properly resolves
 			// the brief and sets all context fields (org, brief details, etc.)
 			const result = await selectBriefFromInput(
-				authManager,
+				this.taskMasterCore!.auth,
 				briefUrl,
 				this.taskMasterCore
 			);

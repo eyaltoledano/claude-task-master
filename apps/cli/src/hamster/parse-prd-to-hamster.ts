@@ -54,10 +54,23 @@ export async function parsePrdToHamster(
 	let taskMasterCore: TmCore | undefined;
 
 	try {
-		// 1. Ensure user is authenticated
-		const authResult = await ensureAuthenticated({
-			actionName: 'create a brief from your PRD'
-		});
+		// 1. Initialize TmCore first (doesn't require auth)
+		const projectRoot = getProjectRoot();
+		if (!projectRoot) {
+			return {
+				success: false,
+				action: 'error',
+				message: 'Could not find project root'
+			};
+		}
+
+		taskMasterCore = await createTmCore({ projectPath: projectRoot });
+
+		// 2. Ensure user is authenticated
+		const authResult = await ensureAuthenticated(
+			taskMasterCore.auth,
+			{ actionName: 'create a brief from your PRD' }
+		);
 
 		if (!authResult.authenticated) {
 			if (authResult.cancelled) {
@@ -73,18 +86,6 @@ export async function parsePrdToHamster(
 				message: 'Authentication required'
 			};
 		}
-
-		// 2. Initialize TmCore
-		const projectRoot = getProjectRoot();
-		if (!projectRoot) {
-			return {
-				success: false,
-				action: 'error',
-				message: 'Could not find project root'
-			};
-		}
-
-		taskMasterCore = await createTmCore({ projectPath: projectRoot });
 
 		// 3. Read PRD file content
 		const prdPath = path.isAbsolute(options.prdPath)
@@ -318,10 +319,7 @@ async function setContextToBrief(
 	briefUrl: string
 ): Promise<void> {
 	try {
-		const authManager = (core.auth as any).authManager;
-		if (!authManager) return;
-
-		await selectBriefFromInput(authManager, briefUrl, core);
+		await selectBriefFromInput(core.auth, briefUrl, core);
 	} catch {
 		// Silently fail - context setting is nice-to-have
 	}
