@@ -20,6 +20,14 @@ describe('MiniMaxProvider', () => {
 			expect(provider.defaultBaseURL).toBe('https://api.minimax.io/v1');
 		});
 
+		it('should require an API key', () => {
+			expect(provider.requiresApiKey).toBe(true);
+		});
+
+		it('should enable structured outputs', () => {
+			expect(provider.supportsStructuredOutputs).toBe(true);
+		});
+
 		it('should inherit from OpenAICompatibleProvider', () => {
 			expect(provider).toHaveProperty('generateText');
 			expect(provider).toHaveProperty('streamText');
@@ -53,6 +61,25 @@ describe('MiniMaxProvider', () => {
 			};
 			const client = provider.getClient(params);
 			expect(client).toBeDefined();
+		});
+
+		it('should create client even without API key (validation deferred to SDK)', () => {
+			const client = provider.getClient({});
+			expect(typeof client).toBe('function');
+		});
+	});
+
+	describe('validateAuth', () => {
+		it('should throw when API key is missing', () => {
+			expect(() => {
+				provider.validateAuth({});
+			}).toThrow('MiniMax API key is required');
+		});
+
+		it('should pass with valid API key', () => {
+			expect(() => {
+				provider.validateAuth({ apiKey: 'test-key' });
+			}).not.toThrow();
 		});
 	});
 });
