@@ -54,6 +54,8 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | xai         | grok-4                                         | —         | 3          | 15          |
+| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 | groq        | moonshotai/kimi-k2-instruct                    | 0.66      | 1          | 3           |
 | groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
 | groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |
@@ -150,6 +152,8 @@
 | xai         | grok-3                                       | —         | 3          | 15          |
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
 | xai         | grok-4                                       | —         | 3          | 15          |
+| minimax     | MiniMax-M2.5                                 | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                       | —         | 1          | 5.5         |
 | groq        | llama-3.3-70b-versatile                      | 0.55      | 0.59       | 0.79        |
 | groq        | llama-4-scout                                | 0.45      | 0.11       | 0.34        |
 | groq        | llama-4-maverick                             | 0.52      | 0.5        | 0.77        |
@@ -220,6 +224,8 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | xai         | grok-4                                         | —         | 3          | 15          |
+| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 | groq        | moonshotai/kimi-k2-instruct                    | 0.66      | 1          | 3           |
 | groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
 | groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |

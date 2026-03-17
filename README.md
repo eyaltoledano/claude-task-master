@@ -86,6 +86,7 @@ At least one (1) of the following is required:
 - Google Gemini API key
 - Perplexity API key (for research model)
 - xAI API Key (for research or main model)
+- MiniMax API Key (for main, research, or fallback model)
 - OpenRouter API Key (for research or main model)
 - Claude Code (no API key required - requires Claude Code CLI)
 - Codex CLI (OAuth via ChatGPT subscription - requires Codex CLI)
@@ -129,7 +130,8 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE",
+        "MINIMAX_API_KEY": "YOUR_MINIMAX_KEY_HERE"
       }
     }
   }
@@ -159,7 +161,8 @@ MCP (Model Control Protocol) lets you run Task Master directly from your editor.
         "OPENROUTER_API_KEY": "YOUR_OPENROUTER_KEY_HERE",
         "XAI_API_KEY": "YOUR_XAI_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
-        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
+        "OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE",
+        "MINIMAX_API_KEY": "YOUR_MINIMAX_KEY_HERE"
       },
       "type": "stdio"
     }
