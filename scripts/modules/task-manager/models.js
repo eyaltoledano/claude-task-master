@@ -698,7 +698,7 @@ async function setModel(role, modelId, options = {}) {
 					success: false,
 					error: {
 						code: 'MODEL_NOT_FOUND_NO_HINT',
-						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --lmstudio, --openai-compatible, --gemini-cli, or --codex-cli.`
+						message: `Model ID "${modelId}" not found in Taskmaster's supported models. If this is a custom model, please specify the provider using --openrouter, --ollama, --bedrock, --azure, --vertex, --vertex-anthropic, --lmstudio, --openai-compatible, --gemini-cli, or --codex-cli.`
 					}
 				};
 			}

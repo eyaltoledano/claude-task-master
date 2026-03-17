@@ -4,7 +4,6 @@
  */
 
 import { createVertex } from '@ai-sdk/google-vertex';
-import { resolveEnvVariable } from '../../scripts/modules/utils.js';
 import { log } from '../../scripts/modules/utils.js';
 import { BaseAIProvider } from './base-provider.js';
 
