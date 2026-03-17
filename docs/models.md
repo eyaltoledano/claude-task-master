@@ -1,4 +1,4 @@
-# Available Models as of January 15, 2026
+# Available Models as of March 17, 2026
 
 ## Main Models
 
@@ -54,8 +54,6 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | xai         | grok-4                                         | —         | 3          | 15          |
-| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
-| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 | groq        | moonshotai/kimi-k2-instruct                    | 0.66      | 1          | 3           |
 | groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
 | groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |
@@ -125,6 +123,8 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 
 ## Research Models
 
@@ -152,8 +152,6 @@
 | xai         | grok-3                                       | —         | 3          | 15          |
 | xai         | grok-3-fast                                  | —         | 5          | 25          |
 | xai         | grok-4                                       | —         | 3          | 15          |
-| minimax     | MiniMax-M2.5                                 | —         | 1          | 5.5         |
-| minimax     | MiniMax-M2.5-highspeed                       | —         | 1          | 5.5         |
 | groq        | llama-3.3-70b-versatile                      | 0.55      | 0.59       | 0.79        |
 | groq        | llama-4-scout                                | 0.45      | 0.11       | 0.34        |
 | groq        | llama-4-maverick                             | 0.52      | 0.5        | 0.77        |
@@ -177,6 +175,8 @@
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0     | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0   | 0.727     | 3          | 15          |
 | bedrock     | us.deepseek.r1-v1:0                          | —         | 1.35       | 5.4         |
+| minimax     | MiniMax-M2.5                                 | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                       | —         | 1          | 5.5         |
 
 ## Fallback Models
 
@@ -224,8 +224,6 @@
 | xai         | grok-3                                         | —         | 3          | 15          |
 | xai         | grok-3-fast                                    | —         | 5          | 25          |
 | xai         | grok-4                                         | —         | 3          | 15          |
-| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
-| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 | groq        | moonshotai/kimi-k2-instruct                    | 0.66      | 1          | 3           |
 | groq        | llama-3.3-70b-versatile                        | 0.55      | 0.59       | 0.79        |
 | groq        | llama-3.1-8b-instant                           | 0.32      | 0.05       | 0.08        |
@@ -288,6 +286,8 @@
 | bedrock     | us.anthropic.claude-3-5-haiku-20241022-v1:0    | 0.4       | 0.8        | 4           |
 | bedrock     | us.anthropic.claude-opus-4-20250514-v1:0       | 0.725     | 15         | 75          |
 | bedrock     | us.anthropic.claude-sonnet-4-20250514-v1:0     | 0.727     | 3          | 15          |
+| minimax     | MiniMax-M2.5                                   | —         | 1          | 5.5         |
+| minimax     | MiniMax-M2.5-highspeed                         | —         | 1          | 5.5         |
 
 ## Unsupported Models
 
