@@ -67,10 +67,9 @@ export async function parsePrdToHamster(
 		taskMasterCore = await createTmCore({ projectPath: projectRoot });
 
 		// 2. Ensure user is authenticated
-		const authResult = await ensureAuthenticated(
-			taskMasterCore.auth,
-			{ actionName: 'create a brief from your PRD' }
-		);
+		const authResult = await ensureAuthenticated(taskMasterCore.auth, {
+			actionName: 'create a brief from your PRD'
+		});
 
 		if (!authResult.authenticated) {
 			if (authResult.cancelled) {

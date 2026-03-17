@@ -60,7 +60,7 @@ export class ContextStore {
 	static getInstance(options?: ContextStoreOptions | string): ContextStore {
 		// Backwards compat: accept a string as contextPath
 		const opts: ContextStoreOptions =
-			typeof options === 'string' ? { contextPath: options } : options ?? {};
+			typeof options === 'string' ? { contextPath: options } : (options ?? {});
 
 		if (!ContextStore.instance) {
 			ContextStore.instance = new ContextStore(opts);
@@ -210,9 +210,7 @@ export class ContextStore {
 	setProjectRoot(projectRoot: string): void {
 		const scopedPath = getWorkspaceContextPath(projectRoot);
 		if (this.contextPath !== scopedPath) {
-			this.logger.debug(
-				`Scoping context to workspace: ${scopedPath}`
-			);
+			this.logger.debug(`Scoping context to workspace: ${scopedPath}`);
 			this.contextPath = scopedPath;
 		}
 	}

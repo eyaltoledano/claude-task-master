@@ -3,11 +3,7 @@
  * Provides a clean interface for workspace context management
  */
 
-import {
-	type TmCore,
-	type UserContext,
-	createTmCore
-} from '@tm/core';
+import { type TmCore, type UserContext, createTmCore } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';

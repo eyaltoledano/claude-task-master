@@ -140,9 +140,7 @@ export class StorageFactory {
 									'https://tryhamster.com/api'
 							};
 							config.storage = nextStorage;
-							logger.info(
-								'☁️  Using API storage (brief selected)'
-							);
+							logger.info('☁️  Using API storage (brief selected)');
 							return StorageFactory.createApiStorage(config);
 						}
 					}

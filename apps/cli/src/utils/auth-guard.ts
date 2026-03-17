@@ -70,11 +70,9 @@ export async function ensureAuthenticated(
 	authDomain: AuthDomain,
 	options: AuthGuardOptions = {}
 ): Promise<AuthGuardResult> {
-
 	// Check if already authenticated
 	const hasSession = await authDomain.hasValidSession();
 	if (hasSession) {
-
 		// Check if org is already selected (quick check before any API calls)
 		const context = authDomain.getContext();
 		if (context?.orgId) {

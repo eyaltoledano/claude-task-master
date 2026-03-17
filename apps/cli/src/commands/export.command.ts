@@ -139,10 +139,9 @@ export class ExportCommand extends Command {
 			await this.initializeServices();
 
 			// Ensure user is authenticated (will prompt and trigger OAuth if not)
-			const authResult = await ensureAuthenticated(
-				this.taskMasterCore!.auth,
-				{ actionName: 'export tasks to Hamster' }
-			);
+			const authResult = await ensureAuthenticated(this.taskMasterCore!.auth, {
+				actionName: 'export tasks to Hamster'
+			});
 
 			if (!authResult.authenticated) {
 				if (authResult.cancelled) {

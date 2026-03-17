@@ -92,7 +92,9 @@ describe('StorageFactory', () => {
 			// Simulate: current project has local task files (solo mode)
 			vi.mocked(fsSync.existsSync).mockReturnValue(true);
 
-			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
+			const config: Partial<IConfiguration> = {
+				storage: { type: 'auto' }
+			} as Partial<IConfiguration>;
 			await StorageFactory.create(config, '/solo/project');
 
 			// Should use FileStorage because no brief is selected
@@ -113,7 +115,9 @@ describe('StorageFactory', () => {
 			// Simulate: current project also has local task files
 			vi.mocked(fsSync.existsSync).mockReturnValue(true);
 
-			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
+			const config: Partial<IConfiguration> = {
+				storage: { type: 'auto' }
+			} as Partial<IConfiguration>;
 			await StorageFactory.create(config, '/solo/project');
 
 			// Should use ApiStorage because brief is explicitly selected
@@ -132,7 +136,9 @@ describe('StorageFactory', () => {
 			// No local task files
 			vi.mocked(fsSync.existsSync).mockReturnValue(false);
 
-			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
+			const config: Partial<IConfiguration> = {
+				storage: { type: 'auto' }
+			} as Partial<IConfiguration>;
 			await StorageFactory.create(config, '/api/project');
 
 			// Should use ApiStorage
@@ -147,7 +153,9 @@ describe('StorageFactory', () => {
 
 			vi.mocked(fsSync.existsSync).mockReturnValue(false);
 
-			const config: Partial<IConfiguration> = { storage: { type: 'auto' } } as Partial<IConfiguration>;
+			const config: Partial<IConfiguration> = {
+				storage: { type: 'auto' }
+			} as Partial<IConfiguration>;
 			await StorageFactory.create(config, '/some/project');
 
 			expect(FileStorage).toHaveBeenCalled();
