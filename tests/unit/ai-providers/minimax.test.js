@@ -3,6 +3,14 @@
  */
 
 import { MiniMaxProvider } from '../../../src/ai-providers/minimax.js';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const supportedModels = JSON.parse(
+	readFileSync(resolve(__dirname, '../../../scripts/modules/supported-models.json'), 'utf-8')
+);
 
 describe('MiniMaxProvider', () => {
 	let provider;
@@ -80,6 +88,37 @@ describe('MiniMaxProvider', () => {
 			expect(() => {
 				provider.validateAuth({ apiKey: 'test-key' });
 			}).not.toThrow();
+		});
+	});
+
+	describe('supported-models.json', () => {
+		const minimaxModels = supportedModels.minimax;
+
+		it('should include MiniMax-M2.7 in model list', () => {
+			const m27 = minimaxModels.find((m) => m.id === 'MiniMax-M2.7');
+			expect(m27).toBeDefined();
+			expect(m27.supported).toBe(true);
+		});
+
+		it('should include MiniMax-M2.7-highspeed in model list', () => {
+			const m27hs = minimaxModels.find((m) => m.id === 'MiniMax-M2.7-highspeed');
+			expect(m27hs).toBeDefined();
+			expect(m27hs.supported).toBe(true);
+		});
+
+		it('should have MiniMax-M2.7 as the first model', () => {
+			expect(minimaxModels[0].id).toBe('MiniMax-M2.7');
+		});
+
+		it('should have MiniMax-M2.7-highspeed as the second model', () => {
+			expect(minimaxModels[1].id).toBe('MiniMax-M2.7-highspeed');
+		});
+
+		it('should retain previous MiniMax-M2.5 models', () => {
+			const m25 = minimaxModels.find((m) => m.id === 'MiniMax-M2.5');
+			const m25hs = minimaxModels.find((m) => m.id === 'MiniMax-M2.5-highspeed');
+			expect(m25).toBeDefined();
+			expect(m25hs).toBeDefined();
 		});
 	});
 });
