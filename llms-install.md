@@ -125,7 +125,7 @@ Once installed, users can:
 
 - Create new tasks with `add-task` or parse a PRD (scripts/prd.txt) into tasks with `parse-prd`
 - Set up model preferences with `models` tool
-- Expand tasks into subtasks with `expand-all` and `expand-task`
+- Expand tasks into subtasks with `task-master expand --all` or `task-master expand --id=<id>`
 - Explore advanced features like research mode and complexity analysis
 
 For detailed documentation, refer to the Task Master docs directory.``
