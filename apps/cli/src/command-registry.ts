@@ -18,6 +18,7 @@ import { LoginCommand } from './commands/login.command.js';
 import { LogoutCommand } from './commands/logout.command.js';
 import { NextCommand } from './commands/next.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
+import { SearchCommand } from './commands/search.command.js';
 import { ShowCommand } from './commands/show.command.js';
 import { StartCommand } from './commands/start.command.js';
 import { TagsCommand } from './commands/tags.command.js';
@@ -51,6 +52,12 @@ export class CommandRegistry {
 			name: 'show',
 			description: 'Display detailed information about a specific task',
 			commandClass: ShowCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'search',
+			description: 'Search tasks by keyword across title, description, details, and test strategy',
+			commandClass: SearchCommand as any,
 			category: 'task'
 		},
 		{
