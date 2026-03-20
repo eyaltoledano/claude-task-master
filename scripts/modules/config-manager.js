@@ -58,7 +58,8 @@ const DEFAULTS = {
 		responseLanguage: 'English',
 		enableCodebaseAnalysis: true,
 		enableProxy: false,
-		anonymousTelemetry: true // Allow users to opt out of Sentry telemetry for local storage
+		anonymousTelemetry: true, // Allow users to opt out of Sentry telemetry for local storage
+		slimDoneTasks: true // Auto-slim completed tasks to reduce tasks.json size
 	},
 	claudeCode: {},
 	codexCli: {},
@@ -747,6 +748,12 @@ function getAnonymousTelemetryEnabled(explicitRoot = null) {
 	return config.anonymousTelemetry !== false; // Default true if undefined
 }
 
+function isSlimDoneTasksEnabled(explicitRoot = null) {
+	// Return boolean-safe value with default true (opt-in by default)
+	const config = getGlobalConfig(explicitRoot);
+	return config.slimDoneTasks !== false; // Default true if undefined
+}
+
 function isProxyEnabled(session = null, projectRoot = null) {
 	// Priority 1: Environment variable
 	const envFlag = resolveEnvVariable(
@@ -1305,6 +1312,7 @@ export {
 	getProxyEnabled,
 	isProxyEnabled,
 	getAnonymousTelemetryEnabled,
+	isSlimDoneTasksEnabled,
 	getParametersForRole,
 	getUserId,
 	// Operating mode
