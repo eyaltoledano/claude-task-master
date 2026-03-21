@@ -4,7 +4,7 @@
  *
  * The CLI has commands in two locations:
  * 1. Legacy: scripts/modules/commands.js
- * 2. Modern: apps/cli/src/commands/*.ts
+ * 2. Modern: apps/cli/src/commands/*.ts (including subdirectories like autopilot/)
  *
  * Help documentation lives in displayHelp() within scripts/modules/ui.js.
  *
@@ -17,8 +17,8 @@
  * - https://github.com/eyaltoledano/claude-task-master/issues/1596
  */
 
-import { readdirSync, readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { resolve, join } from 'path';
 import { describe, expect, it } from 'vitest';
 
 // Paths relative to the test file location
@@ -53,19 +53,54 @@ function extractCommandsFromLegacyCommandsJs(): string[] {
 }
 
 /**
- * Extract command names from modern TypeScript command files
+ * Extract command names from modern TypeScript command files.
+ * Scans top-level .command.ts files AND index.ts in immediate subdirectories
+ * (e.g. autopilot/index.ts defines the 'autopilot' top-level command).
+ * Subdirectory *.command.ts files are subcommands, not top-level commands.
+ *
  * Looks for patterns like: super(name || 'command-name') or super('command-name')
  */
 function extractCommandsFromModernTs(): string[] {
 	const commands = new Set<string>();
+	const filesToScan: string[] = [];
 
 	try {
-		const files = readdirSync(MODERN_COMMANDS_DIR);
+		const entries = readdirSync(MODERN_COMMANDS_DIR);
 
-		for (const file of files) {
-			if (!file.endsWith('.command.ts') || file.includes('.spec.')) continue;
+		for (const entry of entries) {
+			const fullPath = resolve(MODERN_COMMANDS_DIR, entry);
 
-			const filePath = resolve(MODERN_COMMANDS_DIR, file);
+			try {
+				const stat = statSync(fullPath);
+
+				if (stat.isDirectory()) {
+					// For subdirectories, only check index.ts which defines the
+					// top-level command (e.g. autopilot/index.ts -> 'autopilot').
+					// The *.command.ts files inside are subcommands, not top-level.
+					const indexPath = join(fullPath, 'index.ts');
+					try {
+						statSync(indexPath);
+						filesToScan.push(indexPath);
+					} catch {
+						// No index.ts in this subdirectory
+					}
+				} else if (
+					entry.endsWith('.command.ts') &&
+					!entry.includes('.spec.') &&
+					!entry.includes('.test.')
+				) {
+					filesToScan.push(fullPath);
+				}
+			} catch {
+				// Skip entries that can't be stat'd
+			}
+		}
+	} catch {
+		// Directory might not exist in some configurations
+	}
+
+	for (const filePath of filesToScan) {
+		try {
 			const content = readFileSync(filePath, 'utf-8');
 
 			// Match super(name || 'command-name') or super('command-name') patterns
@@ -74,10 +109,9 @@ function extractCommandsFromModernTs(): string[] {
 			while ((match = superRegex.exec(content)) !== null) {
 				commands.add(match[1]);
 			}
+		} catch {
+			// File might not be readable
 		}
-	} catch (error) {
-		// Directory might not exist in some configurations
-		console.warn('Could not read modern commands directory:', error);
 	}
 
 	return Array.from(commands).sort();
@@ -124,6 +158,21 @@ function getHelpContent(): string {
 }
 
 /**
+ * Extract help entry names from the displayHelp() section in ui.js.
+ * Returns the full name values (e.g. 'tags add', 'list', 'models --setup').
+ * This is more precise than raw substring matching against the entire file.
+ */
+function extractHelpEntryNames(content: string): string[] {
+	const nameRegex = /name:\s*['"]([^'"]+)['"]/g;
+	const names: string[] = [];
+	let match;
+	while ((match = nameRegex.exec(content)) !== null) {
+		names.push(match[1]);
+	}
+	return names;
+}
+
+/**
  * Extract subcommands registered on a modern TypeScript command class
  * Looks for .command('subcommand-name') calls within addXxxCommand methods
  * or this.command('subcommand-name') patterns
@@ -163,33 +212,30 @@ const TAGS_DEFAULT_ACTION_SUBCOMMANDS = ['list'];
 
 /**
  * Extract options registered on a modern TypeScript command class
- * Looks for .option() calls and returns the option flags
+ * Looks for .option() calls and returns the option flags.
+ * Throws if the file cannot be read (fail-fast instead of returning []).
  */
 function extractOptionsFromModernTs(commandFileName: string): string[] {
 	const options: string[] = [];
 
-	try {
-		const filePath = resolve(MODERN_COMMANDS_DIR, commandFileName);
-		const content = readFileSync(filePath, 'utf-8');
+	const filePath = resolve(MODERN_COMMANDS_DIR, commandFileName);
+	const content = readFileSync(filePath, 'utf-8');
 
-		// Match .option('flags', ...) patterns - extract the flags portion
-		const optionRegex = /\.option\(\s*['"]([-\w,\s/<>]+)['"]/g;
-		let match;
-		while ((match = optionRegex.exec(content)) !== null) {
-			const flagStr = match[1];
-			// Extract long option name (e.g., --watch from '-w, --watch')
-			const longMatch = flagStr.match(/--([\w-]+)/);
-			if (longMatch) {
-				options.push(`--${longMatch[1]}`);
-			}
-			// Extract short option name (e.g., -w from '-w, --watch')
-			const shortMatch = flagStr.match(/^-(\w)/);
-			if (shortMatch) {
-				options.push(`-${shortMatch[1]}`);
-			}
+	// Match .option('flags', ...) patterns - extract the flags portion
+	const optionRegex = /\.option\(\s*['"]([-\w,\s/<>]+)['"]/g;
+	let match;
+	while ((match = optionRegex.exec(content)) !== null) {
+		const flagStr = match[1];
+		// Extract long option name (e.g., --watch from '-w, --watch')
+		const longMatch = flagStr.match(/--([\w-]+)/);
+		if (longMatch) {
+			options.push(`--${longMatch[1]}`);
 		}
-	} catch {
-		// File might not exist
+		// Extract short option name (e.g., -w from '-w, --watch')
+		const shortMatch = flagStr.match(/^-(\w)/);
+		if (shortMatch) {
+			options.push(`-${shortMatch[1]}`);
+		}
 	}
 
 	return [...new Set(options)].sort();
@@ -219,7 +265,8 @@ const INTENTIONALLY_UNDOCUMENTED = [
 	'export', // Hamster export functionality
 	'export-tag', // Hamster export tag alias
 	'start', // Hamster workflow start
-	'loop' // Autonomous loop mode
+	'loop', // Autonomous loop mode
+	'autopilot' // AI agent orchestration - documented separately
 ];
 
 /**
@@ -228,10 +275,12 @@ const INTENTIONALLY_UNDOCUMENTED = [
  * TEMPORARY DURING TAG MIGRATION: This mapping exempts legacy tag commands from help
  * validation while they are being deprecated in favor of the new 'tags' subcommand structure.
  * Legacy commands to be removed: add-tag, use-tag, delete-tag, rename-tag, copy-tag
+ *
+ * NOTE: Only non-identity mappings belong here. Do NOT add identity mappings
+ * (e.g. tags: 'tags') as they cause both sync checks to skip the command entirely,
+ * meaning removal from help or CLI would go undetected.
  */
 const COMMAND_NAME_MAPPINGS: Record<string, string> = {
-	// Tags subcommands in help map to legacy CLI commands
-	tags: 'tags', // tags list
 	// The following are legacy commands being deprecated
 	'add-tag': 'add-tag',
 	'use-tag': 'use-tag',
@@ -261,20 +310,11 @@ describe('Help Documentation Sync', () => {
 				!Object.values(COMMAND_NAME_MAPPINGS).includes(cmd)
 		);
 
-		if (missingFromHelp.length > 0) {
-			console.log('\nCommands in CLI but missing from help:');
-			missingFromHelp.forEach((cmd) => console.log(`  - ${cmd}`));
-			console.log(
-				'\nTo fix: Add these commands to displayHelp() in scripts/modules/ui.js'
-			);
-			console.log(
-				'Or add them to INTENTIONALLY_UNDOCUMENTED if they should not be documented.\n'
-			);
-		}
-
 		expect(
 			missingFromHelp,
-			`Commands missing from help documentation: ${missingFromHelp.join(', ')}`
+			`Commands missing from help documentation: ${missingFromHelp.join(', ')}. ` +
+				'To fix: Add to displayHelp() in scripts/modules/ui.js, ' +
+				'or add to INTENTIONALLY_UNDOCUMENTED if they should not be documented.'
 		).toEqual([]);
 	});
 
@@ -290,20 +330,11 @@ describe('Help Documentation Sync', () => {
 				!Object.keys(COMMAND_NAME_MAPPINGS).includes(cmd)
 		);
 
-		if (obsoleteInHelp.length > 0) {
-			console.log('\nCommands in help but not in CLI:');
-			obsoleteInHelp.forEach((cmd) => console.log(`  - ${cmd}`));
-			console.log(
-				'\nTo fix: Remove these commands from displayHelp() in scripts/modules/ui.js'
-			);
-			console.log(
-				'Or add them to COMMAND_NAME_MAPPINGS if they map to different CLI command names.\n'
-			);
-		}
-
 		expect(
 			obsoleteInHelp,
-			`Obsolete commands in help documentation: ${obsoleteInHelp.join(', ')}`
+			`Obsolete commands in help documentation: ${obsoleteInHelp.join(', ')}. ` +
+				'To fix: Remove from displayHelp() in scripts/modules/ui.js, ' +
+				'or add to COMMAND_NAME_MAPPINGS if they map to different CLI command names.'
 		).toEqual([]);
 	});
 
@@ -325,10 +356,11 @@ describe('Help Documentation Sync', () => {
 		// Sanity check - we should find modern TypeScript commands
 		expect(commands.length).toBeGreaterThan(5);
 
-		// Check for some known modern commands
+		// Check for some known modern commands (including subdirectory commands)
 		expect(commands).toContain('list');
 		expect(commands).toContain('show');
 		expect(commands).toContain('tags');
+		expect(commands).toContain('autopilot');
 	});
 
 	it('should extract commands correctly from help', () => {
@@ -365,38 +397,31 @@ describe('Help Documentation Sync', () => {
 		describe('tags subcommands', () => {
 			it('should document all tags subcommands from the actual CLI implementation', () => {
 				const helpContent = getHelpContent();
+				const helpEntryNames = extractHelpEntryNames(helpContent);
 
 				// Extract subcommands directly from the tags.command.ts implementation
 				const implementedSubcommands =
 					extractSubcommandsFromModernTs('tags.command.ts');
 
-				// Each implemented subcommand should appear as "tags <subcommand>" in help,
+				// Each implemented subcommand should appear as a "tags <subcommand>" help entry,
 				// UNLESS it is a default-action subcommand (e.g. "list") which is documented
 				// as part of the parent command entry (name: 'tags', args: '[list] ...')
 				const missingSubcommands = implementedSubcommands.filter(
 					(subcmd) =>
 						!TAGS_DEFAULT_ACTION_SUBCOMMANDS.includes(subcmd) &&
-						!helpContent.includes(`tags ${subcmd}`)
+						!helpEntryNames.some((name) => name === `tags ${subcmd}`)
 				);
-
-				if (missingSubcommands.length > 0) {
-					console.log('\nTags subcommands in CLI but missing from help:');
-					missingSubcommands.forEach((cmd) =>
-						console.log(`  - tags ${cmd}`)
-					);
-					console.log(
-						'\nTo fix: Add these to the Tag Management section in displayHelp() in ui.js\n'
-					);
-				}
 
 				expect(
 					missingSubcommands,
-					`Tags subcommands missing from help: ${missingSubcommands.map((s) => `tags ${s}`).join(', ')}`
+					`Tags subcommands missing from help: ${missingSubcommands.map((s) => 'tags ' + s).join(', ')}. ` +
+						'To fix: Add to the Tag Management section in displayHelp() in ui.js'
 				).toEqual([]);
 			});
 
 			it('should document the expected tags subcommand structure', () => {
 				const helpContent = getHelpContent();
+				const helpEntryNames = extractHelpEntryNames(helpContent);
 
 				// The unified tags command structure should include these subcommands
 				const expectedTagsSubcommands = [
@@ -408,72 +433,41 @@ describe('Help Documentation Sync', () => {
 				];
 
 				const missingSubcommands = expectedTagsSubcommands.filter(
-					(subcmd) => !helpContent.includes(subcmd)
+					(subcmd) => !helpEntryNames.includes(subcmd)
 				);
-
-				if (missingSubcommands.length > 0) {
-					console.log('\nMissing tags subcommands in help:');
-					missingSubcommands.forEach((cmd) => console.log(`  - ${cmd}`));
-					console.log(
-						'\nHelp should document the unified tags subcommand structure.'
-					);
-					console.log(
-						'Old style (add-tag, use-tag) should be replaced with:'
-					);
-					console.log(
-						'  tags add, tags use, tags remove, tags rename, tags copy\n'
-					);
-				}
 
 				expect(
 					missingSubcommands,
-					`Missing tags subcommands: ${missingSubcommands.join(', ')}`
+					`Missing tags subcommands: ${missingSubcommands.join(', ')}. ` +
+						'Help should document the unified tags subcommand structure ' +
+						'(tags add, tags use, tags remove, tags rename, tags copy).'
 				).toEqual([]);
 			});
 
 			it('should not document deprecated standalone tag commands as primary entries', () => {
 				const helpContent = getHelpContent();
+				const helpEntryNames = extractHelpEntryNames(helpContent);
 
-				// These old-style commands should NOT appear as primary command names in the
-				// Tag Management section. They may exist elsewhere as legacy aliases.
-				const deprecatedPatterns = [
-					/\badd-tag\b(?!\s*\(alias)/i,
-					/\buse-tag\b(?!\s*\(alias)/i,
-					/\bdelete-tag\b(?!\s*\(alias)/i,
-					/\brename-tag\b(?!\s*\(alias)/i,
-					/\bcopy-tag\b(?!\s*\(alias)/i
+				// These old-style commands should NOT appear as primary help entry names.
+				const deprecatedCommands = [
+					'add-tag',
+					'use-tag',
+					'delete-tag',
+					'rename-tag',
+					'copy-tag'
 				];
 
-				// Try to isolate the Tag Management section
-				const tagSectionMatch = helpContent.match(
-					/Tag Management.*?(?=\n\s*\n\s*[A-Z]|\n\s*\])/s
+				// Check if any deprecated command appears as its own help entry name
+				const foundDeprecated = deprecatedCommands.filter((cmd) =>
+					helpEntryNames.some(
+						(name) => name === cmd || name.startsWith(cmd + ' ')
+					)
 				);
-
-				if (!tagSectionMatch) {
-					console.warn(
-						'Could not isolate Tag Management section - checking entire help content instead'
-					);
-				}
-
-				const sectionToCheck = tagSectionMatch
-					? tagSectionMatch[0]
-					: helpContent;
-				const foundDeprecated = deprecatedPatterns.filter((pattern) =>
-					pattern.test(sectionToCheck)
-				);
-
-				if (foundDeprecated.length > 0) {
-					console.log(
-						'\nDeprecated tag commands found in Tag Management section.'
-					);
-					console.log(
-						'These should be replaced with unified tags subcommands.\n'
-					);
-				}
 
 				expect(
 					foundDeprecated.length,
-					'Help should use unified tags subcommands, not deprecated standalone commands'
+					`Deprecated tag commands found as help entries: ${foundDeprecated.join(', ')}. ` +
+						'These should be replaced with unified tags subcommands.'
 				).toBe(0);
 			});
 
@@ -482,10 +476,6 @@ describe('Help Documentation Sync', () => {
 
 				// The tags default action (list) is documented as:
 				//   name: 'tags', args: '[list] [--show-metadata] [--ready]'
-				// So we look for the tags entry and verify its args include the list keyword
-				// and the key options for the list subcommand
-
-				// Find the tag management section in the help
 				const tagsEntries = helpContent.match(
 					/name:\s*['"]tags['"]\s*,\s*args:\s*['"][^'"]*['"]/g
 				);
@@ -516,14 +506,12 @@ describe('Help Documentation Sync', () => {
 			it('should document key list command filtering options', () => {
 				const helpContent = getHelpContent();
 
-				// Key filtering options from the actual list.command.ts implementation
 				const expectedFilterOptions = [
 					'--with-subtasks',
 					'--ready',
 					'--blocking'
 				];
 
-				// Find ALL list command entries (there may be multiple rows)
 				const listMatches = helpContent.match(
 					/name:\s*['"]list['"][^}]+}/g
 				);
@@ -534,33 +522,23 @@ describe('Help Documentation Sync', () => {
 					);
 				}
 
-				// Combine all list sections for checking
 				const allListSections = listMatches.join('\n');
 				const missingOptions = expectedFilterOptions.filter(
 					(opt) => !allListSections.includes(opt)
 				);
 
-				if (missingOptions.length > 0) {
-					console.log('\nMissing list command filtering options in help:');
-					missingOptions.forEach((opt) => console.log(`  - ${opt}`));
-					console.log(
-						'\nTo fix: Add these to the list command entries in displayHelp()\n'
-					);
-				}
-
 				expect(
 					missingOptions,
-					`Missing list filter options: ${missingOptions.join(', ')}`
+					`Missing list filter options: ${missingOptions.join(', ')}. ` +
+						'To fix: Add to the list command entries in displayHelp()'
 				).toEqual([]);
 			});
 
 			it('should document list command output format options', () => {
 				const helpContent = getHelpContent();
 
-				// Format-related options
 				const expectedFormatOptions = ['--json', '-f', '-c'];
 
-				// Find ALL list command entries
 				const listMatches = helpContent.match(
 					/name:\s*['"]list['"][^}]+}/g
 				);
@@ -576,11 +554,6 @@ describe('Help Documentation Sync', () => {
 					(opt) => !allListSections.includes(opt)
 				);
 
-				if (missingOptions.length > 0) {
-					console.log('\nMissing list format options in help:');
-					missingOptions.forEach((opt) => console.log(`  - ${opt}`));
-				}
-
 				expect(
 					missingOptions,
 					`Missing list format options: ${missingOptions.join(', ')}`
@@ -590,7 +563,6 @@ describe('Help Documentation Sync', () => {
 			it('should document list command watch mode option', () => {
 				const helpContent = getHelpContent();
 
-				// Watch mode should be documented
 				const listMatches = helpContent.match(
 					/name:\s*['"]list['"][^}]+}/g
 				);
@@ -603,7 +575,6 @@ describe('Help Documentation Sync', () => {
 
 				const allListSections = listMatches.join('\n');
 
-				// Check for watch mode (-w or --watch)
 				expect(
 					allListSections.includes('-w') ||
 						allListSections.includes('--watch'),
@@ -635,11 +606,17 @@ describe('Help Documentation Sync', () => {
 			it('should document list command options that match the actual implementation', () => {
 				const helpContent = getHelpContent();
 
-				// Extract options from the actual list.command.ts implementation
 				const implementedOptions =
 					extractOptionsFromModernTs('list.command.ts');
 
-				// Find ALL list command entries
+				// Fail fast if extraction returned nothing — a parse/read
+				// failure would make all assertions vacuously pass
+				expect(
+					implementedOptions.length,
+					'Should extract options from list.command.ts — ' +
+						'if this fails, the option-extraction regex may need updating'
+				).toBeGreaterThan(0);
+
 				const listMatches = helpContent.match(
 					/name:\s*['"]list['"][^}]+}/g
 				);
@@ -652,10 +629,6 @@ describe('Help Documentation Sync', () => {
 
 				const allListSections = listMatches.join('\n');
 
-				// Options that are important enough to require documentation.
-				// Each entry is [longFlag, shortFlag?] - the option is considered documented
-				// if EITHER the long form or the short form appears in help.
-				// (some internal options like --silent and --no-header may be intentionally undocumented)
 				const documentationRequired: Array<{ long: string; short?: string }> = [
 					{ long: '--with-subtasks' },
 					{ long: '--ready' },
@@ -667,9 +640,7 @@ describe('Help Documentation Sync', () => {
 
 				const missingOptions = documentationRequired.filter(
 					(opt) => {
-						// Only check options that are actually implemented
 						if (!implementedOptions.includes(opt.long)) return false;
-						// Accept either long or short form in help
 						const longFound = allListSections.includes(opt.long);
 						const shortFound = opt.short
 							? allListSections.includes(opt.short)
@@ -678,19 +649,10 @@ describe('Help Documentation Sync', () => {
 					}
 				);
 
-				if (missingOptions.length > 0) {
-					console.log(
-						'\nList options implemented in CLI but missing from help:'
-					);
-					missingOptions.forEach((opt) => console.log(`  - ${opt.long}`));
-					console.log(
-						'\nTo fix: Add these to the list entries in displayHelp()\n'
-					);
-				}
-
 				expect(
 					missingOptions.map((o) => o.long),
-					`Implemented list options missing from help: ${missingOptions.map((o) => o.long).join(', ')}`
+					`Implemented list options missing from help: ${missingOptions.map((o) => o.long).join(', ')}. ` +
+						'To fix: Add to the list entries in displayHelp()'
 				).toEqual([]);
 			});
 		});
@@ -700,23 +662,17 @@ describe('Help Documentation Sync', () => {
 				const implementedSubcommands =
 					extractSubcommandsFromModernTs('tags.command.ts');
 
-				// Verify we are actually extracting subcommands (sanity check)
 				expect(
 					implementedSubcommands.length,
 					'Should find tags subcommands in tags.command.ts'
 				).toBeGreaterThan(0);
 
 				const helpContent = getHelpContent();
+				const helpEntryNames = extractHelpEntryNames(helpContent);
 
-				// Every subcommand defined in the source should be mentioned in help,
-				// either as "tags <subcmd>" (explicit entry) or within the parent tags
-				// entry's args field (for default-action subcommands like "list")
 				const undocumentedSubcommands = implementedSubcommands.filter(
 					(subcmd) => {
-						// Check if documented as "tags <subcmd>" entry
-						if (helpContent.includes(`tags ${subcmd}`)) return false;
-						// Check if it is a default-action subcommand documented in
-						// the parent entry's args (e.g. name: 'tags', args: '[list] ...')
+						if (helpEntryNames.some((name) => name === `tags ${subcmd}`)) return false;
 						if (TAGS_DEFAULT_ACTION_SUBCOMMANDS.includes(subcmd)) {
 							const tagsEntry = helpContent.match(
 								/name:\s*['"]tags['"]\s*,\s*args:\s*['"]([^'"]*)['"]/
@@ -738,7 +694,6 @@ describe('Help Documentation Sync', () => {
 					extractSubcommandsFromModernTs('tags.command.ts');
 				const helpContent = getHelpContent();
 
-				// Extract "tags xxx" patterns from help (explicit subcommand entries)
 				const tagsInHelp: string[] = [];
 				const tagsPattern = /name:\s*['"]tags\s+(\w+)['"]/g;
 				let match;
@@ -746,26 +701,14 @@ describe('Help Documentation Sync', () => {
 					tagsInHelp.push(match[1]);
 				}
 
-				// Every tags subcommand in help should actually exist in source
 				const phantomSubcommands = tagsInHelp.filter(
 					(subcmd) => !implementedSubcommands.includes(subcmd)
 				);
 
-				if (phantomSubcommands.length > 0) {
-					console.log(
-						'\nTags subcommands in help but not implemented:'
-					);
-					phantomSubcommands.forEach((cmd) =>
-						console.log(`  - tags ${cmd}`)
-					);
-					console.log(
-						'\nTo fix: Either implement the subcommand or remove it from help\n'
-					);
-				}
-
 				expect(
 					phantomSubcommands,
-					`Phantom tags subcommands in help: ${phantomSubcommands.join(', ')}`
+					`Phantom tags subcommands in help: ${phantomSubcommands.join(', ')}. ` +
+						'To fix: Either implement the subcommand or remove it from help'
 				).toEqual([]);
 			});
 		});
