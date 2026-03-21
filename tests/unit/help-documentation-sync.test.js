@@ -16,10 +16,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Resolve paths from the project root
+// Resolve paths from the project root (fileURLToPath handles percent-encoding and Windows drive letters)
 const projectRoot = path.resolve(
-	new URL('../../', import.meta.url).pathname
+	path.dirname(fileURLToPath(import.meta.url)),
+	'..', '..'
 );
 
 const COMMANDS_JS_PATH = path.join(
@@ -106,19 +108,42 @@ function extractCliRegistryCommands(fileContent) {
  * Handles entries like 'tags add' by taking only 'tags'.
  */
 function extractHelpCommands(fileContent) {
-	// Only look at the content within displayHelp function
+	// Only look at the content within the displayHelp function body.
+	// We find the opening brace and then brace-match to the closing brace
+	// so that later name: properties in ui.js are not accidentally included.
 	const helpFnStart = fileContent.indexOf('function displayHelp()');
 	if (helpFnStart === -1) {
 		throw new Error('Could not find displayHelp() in ui.js');
 	}
 
-	const helpContent = fileContent.slice(helpFnStart);
+	const openBrace = fileContent.indexOf('{', helpFnStart);
+	if (openBrace === -1) {
+		throw new Error('Could not find opening brace for displayHelp()');
+	}
 
+	// Brace-match to find the end of the function body
+	let depth = 0;
+	let closeBrace = -1;
+	for (let i = openBrace; i < fileContent.length; i++) {
+		if (fileContent[i] === '{') depth++;
+		else if (fileContent[i] === '}') depth--;
+		if (depth === 0) {
+			closeBrace = i;
+			break;
+		}
+	}
+
+	const helpContent = closeBrace !== -1
+		? fileContent.slice(openBrace, closeBrace + 1)
+		: fileContent.slice(openBrace);
+
+	// NOTE: We intentionally extract only the base command name (first word).
+	// Entries like 'tags add' -> 'tags' and 'models --setup' -> 'models'.
+	// This test validates command *presence* in help, not subcommand/flag drift.
 	const nameRegex = /name:\s*'([^']+)'/g;
 	const commands = new Set();
 	let match;
 	while ((match = nameRegex.exec(helpContent)) !== null) {
-		// Take the base command name (first word)
 		const baseName = match[1].split(/\s+/)[0];
 		commands.add(baseName);
 	}
@@ -181,8 +206,7 @@ describe('Help Documentation Sync', () => {
 				'To fix: either add a help entry in scripts/modules/ui.js displayHelp(),',
 				'or add the command to INTENTIONALLY_EXCLUDED_FROM_HELP in this test with a reason.'
 			].join('\n');
-			expect(missingFromHelp).toEqual([]); // will fail with a nice diff
-			// Also log for CI readability
+			// Log for CI readability before the assertion throws
 			console.error(message);
 		}
 
