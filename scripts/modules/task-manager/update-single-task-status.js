@@ -1,6 +1,9 @@
 import chalk from 'chalk';
 
-import { isValidTaskStatus } from '../../../src/constants/task-status.js';
+import {
+	TASK_STATUS_OPTIONS,
+	isValidTaskStatus
+} from '../../../src/constants/task-status.js';
 import { log } from '../utils.js';
 import { slimSubtaskOnComplete, slimTaskOnComplete } from './slim-task.js';
 

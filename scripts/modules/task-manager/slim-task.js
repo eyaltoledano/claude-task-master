@@ -8,7 +8,7 @@ const DESCRIPTION_TRUNCATE_LENGTH = 200;
 
 /**
  * Slim a completed task by removing verbose fields that are no longer actionable.
- * Removes `details` and `testStrategy`, truncates `description` to 200 chars.
+ * Removes `details` and `testStrategy`, truncates `description` to 200 chars + ellipsis.
  * This is a one-way operation — git history preserves the original content.
  *
  * @param {Object} task - The task object to slim
