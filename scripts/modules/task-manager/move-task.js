@@ -895,6 +895,15 @@ async function executeMoveOperation(
 		// Apply the new ID to the task
 		taskToMove.id = assignedId;
 
+		// Update subtask parentTaskId to match the new assigned ID
+		if (Array.isArray(taskToMove.subtasks)) {
+			taskToMove.subtasks.forEach((subtask) => {
+				if (subtask.parentTaskId === normalizedTaskId) {
+					subtask.parentTaskId = assignedId;
+				}
+			});
+		}
+
 		// Update internal subtask dependency references that pointed to the old parent ID
 		if (Array.isArray(taskToMove.subtasks)) {
 			taskToMove.subtasks.forEach((subtask) => {
@@ -959,7 +968,13 @@ async function executeMoveOperation(
 						Number.isFinite(normalizedDep) &&
 						idRemapping.has(normalizedDep)
 					) {
-						return idRemapping.get(normalizedDep);
+						const newParentId = idRemapping.get(normalizedDep);
+						// Preserve dotted subtask suffix (e.g., "1.2" -> "5.2" when 1 remaps to 5)
+						if (typeof dep === 'string' && dep.includes('.')) {
+							const dotIndex = dep.indexOf('.');
+							return `${newParentId}${dep.slice(dotIndex)}`;
+						}
+						return newParentId;
 					}
 					return dep;
 				});
@@ -974,7 +989,13 @@ async function executeMoveOperation(
 								Number.isFinite(normalizedDep) &&
 								idRemapping.has(normalizedDep)
 							) {
-								return idRemapping.get(normalizedDep);
+								const newParentId = idRemapping.get(normalizedDep);
+								// Preserve dotted subtask suffix (e.g., "1.2" -> "5.2" when 1 remaps to 5)
+								if (typeof dep === 'string' && dep.includes('.')) {
+									const dotIndex = dep.indexOf('.');
+									return `${newParentId}${dep.slice(dotIndex)}`;
+								}
+								return newParentId;
 							}
 							return dep;
 						});

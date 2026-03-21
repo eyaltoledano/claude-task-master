@@ -121,7 +121,7 @@ export async function moveTaskCrossTagDirect(args, log, context = {}) {
 			const renumberedTasks = (result.movedTasks || []).filter(
 				(t) => t.newId !== undefined
 			);
-			let message = `Successfully moved ${sourceIds.length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`;
+			let message = `Successfully moved ${(result.movedTasks || []).length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`;
 			if (renumberedTasks.length > 0) {
 				const renumberDetails = renumberedTasks
 					.map((t) => `${t.originalId} → ${t.newId}`)
