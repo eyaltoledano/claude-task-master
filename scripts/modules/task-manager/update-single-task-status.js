@@ -25,7 +25,7 @@ async function updateSingleTaskStatus(
 	showUi = true,
 	statusOptions = {}
 ) {
-	const { slimOnDone = false } = statusOptions;
+	const { slimOnDone = false } = statusOptions || {};
 	if (!isValidTaskStatus(newStatus)) {
 		throw new Error(
 			`Error: Invalid status value: ${newStatus}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
