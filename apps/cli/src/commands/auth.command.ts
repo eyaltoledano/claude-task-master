@@ -5,8 +5,9 @@
 
 import {
 	type AuthCredentials,
-	AuthManager,
-	AuthenticationError
+	AuthenticationError,
+	type TmCore,
+	createTmCore
 } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -14,6 +15,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import { authenticateWithBrowserMFA, handleMFAFlow } from '../utils/auth-ui.js';
 import { displayError } from '../utils/error-handler.js';
+import { getProjectRoot } from '../utils/project-root.js';
 import * as ui from '../utils/ui.js';
 import { ContextCommand } from './context.command.js';
 
@@ -29,17 +31,14 @@ export interface AuthResult {
 
 /**
  * AuthCommand extending Commander's Command class
- * This is a thin presentation layer over @tm/core's AuthManager
+ * This is a thin presentation layer over @tm/core's AuthDomain via TmCore
  */
 export class AuthCommand extends Command {
-	private authManager: AuthManager;
+	private tmCore?: TmCore;
 	private lastResult?: AuthResult;
 
 	constructor(name?: string) {
 		super(name || 'auth');
-
-		// Initialize auth manager
-		this.authManager = AuthManager.getInstance();
 
 		// Configure the command with subcommands
 		this.description('Manage authentication with tryhamster.com');
@@ -54,6 +53,16 @@ export class AuthCommand extends Command {
 		this.action(() => {
 			this.help();
 		});
+	}
+
+	/**
+	 * Lazily initialize TmCore (async init not possible in constructor)
+	 */
+	private async ensureTmCore(): Promise<TmCore> {
+		if (!this.tmCore) {
+			this.tmCore = await createTmCore({ projectPath: getProjectRoot() });
+		}
+		return this.tmCore;
 	}
 
 	/**
@@ -219,18 +228,19 @@ Examples:
 	 * Display authentication status
 	 */
 	private async displayStatus(): Promise<AuthResult> {
+		await this.ensureTmCore();
 		console.log(chalk.cyan('\n🔐 Authentication Status\n'));
 
 		// Check if user has valid session
-		const hasSession = await this.authManager.hasValidSession();
+		const hasSession = await this.tmCore!.auth.hasValidSession();
 
 		if (hasSession) {
 			// Get session from Supabase (has tokens and expiry)
-			const session = await this.authManager.getSession();
+			const session = await this.tmCore!.auth.getSession();
 
 			// Get user context (has email, userId, org/brief selection)
-			const context = this.authManager.getContext();
-			const contextStore = this.authManager.getStoredContext();
+			const context = this.tmCore!.auth.getContext();
+			const contextStore = this.tmCore!.auth.getStoredContext();
 
 			console.log(chalk.green('✓ Authenticated'));
 			console.log(chalk.gray(`  Email: ${contextStore?.email || 'N/A'}`));
@@ -319,7 +329,8 @@ Examples:
 	 */
 	async performLogout(): Promise<AuthResult> {
 		try {
-			await this.authManager.logout();
+			await this.ensureTmCore();
+			await this.tmCore!.auth.logout();
 			ui.displaySuccess('Successfully logged out');
 
 			return {
@@ -346,7 +357,8 @@ Examples:
 		const spinner = ora('Refreshing authentication token...').start();
 
 		try {
-			const credentials = await this.authManager.refreshToken();
+			await this.ensureTmCore();
+			const credentials = await this.tmCore!.auth.refreshToken();
 			spinner.succeed('Token refreshed successfully');
 
 			console.log(
@@ -388,10 +400,11 @@ Examples:
 		yes?: boolean,
 		showHeader = true
 	): Promise<AuthResult> {
+		await this.ensureTmCore();
 		if (showHeader) {
 			ui.displayBanner('Task Master Authentication');
 		}
-		const isAuthenticated = await this.authManager.hasValidSession();
+		const isAuthenticated = await this.tmCore!.auth.hasValidSession();
 
 		// Check if already authenticated (skip if --yes is used)
 		if (isAuthenticated && !yes) {
@@ -406,7 +419,7 @@ Examples:
 			]);
 
 			if (!continueAuth) {
-				const credentials = await this.authManager.getAuthCredentials();
+				const credentials = await this.tmCore!.auth.getCredentials();
 				ui.displaySuccess('Using existing authentication');
 
 				if (credentials) {
@@ -494,7 +507,8 @@ Examples:
 	 * across all commands (auth login, parse-prd, export, etc.)
 	 */
 	private async authenticateWithBrowser(): Promise<AuthCredentials> {
-		return authenticateWithBrowserMFA(this.authManager);
+		await this.ensureTmCore();
+		return authenticateWithBrowserMFA(this.tmCore!.auth);
 	}
 
 	/**
@@ -504,7 +518,8 @@ Examples:
 		const spinner = ora('Verifying authentication token...').start();
 
 		try {
-			const credentials = await this.authManager.authenticateWithCode(token);
+			await this.ensureTmCore();
+			const credentials = await this.tmCore!.auth.authenticateWithCode(token);
 			spinner.succeed('Successfully authenticated!');
 			return credentials;
 		} catch (error) {
@@ -548,7 +563,7 @@ Examples:
 		}
 
 		return handleMFAFlow(
-			this.authManager.verifyMFAWithRetry.bind(this.authManager),
+			this.tmCore!.auth.verifyMFAWithRetry.bind(this.tmCore!.auth),
 			mfaError.mfaChallenge.factorId
 		);
 	}
@@ -648,15 +663,15 @@ Examples:
 	 * Get current credentials (for programmatic usage)
 	 */
 	async getCredentials(): Promise<AuthCredentials | null> {
-		return this.authManager.getAuthCredentials();
+		await this.ensureTmCore();
+		return this.tmCore!.auth.getCredentials();
 	}
 
 	/**
 	 * Clean up resources
 	 */
 	async cleanup(): Promise<void> {
-		// No resources to clean up for auth command
-		// But keeping method for consistency with other commands
+		await this.tmCore?.close();
 	}
 
 	/**

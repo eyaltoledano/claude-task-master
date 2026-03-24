@@ -4,7 +4,7 @@
  */
 
 import search from '@inquirer/search';
-import type { AuthManager } from '@tm/core';
+import type { AuthDomain } from '@tm/core';
 import { formatRelativeTime } from '@tm/core';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
@@ -24,14 +24,14 @@ export interface BriefSelectionResult {
  * Select a brief interactively using search
  */
 export async function selectBriefInteractive(
-	authManager: AuthManager,
+	authDomain: AuthDomain,
 	orgId: string
 ): Promise<BriefSelectionResult> {
 	const spinner = ora('Fetching briefs...').start();
 
 	try {
 		// Fetch briefs from API
-		const briefs = await authManager.getBriefs(orgId);
+		const briefs = await authDomain.getBriefs(orgId);
 		spinner.stop();
 
 		if (briefs.length === 0) {
@@ -187,7 +187,7 @@ export async function selectBriefInteractive(
 			const briefName =
 				selectedBrief.document?.title ||
 				`Brief ${selectedBrief.id.slice(0, 8)}`;
-			await authManager.updateContext({
+			await authDomain.updateContext({
 				briefId: selectedBrief.id,
 				briefName: briefName,
 				briefStatus: selectedBrief.status,
@@ -204,7 +204,7 @@ export async function selectBriefInteractive(
 			};
 		} else {
 			// Clear brief selection
-			await authManager.updateContext({
+			await authDomain.updateContext({
 				briefId: undefined,
 				briefName: undefined,
 				briefStatus: undefined,
@@ -231,7 +231,7 @@ export async function selectBriefInteractive(
  * All business logic (URL parsing, ID matching, name resolution) is in tm-core
  */
 export async function selectBriefFromInput(
-	authManager: AuthManager,
+	authDomain: AuthDomain,
 	input: string,
 	tmCore: any
 ): Promise<BriefSelectionResult> {
@@ -251,7 +251,7 @@ export async function selectBriefFromInput(
 		let orgName: string | undefined;
 		let orgSlug: string | undefined;
 		try {
-			const org = await authManager.getOrganization(brief.accountId);
+			const org = await authDomain.getOrganization(brief.accountId);
 			orgName = org?.name;
 			orgSlug = org?.slug;
 		} catch {
@@ -260,7 +260,7 @@ export async function selectBriefFromInput(
 
 		// Update context: set org and brief
 		const briefName = brief.document?.title || `Brief ${brief.id.slice(0, 8)}`;
-		await authManager.updateContext({
+		await authDomain.updateContext({
 			orgId: brief.accountId,
 			orgName,
 			orgSlug,

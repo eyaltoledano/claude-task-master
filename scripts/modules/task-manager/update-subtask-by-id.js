@@ -48,7 +48,13 @@ async function updateSubtaskById(
 	context = {},
 	outputFormat = context.mcpLog ? 'json' : 'text'
 ) {
-	const { session, mcpLog, projectRoot: providedProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: providedProjectRoot,
+		tag,
+		metadata
+	} = context;
 	const logFn = mcpLog || consoleLog;
 	const isMCP = !!mcpLog;
 
@@ -71,10 +77,13 @@ async function updateSubtaskById(
 		if (!subtaskId || typeof subtaskId !== 'string') {
 			throw new Error('Subtask ID cannot be empty.');
 		}
-
-		if (!prompt || typeof prompt !== 'string' || prompt.trim() === '') {
+		// Allow metadata-only updates (no prompt required if metadata is provided)
+		if (
+			(!prompt || typeof prompt !== 'string' || prompt.trim() === '') &&
+			!metadata
+		) {
 			throw new Error(
-				'Prompt cannot be empty. Please provide context for the subtask update.'
+				'Prompt cannot be empty unless metadata is provided. Please provide context for the subtask update or metadata to merge.'
 			);
 		}
 
@@ -93,6 +102,7 @@ async function updateSubtaskById(
 			tag,
 			appendMode: true, // Subtask updates are always append mode
 			useResearch,
+			metadata,
 			isMCP,
 			outputFormat,
 			report
@@ -163,6 +173,30 @@ async function updateSubtaskById(
 		}
 
 		const subtask = parentTask.subtasks[subtaskIndex];
+
+		// --- Metadata-Only Update (Fast Path) ---
+		// If only metadata is provided (no prompt), skip AI and just update metadata
+		if (metadata && (!prompt || prompt.trim() === '')) {
+			report('info', `Metadata-only update for subtask ${subtaskId}`);
+			// Merge new metadata with existing
+			subtask.metadata = {
+				...(subtask.metadata || {}),
+				...metadata
+			};
+			parentTask.subtasks[subtaskIndex] = subtask;
+			writeJSON(tasksPath, data, projectRoot, tag);
+			report(
+				'success',
+				`Successfully updated metadata for subtask ${subtaskId}`
+			);
+
+			return {
+				updatedSubtask: subtask,
+				telemetryData: null,
+				tagInfo: { tag }
+			};
+		}
+		// --- End Metadata-Only Update ---
 
 		// --- Context Gathering ---
 		let gatheredContext = '';
@@ -333,6 +367,14 @@ async function updateSubtaskById(
 		}
 
 		const updatedSubtask = parentTask.subtasks[subtaskIndex];
+
+		// Merge metadata if provided (preserve existing metadata)
+		if (metadata) {
+			updatedSubtask.metadata = {
+				...(updatedSubtask.metadata || {}),
+				...metadata
+			};
+		}
 
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log(

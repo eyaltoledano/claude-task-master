@@ -1,0 +1,25 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "task-master-ai": "0.43.0",
+    "@tm/cli": "",
+    "docs": "0.0.16",
+    "extension": "0.26.0",
+    "@tm/mcp": "",
+    "@tm/ai-sdk-provider-grok-cli": "",
+    "@tm/build-config": "",
+    "@tm/claude-code-plugin": "0.0.10",
+    "@tm/bridge": "",
+    "@tm/core": "",
+    "@tm/profiles": ""
+  },
+  "changesets": [
+    "ai-cluster-generation",
+    "cluster-foundation",
+    "cluster-teams-execution",
+    "critical-path-prompts",
+    "help-sync-test-enhancements",
+    "jolly-dodos-roll"
+  ]
+}

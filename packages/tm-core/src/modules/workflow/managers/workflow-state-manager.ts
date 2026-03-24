@@ -7,10 +7,10 @@
  */
 
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { Writer } from 'steno';
 import { getLogger } from '../../../common/logger/index.js';
+import { getWorkspaceDir } from '../../../common/utils/workspace-path.js';
 import type { WorkflowState } from '../types.js';
 
 export interface WorkflowStateBackup {
@@ -38,38 +38,11 @@ export class WorkflowStateManager {
 
 		// Create project-specific directory in global .taskmaster
 		// Structure: ~/.taskmaster/{project-id}/sessions/
-		const projectId = this.getProjectIdentifier(this.projectRoot);
-		const homeDir = os.homedir();
-		const projectDir = path.join(homeDir, '.taskmaster', projectId);
+		const projectDir = getWorkspaceDir(this.projectRoot);
 		this.sessionDir = path.join(projectDir, 'sessions');
 
 		this.statePath = path.join(this.sessionDir, 'workflow-state.json');
 		this.backupDir = path.join(this.sessionDir, 'backups');
-	}
-
-	/**
-	 * Generate a unique identifier for the project using full sanitized path
-	 * Uses Claude Code's pattern: leading dash + full path with case preserved
-	 * Example: /Volumes/Workspace/... -> -Volumes-Workspace-...
-	 */
-	private getProjectIdentifier(projectRoot: string): string {
-		// Resolve to absolute path
-		const absolutePath = path.resolve(projectRoot);
-
-		// Sanitize path like Claude Code does:
-		// - Add leading dash
-		// - Replace path separators and non-alphanumeric chars with dashes
-		// - Preserve case for readability
-		// - Collapse multiple dashes
-		const sanitized =
-			'-' +
-			absolutePath
-				.replace(/^\//, '') // Remove leading slash before adding dash
-				.replace(/[^a-zA-Z0-9]+/g, '-') // Replace sequences of non-alphanumeric with single dash
-				.replace(/-+/g, '-') // Collapse multiple dashes
-				.replace(/-+$/, ''); // Remove trailing dashes
-
-		return sanitized;
 	}
 
 	/**

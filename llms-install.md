@@ -25,7 +25,8 @@ Add the following configuration to the user's MCP settings file (`.cursor/mcp.js
 				"GOOGLE_API_KEY": "user_will_add_their_key_here",
 				"MISTRAL_API_KEY": "user_will_add_their_key_here",
 				"OPENROUTER_API_KEY": "user_will_add_their_key_here",
-				"XAI_API_KEY": "user_will_add_their_key_here"
+				"XAI_API_KEY": "user_will_add_their_key_here",
+				"MINIMAX_API_KEY": "user_will_add_their_key_here"
 			}
 		}
 	}
@@ -43,6 +44,7 @@ Inform the user they need **at least one** API key from the following providers:
 - **Mistral** (for Mistral models)
 - **OpenRouter** (access to multiple models)
 - **xAI** (for Grok models)
+- **MiniMax** (for MiniMax models)
 
 The user will be able to define 3 separate roles (can be the same provider or separate providers) for main AI operations, research operations (research providers/models only), and a fallback model in case of errors.
 

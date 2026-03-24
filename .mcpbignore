@@ -1,0 +1,31 @@
+# Exclude everything except manifest and icon
+# This is an npx-based bundle - no source code needed
+
+# All source code
+*.js
+*.ts
+*.mjs
+*.cjs
+*.jsx
+*.tsx
+*.json
+!manifest.json
+
+# All directories
+*/
+
+# All other files
+*.md
+*.txt
+*.yml
+*.yaml
+*.lock
+*.log
+.git*
+.env*
+.eslint*
+.prettier*
+.editorconfig
+LICENSE*
+Makefile
+Dockerfile

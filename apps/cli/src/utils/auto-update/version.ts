@@ -20,6 +20,43 @@ export function getCurrentVersion(): string {
 }
 
 /**
+ * Compare pre-release identifiers per semver spec.
+ * Splits on '.' and compares each segment: numeric segments compare
+ * as integers (so rc.9 < rc.10), string segments compare lexicographically.
+ */
+function comparePrereleaseIdentifiers(a: string, b: string): number {
+	const aParts = a.split('.');
+	const bParts = b.split('.');
+	const len = Math.max(aParts.length, bParts.length);
+	const isAllDigits = (v: string): boolean => /^\d+$/.test(v);
+
+	for (let i = 0; i < len; i++) {
+		// Fewer fields = lower precedence (per semver spec)
+		if (i >= aParts.length) return -1;
+		if (i >= bParts.length) return 1;
+
+		const aIsNum = isAllDigits(aParts[i]);
+		const bIsNum = isAllDigits(bParts[i]);
+
+		// Numeric identifiers always have lower precedence than string identifiers
+		if (aIsNum && !bIsNum) return -1;
+		if (!aIsNum && bIsNum) return 1;
+
+		if (aIsNum && bIsNum) {
+			const aNum = Number(aParts[i]);
+			const bNum = Number(bParts[i]);
+			if (aNum !== bNum) return aNum < bNum ? -1 : 1;
+		} else {
+			if (aParts[i] !== bParts[i]) {
+				return aParts[i] < bParts[i] ? -1 : 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/**
  * Compare semantic versions with proper pre-release handling
  * @param v1 - First version
  * @param v2 - Second version
@@ -27,7 +64,12 @@ export function getCurrentVersion(): string {
  */
 export function compareVersions(v1: string, v2: string): number {
 	const toParts = (v: string) => {
-		const [core, pre = ''] = v.split('-', 2);
+		// Strip build metadata (semver ignores it for precedence)
+		const withoutBuild = v.split('+')[0];
+		// Split on first '-' only — prerelease may contain inner hyphens
+		const dashIdx = withoutBuild.indexOf('-');
+		const core = dashIdx === -1 ? withoutBuild : withoutBuild.slice(0, dashIdx);
+		const pre = dashIdx === -1 ? '' : withoutBuild.slice(dashIdx + 1);
 		const nums = core.split('.').map((n) => Number.parseInt(n, 10) || 0);
 		return { nums, pre };
 	};
@@ -46,5 +88,5 @@ export function compareVersions(v1: string, v2: string): number {
 	if (a.pre && !b.pre) return -1; // prerelease < release
 	if (!a.pre && b.pre) return 1; // release > prerelease
 	if (a.pre === b.pre) return 0; // same or both empty
-	return a.pre < b.pre ? -1 : 1; // basic prerelease tie-break
+	return comparePrereleaseIdentifiers(a.pre, b.pre);
 }

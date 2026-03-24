@@ -2,6 +2,9 @@
  * @fileoverview Storage factory for creating appropriate storage implementations
  */
 
+import fsSync from 'node:fs';
+import path from 'node:path';
+import { TASKMASTER_TASKS_FILE } from '../../../common/constants/paths.js';
 import {
 	ERROR_CODES,
 	TaskMasterError
@@ -106,7 +109,7 @@ export class StorageFactory {
 				logger.info('☁️  Using API storage');
 				return StorageFactory.createApiStorage(config);
 
-			case 'auto':
+			case 'auto': {
 				// Auto-detect based on authentication status
 				const authManager = AuthManager.getInstance();
 
@@ -116,41 +119,54 @@ export class StorageFactory {
 					return StorageFactory.createApiStorage(config);
 				}
 
-				// Then check if authenticated via Supabase
+				// Check if authenticated with a brief explicitly selected
+				// for this workspace. If so, the user intentionally chose
+				// API storage — honor that even if local task files exist.
 				const hasSession = await authManager.hasValidSession();
 				if (hasSession) {
-					const accessToken = await authManager.getAccessToken();
 					const context = authManager.getContext();
 
-					// Validate we have the necessary context for API storage
-					if (!context?.briefId) {
-						logger.debug(
-							'📁 User authenticated but no brief selected, using file storage'
-						);
-						return StorageFactory.createFileStorage(projectPath, config);
+					if (context?.briefId) {
+						const accessToken = await authManager.getAccessToken();
+						if (accessToken) {
+							const nextStorage: StorageSettings = {
+								...(config.storage as StorageSettings),
+								type: 'api',
+								apiAccessToken: accessToken,
+								apiEndpoint:
+									config.storage?.apiEndpoint ||
+									process.env.TM_BASE_DOMAIN ||
+									process.env.TM_PUBLIC_BASE_DOMAIN ||
+									'https://tryhamster.com/api'
+							};
+							config.storage = nextStorage;
+							logger.info('☁️  Using API storage (brief selected)');
+							return StorageFactory.createApiStorage(config);
+						}
 					}
+				}
 
-					if (accessToken) {
-						// Configure API storage with Supabase session token
-						const nextStorage: StorageSettings = {
-							...(config.storage as StorageSettings),
-							type: 'api',
-							apiAccessToken: accessToken,
-							apiEndpoint:
-								config.storage?.apiEndpoint ||
-								process.env.TM_BASE_DOMAIN ||
-								process.env.TM_PUBLIC_BASE_DOMAIN ||
-								'https://tryhamster.com/api'
-						};
-						config.storage = nextStorage;
-						logger.info('☁️  Using API storage (authenticated)');
-						return StorageFactory.createApiStorage(config);
-					}
+				// No brief selected — if local task files exist, this project
+				// was initialized for local/file storage (solo mode). Don't
+				// auto-escalate to API storage based on global auth state.
+				if (StorageFactory.hasLocalTaskFiles(projectPath)) {
+					logger.debug(
+						'📁 Local task files found, using file storage (solo mode)'
+					);
+					return StorageFactory.createFileStorage(projectPath, config);
+				}
+
+				// Authenticated but no brief selected
+				if (hasSession) {
+					logger.debug(
+						'📁 User authenticated but no brief selected, using file storage'
+					);
 				}
 
 				// Default to file storage
 				logger.debug('📁 Using local file storage');
 				return StorageFactory.createFileStorage(projectPath, config);
+			}
 
 			default:
 				throw new TaskMasterError(
@@ -247,6 +263,16 @@ export class StorageFactory {
 			isValid: errors.length === 0,
 			errors
 		};
+	}
+
+	/**
+	 * Check if local task files exist in the project.
+	 * If they do, the project was initialized for local/file storage (solo mode)
+	 * and should not auto-escalate to API storage based on global auth state.
+	 */
+	static hasLocalTaskFiles(projectPath: string): boolean {
+		const tasksJsonPath = path.join(projectPath, TASKMASTER_TASKS_FILE);
+		return fsSync.existsSync(tasksJsonPath);
 	}
 
 	/**

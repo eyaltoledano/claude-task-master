@@ -14,6 +14,8 @@ import {
 } from '../../src/constants/paths.js';
 // Import specific config getters needed here
 import { getDebugFlag, getLogLevel } from './config-manager.js';
+// Import FileOperations from tm-core for atomic file modifications
+import { FileOperations } from '@tm/core';
 import * as gitUtils from './utils/git-utils.js';
 
 // Global silent mode flag
@@ -973,9 +975,45 @@ function markMigrationForNotice(tasksJsonPath) {
 	}
 }
 
+// Shared FileOperations instance for modifyJSON
+let _fileOps = null;
+
+/**
+ * Gets or creates the shared FileOperations instance
+ * @returns {FileOperations} The shared FileOperations instance
+ */
+function getFileOps() {
+	if (!_fileOps) {
+		_fileOps = new FileOperations();
+	}
+	return _fileOps;
+}
+
+/**
+ * Atomically modifies a JSON file using a callback pattern.
+ * This is the safe way to update JSON files - it reads, modifies, and writes
+ * all within a single lock, preventing race conditions.
+ *
+ * Uses FileOperations from @tm/core for proper cross-process locking.
+ *
+ * @param {string} filepath - Path to the JSON file
+ * @param {Function} modifier - Async callback that receives current data and returns modified data.
+ *                              Signature: (currentData: Object) => Object | Promise<Object>
+ * @returns {Promise<void>}
+ */
+async function modifyJSON(filepath, modifier) {
+	const fileOps = getFileOps();
+	await fileOps.modifyJson(filepath, modifier);
+}
+
 /**
  * Writes and saves a JSON file. Handles tagged task lists properly.
  * Uses cross-process file locking and atomic writes to prevent race conditions.
+ *
+ * @deprecated For new code, prefer modifyJSON() which provides atomic read-modify-write.
+ * This function is maintained for backwards compatibility but callers should migrate
+ * to modifyJSON() to prevent race conditions from stale reads.
+ *
  * @param {string} filepath - Path to the JSON file
  * @param {Object} data - Data to write (can be resolved tag data or raw tagged data)
  * @param {string} projectRoot - Optional project root for tag context
@@ -1921,6 +1959,7 @@ export {
 	log,
 	readJSON,
 	writeJSON,
+	modifyJSON,
 	sanitizePrompt,
 	readComplexityReport,
 	findTaskInComplexityReport,

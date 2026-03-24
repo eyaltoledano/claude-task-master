@@ -8,6 +8,7 @@ import type { Command } from 'commander';
 import { AuthCommand } from './commands/auth.command.js';
 import { AutopilotCommand } from './commands/autopilot/index.js';
 import { BriefsCommand } from './commands/briefs.command.js';
+import { ClustersCommand } from './commands/clusters.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
@@ -69,6 +70,12 @@ export class CommandRegistry {
 			name: 'set-status',
 			description: 'Update the status of one or more tasks',
 			commandClass: SetStatusCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'clusters',
+			description: 'Detect and visualize task execution clusters',
+			commandClass: ClustersCommand as any,
 			category: 'task'
 		},
 		{

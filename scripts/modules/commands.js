@@ -5250,6 +5250,15 @@ Examples:
 }
 
 /**
+ * Load the TUI module (coming soon)
+ * @returns {Promise<object|null>} null - TUI not yet available
+ */
+async function loadTUI() {
+	// TUI is coming soon - return null for now
+	return null;
+}
+
+/**
  * Launch the interactive TUI REPL
  */
 async function launchREPL() {
@@ -5257,10 +5266,8 @@ async function launchREPL() {
 	const tui = await loadTUI();
 
 	if (!tui) {
-		// Fallback to help if TUI not available
-		console.log(
-			chalk.yellow('TUI mode not available. Install @tm/tui to enable.')
-		);
+		// TUI coming soon - show help for now
+		console.log(chalk.yellow('TUI mode coming soon!'));
 		console.log(chalk.dim('Showing help instead...\n'));
 		if (isConnectedToHamster()) {
 			displayHamsterHelp();
@@ -5357,6 +5364,7 @@ function setupCLI() {
 		.description('AI-driven development task management')
 		.version(process.env.TM_PUBLIC_VERSION || 'unknown')
 		.helpOption('-h, --help', 'Display help')
+		.enablePositionalOptions()
 		.addHelpCommand(false); // Disable default help command
 
 	// Only override help for the main program, not for individual commands
@@ -5398,7 +5406,8 @@ async function runCLI(argv = process.argv) {
 		// Display banner if not in a pipe (except for init/start/repl commands which have their own)
 		const isInitCommand = argv.includes('init');
 		const isREPLCommand = argv.includes('tui') || argv.includes('repl');
-		if (process.stdout.isTTY && !isInitCommand && !isREPLCommand) {
+		const noBanner = argv.includes('--no-banner');
+		if (process.stdout.isTTY && !isInitCommand && !isREPLCommand && !noBanner) {
 			displayBanner();
 		}
 
@@ -5435,7 +5444,9 @@ async function runCLI(argv = process.argv) {
 		// NOTE: getConfig() might be called during setupCLI->registerCommands if commands need config
 		// This means the ConfigurationError might be thrown here if configuration file is missing.
 		const programInstance = setupCLI();
-		await programInstance.parseAsync(argv);
+		// Filter out --no-banner since it's handled above and not a Commander option
+		const filteredArgv = argv.filter((arg) => arg !== '--no-banner');
+		await programInstance.parseAsync(filteredArgv);
 
 		// Check if migration has occurred and show FYI notice once
 		try {

@@ -1,10 +1,10 @@
 /**
- * Default preset for Task Master loop - general task completion
+ * Default preset for Taskmaster loop - general task completion
  * Matches the structure of scripts/loop.sh prompt
  */
 export const DEFAULT_PRESET = `SETUP: If task-master command not found, run: npm i -g task-master-ai
 
-TASK: Implement ONE task/subtask from the Task Master backlog.
+TASK: Implement ONE task/subtask from the Taskmaster backlog.
 
 PROCESS:
 1. Run task-master next (or use MCP) to get the next available task/subtask.

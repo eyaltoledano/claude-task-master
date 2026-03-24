@@ -467,7 +467,9 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 
-			// Merge with existing report - only keep entries from the current tag
+			// Merge with existing report - preserve entries from previous runs.
+			// Report files are already tag-specific (e.g., task-complexity-report_<tag>.json),
+			// so all entries in the file belong to the current tag by definition.
 			let finalComplexityAnalysis = [];
 
 			if (existingReport && Array.isArray(existingReport.complexityAnalysis)) {
@@ -476,14 +478,11 @@ async function analyzeTaskComplexity(options, context = {}) {
 					complexityAnalysis.map((item) => item.taskId)
 				);
 
-				// Keep existing entries that weren't in this analysis run AND belong to the current tag
-				// We determine tag membership by checking if the task ID exists in the current tag's tasks
-				const currentTagTaskIds = new Set(tasksData.tasks.map((t) => t.id));
+				// Keep existing entries that weren't in this analysis run.
+				// Since report files are tag-specific, all entries belong to this tag.
 				const existingEntriesNotAnalyzed =
 					existingReport.complexityAnalysis.filter(
-						(item) =>
-							!analyzedTaskIds.has(item.taskId) &&
-							currentTagTaskIds.has(item.taskId) // Only keep entries for tasks in current tag
+						(item) => !analyzedTaskIds.has(item.taskId)
 					);
 
 				// Combine with new analysis
@@ -493,7 +492,7 @@ async function analyzeTaskComplexity(options, context = {}) {
 				];
 
 				reportLog(
-					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries from current tag`,
+					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries`,
 					'info'
 				);
 			} else {

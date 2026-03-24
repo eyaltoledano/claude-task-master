@@ -3,12 +3,7 @@
  * Provides a clean interface for workspace context management
  */
 
-import {
-	AuthManager,
-	type TmCore,
-	type UserContext,
-	createTmCore
-} from '@tm/core';
+import { type TmCore, type UserContext, createTmCore } from '@tm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
@@ -20,6 +15,7 @@ import {
 	selectBriefInteractive
 } from '../utils/brief-selection.js';
 import { ensureOrgSelected } from '../utils/org-selection.js';
+import { getProjectRoot } from '../utils/project-root.js';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -37,15 +33,11 @@ export interface ContextResult {
  * Manages user's workspace context (org/brief selection)
  */
 export class ContextCommand extends Command {
-	private authManager: AuthManager;
 	private tmCore?: TmCore;
 	private lastResult?: ContextResult;
 
 	constructor(name?: string) {
 		super(name || 'context');
-
-		// Initialize auth manager
-		this.authManager = AuthManager.getInstance();
 
 		// Configure the command
 		this.description(
@@ -66,6 +58,7 @@ export class ContextCommand extends Command {
 
 		// Default action: if an argument is provided, resolve and set context; else show
 		this.action(async (briefOrUrl?: string, options?: { header?: boolean }) => {
+			await this.ensureTmCore();
 			const showHeader = options?.header !== false;
 			if (briefOrUrl && briefOrUrl.trim().length > 0) {
 				await this.executeSetFromBriefInput(briefOrUrl.trim(), showHeader);
@@ -73,6 +66,18 @@ export class ContextCommand extends Command {
 			}
 			await this.executeShow(showHeader);
 		});
+	}
+
+	/**
+	 * Ensure TmCore is initialized, returning the instance
+	 */
+	private async ensureTmCore(): Promise<TmCore> {
+		if (!this.tmCore) {
+			this.tmCore = await createTmCore({
+				projectPath: getProjectRoot()
+			});
+		}
+		return this.tmCore;
 	}
 
 	/**
@@ -84,6 +89,7 @@ export class ContextCommand extends Command {
 			.argument('[orgId]', 'Organization ID or slug to select directly')
 			.option('--no-header', 'Suppress the header display')
 			.action(async (orgId?: string) => {
+				await this.ensureTmCore();
 				await this.executeSelectOrg(orgId);
 			});
 	}
@@ -97,6 +103,7 @@ export class ContextCommand extends Command {
 			.argument('[briefIdOrUrl]', 'Brief ID or Hamster URL to select directly')
 			.option('--no-header', 'Suppress the header display')
 			.action(async (briefIdOrUrl?: string) => {
+				await this.ensureTmCore();
 				await this.executeSelectBrief(briefIdOrUrl);
 			});
 	}
@@ -109,6 +116,7 @@ export class ContextCommand extends Command {
 			.description('Clear all context selections')
 			.option('--no-header', 'Suppress the header display')
 			.action(async () => {
+				await this.ensureTmCore();
 				await this.executeClear();
 			});
 	}
@@ -125,6 +133,7 @@ export class ContextCommand extends Command {
 			.option('--brief-name <name>', 'Brief name')
 			.option('--no-header', 'Suppress the header display')
 			.action(async (options) => {
+				await this.ensureTmCore();
 				await this.executeSet(options);
 			});
 	}
@@ -149,7 +158,7 @@ export class ContextCommand extends Command {
 		showHeader: boolean = true
 	): Promise<ContextResult> {
 		// Check authentication first
-		const isAuthenticated = await checkAuthentication(this.authManager, {
+		const isAuthenticated = await checkAuthentication(this.tmCore!.auth, {
 			message:
 				'The "context" command requires you to be logged in to your Hamster account.'
 		});
@@ -162,7 +171,7 @@ export class ContextCommand extends Command {
 			};
 		}
 
-		const context = this.authManager.getContext();
+		const context = this.tmCore!.auth.getContext();
 
 		if (showHeader) {
 			console.log(chalk.cyan('\n🌍 Workspace Context\n'));
@@ -248,7 +257,7 @@ export class ContextCommand extends Command {
 	private async executeSelectOrg(orgId?: string): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await checkAuthentication(this.authManager))) {
+			if (!(await checkAuthentication(this.tmCore!.auth))) {
 				process.exit(1);
 			}
 
@@ -274,7 +283,7 @@ export class ContextCommand extends Command {
 
 		try {
 			// Fetch organizations from API
-			const organizations = await this.authManager.getOrganizations();
+			const organizations = await this.tmCore!.auth.getOrganizations();
 			spinner.stop();
 
 			if (organizations.length === 0) {
@@ -339,7 +348,7 @@ export class ContextCommand extends Command {
 			}
 
 			// Update context
-			await this.authManager.updateContext({
+			await this.tmCore!.auth.updateContext({
 				orgId: selectedOrg.id,
 				orgName: selectedOrg.name,
 				orgSlug: selectedOrg.slug,
@@ -353,7 +362,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'select-org',
-				context: this.authManager.getContext() || undefined,
+				context: this.tmCore!.auth.getContext() || undefined,
 				message: `Selected organization: ${selectedOrg.name}`
 			};
 		} catch (error) {
@@ -368,7 +377,7 @@ export class ContextCommand extends Command {
 	private async executeSelectBrief(briefIdOrUrl?: string): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await checkAuthentication(this.authManager))) {
+			if (!(await checkAuthentication(this.tmCore!.auth))) {
 				process.exit(1);
 			}
 
@@ -379,7 +388,7 @@ export class ContextCommand extends Command {
 			}
 
 			// Interactive selection
-			const context = this.authManager.getContext();
+			const context = this.tmCore!.auth.getContext();
 			if (!context?.orgId) {
 				ui.displayError(
 					'No organization selected. Run "tm context org" first.'
@@ -389,14 +398,14 @@ export class ContextCommand extends Command {
 
 			// Use shared utility for interactive selection
 			const result = await selectBriefInteractive(
-				this.authManager,
+				this.tmCore!.auth,
 				context.orgId
 			);
 
 			this.setLastResult({
 				success: result.success,
 				action: 'select-brief',
-				context: this.authManager.getContext() || undefined,
+				context: this.tmCore!.auth.getContext() || undefined,
 				message: result.message
 			});
 
@@ -415,7 +424,7 @@ export class ContextCommand extends Command {
 	private async executeClear(): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await checkAuthentication(this.authManager))) {
+			if (!(await checkAuthentication(this.tmCore!.auth))) {
 				process.exit(1);
 			}
 
@@ -436,7 +445,7 @@ export class ContextCommand extends Command {
 	 */
 	private async clearContext(): Promise<ContextResult> {
 		try {
-			await this.authManager.clearContext();
+			await this.tmCore!.auth.clearContext();
 			ui.displaySuccess('Context cleared');
 
 			return {
@@ -461,7 +470,7 @@ export class ContextCommand extends Command {
 	private async executeSet(options: any): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await checkAuthentication(this.authManager))) {
+			if (!(await checkAuthentication(this.tmCore!.auth))) {
 				process.exit(1);
 			}
 
@@ -478,17 +487,6 @@ export class ContextCommand extends Command {
 	}
 
 	/**
-	 * Initialize TmCore if not already initialized
-	 */
-	private async initTmCore(): Promise<void> {
-		if (!this.tmCore) {
-			this.tmCore = await createTmCore({
-				projectPath: process.cwd()
-			});
-		}
-	}
-
-	/**
 	 * Helper method to select brief directly from input (URL or ID)
 	 * Used by both executeSelectBrief and executeSetFromBriefInput
 	 */
@@ -496,10 +494,8 @@ export class ContextCommand extends Command {
 		input: string,
 		action: 'select-brief' | 'set'
 	): Promise<void> {
-		await this.initTmCore();
-
 		const result = await selectBriefFromInput(
-			this.authManager,
+			this.tmCore!.auth,
 			input,
 			this.tmCore
 		);
@@ -507,7 +503,7 @@ export class ContextCommand extends Command {
 		this.setLastResult({
 			success: result.success,
 			action,
-			context: this.authManager.getContext() || undefined,
+			context: this.tmCore!.auth.getContext() || undefined,
 			message: result.message
 		});
 
@@ -526,7 +522,7 @@ export class ContextCommand extends Command {
 	): Promise<void> {
 		try {
 			// Check authentication
-			if (!(await checkAuthentication(this.authManager))) {
+			if (!(await checkAuthentication(this.tmCore!.auth))) {
 				process.exit(1);
 			}
 
@@ -568,7 +564,7 @@ export class ContextCommand extends Command {
 				};
 			}
 
-			await this.authManager.updateContext(context);
+			await this.tmCore!.auth.updateContext(context);
 			ui.displaySuccess('Context updated');
 
 			// Display what was set
@@ -586,7 +582,7 @@ export class ContextCommand extends Command {
 			return {
 				success: true,
 				action: 'set',
-				context: this.authManager.getContext() || undefined,
+				context: this.tmCore!.auth.getContext() || undefined,
 				message: 'Context updated'
 			};
 		} catch (error) {
@@ -618,7 +614,7 @@ export class ContextCommand extends Command {
 	 * Get current context (for programmatic usage)
 	 */
 	getContext(): UserContext | null {
-		return this.authManager.getContext();
+		return this.tmCore?.auth.getContext() ?? null;
 	}
 
 	/**
@@ -632,9 +628,11 @@ export class ContextCommand extends Command {
 		briefSelected: boolean;
 	}> {
 		try {
+			await this.ensureTmCore();
+
 			// Organization selection is REQUIRED - use the shared utility
 			// It will auto-select if only one org, or prompt if multiple
-			const orgResult = await ensureOrgSelected(this.authManager, {
+			const orgResult = await ensureOrgSelected(this.tmCore!.auth, {
 				promptMessage: 'Select an organization:'
 			});
 
@@ -659,7 +657,7 @@ export class ContextCommand extends Command {
 
 			// Select brief using shared utility
 			const briefResult = await selectBriefInteractive(
-				this.authManager,
+				this.tmCore!.auth,
 				orgResult.orgId
 			);
 			return {
@@ -681,7 +679,7 @@ export class ContextCommand extends Command {
 	 * Clean up resources
 	 */
 	async cleanup(): Promise<void> {
-		// No resources to clean up for context command
+		await this.tmCore?.close();
 	}
 
 	/**

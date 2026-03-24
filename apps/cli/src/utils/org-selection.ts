@@ -3,7 +3,7 @@
  * Provides reusable org selection flow for commands that require org context.
  */
 
-import type { AuthManager } from '@tm/core';
+import type { AuthDomain } from '@tm/core';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import * as ui from './ui.js';
@@ -40,13 +40,13 @@ export interface EnsureOrgOptions {
  * 2. If not, fetch orgs and auto-select if only one
  * 3. If multiple, prompt user to select
  *
- * @param authManager - The AuthManager instance
+ * @param authDomain - The AuthDomain instance
  * @param options - Optional configuration
  * @returns OrgSelectionResult with orgId if successful
  *
  * @example
  * ```typescript
- * const result = await ensureOrgSelected(authManager);
+ * const result = await ensureOrgSelected(authDomain);
  * if (!result.success) {
  *   process.exit(1);
  * }
@@ -54,13 +54,13 @@ export interface EnsureOrgOptions {
  * ```
  */
 export async function ensureOrgSelected(
-	authManager: AuthManager,
+	authDomain: AuthDomain,
 	options: EnsureOrgOptions = {}
 ): Promise<OrgSelectionResult> {
 	const { silent = false, promptMessage, forceSelection = false } = options;
 
 	try {
-		const context = authManager.getContext();
+		const context = authDomain.getContext();
 
 		// If org is already selected and we're not forcing selection, return it
 		if (context?.orgId && !forceSelection) {
@@ -73,7 +73,7 @@ export async function ensureOrgSelected(
 		}
 
 		// Fetch available orgs
-		const orgs = await authManager.getOrganizations();
+		const orgs = await authDomain.getOrganizations();
 
 		if (orgs.length === 0) {
 			ui.displayError(
@@ -87,7 +87,7 @@ export async function ensureOrgSelected(
 
 		if (orgs.length === 1) {
 			// Auto-select the only org
-			await authManager.updateContext({
+			await authDomain.updateContext({
 				orgId: orgs[0].id,
 				orgName: orgs[0].name,
 				orgSlug: orgs[0].slug
@@ -130,7 +130,7 @@ export async function ensureOrgSelected(
 
 		const selectedOrg = orgs.find((o) => o.id === response.orgId);
 		if (selectedOrg) {
-			await authManager.updateContext({
+			await authDomain.updateContext({
 				orgId: selectedOrg.id,
 				orgName: selectedOrg.name,
 				orgSlug: selectedOrg.slug
@@ -162,8 +162,8 @@ export async function ensureOrgSelected(
  * Check if org is selected, returning the current org info without prompting.
  * Use this for non-interactive checks.
  */
-export function getSelectedOrg(authManager: AuthManager): OrgSelectionResult {
-	const context = authManager.getContext();
+export function getSelectedOrg(authDomain: AuthDomain): OrgSelectionResult {
+	const context = authDomain.getContext();
 
 	if (context?.orgId) {
 		return {

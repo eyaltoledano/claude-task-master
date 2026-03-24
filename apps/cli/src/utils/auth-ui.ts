@@ -303,13 +303,9 @@ export interface BrowserAuthProvider {
  *
  * @example
  * ```typescript
- * // From auth command
- * const authManager = AuthManager.getInstance();
- * const credentials = await authenticateWithBrowserMFA(authManager);
- *
- * // From auth-guard (for protected commands)
- * const authDomain = new AuthDomain();
- * const credentials = await authenticateWithBrowserMFA(authDomain);
+ * // From any command with TmCore
+ * const tmCore = await createTmCore({ projectPath });
+ * const credentials = await authenticateWithBrowserMFA(tmCore.auth);
  * ```
  */
 export async function authenticateWithBrowserMFA(

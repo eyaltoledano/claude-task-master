@@ -1,7 +1,7 @@
 /**
- * Test coverage preset for Task Master loop - writing meaningful tests
+ * Test coverage preset for Taskmaster loop - writing meaningful tests
  */
-export const TEST_COVERAGE_PRESET = `# Task Master Loop - Test Coverage
+export const TEST_COVERAGE_PRESET = `# Taskmaster Loop - Test Coverage
 
 Find uncovered code and write meaningful tests. ONE test per session.
 

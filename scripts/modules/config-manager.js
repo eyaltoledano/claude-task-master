@@ -906,8 +906,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		groq: 'GROQ_API_KEY',
 		vertex: 'GOOGLE_API_KEY', // Vertex uses the same key as Google
 		'claude-code': 'CLAUDE_CODE_API_KEY', // Not actually used, but included for consistency
-		bedrock: 'AWS_ACCESS_KEY_ID' // Bedrock uses AWS credentials
-		// Add other providers as needed
+		bedrock: 'AWS_ACCESS_KEY_ID', // Bedrock uses AWS credentials
+		minimax: 'MINIMAX_API_KEY'
 	};
 
 	const providerKey = providerName?.toLowerCase();
@@ -997,6 +997,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'groq':
 				apiKeyToCheck = mcpEnv.GROQ_API_KEY;
 				placeholderValue = 'YOUR_GROQ_API_KEY_HERE';
+				break;
+			case 'minimax':
+				apiKeyToCheck = mcpEnv.MINIMAX_API_KEY;
+				placeholderValue = 'YOUR_MINIMAX_API_KEY_HERE';
 				break;
 			case 'ollama':
 				return true; // No key needed

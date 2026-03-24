@@ -1,7 +1,7 @@
 /**
- * Linting preset for Task Master loop - fix lint and type errors
+ * Linting preset for Taskmaster loop - fix lint and type errors
  */
-export const LINTING_PRESET = `# Task Master Loop - Linting
+export const LINTING_PRESET = `# Taskmaster Loop - Linting
 
 Fix lint errors and type errors one by one. ONE fix per session.
 

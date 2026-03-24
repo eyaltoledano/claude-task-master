@@ -51,3 +51,16 @@ if (process.env.SILENCE_CONSOLE === 'true') {
 		error: () => {}
 	};
 }
+
+// Clean up signal-exit listeners after all tests to prevent open handle warnings
+// This is needed because packages like proper-lockfile register signal handlers
+afterAll(async () => {
+	// Give any pending async operations time to complete
+	await new Promise((resolve) => setImmediate(resolve));
+
+	// Clean up any registered signal handlers from signal-exit
+	const listeners = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+	for (const signal of listeners) {
+		process.removeAllListeners(signal);
+	}
+});

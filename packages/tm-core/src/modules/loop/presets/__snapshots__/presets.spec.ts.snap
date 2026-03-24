@@ -3,7 +3,7 @@
 exports[`Preset Snapshots > default preset matches snapshot 1`] = `
 "SETUP: If task-master command not found, run: npm i -g task-master-ai
 
-TASK: Implement ONE task/subtask from the Task Master backlog.
+TASK: Implement ONE task/subtask from the Taskmaster backlog.
 
 PROCESS:
 1. Run task-master next (or use MCP) to get the next available task/subtask.
@@ -26,7 +26,7 @@ IMPORTANT:
 `;
 
 exports[`Preset Snapshots > duplication preset matches snapshot 1`] = `
-"# Task Master Loop - Duplication
+"# Taskmaster Loop - Duplication
 
 Find duplicated code and refactor into shared utilities. ONE refactor per session.
 
@@ -60,7 +60,7 @@ Find duplicated code and refactor into shared utilities. ONE refactor per sessio
 `;
 
 exports[`Preset Snapshots > entropy preset matches snapshot 1`] = `
-"# Task Master Loop - Entropy (Code Smells)
+"# Taskmaster Loop - Entropy (Code Smells)
 
 Find code smells and clean them up. ONE cleanup per session.
 
@@ -102,7 +102,7 @@ Find code smells and clean them up. ONE cleanup per session.
 `;
 
 exports[`Preset Snapshots > linting preset matches snapshot 1`] = `
-"# Task Master Loop - Linting
+"# Taskmaster Loop - Linting
 
 Fix lint errors and type errors one by one. ONE fix per session.
 
@@ -136,7 +136,7 @@ Fix lint errors and type errors one by one. ONE fix per session.
 `;
 
 exports[`Preset Snapshots > test-coverage preset matches snapshot 1`] = `
-"# Task Master Loop - Test Coverage
+"# Taskmaster Loop - Test Coverage
 
 Find uncovered code and write meaningful tests. ONE test per session.
 

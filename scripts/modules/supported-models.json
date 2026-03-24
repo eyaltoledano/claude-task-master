@@ -1439,5 +1439,31 @@
 			"max_tokens": 65536,
 			"supported": true
 		}
+	],
+	"minimax": [
+		{
+			"id": "MiniMax-M2.5",
+			"name": "MiniMax M2.5",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 1.0,
+				"output": 5.5
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
+		{
+			"id": "MiniMax-M2.5-highspeed",
+			"name": "MiniMax M2.5 Highspeed",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 1.0,
+				"output": 5.5
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		}
 	]
 }

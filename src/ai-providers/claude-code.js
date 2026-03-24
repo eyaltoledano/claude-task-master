@@ -11,7 +11,10 @@
  *
  */
 
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { homedir } from 'os';
 import { createClaudeCode } from 'ai-sdk-provider-claude-code';
 import {
 	getClaudeCodeSettingsForCommand,
@@ -82,11 +85,39 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				execSync('claude --version', { stdio: 'pipe', timeout: 1000 });
 				_claudeCliAvailable = true;
 			} catch (error) {
-				_claudeCliAvailable = false;
-				log(
-					'warn',
-					'Claude Code CLI not detected. Install it with: npm install -g @anthropic-ai/claude-code'
-				);
+				// PATH-based lookup failed - check common install locations
+				// The native binary may be installed outside the current PATH
+				// (e.g. when running as an MCP server with a minimal environment)
+				const home = homedir();
+				const commonPaths = [
+					join(home, '.local', 'bin', 'claude'),
+					join(home, '.bun', 'bin', 'claude'),
+					'/usr/local/bin/claude'
+				];
+				const found = commonPaths.find((p) => existsSync(p));
+				if (found) {
+					try {
+						execFileSync(found, ['--version'], {
+							stdio: 'pipe',
+							timeout: 1000
+						});
+						// Add the binary's directory to PATH so the SDK can find it
+						const binDir = dirname(found);
+						process.env.PATH = `${binDir}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH || ''}`;
+						_claudeCliAvailable = true;
+					} catch {
+						_claudeCliAvailable = false;
+					}
+				} else {
+					_claudeCliAvailable = false;
+				}
+
+				if (!_claudeCliAvailable) {
+					log(
+						'warn',
+						'Claude Code CLI not detected. Install it from: https://docs.anthropic.com/en/docs/claude-code/getting-started'
+					);
+				}
 			} finally {
 				_claudeCliChecked = true;
 			}
@@ -147,7 +178,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 			const code = error?.code;
 			if (code === 'ENOENT' || /claude/i.test(msg)) {
 				const enhancedError = new Error(
-					`Claude Code CLI not available. Please install Claude Code CLI first. Original error: ${error.message}`
+					`Claude Code CLI not available. Install it from: https://docs.anthropic.com/en/docs/claude-code/getting-started - Original error: ${error.message}`
 				);
 				enhancedError.cause = error;
 				this.handleError('Claude Code CLI initialization', enhancedError);

@@ -5,6 +5,8 @@
 import path from 'node:path';
 import {
 	type LoopConfig,
+	type LoopIteration,
+	type LoopOutputCallbacks,
 	type LoopResult,
 	PRESET_NAMES,
 	type TmCore,
@@ -23,6 +25,8 @@ export interface LoopCommandOptions {
 	tag?: string;
 	project?: string;
 	sandbox?: boolean;
+	output?: boolean;
+	verbose?: boolean;
 }
 
 export class LoopCommand extends Command {
@@ -49,6 +53,11 @@ export class LoopCommand extends Command {
 				'Project root directory (auto-detected if not provided)'
 			)
 			.option('--sandbox', 'Run Claude in Docker sandbox mode')
+			.option(
+				'--no-output',
+				'Exclude full Claude output from iteration results'
+			)
+			.option('-v, --verbose', "Show Claude's work in real-time")
 			.action((options: LoopCommandOptions) => this.execute(options));
 	}
 
@@ -109,12 +118,21 @@ export class LoopCommand extends Command {
 			}
 			console.log();
 
+			// Auto-detect brief name from auth context (if available)
+			const briefName = this.tmCore.auth.getContext()?.briefName;
+
 			const config: Partial<LoopConfig> = {
 				iterations,
 				prompt,
 				progressFile,
 				tag: options.tag,
-				sandbox: options.sandbox
+				sandbox: options.sandbox,
+				// CLI defaults to including output (users typically want to see it)
+				// Domain defaults to false (library consumers opt-in explicitly)
+				includeOutput: options.output ?? true,
+				verbose: options.verbose ?? false,
+				brief: briefName,
+				callbacks: this.createOutputCallbacks()
 			};
 
 			const result = await this.tmCore.loop.run(config);
@@ -161,6 +179,47 @@ export class LoopCommand extends Command {
 		}
 	}
 
+	private createOutputCallbacks(): LoopOutputCallbacks {
+		return {
+			onIterationStart: (iteration: number, total: number) => {
+				console.log();
+				console.log(chalk.cyan(`━━━ Iteration ${iteration} of ${total} ━━━`));
+			},
+			onText: (text: string) => {
+				console.log(text);
+			},
+			onToolUse: (toolName: string) => {
+				console.log(chalk.dim(`  → ${toolName}`));
+			},
+			onError: (message: string, severity?: 'warning' | 'error') => {
+				if (severity === 'warning') {
+					console.error(chalk.yellow(`[Loop Warning] ${message}`));
+				} else {
+					console.error(chalk.red(`[Loop Error] ${message}`));
+				}
+			},
+			onStderr: (iteration: number, text: string) => {
+				process.stderr.write(chalk.dim(`[Iteration ${iteration}] `) + text);
+			},
+			onOutput: (output: string) => {
+				console.log(output);
+			},
+			onIterationEnd: (iteration: LoopIteration) => {
+				const statusColor =
+					iteration.status === 'success'
+						? chalk.green
+						: iteration.status === 'error'
+							? chalk.red
+							: chalk.yellow;
+				console.log(
+					statusColor(
+						`  Iteration ${iteration.iteration} completed: ${iteration.status}`
+					)
+				);
+			}
+		};
+	}
+
 	private displayResult(result: LoopResult): void {
 		console.log();
 		console.log(chalk.bold('Loop Complete'));
@@ -168,6 +227,9 @@ export class LoopCommand extends Command {
 		console.log(`Total iterations: ${result.totalIterations}`);
 		console.log(`Tasks completed: ${result.tasksCompleted}`);
 		console.log(`Final status: ${this.formatStatus(result.finalStatus)}`);
+		if (result.errorMessage) {
+			console.log(chalk.red(`Error: ${result.errorMessage}`));
+		}
 	}
 
 	private formatStatus(status: LoopResult['finalStatus']): string {

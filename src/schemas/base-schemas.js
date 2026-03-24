@@ -10,6 +10,11 @@ import { z } from 'zod';
  *
  * Other providers (Anthropic, Google, etc.) safely ignore this constraint.
  * See: https://platform.openai.com/docs/guides/structured-outputs
+ *
+ * NOTE: The `metadata` field (user-defined task metadata) is intentionally EXCLUDED
+ * from all AI schemas. This ensures AI operations cannot overwrite user metadata.
+ * When tasks are updated via AI, the spread operator preserves existing metadata
+ * since AI responses won't include a metadata field.
  */
 export const TaskStatusSchema = z.enum([
 	'pending',

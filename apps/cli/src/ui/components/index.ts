@@ -4,6 +4,8 @@
 
 export * from './brand-banner.component.js';
 export * from './cardBox.component.js';
+export * from './cluster-pipeline.component.js';
+export * from './execution-plan.component.js';
 export * from './dashboard.component.js';
 export * from './header.component.js';
 export * from './next-task.component.js';

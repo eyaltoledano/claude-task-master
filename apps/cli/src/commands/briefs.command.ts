@@ -5,9 +5,9 @@
 
 import readline from 'readline';
 import { type LogLevel, type TagInfo, tryAddTagViaRemote } from '@tm/bridge';
-import type { Brief, TmCore } from '@tm/core';
-import { AuthManager, createTmCore } from '@tm/core';
+import { type Brief, type TmCore, createTmCore } from '@tm/core';
 import chalk from 'chalk';
+import Table from 'cli-table3';
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import ora from 'ora';
@@ -18,6 +18,7 @@ import {
 	selectBriefInteractive
 } from '../utils/brief-selection.js';
 import { ensureOrgSelected } from '../utils/org-selection.js';
+import { getProjectRoot } from '../utils/project-root.js';
 import * as ui from '../utils/ui.js';
 
 /**
@@ -37,14 +38,10 @@ export interface BriefsResult {
  */
 export class BriefsCommand extends Command {
 	private tmCore?: TmCore;
-	private authManager: AuthManager;
 	private lastResult?: BriefsResult;
 
 	constructor(name?: string) {
 		super(name || 'briefs');
-
-		// Initialize auth manager
-		this.authManager = AuthManager.getInstance();
 
 		// Configure the command
 		this.description('Manage briefs (API storage only)');
@@ -72,7 +69,8 @@ export class BriefsCommand extends Command {
 	 * Check if user is authenticated (required for briefs)
 	 */
 	private async checkAuth(): Promise<boolean> {
-		return checkAuthentication(this.authManager, {
+		await this.ensureTmCore();
+		return checkAuthentication(this.tmCore!.auth, {
 			message:
 				'The "briefs" command requires you to be logged in to your Hamster account.',
 			footer:
@@ -160,12 +158,13 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	/**
 	 * Initialize TmCore if not already initialized
 	 */
-	private async initTmCore(): Promise<void> {
+	private async ensureTmCore(): Promise<TmCore> {
 		if (!this.tmCore) {
 			this.tmCore = await createTmCore({
-				projectPath: process.cwd()
+				projectPath: getProjectRoot()
 			});
 		}
+		return this.tmCore;
 	}
 
 	/**
@@ -186,13 +185,13 @@ Note: Briefs must be created through the Hamster Studio web interface.
 				process.exit(1);
 			}
 
-			// Fetch briefs directly from AuthManager (bypasses storage layer issues)
+			// Fetch briefs directly from auth domain (bypasses storage layer issues)
 			const spinner = ora('Fetching briefs...').start();
-			const briefs = await this.authManager.getBriefs(orgId);
+			const briefs = await this.tmCore!.auth.getBriefs(orgId);
 			spinner.stop();
 
 			// Get current context to determine current brief
-			const context = this.authManager.getContext();
+			const context = this.tmCore!.auth.getContext();
 			const currentBriefId = context?.briefId;
 
 			// Convert to TagInfo format for display
@@ -252,7 +251,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 * Uses the shared org-selection utility
 	 */
 	private async ensureOrgSelectedLocal(): Promise<string | null> {
-		const result = await ensureOrgSelected(this.authManager);
+		const result = await ensureOrgSelected(this.tmCore!.auth);
 		return result.success ? result.orgId || null : null;
 	}
 
@@ -260,8 +259,6 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 * Display briefs in a table format (for non-interactive mode)
 	 */
 	private displayBriefsTable(tags: TagInfo[], _showMetadata?: boolean): void {
-		const Table = require('cli-table3');
-
 		const terminalWidth = Math.max(process.stdout.columns || 120, 80);
 		const usableWidth = Math.floor(terminalWidth * 0.95);
 		const widths = [0.35, 0.25, 0.2, 0.1, 0.1];
@@ -381,7 +378,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	private async promptBriefSelection(briefs: TagInfo[]): Promise<void> {
 		try {
 			// Check if org is selected (required for context updates)
-			const context = this.authManager.getContext();
+			const context = this.tmCore!.auth.getContext();
 			if (!context?.orgId) {
 				// Don't prompt if no org selected - user needs to set org first
 				return;
@@ -480,7 +477,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 
 				if (selectedBrief) {
 					// Update context with selected brief
-					await this.authManager.updateContext({
+					await this.tmCore!.auth.updateContext({
 						briefId: selectedBrief.briefId || undefined,
 						briefName: selectedBrief.name,
 						briefStatus: selectedBrief.status || undefined,
@@ -516,8 +513,10 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private async executeSelect(nameOrId?: string): Promise<void> {
 		try {
+			await this.ensureTmCore();
+
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
+			const hasSession = await this.tmCore!.auth.hasValidSession();
 			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
@@ -530,7 +529,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 			}
 
 			// Check if org is selected for interactive selection
-			const context = this.authManager.getContext();
+			const context = this.tmCore!.auth.getContext();
 			if (!context?.orgId) {
 				ui.displayErrorBox(
 					'No organization selected. Run "tm context org" first.'
@@ -540,7 +539,7 @@ Note: Briefs must be created through the Hamster Studio web interface.
 
 			// Use shared utility for interactive selection
 			const result = await selectBriefInteractive(
-				this.authManager,
+				this.tmCore!.auth,
 				context.orgId
 			);
 
@@ -571,19 +570,18 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	private async executeSelectFromUrl(input: string): Promise<void> {
 		try {
+			await this.ensureTmCore();
+
 			// Check authentication
-			const hasSession = await this.authManager.hasValidSession();
+			const hasSession = await this.tmCore!.auth.hasValidSession();
 			if (!hasSession) {
 				ui.displayError('Not authenticated. Run "tm auth login" first.');
 				process.exit(1);
 			}
 
-			// Initialize tmCore to access business logic
-			await this.initTmCore();
-
 			// Use shared utility - tm-core handles ALL parsing
 			const result = await selectBriefFromInput(
-				this.authManager,
+				this.tmCore!.auth,
 				input,
 				this.tmCore
 			);
@@ -667,6 +665,13 @@ Note: Briefs must be created through the Hamster Studio web interface.
 	 */
 	getLastResult(): BriefsResult | undefined {
 		return this.lastResult;
+	}
+
+	/**
+	 * Clean up resources
+	 */
+	async cleanup(): Promise<void> {
+		await this.tmCore?.close();
 	}
 
 	/**
