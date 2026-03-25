@@ -1,0 +1,19 @@
+name: vibecheck
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  vibecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: yuvrajangadsingh/vibecheck@v1.2.0
+        with:
+          severity: warn
+          fail-on: error
+          changed-only: true
