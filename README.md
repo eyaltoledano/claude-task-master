@@ -281,6 +281,10 @@ task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-depen
 task-master rules add windsurf,roo,vscode
 ```
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/eyaltoledano-claude-task-master).
+
 ## Tool Loading Configuration
 
 ### Optimizing MCP Tool Loading
