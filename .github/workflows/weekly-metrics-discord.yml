@@ -38,7 +38,7 @@ jobs:
           echo "date_range=Past 14 days ($first_day to $last_day)" >> $GITHUB_ENV
 
       - name: Generate issue metrics
-        uses: github/issue-metrics@v3
+        uses: github-community-projects/issue-metrics@v3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:issue created:${{ env.first_day }}..${{ env.last_day }}"
@@ -47,14 +47,14 @@ jobs:
           OUTPUT_FILE: issue_metrics.md
 
       - name: Generate PR created metrics
-        uses: github/issue-metrics@v3
+        uses: github-community-projects/issue-metrics@v3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:pr created:${{ env.first_day }}..${{ env.last_day }}"
           OUTPUT_FILE: pr_created_metrics.md
 
       - name: Generate PR merged metrics
-        uses: github/issue-metrics@v3
+        uses: github-community-projects/issue-metrics@v3
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SEARCH_QUERY: "repo:${{ github.repository }} is:pr is:merged merged:${{ env.first_day }}..${{ env.last_day }}"
