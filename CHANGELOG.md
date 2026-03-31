@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.43.1
+
+### Patch Changes
+
+- [#1676](https://github.com/eyaltoledano/claude-task-master/pull/1676) [`6a11438`](https://github.com/eyaltoledano/claude-task-master/commit/6a11438de2859a3fb9bad4c2bef6fac35e44425a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Stop setting up `hamster` and `ham` shell aliases during `task-master init`. Existing aliases are automatically cleaned up.
+
 ## 0.43.0
 
 ### Minor Changes
