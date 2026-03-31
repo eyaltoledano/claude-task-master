@@ -7,7 +7,7 @@
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 
 /**
- * MiniMax provider supporting MiniMax-M2.5 models through OpenAI-compatible API.
+ * MiniMax provider supporting MiniMax-M2.7 models through OpenAI-compatible API.
  */
 export class MiniMaxProvider extends OpenAICompatibleProvider {
 	constructor() {

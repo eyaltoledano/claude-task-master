@@ -1442,6 +1442,30 @@
 	],
 	"minimax": [
 		{
+			"id": "MiniMax-M2.7",
+			"name": "MiniMax M2.7",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 0.3,
+				"output": 1.2
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
+		{
+			"id": "MiniMax-M2.7-highspeed",
+			"name": "MiniMax M2.7 Highspeed",
+			"swe_score": null,
+			"cost_per_1m_tokens": {
+				"input": 0.6,
+				"output": 2.4
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 204800,
+			"supported": true
+		},
+		{
 			"id": "MiniMax-M2.5",
 			"name": "MiniMax M2.5",
 			"swe_score": null,
