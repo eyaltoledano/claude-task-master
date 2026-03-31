@@ -71,7 +71,8 @@ jest.unstable_mockModule(
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/config-manager.js',
 	() => ({
-		getDebugFlag: jest.fn(() => false)
+		getDebugFlag: jest.fn(() => false),
+		isSlimDoneTasksEnabled: jest.fn(() => true)
 	})
 );
 
@@ -507,7 +508,8 @@ describe('setTaskStatus', () => {
 				tag: 'master',
 				_rawTaggedData: expect.any(Object)
 			}),
-			false
+			false,
+			expect.objectContaining({ slimOnDone: expect.any(Boolean) })
 		);
 		expect(updateSingleTaskStatus).toHaveBeenCalledWith(
 			tasksPath,
@@ -518,7 +520,8 @@ describe('setTaskStatus', () => {
 				tag: 'master',
 				_rawTaggedData: expect.any(Object)
 			}),
-			false
+			false,
+			expect.objectContaining({ slimOnDone: expect.any(Boolean) })
 		);
 		expect(updateSingleTaskStatus).toHaveBeenCalledWith(
 			tasksPath,
@@ -529,7 +532,8 @@ describe('setTaskStatus', () => {
 				tag: 'master',
 				_rawTaggedData: expect.any(Object)
 			}),
-			false
+			false,
+			expect.objectContaining({ slimOnDone: expect.any(Boolean) })
 		);
 		expect(result).toBeDefined();
 	});
