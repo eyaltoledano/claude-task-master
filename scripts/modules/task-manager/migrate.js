@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 // Create a simple log wrapper for CLI use
 const log = createLogWrapper({
 	info: (msg) => console.log(chalk.blue('ℹ'), msg),
-	warn: (msg) => console.log(chalk.yellow('⚠'), msg),
+	warn: (msg) => console.log(chalk.yellow('⚠️'), msg),
 	error: (msg) => console.error(chalk.red('✗'), msg),
 	success: (msg) => console.log(chalk.green('✓'), msg)
 });

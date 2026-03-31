@@ -394,7 +394,7 @@ export function displayFormattedError(error, options = {}) {
  * @param {string[]} [hints] - Optional hints
  */
 export function displayWarning(message, hints = []) {
-	let content = chalk.yellow.bold('⚠ Warning\n\n');
+	let content = chalk.yellow.bold('⚠️ Warning\n\n');
 	content += chalk.white(message);
 
 	if (hints && hints.length > 0) {

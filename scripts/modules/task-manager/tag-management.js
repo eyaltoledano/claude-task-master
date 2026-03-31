@@ -325,7 +325,7 @@ async function deleteTag(
 		if (!yes && taskCount > 0 && outputFormat === 'text') {
 			console.log(
 				boxen(
-					chalk.yellow.bold('⚠ WARNING: Tag Deletion') +
+					chalk.yellow.bold('⚠️ WARNING: Tag Deletion') +
 						`\n\nYou are about to delete tag "${chalk.cyan(tagName)}"` +
 						`\nThis will permanently delete ${chalk.red.bold(taskCount)} tasks` +
 						'\n\nThis action cannot be undone!',
@@ -417,7 +417,7 @@ async function deleteTag(
 						`\n\nTag Name: ${chalk.cyan(tagName)}` +
 						`\nTasks Deleted: ${chalk.yellow(taskCount)}` +
 						(isCurrentTag
-							? `\n${chalk.yellow('⚠ Switched current tag to "master"')}`
+							? `\n${chalk.yellow('⚠️ Switched current tag to "master"')}`
 							: ''),
 					{
 						padding: 1,
