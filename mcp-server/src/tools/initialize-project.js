@@ -24,9 +24,7 @@ export function registerInitializeProjectTool(server) {
 				.boolean()
 				.optional()
 				.default(true)
-				.describe(
-					'Add shell aliases (tm, taskmaster, hamster, ham) to shell config file.'
-				),
+				.describe('Add shell aliases (tm, taskmaster) to shell config file.'),
 			initGit: z
 				.boolean()
 				.optional()

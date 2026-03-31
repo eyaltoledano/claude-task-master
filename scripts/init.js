@@ -149,17 +149,42 @@ function addShellAliases() {
 
 		const configContent = fs.readFileSync(shellConfigFile, 'utf8');
 
-		// Define all aliases we want
+		// Define aliases we want (hamster/ham aliases are managed by Hamster CLI, not Task Master)
 		const aliases = [
 			{ name: 'tm', line: "alias tm='task-master'" },
-			{ name: 'taskmaster', line: "alias taskmaster='task-master'" },
-			{ name: 'hamster', line: "alias hamster='task-master'" },
-			{ name: 'ham', line: "alias ham='task-master'" }
+			{ name: 'taskmaster', line: "alias taskmaster='task-master'" }
 		];
 
+		// Self-healing: remove any stale hamster/ham aliases that point to task-master
+		const staleAliasPatterns = [
+			/alias hamster='task-master'\n?/g,
+			/alias ham='task-master'\n?/g
+		];
+
+		let cleanedContent = configContent;
+		for (const pattern of staleAliasPatterns) {
+			cleanedContent = cleanedContent.replace(pattern, '');
+		}
+		const removedStale = cleanedContent !== configContent;
+
+		// Clean up empty "Task Master aliases" comment blocks left behind
+		cleanedContent = cleanedContent.replace(
+			/\n# Task Master aliases added on [^\n]*\n(?=\s*\n|$)/g,
+			'\n'
+		);
+
+		if (removedStale) {
+			fs.writeFileSync(shellConfigFile, cleanedContent);
+			log(
+				'debug',
+				'Removed stale hamster/ham aliases pointing to task-master (these are managed by Hamster CLI)'
+			);
+		}
+
 		// Check which aliases are missing
+		const currentContent = removedStale ? cleanedContent : configContent;
 		const missingAliases = aliases.filter(
-			(alias) => !configContent.includes(alias.line)
+			(alias) => !currentContent.includes(alias.line)
 		);
 
 		if (missingAliases.length === 0) {
