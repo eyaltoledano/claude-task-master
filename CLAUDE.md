@@ -1,5 +1,9 @@
 # Claude Code Instructions
 
+> **What is this file?** This file is auto-loaded by Claude Code to provide context about this project's development guidelines.
+>
+> 📖 **Setting up Claude Code + Task Master?** See the [Complete Setup Guide](https://docs.task-master.dev/integrations/claude-code)
+
 ## Task Master AI Instructions
 
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**

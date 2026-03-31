@@ -1,5 +1,9 @@
 # Task Master Commands for Claude Code
 
+> 📖 **New to Claude Code + Task Master?** See the [Complete Claude Code Setup Guide](https://docs.task-master.dev/integrations/claude-code) for installation options.
+
+This guide is specifically for users who have installed the **Task Master plugin** and want to use slash commands.
+
 Complete guide to using Task Master through Claude Code's slash commands.
 
 ## Overview
