@@ -23,7 +23,7 @@ export interface HeaderOptions {
 	title?: string;
 	tag?: string;
 	filePath?: string;
-	storageType?: 'api' | 'file';
+	storageType?: 'api' | 'file' | 'sqlite';
 	briefInfo?: BriefInfo;
 }
 

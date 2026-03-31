@@ -241,9 +241,9 @@ export interface IStorage {
 
 	/**
 	 * Get the storage type identifier
-	 * @returns The type of storage implementation ('file' or 'api')
+	 * @returns The type of storage implementation ('file', 'sqlite', or 'api')
 	 */
-	getStorageType(): 'file' | 'api';
+	getStorageType(): 'file' | 'sqlite' | 'api';
 
 	/**
 	 * Get the current brief name (only applicable for API storage)
@@ -449,7 +449,7 @@ export abstract class BaseStorage implements IStorage {
 	abstract initialize(): Promise<void>;
 	abstract close(): Promise<void>;
 	abstract getStats(): Promise<StorageStats>;
-	abstract getStorageType(): 'file' | 'api';
+	abstract getStorageType(): 'file' | 'sqlite' | 'api';
 	abstract getCurrentBriefName(): string | null;
 	abstract getTagsWithStats(): Promise<TagsWithStatsResult>;
 	abstract watch(

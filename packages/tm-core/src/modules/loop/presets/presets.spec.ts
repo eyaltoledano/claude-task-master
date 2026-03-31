@@ -2,17 +2,17 @@
  * @fileoverview Tests for preset exports and preset content structure
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+	DEFAULT_PRESET,
+	DUPLICATION_PRESET,
+	ENTROPY_PRESET,
+	LINTING_PRESET,
 	PRESETS,
 	PRESET_NAMES,
-	getPreset,
-	isPreset,
-	DEFAULT_PRESET,
 	TEST_COVERAGE_PRESET,
-	LINTING_PRESET,
-	DUPLICATION_PRESET,
-	ENTROPY_PRESET
+	getPreset,
+	isPreset
 } from './index.js';
 
 describe('Preset Exports', () => {

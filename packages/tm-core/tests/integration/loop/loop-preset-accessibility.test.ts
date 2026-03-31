@@ -15,11 +15,11 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+	type LoopPreset,
 	PRESETS,
 	PRESET_NAMES,
 	getPreset,
-	isPreset,
-	type LoopPreset
+	isPreset
 } from '../../../src/modules/loop/index.js';
 
 describe('Preset Accessibility Integration', () => {

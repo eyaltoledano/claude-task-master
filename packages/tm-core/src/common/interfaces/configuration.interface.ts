@@ -116,6 +116,12 @@ export interface RuntimeStorageConfig {
 	 * @internal Should not be set manually - computed by ConfigManager
 	 */
 	readonly apiConfigured: boolean;
+	/** Path to SQLite database file (for sqlite storage) */
+	dbPath?: string;
+	/** Path to JSONL sync file (for sqlite storage) */
+	jsonlPath?: string;
+	/** Enable WAL mode for SQLite (default: true) */
+	walMode?: boolean;
 }
 
 /**

@@ -811,6 +811,27 @@ function displayHelp() {
 					desc: 'Fix invalid dependencies automatically'
 				}
 			]
+		},
+		{
+			title: 'Storage Management',
+			color: 'green',
+			commands: [
+				{
+					name: 'storage',
+					args: '',
+					desc: 'Show current storage backend status'
+				},
+				{
+					name: 'storage switch',
+					args: '<file|sqlite>',
+					desc: 'Switch between JSON file and SQLite storage'
+				},
+				{
+					name: 'storage rebuild',
+					args: '',
+					desc: 'Rebuild SQLite database from JSONL sync file'
+				}
+			]
 		}
 	];
 

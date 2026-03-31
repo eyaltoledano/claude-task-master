@@ -27,7 +27,7 @@ vi.mock('../../../src/common/logger/index.js', () => {
 	};
 });
 
-import { createTmCore, TmCore, LoopDomain } from '../../../src/index.js';
+import { LoopDomain, TmCore, createTmCore } from '../../../src/index.js';
 
 describe('LoopDomain Access via TmCore', () => {
 	let testProjectDir: string;

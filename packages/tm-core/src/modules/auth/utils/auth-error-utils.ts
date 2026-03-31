@@ -3,7 +3,7 @@
  * These utilities are used by both tm-core (Supabase client) and CLI (error handler)
  */
 
-import { isAuthError, type AuthError } from '@supabase/supabase-js';
+import { type AuthError, isAuthError } from '@supabase/supabase-js';
 import { AuthenticationError } from '../types.js';
 
 /**

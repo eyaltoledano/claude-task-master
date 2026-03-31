@@ -41,6 +41,9 @@
 		"steno": "^4.0.2",
 		"zod": "^4.1.11"
 	},
+	"optionalDependencies": {
+		"libsql": "^0.5.0"
+	},
 	"devDependencies": {
 		"@types/fs-extra": "^11.0.4",
 		"@types/proper-lockfile": "^4.1.4",

@@ -20,6 +20,7 @@ import { AuthManager } from '../../auth/managers/auth-manager.js';
 import { SupabaseAuthClient } from '../../integration/clients/supabase-client.js';
 import { ApiStorage } from '../adapters/api-storage.js';
 import { FileStorage } from '../adapters/file-storage/index.js';
+import { SqliteStorage } from '../adapters/sqlite-storage/index.js';
 
 /**
  * Factory for creating storage implementations based on configuration
@@ -62,6 +63,10 @@ export class StorageFactory {
 			case 'file':
 				logger.debug('📁 Using local file storage');
 				return StorageFactory.createFileStorage(projectPath, config);
+
+			case 'sqlite':
+				logger.debug('🗃️  Using SQLite storage with JSONL sync');
+				return StorageFactory.createSqliteStorage(projectPath, config);
 
 			case 'api':
 				if (!StorageFactory.isHamsterAvailable(config)) {
@@ -189,6 +194,19 @@ export class StorageFactory {
 	}
 
 	/**
+	 * Create SQLite storage implementation with JSONL sync
+	 */
+	private static createSqliteStorage(
+		projectPath: string,
+		config: Partial<IConfiguration>
+	): SqliteStorage {
+		return new SqliteStorage(projectPath, {
+			dbPath: config.storage?.dbPath,
+			walMode: config.storage?.walMode ?? true
+		});
+	}
+
+	/**
 	 * Create API storage implementation
 	 *
 	 * IMPORTANT: Uses SupabaseAuthClient.getInstance() singleton to prevent
@@ -211,10 +229,17 @@ export class StorageFactory {
 	/**
 	 * Detect optimal storage type based on available configuration
 	 */
-	static detectOptimalStorage(config: Partial<IConfiguration>): 'file' | 'api' {
+	static detectOptimalStorage(
+		config: Partial<IConfiguration>
+	): 'file' | 'sqlite' | 'api' {
 		// If API credentials are provided, prefer API storage (Hamster)
 		if (config.storage?.apiEndpoint && config.storage?.apiAccessToken) {
 			return 'api';
+		}
+
+		// If SQLite is explicitly configured, use it
+		if (config.storage?.type === 'sqlite') {
+			return 'sqlite';
 		}
 
 		// Default to file storage
@@ -248,6 +273,11 @@ export class StorageFactory {
 
 			case 'file':
 				// File storage doesn't require additional config
+				break;
+
+			case 'sqlite':
+				// SQLite storage doesn't require additional config
+				// Uses default paths if not specified
 				break;
 
 			case 'auto':

@@ -59,6 +59,48 @@ Taskmaster uses two primary methods for configuration:
     - **Migration:** Use `task-master migrate` to move this to `.taskmaster/config.json`.
     - **Deprecation:** While still supported, you'll see warnings encouraging migration to the new structure.
 
+## Storage Configuration
+
+Task Master supports multiple storage backends. Configure the storage type in `.taskmaster/config.json`:
+
+```json
+{
+  "storage": {
+    "type": "sqlite"
+  }
+}
+```
+
+### Available Storage Types
+
+- **`file`** (default): JSON file storage
+  - Tasks stored in `.taskmaster/tasks/tasks.json`
+  - Simple, human-readable format
+  - Direct git diffs on task changes
+
+- **`sqlite`**: SQLite database with JSONL sync
+  - Database: `.taskmaster/tasks/tasks.db`
+  - JSONL sync file: `.taskmaster/tasks/tasks.jsonl`
+  - Better performance for large task sets
+  - Self-healing: auto-rebuilds from JSONL if database is missing
+
+### Switching Storage Backends
+
+Use the CLI to switch between storage backends:
+
+```bash
+# Switch to SQLite (migrates data automatically)
+task-master storage switch sqlite
+
+# Switch back to file storage
+task-master storage switch file
+
+# Check current storage status
+task-master storage status
+```
+
+See [Command Reference](command-reference.md#storage-management) for full CLI options.
+
 ## MCP Tool Loading Configuration
 
 ### TASK_MASTER_TOOLS Environment Variable

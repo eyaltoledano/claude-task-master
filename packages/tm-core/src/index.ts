@@ -49,6 +49,16 @@ export type {
 // Storage adapters - FileStorage for direct local file access
 export { FileStorage } from './modules/storage/index.js';
 
+// Storage services - Migration and Factory for storage backend management
+export {
+	StorageMigration,
+	StorageFactory,
+	type MigrationResult
+} from './modules/storage/index.js';
+
+// SQLite storage adapter for direct access
+export { SqliteStorage } from './modules/storage/adapters/sqlite-storage/index.js';
+
 // File operations - for atomic file modifications
 export { FileOperations } from './modules/storage/adapters/file-storage/file-operations.js';
 

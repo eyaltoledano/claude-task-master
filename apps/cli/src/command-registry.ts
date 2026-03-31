@@ -21,6 +21,7 @@ import { NextCommand } from './commands/next.command.js';
 import { SetStatusCommand } from './commands/set-status.command.js';
 import { ShowCommand } from './commands/show.command.js';
 import { StartCommand } from './commands/start.command.js';
+import { StorageCommand } from './commands/storage.command.js';
 import { TagsCommand } from './commands/tags.command.js';
 
 /**
@@ -145,6 +146,12 @@ export class CommandRegistry {
 			name: 'generate',
 			description: 'Generate individual task files from tasks.json',
 			commandClass: GenerateCommand as any,
+			category: 'utility'
+		},
+		{
+			name: 'storage',
+			description: 'Manage storage backend (file, sqlite)',
+			commandClass: StorageCommand as any,
 			category: 'utility'
 		}
 	];

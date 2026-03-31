@@ -228,7 +228,7 @@ export class AuthDomain {
 	 *                              Get this from tmCore.tasks.getStorageType()
 	 */
 	getStorageDisplayInfo(
-		resolvedStorageType: 'file' | 'api'
+		resolvedStorageType: Exclude<StorageType, 'auto'>
 	): StorageDisplayInfo {
 		if (resolvedStorageType === 'api') {
 			const context = this.getContext();
@@ -243,6 +243,13 @@ export class AuthDomain {
 					}
 				};
 			}
+		}
+
+		if (resolvedStorageType === 'sqlite') {
+			return {
+				storageType: 'sqlite',
+				filePath: path.join('.taskmaster', 'tasks', 'tasks.db')
+			};
 		}
 
 		// Default to file storage display
