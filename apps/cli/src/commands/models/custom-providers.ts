@@ -125,6 +125,27 @@ export const customProviderConfigs: Record<
 			return true;
 		}
 	},
+	VERTEX_ANTHROPIC: {
+		id: '__CUSTOM_VERTEX_ANTHROPIC__',
+		name: '* Custom Vertex Anthropic model',
+		provider: CUSTOM_PROVIDERS.VERTEX_ANTHROPIC,
+		promptMessage: (role) =>
+			`Enter the custom Vertex AI Anthropic Model ID for the ${role} role (e.g., claude-sonnet-4-6):`,
+		checkEnvVars: () => {
+			if (
+				!process.env.GOOGLE_API_KEY &&
+				!process.env.GOOGLE_APPLICATION_CREDENTIALS
+			) {
+				console.error(
+					chalk.red(
+						'Error: Either GOOGLE_API_KEY or GOOGLE_APPLICATION_CREDENTIALS environment variable is required. Please set one before using Vertex Anthropic models.'
+					)
+				);
+				return false;
+			}
+			return true;
+		}
+	},
 	LMSTUDIO: {
 		id: '__CUSTOM_LMSTUDIO__',
 		name: '* Custom LMStudio model',

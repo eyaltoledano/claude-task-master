@@ -52,6 +52,7 @@ import {
 	OpenRouterAIProvider,
 	PerplexityAIProvider,
 	VertexAIProvider,
+	VertexAnthropicProvider,
 	XAIProvider,
 	ZAICodingProvider,
 	ZAIProvider
@@ -83,6 +84,7 @@ const PROVIDERS = {
 	bedrock: new BedrockAIProvider(),
 	azure: new AzureProvider(),
 	vertex: new VertexAIProvider(),
+	'vertex-anthropic': new VertexAnthropicProvider(),
 	'claude-code': new ClaudeCodeProvider(),
 	'codex-cli': new CodexCliProvider(),
 	'gemini-cli': new GeminiCliProvider(),
@@ -629,8 +631,11 @@ async function _unifiedServiceRunner(serviceType, params) {
 			// Prepare provider-specific configuration
 			let providerSpecificParams = {};
 
-			// Handle Vertex AI specific configuration
-			if (providerName?.toLowerCase() === 'vertex') {
+			// Handle Vertex AI specific configuration (both vertex and vertex-anthropic)
+			if (
+				providerName?.toLowerCase() === 'vertex' ||
+				providerName?.toLowerCase() === 'vertex-anthropic'
+			) {
 				providerSpecificParams = _getVertexConfiguration(
 					effectiveProjectRoot,
 					session

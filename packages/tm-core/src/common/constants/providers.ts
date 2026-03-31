@@ -27,6 +27,7 @@ export type ValidatedProvider = (typeof VALIDATED_PROVIDERS)[number];
 export const CUSTOM_PROVIDERS = {
 	AZURE: 'azure',
 	VERTEX: 'vertex',
+	VERTEX_ANTHROPIC: 'vertex-anthropic',
 	BEDROCK: 'bedrock',
 	OPENROUTER: 'openrouter',
 	OLLAMA: 'ollama',
