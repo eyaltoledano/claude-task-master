@@ -35,6 +35,35 @@ export class FormatHandler {
 	}
 
 	/**
+	 * Resolve the actual tag used to extract tasks.
+	 * In legacy format, if the requested tag doesn't exist but 'master' is requested,
+	 * it falls back to the first available tag. This method returns that resolved tag
+	 * so callers (e.g., complexity enrichment) use the correct tag for report lookups.
+	 */
+	resolveTag(data: any, tag: string): string {
+		if (!data) {
+			return tag;
+		}
+
+		const format = this.detectFormat(data);
+
+		if (format === 'legacy') {
+			if (tag in data) {
+				return tag;
+			}
+
+			const availableKeys = Object.keys(data).filter(
+				(key) => key !== 'tasks' && key !== 'metadata'
+			);
+			if (tag === 'master' && availableKeys.length > 0) {
+				return availableKeys[0];
+			}
+		}
+
+		return tag;
+	}
+
+	/**
 	 * Extract tasks from data for a specific tag
 	 */
 	extractTasks(data: any, tag: string): Task[] {

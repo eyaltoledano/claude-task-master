@@ -129,6 +129,11 @@ export class FileStorage implements IStorage {
 			const rawData = await this.fileOps.readJson(filePath);
 			let tasks = this.formatHandler.extractTasks(rawData, resolvedTag);
 
+			// Resolve the actual tag used for task extraction (may differ from
+			// resolvedTag in legacy format when 'master' falls back to another tag).
+			// This ensures complexity enrichment uses the correct report file.
+			const actualTag = this.formatHandler.resolveTag(rawData, resolvedTag);
+
 			// Apply filters if provided
 			if (options) {
 				// Filter by status if specified
@@ -145,7 +150,7 @@ export class FileStorage implements IStorage {
 				}
 			}
 
-			return await this.enrichTasksWithComplexity(tasks, resolvedTag);
+			return await this.enrichTasksWithComplexity(tasks, actualTag);
 		} catch (error: any) {
 			if (error.code === 'ENOENT') {
 				return []; // File doesn't exist, return empty array
