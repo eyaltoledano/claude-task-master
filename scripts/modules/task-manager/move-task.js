@@ -817,6 +817,23 @@ async function resolveDependencies(
 }
 
 /**
+ * Get the next available task ID in the target tag.
+ * Finds the maximum existing ID among target tag tasks and any already-assigned
+ * new IDs from the current move batch, then returns max + 1.
+ * @param {Object} rawData - Raw data object
+ * @param {string} targetTag - Target tag name
+ * @param {Map} idRemapping - Map of old ID -> new ID for tasks already processed in this batch
+ * @returns {number} Next available task ID
+ */
+function getNextAvailableId(rawData, targetTag, idRemapping) {
+	const existingIds = rawData[targetTag].tasks.map((t) => t.id);
+	const remappedIds = Array.from(idRemapping.values());
+	const allIds = [...existingIds, ...remappedIds];
+	if (allIds.length === 0) return 1;
+	return Math.max(...allIds) + 1;
+}
+
+/**
  * Execute the actual move operation
  * @param {Array} tasksToMove - Array of task IDs to move
  * @param {string} sourceTag - Source tag name
@@ -836,6 +853,8 @@ async function executeMoveOperation(
 ) {
 	const { projectRoot } = context;
 	const movedTasks = [];
+	// Track ID remapping: oldId -> newId (only for tasks that needed renumbering)
+	const idRemapping = new Map();
 
 	// Move each task from source to target tag
 	for (const taskId of tasksToMove) {
@@ -860,20 +879,46 @@ async function executeMoveOperation(
 		const existingTaskIndex = rawData[targetTag].tasks.findIndex(
 			(t) => t.id === normalizedTaskId
 		);
+
+		let assignedId = normalizedTaskId;
+
 		if (existingTaskIndex !== -1) {
-			throw new MoveTaskError(
-				MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
-				`Task ${taskId} already exists in target tag "${targetTag}"`,
-				{
-					conflictingId: normalizedTaskId,
-					targetTag,
-					suggestions: [
-						'Choose a different target tag without conflicting IDs',
-						'Move a different set of IDs (avoid existing ones)',
-						'If needed, move within-tag to a new ID first, then cross-tag move'
-					]
-				}
+			// ID collision detected — auto-renumber to the next available ID
+			assignedId = getNextAvailableId(rawData, targetTag, idRemapping);
+			idRemapping.set(normalizedTaskId, assignedId);
+			log(
+				'info',
+				`Task ${normalizedTaskId} conflicts with existing ID in "${targetTag}", renumbered to ${assignedId}`
 			);
+		}
+
+		// Apply the new ID to the task
+		taskToMove.id = assignedId;
+
+		// Update subtask parentTaskId to match the new assigned ID
+		if (Array.isArray(taskToMove.subtasks)) {
+			taskToMove.subtasks.forEach((subtask) => {
+				if (subtask.parentTaskId === normalizedTaskId) {
+					subtask.parentTaskId = assignedId;
+				}
+			});
+		}
+
+		// Update internal subtask dependency references that pointed to the old parent ID
+		if (Array.isArray(taskToMove.subtasks)) {
+			taskToMove.subtasks.forEach((subtask) => {
+				if (Array.isArray(subtask.dependencies)) {
+					subtask.dependencies = subtask.dependencies.map((dep) => {
+						if (typeof dep === 'string' && dep.includes('.')) {
+							const [depParent, depSub] = dep.split('.');
+							if (parseInt(depParent, 10) === normalizedTaskId) {
+								return `${assignedId}.${depSub}`;
+							}
+						}
+						return dep;
+					});
+				}
+			});
 		}
 
 		// Remove from source tag
@@ -887,13 +932,77 @@ async function executeMoveOperation(
 		);
 		rawData[targetTag].tasks.push(taskWithPreservedMetadata);
 
-		movedTasks.push({
+		const moveEntry = {
 			id: taskId,
 			fromTag: sourceTag,
 			toTag: targetTag
-		});
+		};
+		if (assignedId !== normalizedTaskId) {
+			moveEntry.originalId = normalizedTaskId;
+			moveEntry.newId = assignedId;
+		}
+		movedTasks.push(moveEntry);
 
-		log('info', `Moved task ${taskId} from "${sourceTag}" to "${targetTag}"`);
+		log(
+			'info',
+			`Moved task ${taskId} from "${sourceTag}" to "${targetTag}"${assignedId !== normalizedTaskId ? ` (renumbered to ${assignedId})` : ''}`
+		);
+	}
+
+	// After all tasks are moved, update cross-references within the moved batch.
+	// If task A depended on task B and both were moved but B got renumbered,
+	// update A's dependency to point to B's new ID.
+	if (idRemapping.size > 0) {
+		for (const taskId of tasksToMove) {
+			const normalizedTaskId =
+				typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+			// Find the task in the target tag (it may have been renumbered)
+			const finalId = idRemapping.get(normalizedTaskId) || normalizedTaskId;
+			const movedTask = rawData[targetTag].tasks.find(
+				(t) => t.id === finalId
+			);
+			if (movedTask && Array.isArray(movedTask.dependencies)) {
+				movedTask.dependencies = movedTask.dependencies.map((dep) => {
+					const normalizedDep = normalizeDependency(dep);
+					if (
+						Number.isFinite(normalizedDep) &&
+						idRemapping.has(normalizedDep)
+					) {
+						const newParentId = idRemapping.get(normalizedDep);
+						// Preserve dotted subtask suffix (e.g., "1.2" -> "5.2" when 1 remaps to 5)
+						if (typeof dep === 'string' && dep.includes('.')) {
+							const dotIndex = dep.indexOf('.');
+							return `${newParentId}${dep.slice(dotIndex)}`;
+						}
+						return newParentId;
+					}
+					return dep;
+				});
+			}
+			// Also update subtask dependencies that reference remapped IDs
+			if (movedTask && Array.isArray(movedTask.subtasks)) {
+				movedTask.subtasks.forEach((subtask) => {
+					if (Array.isArray(subtask.dependencies)) {
+						subtask.dependencies = subtask.dependencies.map((dep) => {
+							const normalizedDep = normalizeDependency(dep);
+							if (
+								Number.isFinite(normalizedDep) &&
+								idRemapping.has(normalizedDep)
+							) {
+								const newParentId = idRemapping.get(normalizedDep);
+								// Preserve dotted subtask suffix (e.g., "1.2" -> "5.2" when 1 remaps to 5)
+								if (typeof dep === 'string' && dep.includes('.')) {
+									const dotIndex = dep.indexOf('.');
+									return `${newParentId}${dep.slice(dotIndex)}`;
+								}
+								return newParentId;
+							}
+							return dep;
+						});
+					}
+				});
+			}
+		}
 	}
 
 	return { rawData, movedTasks };
@@ -922,8 +1031,19 @@ async function finalizeMove(
 	// Write the updated data
 	writeJSON(tasksPath, rawData, projectRoot, null);
 
+	// Check if any tasks were renumbered during the move
+	const renumberedTasks = movedTasks.filter((t) => t.newId !== undefined);
+
+	let message = `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`;
+	if (renumberedTasks.length > 0) {
+		const renumberDetails = renumberedTasks
+			.map((t) => `${t.originalId} → ${t.newId}`)
+			.join(', ');
+		message += `. Renumbered to avoid ID collisions: ${renumberDetails}`;
+	}
+
 	const response = {
-		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
+		message,
 		movedTasks
 	};
 
@@ -936,6 +1056,14 @@ async function finalizeMove(
 			'Run "task-master validate-dependencies" to check for dependency issues.',
 			'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
 		];
+	}
+
+	// If tasks were renumbered, suggest validating dependencies
+	if (renumberedTasks.length > 0) {
+		if (!response.tips) response.tips = [];
+		response.tips.push(
+			'Some tasks were renumbered to avoid ID collisions. Run "task-master validate-dependencies" to verify dependency integrity.'
+		);
 	}
 
 	return response;
