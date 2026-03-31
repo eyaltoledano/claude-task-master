@@ -217,18 +217,18 @@ export class FormatHandler {
 	}
 
 	/**
-	 * Normalize task IDs - keep Task IDs as strings, Subtask IDs as numbers
+	 * Normalize task IDs - Task IDs and Subtask IDs are both numbers for file storage
 	 */
 	private normalizeTasks(tasks: Task[]): Task[] {
 		return tasks.map((task) => ({
 			...task,
-			id: String(task.id), // Task IDs are strings
+			id: Number(task.id), // Task IDs are numbers
 			dependencies: task.dependencies?.map((dep) => String(dep)) || [],
 			subtasks:
 				task.subtasks?.map((subtask) => ({
 					...subtask,
 					id: Number(subtask.id), // Subtask IDs are numbers
-					parentId: String(subtask.parentId) // Parent ID is string (Task ID)
+					parentId: Number(subtask.parentId) // Parent ID is number (Task ID)
 				})) || []
 		}));
 	}
