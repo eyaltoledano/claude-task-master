@@ -416,24 +416,35 @@ export class ExportService {
 		// Always read tasks from local file storage for export
 		// (we're exporting local tasks to a remote brief)
 		const fileStorage = new FileStorage(this.configManager.getProjectRoot());
-		await fileStorage.initialize();
-
-		// Load tasks with filters applied at storage layer
-		const filteredTasks = await fileStorage.loadTasks(tag, {
-			status: options.status,
-			excludeSubtasks: options.excludeSubtasks
-		});
-
-		// Get total count (without filters) for comparison
-		const allTasks = await fileStorage.loadTasks(tag);
-
-		const taskListResult = {
-			tasks: filteredTasks,
-			total: allTasks.length,
-			filtered: filteredTasks.length,
-			tag,
-			storageType: 'file' as const
+		let taskListResult: {
+			tasks: Task[];
+			total: number;
+			filtered: number;
+			tag: string;
+			storageType: 'file';
 		};
+		try {
+			await fileStorage.initialize();
+
+			// Load tasks with filters applied at storage layer
+			const filteredTasks = await fileStorage.loadTasks(tag, {
+				status: options.status,
+				excludeSubtasks: options.excludeSubtasks
+			});
+
+			// Get total count (without filters) for comparison
+			const allTasks = await fileStorage.loadTasks(tag);
+
+			taskListResult = {
+				tasks: filteredTasks,
+				total: allTasks.length,
+				filtered: filteredTasks.length,
+				tag,
+				storageType: 'file' as const
+			};
+		} finally {
+			await fileStorage.close();
+		}
 
 		if (taskListResult.tasks.length === 0) {
 			return {
@@ -842,13 +853,18 @@ export class ExportService {
 
 		// Always read tasks from local file storage for export
 		const fileStorage = new FileStorage(this.configManager.getProjectRoot());
-		await fileStorage.initialize();
+		let tasks: Task[];
+		try {
+			await fileStorage.initialize();
 
-		// Load tasks with filters applied
-		const tasks = await fileStorage.loadTasks(tag, {
-			status: options.status,
-			excludeSubtasks: options.excludeSubtasks
-		});
+			// Load tasks with filters applied
+			tasks = await fileStorage.loadTasks(tag, {
+				status: options.status,
+				excludeSubtasks: options.excludeSubtasks
+			});
+		} finally {
+			await fileStorage.close();
+		}
 
 		if (tasks.length === 0) {
 			return {
