@@ -14,6 +14,7 @@ export const TASKMASTER_CONFIG_FILE = '.taskmaster/config.json';
 export const TASKMASTER_STATE_FILE = '.taskmaster/state.json';
 export const LEGACY_CONFIG_FILE = '.taskmasterconfig';
 
+
 // Task Master report files
 export const COMPLEXITY_REPORT_FILE =
 	'.taskmaster/reports/task-complexity-report.json';
