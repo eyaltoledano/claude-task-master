@@ -82,7 +82,7 @@ export const IDE_MARKERS: IDEMarker[] = [
 	},
 	{
 		profileName: 'antigravity',
-		markers: [{ path: '.gemini/antigravity/mcp_config.json', type: 'file' }],
+		markers: [], // Global profile, no project markers
 		displayName: 'Antigravity'
 	},
 	{

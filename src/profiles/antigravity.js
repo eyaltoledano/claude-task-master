@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { log } from '../../scripts/modules/utils.js';
 import { createProfile } from './base-profile.js';
 
 function isInstalled(targetDir) {
 	// Check if Antigravity MCP config exists and contains task-master-ai server
-	const mcpConfigPath = path.join(targetDir, '.gemini', 'antigravity', 'mcp_config.json');
+	const mcpConfigPath = path.join(os.homedir(), '.gemini', 'antigravity', 'mcp_config.json');
 
 	try {
 		if (!fs.existsSync(mcpConfigPath)) {
@@ -21,8 +22,8 @@ function isInstalled(targetDir) {
 }
 
 function onAddRulesProfile(targetDir, assetsDir) {
-	// Antigravity creates MCP config in project root .gemini/antigravity/ directory
-	const geminiDir = path.join(targetDir, '.gemini');
+	// Antigravity creates MCP config in home .gemini/antigravity/ directory
+	const geminiDir = path.join(os.homedir(), '.gemini');
 	const antigravityDir = path.join(geminiDir, 'antigravity');
 	const mcpConfigPath = path.join(antigravityDir, 'mcp_config.json');
 
@@ -82,8 +83,8 @@ function onAddRulesProfile(targetDir, assetsDir) {
 }
 
 function onRemoveRulesProfile(targetDir) {
-	// Clean up Antigravity MCP config from project .gemini/antigravity/
-	const antigravityDir = path.join(targetDir, '.gemini', 'antigravity');
+	// Clean up Antigravity MCP config from home .gemini/antigravity/
+	const antigravityDir = path.join(os.homedir(), '.gemini', 'antigravity');
 	const mcpConfigPath = path.join(antigravityDir, 'mcp_config.json');
 
 	try {
