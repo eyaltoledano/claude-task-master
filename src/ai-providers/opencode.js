@@ -15,13 +15,25 @@
  */
 
 import { execSync } from 'child_process';
-import { createOpencode } from 'ai-sdk-provider-opencode-sdk';
 import {
 	getOpencodeSettingsForCommand,
 	getSupportedModelsForProvider
 } from '../../scripts/modules/config-manager.js';
 import { log } from '../../scripts/modules/utils.js';
 import { BaseAIProvider } from './base-provider.js';
+
+// Lazy-loaded to avoid crashing task-master on startup if the SDK has
+// environment-specific incompatibilities (e.g., ai-sdk-provider-opencode-sdk
+// 0.0.2 evaluates zod v3 APIs at module-load time and fails under zod v4).
+// Users who never select opencode as a provider are unaffected.
+let _createOpencode = null;
+async function _loadCreateOpencode() {
+	if (!_createOpencode) {
+		const mod = await import('ai-sdk-provider-opencode-sdk');
+		_createOpencode = mod.createOpencode;
+	}
+	return _createOpencode;
+}
 
 export class OpencodeProvider extends BaseAIProvider {
 	constructor() {
@@ -91,9 +103,10 @@ export class OpencodeProvider extends BaseAIProvider {
 	 * @param {string} [params.commandName] - Command name for settings lookup
 	 * @returns {Function} OpenCode provider function
 	 */
-	getClient(params = {}) {
+	async getClient(params = {}) {
 		try {
 			const settings = getOpencodeSettingsForCommand(params.commandName) || {};
+			const createOpencode = await _loadCreateOpencode();
 
 			return createOpencode(settings);
 		} catch (error) {
