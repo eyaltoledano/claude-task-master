@@ -631,7 +631,8 @@ function hasCodebaseAnalysis(
 		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
 		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI ||
 		currentProvider === CUSTOM_PROVIDERS.GROK_CLI ||
-		currentProvider === CUSTOM_PROVIDERS.CODEX_CLI
+		currentProvider === CUSTOM_PROVIDERS.CODEX_CLI ||
+		currentProvider === CUSTOM_PROVIDERS.OPENCODE
 	);
 }
 
@@ -894,7 +895,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.GEMINI_CLI,
 		CUSTOM_PROVIDERS.GROK_CLI,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.CODEX_CLI
+		CUSTOM_PROVIDERS.CODEX_CLI,
+		CUSTOM_PROVIDERS.OPENCODE
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -1023,6 +1025,8 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				return true; // No key needed
 			case 'codex-cli':
 				return true; // OAuth/subscription via Codex CLI
+			case 'opencode':
+				return true; // Auth managed by OpenCode
 			case 'mistral':
 				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
 				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
@@ -1265,7 +1269,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.GEMINI_CLI,
 	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP,
-	CUSTOM_PROVIDERS.CODEX_CLI
+	CUSTOM_PROVIDERS.CODEX_CLI,
+	CUSTOM_PROVIDERS.OPENCODE
 ];
 
 export {

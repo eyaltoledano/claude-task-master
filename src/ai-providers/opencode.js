@@ -27,7 +27,10 @@ export class OpencodeProvider extends BaseAIProvider {
 	constructor() {
 		super();
 		this.name = 'OpenCode';
-		this.supportedModels = getSupportedModelsForProvider('opencode');
+		const configuredModels = getSupportedModelsForProvider('opencode');
+		this.supportedModels = Array.isArray(configuredModels)
+			? configuredModels
+			: [];
 
 		if (this.supportedModels.length === 0) {
 			log(
@@ -96,7 +99,12 @@ export class OpencodeProvider extends BaseAIProvider {
 		} catch (error) {
 			const msg = String(error?.message || '');
 			const code = error?.code;
-			if (code === 'ENOENT' || /opencode/i.test(msg)) {
+			const missingCli =
+				code === 'ENOENT' ||
+				/spawn opencode ENOENT|opencode: command not found|command failed: opencode/i.test(
+					msg
+				);
+			if (missingCli) {
 				const enhancedError = new Error(
 					`OpenCode not available. Install it from: https://opencode.ai - Original error: ${error.message}`
 				);
