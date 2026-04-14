@@ -12,6 +12,17 @@
  *
  * Model IDs follow the "providerID/modelID" format (e.g., "anthropic/claude-opus-4-5"),
  * or a bare "modelID" that routes to OpenCode's default provider.
+ *
+ * Troubleshooting:
+ * - If calls fail with "Unexpected end of JSON input", the configured model ID is
+ *   almost certainly not available in the local OpenCode install. Run
+ *   `opencode models` to see valid IDs for your authenticated backends. Note that
+ *   GitHub Copilot names its GPT-5 model as "gpt-5.2" (not "gpt-5"), and the
+ *   "openai/*" provider prefix only works if OpenCode has direct OpenAI auth.
+ * - If calls fail with "terminated", the underlying HTTP request was cut off
+ *   mid-response. This is common with reasoning models (e.g., gpt-5.2) that take
+ *   longer than the default server timeout. Increase `serverTimeout` in the
+ *   `opencode` section of `.taskmaster/config.json`.
  */
 
 import { execSync } from 'child_process';
