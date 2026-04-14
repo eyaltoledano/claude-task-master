@@ -62,6 +62,7 @@ const DEFAULTS = {
 	},
 	claudeCode: {},
 	codexCli: {},
+	opencode: {},
 	grokCli: {
 		timeout: 120000,
 		workingDirectory: null,
@@ -161,6 +162,7 @@ function _loadAndValidateConfig(explicitRoot = null, options = {}) {
 				global: { ...defaults.global, ...parsedConfig?.global },
 				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
 				codexCli: { ...defaults.codexCli, ...parsedConfig?.codexCli },
+				opencode: { ...defaults.opencode, ...parsedConfig?.opencode },
 				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
@@ -500,6 +502,23 @@ function getClaudeCodeSettingsForCommand(
 	forceReload = false
 ) {
 	const settings = getClaudeCodeSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
+}
+
+// --- Opencode Settings Getters ---
+
+function getOpencodeSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	return { ...DEFAULTS.opencode, ...(config?.opencode || {}) };
+}
+
+function getOpencodeSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getOpencodeSettings(explicitRoot, forceReload);
 	const commandSpecific = settings?.commandSpecific || {};
 	return { ...settings, ...commandSpecific[commandName] };
 }
@@ -1261,6 +1280,9 @@ export {
 	// Codex CLI settings
 	getCodexCliSettings,
 	getCodexCliSettingsForCommand,
+	// Opencode settings
+	getOpencodeSettings,
+	getOpencodeSettingsForCommand,
 	// Grok CLI settings
 	getGrokCliSettings,
 	getGrokCliSettingsForCommand,

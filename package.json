@@ -85,6 +85,7 @@
 		"ai-sdk-provider-claude-code": "^2.2.4",
 		"ai-sdk-provider-codex-cli": "^0.7.0",
 		"ai-sdk-provider-gemini-cli": "^1.4.0",
+		"ai-sdk-provider-opencode-sdk": "^0.0.2",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"boxen": "^8.0.1",
