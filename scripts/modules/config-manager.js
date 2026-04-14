@@ -1042,8 +1042,6 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				return true; // No key needed
 			case 'codex-cli':
 				return true; // OAuth/subscription via Codex CLI
-			case 'opencode':
-				return true; // Auth managed by OpenCode
 			case 'mistral':
 				apiKeyToCheck = mcpEnv.MISTRAL_API_KEY;
 				placeholderValue = 'YOUR_MISTRAL_API_KEY_HERE';
