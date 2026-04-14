@@ -617,6 +617,24 @@ async function setModel(role, modelId, options = {}) {
 						warningMessage = `Warning: Codex CLI model '${modelId}' not found in supported models. Setting without validation.`;
 						report('warn', warningMessage);
 					}
+				} else if (providerHint === CUSTOM_PROVIDERS.OPENCODE) {
+					// OpenCode provider - validate against known models; allow
+					// unknown IDs since OpenCode's model catalog is dynamic and
+					// depends on the user's configured backends.
+					determinedProvider = CUSTOM_PROVIDERS.OPENCODE;
+					const opencodeModels = availableModels.filter(
+						(m) => m.provider === 'opencode'
+					);
+					const opencodeModelData = opencodeModels.find(
+						(m) => m.id === modelId
+					);
+					if (opencodeModelData) {
+						modelData = opencodeModelData;
+						report('info', `Setting OpenCode model '${modelId}'.`);
+					} else {
+						warningMessage = `Warning: OpenCode model '${modelId}' not in the curated list. Setting without validation - OpenCode's model catalog is dynamic.`;
+						report('warn', warningMessage);
+					}
 				} else if (providerHint === CUSTOM_PROVIDERS.LMSTUDIO) {
 					// LM Studio provider - set without validation since it's a local server
 					determinedProvider = CUSTOM_PROVIDERS.LMSTUDIO;
