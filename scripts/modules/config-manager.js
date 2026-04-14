@@ -957,6 +957,23 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
  * @returns {boolean} True if the key exists and is not a placeholder, false otherwise.
  */
 function getMcpApiKeyStatus(providerName, projectRoot = null) {
+	// Short-circuit for providers that do not require an API key — these
+	// should not hinge on the presence of .cursor/mcp.json or a detectable
+	// project root.
+	const provider = providerName?.toLowerCase();
+	if (
+		provider === CUSTOM_PROVIDERS.OLLAMA ||
+		provider === CUSTOM_PROVIDERS.BEDROCK ||
+		provider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		provider === CUSTOM_PROVIDERS.CODEX_CLI ||
+		provider === CUSTOM_PROVIDERS.GEMINI_CLI ||
+		provider === CUSTOM_PROVIDERS.GROK_CLI ||
+		provider === CUSTOM_PROVIDERS.OPENCODE ||
+		provider === CUSTOM_PROVIDERS.MCP
+	) {
+		return true;
+	}
+
 	const rootDir = projectRoot || findProjectRoot(); // Use existing root finding
 	if (!rootDir) {
 		console.warn(

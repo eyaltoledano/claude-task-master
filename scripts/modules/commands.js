@@ -3755,10 +3755,10 @@ Examples:
 												: options.opencode
 													? 'opencode'
 													: options.lmstudio
-													? 'lmstudio'
-													: options.openaiCompatible
-														? 'openai-compatible'
-														: undefined,
+														? 'lmstudio'
+														: options.openaiCompatible
+															? 'openai-compatible'
+															: undefined,
 						baseURL: options.baseURL
 					});
 					if (result.success) {
@@ -3790,10 +3790,10 @@ Examples:
 												: options.opencode
 													? 'opencode'
 													: options.lmstudio
-													? 'lmstudio'
-													: options.openaiCompatible
-														? 'openai-compatible'
-														: undefined,
+														? 'lmstudio'
+														: options.openaiCompatible
+															? 'openai-compatible'
+															: undefined,
 						baseURL: options.baseURL
 					});
 					if (result.success) {
@@ -3827,10 +3827,10 @@ Examples:
 												: options.opencode
 													? 'opencode'
 													: options.lmstudio
-													? 'lmstudio'
-													: options.openaiCompatible
-														? 'openai-compatible'
-														: undefined,
+														? 'lmstudio'
+														: options.openaiCompatible
+															? 'openai-compatible'
+															: undefined,
 						baseURL: options.baseURL
 					});
 					if (result.success) {

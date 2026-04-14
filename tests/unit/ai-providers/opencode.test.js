@@ -76,8 +76,8 @@ describe('OpencodeProvider', () => {
 		expect(provider.isRequiredApiKey()).toBe(false);
 	});
 
-	it('creates client with settings from config-manager', async () => {
-		const client = await provider.getClient({ commandName: 'parse-prd' });
+	it('creates client with settings from config-manager', () => {
+		const client = provider.getClient({ commandName: 'parse-prd' });
 		expect(client).toBeDefined();
 		expect(createOpencode).toHaveBeenCalledWith({
 			hostname: '127.0.0.1',
@@ -94,14 +94,14 @@ describe('OpencodeProvider', () => {
 		expect(provider.isModelSupported(null)).toBe(false);
 	});
 
-	it('wraps initialization errors with install guidance when opencode missing', async () => {
+	it('wraps initialization errors with install guidance when opencode missing', () => {
 		createOpencode.mockImplementationOnce(() => {
 			const err = new Error('spawn opencode ENOENT');
 			err.code = 'ENOENT';
 			throw err;
 		});
-		await expect(
-			provider.getClient({ commandName: 'parse-prd' })
-		).rejects.toThrow(/OpenCode not available.*opencode\.ai/);
+		expect(() => provider.getClient({ commandName: 'parse-prd' })).toThrow(
+			/OpenCode not available.*opencode\.ai/
+		);
 	});
 });
