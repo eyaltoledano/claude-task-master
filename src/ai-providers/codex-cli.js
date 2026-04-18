@@ -162,18 +162,23 @@ export class CodexCliProvider extends BaseAIProvider {
 			// Merge global + command-specific settings from config
 			const settings = getCodexCliSettingsForCommand(params.commandName) || {};
 
+			// Strip Task Master-only keys before forwarding to Codex CLI.
+			// `commandSpecific` is resolved internally and must not be passed through
+			// as a raw provider setting, or Codex CLI will reject it as unknown.
+			const { commandSpecific: _commandSpecific, ...safeSettings } = settings;
+
 			// Get validated reasoningEffort - always pass to override Codex CLI global config
 			const validatedReasoningEffort = this._getValidatedReasoningEffort(
 				params.modelId,
-				settings.reasoningEffort
+				safeSettings.reasoningEffort
 			);
 
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
-				...settings,
+				...safeSettings,
 				reasoningEffort: validatedReasoningEffort,
 				...(params.apiKey
-					? { env: { ...(settings.env || {}), OPENAI_API_KEY: params.apiKey } }
+					? { env: { ...(safeSettings.env || {}), OPENAI_API_KEY: params.apiKey } }
 					: {})
 			};
 
