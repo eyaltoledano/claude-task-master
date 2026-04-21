@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://discord.gg/taskmasterai" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/taskmasterai?style=flat" alt="Discord"></a> |
-  <a href="https://docs.task-master.dev" target="_blank">Docs</a>
+  <a href="https://tryhamster.com/docs/taskmaster" target="_blank">Docs</a>
 </p>
 
 <p align="center">
@@ -39,20 +39,26 @@ A task management system for AI-driven development with Claude, designed to work
 
 ## Documentation
 
-📚 **[View Full Documentation](https://docs.task-master.dev)**
+📚 **[View Full Documentation](https://tryhamster.com/docs/taskmaster)**
 
-For detailed guides, API references, and comprehensive examples, visit our documentation site.
+### Quick Links
 
-### Quick Reference
-
-The following documentation is also available in the `docs` directory:
-
-- [Configuration Guide](docs/configuration.md) - Set up environment variables and customize Task Master
-- [Tutorial](docs/tutorial.md) - Step-by-step guide to getting started with Task Master
-- [Command Reference](docs/command-reference.md) - Complete list of all available commands
-- [Task Structure](docs/task-structure.md) - Understanding the task format and features
-- [Example Interactions](docs/examples.md) - Common Cursor AI interaction examples
-- [Migration Guide](docs/migration-guide.md) - Guide to migrating to the new project structure
+- [Quick Start Guide](https://tryhamster.com/docs/taskmaster/getting-started/quick-start/quick-start)
+- [Installation](https://tryhamster.com/docs/taskmaster/getting-started/quick-start/installation)
+- [API Keys & Providers](https://tryhamster.com/docs/taskmaster/getting-started/api-keys)
+- [Supported Editors](https://tryhamster.com/docs/taskmaster/ide-setup/supported-editors)
+- [MCP Tools Reference](https://tryhamster.com/docs/taskmaster/capabilities/mcp)
+- [CLI Commands Reference](https://tryhamster.com/docs/taskmaster/capabilities/cli-root-commands)
+- [Task Structure](https://tryhamster.com/docs/taskmaster/capabilities/task-structure)
+- [Task Dependencies](https://tryhamster.com/docs/taskmaster/task-workflow/dependencies)
+- [Tags & Workstreams](https://tryhamster.com/docs/taskmaster/task-workflow/tags)
+- [Research Command](https://tryhamster.com/docs/taskmaster/task-workflow/research)
+- [Loop Command](https://tryhamster.com/docs/taskmaster/automation/loop)
+- [AI Providers Overview](https://tryhamster.com/docs/taskmaster/ai-providers/overview)
+- [Team Collaboration](https://tryhamster.com/docs/taskmaster/team/overview)
+- [Best Practices](https://tryhamster.com/docs/taskmaster/best-practices)
+- [FAQ](https://tryhamster.com/docs/taskmaster/getting-started/faq)
+- [Changelog](CHANGELOG.md)
 
 #### Quick Install for Cursor 1.0+ (One-Click)
 

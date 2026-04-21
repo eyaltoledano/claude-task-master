@@ -111,7 +111,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ currentTag }) => {
 					{/* Documentation link */}
 					<div className="flex justify-center pt-4">
 						<a
-							href="https://docs.task-master.dev"
+							href="https://tryhamster.com/docs/taskmaster"
 							className="inline-flex items-center gap-2 text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground transition-colors"
 							onClick={(e) => {
 								e.preventDefault();
@@ -120,7 +120,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ currentTag }) => {
 									const vscode = window.acquireVsCodeApi();
 									vscode.postMessage({
 										type: 'openExternal',
-										url: 'https://docs.task-master.dev'
+										url: 'https://tryhamster.com/docs/taskmaster'
 									});
 								}
 							}}
