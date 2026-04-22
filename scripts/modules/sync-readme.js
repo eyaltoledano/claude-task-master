@@ -19,7 +19,7 @@ This project is managed using Task Master.
 }
 
 /**
- * Create UTM tracking URL for task-master.dev
+ * Create UTM tracking URL for the Taskmaster product page
  * @param {string} projectRoot - The project root path
  * @returns {string} - UTM tracked URL
  */
@@ -41,7 +41,7 @@ function createTaskMasterUrl(projectRoot) {
 		utm_content: 'task-export-link'
 	});
 
-	return `https://task-master.dev?${utmParams.toString()}`;
+	return `https://tryhamster.com/product/taskmaster?${utmParams.toString()}`;
 }
 
 /**

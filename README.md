@@ -5,7 +5,7 @@
 </div>
 
 <p align="center">
-  <a href="https://task-master.dev"><img src="./images/logo.png?raw=true" alt="Taskmaster logo"></a>
+  <a href="https://tryhamster.com/product/taskmaster"><img src="./images/logo.png?raw=true" alt="Taskmaster logo"></a>
 </p>
 
 <p align="center">
@@ -56,9 +56,16 @@ A task management system for AI-driven development with Claude, designed to work
 - [Loop Command](https://tryhamster.com/docs/taskmaster/automation/loop)
 - [AI Providers Overview](https://tryhamster.com/docs/taskmaster/ai-providers/overview)
 - [Team Collaboration](https://tryhamster.com/docs/taskmaster/team/overview)
-- [Best Practices](https://tryhamster.com/docs/taskmaster/best-practices)
+- [Best Practices](https://tryhamster.com/docs/taskmaster/best-practices/index)
 - [FAQ](https://tryhamster.com/docs/taskmaster/getting-started/faq)
 - [Changelog](CHANGELOG.md)
+
+### More from Hamster
+
+- [Hamster Studio](https://tryhamster.com/product/studio)
+- [Product & Engineering Methods](https://tryhamster.com/methods)
+- [Product & Engineering Skills](https://tryhamster.com/skills)
+- [Hamster Pricing](https://tryhamster.com/pricing)
 
 #### Quick Install for Cursor 1.0+ (One-Click)
 
