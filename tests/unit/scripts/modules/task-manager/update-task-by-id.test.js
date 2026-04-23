@@ -684,6 +684,61 @@ describe('Prompt Manager Integration', () => {
 		const promptManagerInstance = getPromptManager.mock.results[0].value;
 		expect(promptManagerInstance.loadPrompt).toHaveBeenCalled();
 	});
+
+	test('should use "default" variant when useResearch is true (regression: #1689)', async () => {
+		// Arrange
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Task',
+					description: 'Description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Details',
+					testStrategy: 'Test strategy',
+					subtasks: []
+				}
+			]
+		});
+
+		generateObjectService.mockResolvedValue({
+			mainResult: {
+				task: {
+					id: 1,
+					title: 'Updated Task',
+					description: 'Updated description',
+					status: 'pending',
+					dependencies: [],
+					priority: 'medium',
+					details: 'Updated details',
+					testStrategy: 'Updated test strategy',
+					subtasks: []
+				}
+			},
+			telemetryData: {}
+		});
+
+		// Act - pass useResearch: true as 4th argument
+		await updateTaskById(
+			'tasks/tasks.json',
+			1,
+			'Update this task',
+			true, // useResearch
+			{ tag: 'master', projectRoot: '/mock/project' },
+			'json'
+		);
+
+		// Assert - loadPrompt must be called with 'default', not 'research'
+		// (the update-task template has no 'research' variant; useResearch is handled
+		// via {{#if useResearch}} conditionals inside the 'default' variant)
+		const promptManagerInstance = getPromptManager.mock.results[0].value;
+		const loadPromptCall = promptManagerInstance.loadPrompt.mock.calls[0];
+		expect(loadPromptCall[2]).toBe('default');
+	});
 });
 
 describe('Context Gathering Integration', () => {

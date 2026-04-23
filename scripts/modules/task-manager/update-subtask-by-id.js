@@ -302,7 +302,7 @@ async function updateSubtaskById(
 				projectRoot: projectRoot
 			};
 
-			const variantKey = useResearch ? 'research' : 'default';
+			const variantKey = 'default';
 			const { systemPrompt, userPrompt } = await promptManager.loadPrompt(
 				'update-subtask',
 				promptParams,
