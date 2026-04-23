@@ -305,11 +305,7 @@ async function updateTaskById(
 			projectRoot: projectRoot
 		};
 
-		const variantKey = appendMode
-			? 'append'
-			: useResearch
-				? 'research'
-				: 'default';
+		const variantKey = appendMode ? 'append' : 'default';
 
 		report(
 			'info',
