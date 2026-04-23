@@ -292,6 +292,92 @@
 			"supported": true
 		}
 	],
+	"opencode": [
+		{
+			"id": "anthropic/claude-opus-4-5",
+			"name": "Claude Opus 4.5 (via OpenCode)",
+			"swe_score": 0.725,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 32000,
+			"supported": true
+		},
+		{
+			"id": "anthropic/claude-sonnet-4-5",
+			"name": "Claude Sonnet 4.5 (via OpenCode)",
+			"swe_score": 0.727,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 64000,
+			"supported": true
+		},
+		{
+			"id": "github-copilot/claude-sonnet-4.5",
+			"name": "Claude Sonnet 4.5 via GitHub Copilot (OpenCode)",
+			"swe_score": 0.727,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 64000,
+			"supported": true
+		},
+		{
+			"id": "github-copilot/gpt-4.1",
+			"name": "GPT-4.1 via GitHub Copilot (OpenCode)",
+			"swe_score": 0.55,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "github-copilot/gpt-5.2",
+			"name": "GPT-5.2 via GitHub Copilot (OpenCode)",
+			"swe_score": 0.8,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "github-copilot/gpt-5.2-codex",
+			"name": "GPT-5.2 Codex via GitHub Copilot (OpenCode)",
+			"swe_score": 0.82,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "github-copilot/gemini-2.5-pro",
+			"name": "Gemini 2.5 Pro via GitHub Copilot (OpenCode)",
+			"swe_score": 0.7,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		}
+	],
 	"openai": [
 		{
 			"id": "gpt-4o",

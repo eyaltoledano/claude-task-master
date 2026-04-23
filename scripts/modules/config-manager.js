@@ -62,6 +62,7 @@ const DEFAULTS = {
 	},
 	claudeCode: {},
 	codexCli: {},
+	opencode: {},
 	grokCli: {
 		timeout: 120000,
 		workingDirectory: null,
@@ -161,6 +162,7 @@ function _loadAndValidateConfig(explicitRoot = null, options = {}) {
 				global: { ...defaults.global, ...parsedConfig?.global },
 				claudeCode: { ...defaults.claudeCode, ...parsedConfig?.claudeCode },
 				codexCli: { ...defaults.codexCli, ...parsedConfig?.codexCli },
+				opencode: { ...defaults.opencode, ...parsedConfig?.opencode },
 				grokCli: { ...defaults.grokCli, ...parsedConfig?.grokCli }
 			};
 			configSource = `file (${configPath})`; // Update source info
@@ -504,6 +506,23 @@ function getClaudeCodeSettingsForCommand(
 	return { ...settings, ...commandSpecific[commandName] };
 }
 
+// --- Opencode Settings Getters ---
+
+function getOpencodeSettings(explicitRoot = null, forceReload = false) {
+	const config = getConfig(explicitRoot, forceReload);
+	return { ...DEFAULTS.opencode, ...(config?.opencode || {}) };
+}
+
+function getOpencodeSettingsForCommand(
+	commandName,
+	explicitRoot = null,
+	forceReload = false
+) {
+	const settings = getOpencodeSettings(explicitRoot, forceReload);
+	const commandSpecific = settings?.commandSpecific || {};
+	return { ...settings, ...commandSpecific[commandName] };
+}
+
 function getGrokCliSettings(explicitRoot = null, forceReload = false) {
 	const config = getConfig(explicitRoot, forceReload);
 	// Ensure Grok CLI defaults are applied if Grok CLI section is missing
@@ -612,7 +631,8 @@ function hasCodebaseAnalysis(
 		currentProvider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
 		currentProvider === CUSTOM_PROVIDERS.GEMINI_CLI ||
 		currentProvider === CUSTOM_PROVIDERS.GROK_CLI ||
-		currentProvider === CUSTOM_PROVIDERS.CODEX_CLI
+		currentProvider === CUSTOM_PROVIDERS.CODEX_CLI ||
+		currentProvider === CUSTOM_PROVIDERS.OPENCODE
 	);
 }
 
@@ -875,7 +895,8 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		CUSTOM_PROVIDERS.GEMINI_CLI,
 		CUSTOM_PROVIDERS.GROK_CLI,
 		CUSTOM_PROVIDERS.MCP,
-		CUSTOM_PROVIDERS.CODEX_CLI
+		CUSTOM_PROVIDERS.CODEX_CLI,
+		CUSTOM_PROVIDERS.OPENCODE
 	];
 
 	if (providersWithoutApiKeys.includes(providerName?.toLowerCase())) {
@@ -936,6 +957,23 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
  * @returns {boolean} True if the key exists and is not a placeholder, false otherwise.
  */
 function getMcpApiKeyStatus(providerName, projectRoot = null) {
+	// Short-circuit for providers that do not require an API key — these
+	// should not hinge on the presence of .cursor/mcp.json or a detectable
+	// project root.
+	const provider = providerName?.toLowerCase();
+	if (
+		provider === CUSTOM_PROVIDERS.OLLAMA ||
+		provider === CUSTOM_PROVIDERS.BEDROCK ||
+		provider === CUSTOM_PROVIDERS.CLAUDE_CODE ||
+		provider === CUSTOM_PROVIDERS.CODEX_CLI ||
+		provider === CUSTOM_PROVIDERS.GEMINI_CLI ||
+		provider === CUSTOM_PROVIDERS.GROK_CLI ||
+		provider === CUSTOM_PROVIDERS.OPENCODE ||
+		provider === CUSTOM_PROVIDERS.MCP
+	) {
+		return true;
+	}
+
 	const rootDir = projectRoot || findProjectRoot(); // Use existing root finding
 	if (!rootDir) {
 		console.warn(
@@ -1246,7 +1284,8 @@ export const providersWithoutApiKeys = [
 	CUSTOM_PROVIDERS.GEMINI_CLI,
 	CUSTOM_PROVIDERS.GROK_CLI,
 	CUSTOM_PROVIDERS.MCP,
-	CUSTOM_PROVIDERS.CODEX_CLI
+	CUSTOM_PROVIDERS.CODEX_CLI,
+	CUSTOM_PROVIDERS.OPENCODE
 ];
 
 export {
@@ -1261,6 +1300,9 @@ export {
 	// Codex CLI settings
 	getCodexCliSettings,
 	getCodexCliSettingsForCommand,
+	// Opencode settings
+	getOpencodeSettings,
+	getOpencodeSettingsForCommand,
 	// Grok CLI settings
 	getGrokCliSettings,
 	getGrokCliSettingsForCommand,

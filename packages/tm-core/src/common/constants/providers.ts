@@ -35,7 +35,8 @@ export const CUSTOM_PROVIDERS = {
 	MCP: 'mcp',
 	GEMINI_CLI: 'gemini-cli',
 	GROK_CLI: 'grok-cli',
-	CODEX_CLI: 'codex-cli'
+	CODEX_CLI: 'codex-cli',
+	OPENCODE: 'opencode'
 } as const;
 
 export type CustomProvider =

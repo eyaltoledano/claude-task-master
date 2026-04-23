@@ -247,6 +247,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'XAI_API_KEY'),
 		isRequiredApiKey: jest.fn(() => false)
 	})),
+	OpencodeProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'OPENCODE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => false)
+	})),
 	OpenAICompatibleProvider: jest.fn(() => ({
 		generateText: jest.fn(),
 		streamText: jest.fn(),
