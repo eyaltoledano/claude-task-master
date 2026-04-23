@@ -1,5 +1,5 @@
 /**
- * @typedef {'amp' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'kilo' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
+ * @typedef {'amp' | 'antigravity' | 'claude' | 'cline' | 'codex' | 'cursor' | 'gemini' | 'kiro' | 'opencode' | 'kilo' | 'roo' | 'trae' | 'windsurf' | 'vscode' | 'zed'} RulesProfile
  */
 
 /**
@@ -11,6 +11,7 @@
  * @type {RulesProfile[]}
  * @description Defines possible rule profile sets:
  * - amp: Amp Code integration
+ * - antigravity: Antigravity setup and configuration
  * - claude: Claude Code integration
  * - cline: Cline IDE rules
  * - codex: Codex integration
@@ -32,6 +33,7 @@
  */
 export const RULE_PROFILES = [
 	'amp',
+	'antigravity',
 	'claude',
 	'cline',
 	'codex',

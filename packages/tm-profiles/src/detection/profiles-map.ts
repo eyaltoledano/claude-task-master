@@ -81,6 +81,11 @@ export const IDE_MARKERS: IDEMarker[] = [
 		displayName: 'Gemini'
 	},
 	{
+		profileName: 'antigravity',
+		markers: [], // Global profile, no project markers
+		displayName: 'Antigravity'
+	},
+	{
 		profileName: 'opencode',
 		markers: [{ path: '.opencode', type: 'directory' }],
 		displayName: 'OpenCode'

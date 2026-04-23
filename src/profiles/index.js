@@ -1,5 +1,6 @@
 // Profile exports for centralized importing
 export { ampProfile } from './amp.js';
+export { antigravityProfile } from './antigravity.js';
 export { claudeProfile } from './claude.js';
 export { clineProfile } from './cline.js';
 export { codexProfile } from './codex.js';
