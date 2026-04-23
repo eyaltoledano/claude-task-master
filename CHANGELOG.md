@@ -1,5 +1,11 @@
 # task-master-ai
 
+## 0.43.2
+
+### Patch Changes
+
+- [#1691](https://github.com/eyaltoledano/claude-task-master/pull/1691) [`c0c98d3`](https://github.com/eyaltoledano/claude-task-master/commit/c0c98d367c55296bfe69e65680625b6db437af02) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix `task-master sync-readme` generating links to the retired `task-master.dev` domain. Exported READMEs now link to `https://tryhamster.com/product/taskmaster`.
+
 ## 0.43.1
 
 ### Patch Changes
