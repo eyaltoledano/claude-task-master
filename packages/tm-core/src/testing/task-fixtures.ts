@@ -54,7 +54,7 @@ export function createTask(
 	overrides: Partial<Omit<Task, 'id'>> & { id: number | string; title: string }
 ): Task {
 	return {
-		id: String(overrides.id),
+		id: Number(overrides.id),
 		title: overrides.title,
 		description: overrides.description ?? overrides.title,
 		status: overrides.status ?? 'pending',
