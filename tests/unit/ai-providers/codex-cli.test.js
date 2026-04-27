@@ -102,4 +102,19 @@ describe('CodexCliProvider', () => {
 		const second = createCodexCli.mock.calls[1][0];
 		expect(second.defaultSettings.env).toBeUndefined();
 	});
+
+	it('does not forward commandSpecific to createCodexCli', async () => {
+		getCodexCliSettingsForCommand.mockReturnValueOnce({
+			allowNpx: true,
+			commandSpecific: { 'parse-prd': { approvalMode: 'never' } }
+		});
+		await provider.getClient({ commandName: 'parse-prd' });
+		expect(createCodexCli).toHaveBeenCalledTimes(1);
+		const call = createCodexCli.mock.calls[0][0];
+		expect(call.defaultSettings).not.toHaveProperty('commandSpecific');
+		expect(call.defaultSettings.allowNpx).toBe(true);
+		// Guard against future partial-merge regressions: ensure no override
+		// keys from commandSpecific leaked into the top-level defaultSettings.
+		expect(call.defaultSettings).not.toHaveProperty('approvalMode');
+	});
 });
