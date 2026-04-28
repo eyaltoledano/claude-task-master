@@ -79,16 +79,21 @@ export function initializeSentry(options = {}) {
 			environment: options.environment || process.env.NODE_ENV || 'production',
 			integrations: [
 				// Add the Vercel AI SDK integration for automatic AI operation tracking
+				// recordInputs/recordOutputs are disabled by default to avoid capturing
+				// sensitive content such as PRDs, task descriptions, and AI-generated code.
 				Sentry.vercelAIIntegration({
-					recordInputs: true,
-					recordOutputs: true
+					recordInputs: false,
+					recordOutputs: false
 				}),
 				// Add Zod error tracking for better validation error reporting
 				Sentry.zodErrorsIntegration()
 			],
-			// Tracing must be enabled for AI monitoring to work
-			tracesSampleRate: options.tracesSampleRate ?? 1.0,
-			sendDefaultPii: options.sendDefaultPii ?? true,
+			// Tracing must be enabled for AI monitoring to work.
+			// Default to 0.1 (10%) — Sentry's recommended production rate.
+			// Override via options.tracesSampleRate or SENTRY_TRACES_SAMPLE_RATE.
+			tracesSampleRate: options.tracesSampleRate ?? 0.1,
+			// Disabled to avoid capturing personally identifiable information.
+			sendDefaultPii: options.sendDefaultPii ?? false,
 			// Enable debug mode with SENTRY_DEBUG=true env var
 			debug: process.env.SENTRY_DEBUG === 'true'
 		});
@@ -99,7 +104,7 @@ export function initializeSentry(options = {}) {
 			console.log(
 				`  Environment: ${options.environment || process.env.NODE_ENV || 'production'}`
 			);
-			console.log(`  Traces Sample Rate: ${options.tracesSampleRate ?? 1.0}`);
+			console.log(`  Traces Sample Rate: ${options.tracesSampleRate ?? 0.1}`);
 		}
 	} catch (error) {
 		console.error(`Failed to initialize telemetry: ${error.message}`);
@@ -130,8 +135,8 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
 
 	const config = {
 		isEnabled: true,
-		recordInputs: true,
-		recordOutputs: true
+		recordInputs: false,
+		recordOutputs: false
 	};
 
 	// Add functionId if provided - helps correlate captured spans with function calls
