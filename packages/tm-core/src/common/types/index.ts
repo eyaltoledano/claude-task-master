@@ -119,7 +119,7 @@ export interface TaskImplementationMetadata {
  * Placeholder task interface for temporary/minimal task objects
  */
 export interface PlaceholderTask {
-	id: string;
+	id: number | string;
 	title: string;
 	status: TaskStatus;
 	priority: TaskPriority;
@@ -129,7 +129,7 @@ export interface PlaceholderTask {
  * Base task interface
  */
 export interface Task extends TaskImplementationMetadata {
-	id: string;
+	id: number | string;
 	title: string;
 	description: string;
 	status: TaskStatus;
@@ -171,7 +171,7 @@ export interface Task extends TaskImplementationMetadata {
  */
 export interface Subtask extends Omit<Task, 'id' | 'subtasks'> {
 	id: number | string;
-	parentId: string;
+	parentId: number | string;
 	subtasks?: never; // Subtasks cannot have their own subtasks
 }
 
@@ -225,7 +225,7 @@ export type CreateTask = Omit<
  * Type for updating a task (all fields optional except ID)
  */
 export type UpdateTask = Partial<Omit<Task, 'id'>> & {
-	id: string;
+	id: number | string;
 };
 
 /**
