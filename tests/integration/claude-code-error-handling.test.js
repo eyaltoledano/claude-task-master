@@ -31,10 +31,10 @@ describe('Claude Code Error Handling', () => {
 	it('should throw a CLI-not-available error (with or without commandName)', () => {
 		const provider = new ClaudeCodeProvider();
 		expect(() => provider.getClient()).toThrow(
-			/Claude Code CLI not available/i
+			/Claude Code CLI not available\. Follow the official setup guide: https:\/\/docs\.anthropic\.com\/en\/docs\/claude-code\/getting-started/i
 		);
 		expect(() => provider.getClient({ commandName: 'test' })).toThrow(
-			/Claude Code CLI not available/i
+			/Claude Code CLI not available\. Follow the official setup guide: https:\/\/docs\.anthropic\.com\/en\/docs\/claude-code\/getting-started/i
 		);
 	});
 
