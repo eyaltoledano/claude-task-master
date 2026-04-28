@@ -467,33 +467,33 @@ async function analyzeTaskComplexity(options, context = {}) {
 				}
 			}
 
-			// Merge with existing report - only keep entries from the current tag
+			// Merge with existing report - preserve all existing entries not re-analyzed
 			let finalComplexityAnalysis = [];
 
 			if (existingReport && Array.isArray(existingReport.complexityAnalysis)) {
-				// Create a map of task IDs that we just analyzed
+				// Create a set of task IDs that we just analyzed
 				const analyzedTaskIds = new Set(
 					complexityAnalysis.map((item) => item.taskId)
 				);
 
-				// Keep existing entries that weren't in this analysis run AND belong to the current tag
-				// We determine tag membership by checking if the task ID exists in the current tag's tasks
-				const currentTagTaskIds = new Set(tasksData.tasks.map((t) => t.id));
+				// Keep all existing entries that weren't re-analyzed in this run.
+				// The report file is already tag-specific (resolved by resolveComplexityReportOutputPath),
+				// so all entries in the existing report belong to the current tag.
+				// Previous logic incorrectly filtered against tasksData.tasks (the --from/--to filtered
+				// subset), which dropped entries from earlier runs that analyzed different ranges.
 				const existingEntriesNotAnalyzed =
 					existingReport.complexityAnalysis.filter(
-						(item) =>
-							!analyzedTaskIds.has(item.taskId) &&
-							currentTagTaskIds.has(item.taskId) // Only keep entries for tasks in current tag
+						(item) => !analyzedTaskIds.has(item.taskId)
 					);
 
-				// Combine with new analysis
+				// Combine: existing entries preserved from prior runs + new/updated analyses
 				finalComplexityAnalysis = [
 					...existingEntriesNotAnalyzed,
 					...complexityAnalysis
 				];
 
 				reportLog(
-					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries from current tag`,
+					`Merged ${complexityAnalysis.length} new analyses with ${existingEntriesNotAnalyzed.length} existing entries from report`,
 					'info'
 				);
 			} else {
