@@ -55,6 +55,20 @@ marked.setOptions({
 });
 
 /**
+ * Check if content contains HTML tags outside of markdown code blocks and inline code.
+ * Strips fenced code blocks (```...```) and inline code (`...`) before testing,
+ * so angle brackets inside code (e.g. JSX like <Navigate />) are not mistaken for HTML.
+ */
+function hasHtmlOutsideCodeBlocks(text: string): boolean {
+	// Remove fenced code blocks (``` or ~~~, with optional language identifier)
+	const withoutFenced = text.replace(/(`{3,}|~{3,})[\s\S]*?\1/g, '');
+	// Remove inline code spans (backtick-delimited)
+	const withoutCode = withoutFenced.replace(/`[^`]*`/g, '');
+	// Now test for HTML tags only in the remaining (non-code) text
+	return /<[^>]+>/.test(withoutCode);
+}
+
+/**
  * Convert HTML content to Markdown, then render for terminal
  * Handles tiptap HTML from Hamster gracefully
  */
@@ -68,8 +82,8 @@ export function renderContent(content: string): string {
 		.replace(/\\t/g, '\t')
 		.replace(/\\"/g, '"');
 
-	// Check if content has HTML tags - if so, convert to markdown first
-	if (/<[^>]+>/.test(cleaned)) {
+	// Check if content has HTML tags outside of code blocks - if so, convert to markdown first
+	if (hasHtmlOutsideCodeBlocks(cleaned)) {
 		cleaned = turndownService.turndown(cleaned);
 	}
 
