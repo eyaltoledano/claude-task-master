@@ -88,8 +88,10 @@ export function initializeSentry(options = {}) {
 				// Add Zod error tracking for better validation error reporting
 				Sentry.zodErrorsIntegration()
 			],
-			// Tracing must be enabled for AI monitoring to work
-			tracesSampleRate: options.tracesSampleRate ?? 1.0,
+			// Tracing must be enabled for AI monitoring to work.
+			// Default to 0.1 (10%) — Sentry's recommended production rate.
+			// Override via options.tracesSampleRate or SENTRY_TRACES_SAMPLE_RATE.
+			tracesSampleRate: options.tracesSampleRate ?? 0.1,
 			// Disabled to avoid capturing personally identifiable information.
 			sendDefaultPii: options.sendDefaultPii ?? false,
 			// Enable debug mode with SENTRY_DEBUG=true env var
@@ -102,7 +104,7 @@ export function initializeSentry(options = {}) {
 			console.log(
 				`  Environment: ${options.environment || process.env.NODE_ENV || 'production'}`
 			);
-			console.log(`  Traces Sample Rate: ${options.tracesSampleRate ?? 1.0}`);
+			console.log(`  Traces Sample Rate: ${options.tracesSampleRate ?? 0.1}`);
 		}
 	} catch (error) {
 		console.error(`Failed to initialize telemetry: ${error.message}`);
