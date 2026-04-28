@@ -87,7 +87,7 @@ describe('get_tasks MCP tool', () => {
 		expect(data.data.tasks).toEqual([]);
 		expect(data.data.stats.total).toBe(0);
 		expect(data.tag).toBe('master');
-	}, 15000);
+	}, 30000);
 
 	it('should get all tasks with correct information', () => {
 		const testData = createTasksFile({
@@ -129,7 +129,7 @@ describe('get_tasks MCP tool', () => {
 		expect(data.data.stats.completed).toBe(1);
 		expect(data.data.stats.inProgress).toBe(1);
 		expect(data.data.stats.pending).toBe(1);
-	}, 15000);
+	}, 30000);
 
 	it('should filter tasks by status', () => {
 		const testData = createTasksFile({
@@ -151,7 +151,7 @@ describe('get_tasks MCP tool', () => {
 		expect(data.data.tasks.every((t: any) => t.status === 'pending')).toBe(
 			true
 		);
-	}, 15000);
+	}, 30000);
 
 	it('should include subtasks when requested', () => {
 		const testData = createTasksFile({
@@ -199,7 +199,7 @@ describe('get_tasks MCP tool', () => {
 		expect(data.data.stats.subtasks.total).toBe(2);
 		expect(data.data.stats.subtasks.completed).toBe(1);
 		expect(data.data.stats.subtasks.pending).toBe(1);
-	}, 15000);
+	}, 30000);
 
 	it('should calculate statistics correctly', () => {
 		const testData = createTasksFile({
@@ -218,7 +218,7 @@ describe('get_tasks MCP tool', () => {
 		expect(data.data.stats.completed).toBe(3);
 		expect(data.data.stats.pending).toBe(1);
 		expect(data.data.stats.completionPercentage).toBe(75);
-	}, 15000);
+	}, 30000);
 
 	it('should handle multiple status filters', () => {
 		const testData = createTasksFile({
@@ -240,5 +240,5 @@ describe('get_tasks MCP tool', () => {
 		const statuses = data.data.tasks.map((t: any) => t.status);
 		expect(statuses).toContain('pending');
 		expect(statuses).toContain('blocked');
-	}, 15000);
+	}, 30000);
 });

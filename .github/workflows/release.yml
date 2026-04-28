@@ -15,7 +15,7 @@ permissions:
   actions: write
 
 env:
-  BUN_VERSION: 1.2.6
+  BUN_VERSION: 1.3.12
   NODE_VERSION: 20
 
 jobs:

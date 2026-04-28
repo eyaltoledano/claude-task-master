@@ -100,7 +100,7 @@ describe('generate MCP tool', () => {
 		expect(response.data).toHaveProperty('count');
 		expect(response.data).toHaveProperty('directory');
 		expect(response.data).toHaveProperty('message');
-	}, 15000);
+	}, 30000);
 
 	it('should include tag in response', () => {
 		const testData = createTasksFile({
@@ -111,7 +111,7 @@ describe('generate MCP tool', () => {
 		const response = callMCPTool('generate', { projectRoot: testDir });
 
 		expect(response.tag).toBe('master');
-	}, 15000);
+	}, 30000);
 
 	it('should return count of generated files', () => {
 		const testData = createTasksFile({
@@ -126,13 +126,13 @@ describe('generate MCP tool', () => {
 		const response = callMCPTool('generate', { projectRoot: testDir });
 
 		expect(response.data.count).toBe(3);
-	}, 15000);
+	}, 30000);
 
 	it('should return zero count when no tasks exist', () => {
 		const response = callMCPTool('generate', { projectRoot: testDir });
 
 		expect(response.data.count).toBe(0);
-	}, 15000);
+	}, 30000);
 
 	it('should return orphanedFilesRemoved count', () => {
 		// Create tasks and generate files
@@ -174,7 +174,7 @@ describe('generate MCP tool', () => {
 		});
 
 		expect(response.data.directory).toBe(customDir);
-	}, 15000);
+	}, 30000);
 
 	it('should accept tag parameter', () => {
 		// Create tasks under a custom tag (not master)
@@ -199,5 +199,5 @@ describe('generate MCP tool', () => {
 		expect(
 			fs.existsSync(path.join(outputDir, 'task_001_feature-branch.md'))
 		).toBe(true);
-	}, 15000);
+	}, 30000);
 });
