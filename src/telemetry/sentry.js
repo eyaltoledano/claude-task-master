@@ -79,16 +79,19 @@ export function initializeSentry(options = {}) {
 			environment: options.environment || process.env.NODE_ENV || 'production',
 			integrations: [
 				// Add the Vercel AI SDK integration for automatic AI operation tracking
+				// recordInputs/recordOutputs are disabled by default to avoid capturing
+				// sensitive content such as PRDs, task descriptions, and AI-generated code.
 				Sentry.vercelAIIntegration({
-					recordInputs: true,
-					recordOutputs: true
+					recordInputs: false,
+					recordOutputs: false
 				}),
 				// Add Zod error tracking for better validation error reporting
 				Sentry.zodErrorsIntegration()
 			],
 			// Tracing must be enabled for AI monitoring to work
 			tracesSampleRate: options.tracesSampleRate ?? 1.0,
-			sendDefaultPii: options.sendDefaultPii ?? true,
+			// Disabled to avoid capturing personally identifiable information.
+			sendDefaultPii: options.sendDefaultPii ?? false,
 			// Enable debug mode with SENTRY_DEBUG=true env var
 			debug: process.env.SENTRY_DEBUG === 'true'
 		});
@@ -130,8 +133,8 @@ export function getAITelemetryConfig(functionId, metadata = {}) {
 
 	const config = {
 		isEnabled: true,
-		recordInputs: true,
-		recordOutputs: true
+		recordInputs: false,
+		recordOutputs: false
 	};
 
 	// Add functionId if provided - helps correlate captured spans with function calls
