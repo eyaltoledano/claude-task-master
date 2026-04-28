@@ -225,18 +225,18 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run build",
-		"build": "npm run build:js && npm run build:css",
+		"vscode:prepublish": "bun run build",
+		"build": "bun run build:js && bun run build:css",
 		"build:js": "node ./esbuild.js --production",
-		"build:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
-		"dev": "npm run watch",
-		"package": "npm exec node ./package.mjs",
+		"build:css": "bunx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --minify",
+		"dev": "bun run watch",
+		"package": "node ./package.mjs",
 		"package:direct": "node ./package.mjs",
 		"debug:env": "node ./debug-env.mjs",
 		"compile": "node ./esbuild.js",
-		"watch": "npm run watch:js & npm run watch:css",
+		"watch": "bun run watch:js & bun run watch:css",
 		"watch:js": "node ./esbuild.js --watch",
-		"watch:css": "npx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
+		"watch:css": "bunx @tailwindcss/cli -i ./src/webview/index.css -o ./dist/index.css --watch",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {

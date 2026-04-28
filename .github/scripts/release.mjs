@@ -23,7 +23,7 @@ if (existsSync(preJsonPath)) {
 runCommand('node', [join(__dirname, 'tag-extension.mjs')]);
 
 // Run changeset publish for npm packages
-runCommand('npx', ['changeset', 'publish']);
+runCommand('bunx', ['changeset', 'publish']);
 
 console.log('✅ Release process completed!');
 

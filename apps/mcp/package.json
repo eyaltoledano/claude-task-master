@@ -14,11 +14,11 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "biome check src",
 		"format": "biome format --write src",
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage=false",
+		"test:watch": "vitest --coverage=false",
 		"test:coverage": "vitest run --coverage",
-		"test:unit": "vitest run '**/*.spec.ts'",
-		"test:integration": "vitest run '**/*.test.ts'",
+		"test:unit": "vitest run --coverage=false '**/*.spec.ts'",
+		"test:integration": "vitest run --coverage=false '**/*.test.ts'",
 		"test:ci": "vitest run --coverage --reporter=dot"
 	},
 	"dependencies": {

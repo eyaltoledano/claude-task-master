@@ -1,10 +1,10 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env bun
 
 /**
  * Fixes package.json files where version is null (changeset quirk).
  * Replaces "version": null with "version": ""
  *
- * Usage: npx tsx packages/build-config/scripts/fix-null-versions.ts
+ * Usage: bun run scripts/fix-null-versions.ts
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, '..', '..', '..');
+const rootDir = join(__dirname, '..');
 
 const packageFiles = globSync('**/package.json', {
 	cwd: rootDir,

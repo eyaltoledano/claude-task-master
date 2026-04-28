@@ -9,6 +9,10 @@ on:
       - 'scripts/modules/supported-models.json'
       - 'docs/scripts/models-json-to-markdown.js'
 
+env:
+  BUN_VERSION: 1.3.12
+  NODE_VERSION: 20
+
 jobs:
   update_markdown:
     runs-on: ubuntu-latest
@@ -19,13 +23,18 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Run transformation script
         run: node docs/scripts/models-json-to-markdown.js
 
       - name: Format Markdown with Prettier
-        run: npx prettier --write docs/models.md
+        run: bunx prettier --write docs/models.md
 
       - name: Stage docs/models.md
         run: git add docs/models.md

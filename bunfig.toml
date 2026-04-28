@@ -1,0 +1,13 @@
+# Bun configuration for Taskmaster
+# https://bun.sh/docs/runtime/bunfig
+#
+# Bun is used for: package install (bun.lock), build (scripts/build.ts),
+# and root-level tests under tests/. All package-level tests use Vitest
+# on Node — see CLAUDE.md "Test runners" for why.
+
+[test]
+# Preload runs before each root-level Bun test suite (tests/).
+preload = ["./tests/setup.ts"]
+coverage = true
+coverageThreshold = { line = 80, function = 80, statement = 80 }
+timeout = 10000

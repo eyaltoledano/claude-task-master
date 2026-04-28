@@ -9,10 +9,10 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run",
-		"test:unit": "vitest run '**/*.spec.ts'",
-		"test:integration": "vitest run '**/*.test.ts'",
-		"test:watch": "vitest",
+		"test": "vitest run --coverage=false",
+		"test:unit": "vitest run --coverage=false '**/*.spec.ts'",
+		"test:integration": "vitest run --coverage=false '**/*.test.ts'",
+		"test:watch": "vitest --coverage=false",
 		"test:coverage": "vitest run --coverage",
 		"lint": "biome check --write",
 		"lint:check": "biome check",

@@ -7,6 +7,17 @@
 
 ## Test Guidelines
 
+### Test runners (Bun vs Vitest)
+
+This repo uses Bun for install/build but two different test runners:
+
+- **Vitest (Node)** — used by every package and app (`@tm/core`, `@tm/cli`, `@tm/mcp`, `apps/extension`, etc.). Run via `npm run test -w <package>` or `bun run --filter <package> test`. **All package tests live here.**
+- **Bun's native runner** — used only for the root-level `tests/` directory. Run via `npm run test:root`. Configured in `bunfig.toml` with preload `tests/setup.ts`.
+
+Why split? Bun's runtime has known Zod / SSR-related issues that affect `@tm/core` in particular, so packages stay on Node + Vitest. Bun's runner is fine for the simpler integration scripts in `tests/`.
+
+**Don't run `bun test` from the repo root expecting all tests** — it only sees `tests/`. Use `npm test` (turbo) for everything.
+
 ### Test File Placement
 
 - **Package & tests**: Place in `packages/<package-name>/src/<module>/<file>.spec.ts` or `apps/<app-name>/src/<module>/<file.spec.ts>` alongside source
