@@ -19,6 +19,9 @@ export interface LoopServiceOptions {
 	projectRoot: string;
 }
 
+const CLAUDE_CODE_SETUP_URL =
+	'https://docs.anthropic.com/en/docs/claude-code/getting-started';
+
 export class LoopService {
 	private readonly projectRoot: string;
 	private readonly logger = getLogger('LoopService');
@@ -586,7 +589,7 @@ Loop iteration ${iteration} of ${config.iterations}${tagInfo}`;
 		if (error.code === 'ENOENT') {
 			return sandbox
 				? 'Docker is not installed. Install Docker Desktop to use --sandbox mode.'
-				: 'Claude CLI is not installed. Install with: npm install -g @anthropic-ai/claude-code';
+				: `Claude Code CLI is not installed. Follow the official setup guide: ${CLAUDE_CODE_SETUP_URL}`;
 		}
 
 		if (error.code === 'EACCES') {

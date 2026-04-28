@@ -59,7 +59,7 @@ task-master set-status --id=task-001 --status=in-progress
 
 ## Requirements
 
-1. Claude Code CLI must be installed and authenticated on your system
+1. Claude Code CLI must be installed and authenticated on your system. Follow [Anthropic's official setup guide](https://docs.anthropic.com/en/docs/claude-code/getting-started).
 2. Install the optional `@anthropic-ai/claude-code` package if you enable this provider:
    ```bash
    npm install @anthropic-ai/claude-code

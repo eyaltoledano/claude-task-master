@@ -30,12 +30,20 @@ describe('Claude Code Error Handling', () => {
 
 	it('should throw a CLI-not-available error (with or without commandName)', () => {
 		const provider = new ClaudeCodeProvider();
-		expect(() => provider.getClient()).toThrow(
-			/Claude Code CLI not available/i
-		);
-		expect(() => provider.getClient({ commandName: 'test' })).toThrow(
-			/Claude Code CLI not available/i
-		);
+		for (const getClient of [
+			() => provider.getClient(),
+			() => provider.getClient({ commandName: 'test' })
+		]) {
+			try {
+				getClient();
+				throw new Error('Expected provider.getClient() to throw');
+			} catch (error) {
+				expect(error.message).toMatch(/Claude Code CLI not available/i);
+				expect(error.message).toMatch(/official setup guide/i);
+				expect(error.message).toContain('docs.anthropic.com');
+				expect(error.message).toMatch(/claude-code\/getting-started/i);
+			}
+		}
 	});
 
 	it('should still support basic provider functionality', () => {
