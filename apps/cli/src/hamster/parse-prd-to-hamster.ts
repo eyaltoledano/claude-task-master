@@ -228,7 +228,7 @@ export async function parsePrdToHamster(
 			);
 		} else {
 			console.log(
-				chalk.yellow('  ⚠ ') +
+				chalk.yellow('  ⚠️ ') +
 					chalk.white('Could not auto-set context. Run ') +
 					chalk.cyan(`tm context ${result.brief.url}`) +
 					chalk.white(' to set it manually.')
