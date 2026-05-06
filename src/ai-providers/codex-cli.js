@@ -27,6 +27,8 @@ const REASONING_EFFORT_SUPPORT = {
 	'gpt-5.1': ['none', 'low', 'medium', 'high'],
 	// GPT-5.1 Codex Max supports full range
 	'gpt-5.1-codex-max': ['none', 'low', 'medium', 'high', 'xhigh'],
+	// GPT-5.5 supports full range
+	'gpt-5.5': ['none', 'low', 'medium', 'high', 'xhigh'],
 	// GPT-5.2 supports full range
 	'gpt-5.2': ['none', 'low', 'medium', 'high', 'xhigh'],
 	// GPT-5.2 Pro only supports medium and above
@@ -40,6 +42,24 @@ const DEFAULT_REASONING_EFFORTS = ['none', 'low', 'medium', 'high'];
 
 // Ordering for effort levels (lowest to highest)
 const EFFORT_ORDER = ['none', 'low', 'medium', 'high', 'xhigh'];
+
+function getSystemCodexPath() {
+	try {
+		const command = process.platform === 'win32' ? 'where codex' : 'command -v codex';
+		const result = execSync(command, {
+			stdio: 'pipe',
+			timeout: 1000,
+			encoding: 'utf8'
+		})
+			.split(/\r?\n/)
+			.map((line) => line.trim())
+			.find(Boolean);
+
+		return result || null;
+	} catch {
+		return null;
+	}
+}
 
 export class CodexCliProvider extends BaseAIProvider {
 	constructor() {
@@ -168,9 +188,15 @@ export class CodexCliProvider extends BaseAIProvider {
 				settings.reasoningEffort
 			);
 
+			// Prefer an explicitly configured Codex path; otherwise prefer the system
+			// Codex CLI over the provider's optional bundled @openai/codex dependency.
+			// The bundled CLI can lag behind newly released ChatGPT/OAuth models.
+			const codexPath = settings.codexPath || getSystemCodexPath();
+
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {
 				...settings,
+				...(codexPath ? { codexPath } : {}),
 				reasoningEffort: validatedReasoningEffort,
 				...(params.apiKey
 					? { env: { ...(settings.env || {}), OPENAI_API_KEY: params.apiKey } }

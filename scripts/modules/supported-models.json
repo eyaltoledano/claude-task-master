@@ -130,6 +130,19 @@
 	],
 	"codex-cli": [
 		{
+			"id": "gpt-5.5",
+			"name": "GPT-5.5",
+			"swe_score": 0.82,
+			"cost_per_1m_tokens": {
+				"input": 0,
+				"output": 0
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"reasoning_efforts": ["none", "low", "medium", "high", "xhigh"],
+			"supported": true
+		},
+		{
 			"id": "gpt-5.2-codex",
 			"name": "GPT-5.2 Codex",
 			"swe_score": 0.82,

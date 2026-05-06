@@ -54,13 +54,13 @@ const isIntegerType = (type) => {
 	return type === 'integer';
 };
 
-const sanitizeIntegerConstraints = (schema) => {
+const normalizeSchemaForStructuredOutputs = (schema) => {
 	if (!schema || typeof schema !== 'object') {
 		return schema;
 	}
 
 	if (Array.isArray(schema)) {
-		return schema.map(sanitizeIntegerConstraints);
+		return schema.map(normalizeSchemaForStructuredOutputs);
 	}
 
 	const next = { ...schema };
@@ -75,13 +75,13 @@ const sanitizeIntegerConstraints = (schema) => {
 
 	for (const key of SCHEMA_OBJECT_KEYS) {
 		if (next[key]) {
-			next[key] = sanitizeIntegerConstraints(next[key]);
+			next[key] = normalizeSchemaForStructuredOutputs(next[key]);
 		}
 	}
 
 	for (const key of SCHEMA_ARRAY_KEYS) {
 		if (Array.isArray(next[key])) {
-			next[key] = next[key].map(sanitizeIntegerConstraints);
+			next[key] = next[key].map(normalizeSchemaForStructuredOutputs);
 		}
 	}
 
@@ -89,14 +89,30 @@ const sanitizeIntegerConstraints = (schema) => {
 		if (next[key] && typeof next[key] === 'object') {
 			const mapped = {};
 			for (const [entryKey, entryValue] of Object.entries(next[key])) {
-				mapped[entryKey] = sanitizeIntegerConstraints(entryValue);
+				mapped[entryKey] = normalizeSchemaForStructuredOutputs(entryValue);
 			}
 			next[key] = mapped;
 		}
 	}
 
 	if (next.items) {
-		next.items = sanitizeIntegerConstraints(next.items);
+		next.items = normalizeSchemaForStructuredOutputs(next.items);
+	}
+
+	const propertyKeys =
+		next.properties && typeof next.properties === 'object'
+			? Object.keys(next.properties)
+			: [];
+	const isObjectSchema = next.type === 'object' || propertyKeys.length > 0;
+
+	if (isObjectSchema) {
+		if (!('additionalProperties' in next)) {
+			next.additionalProperties = false;
+		}
+
+		if (propertyKeys.length > 0) {
+			next.required = propertyKeys;
+		}
 	}
 
 	return next;
@@ -112,7 +128,9 @@ const buildSafeSchema = (schema) => {
 		return baseSchema;
 	}
 
-	const sanitizedSchema = sanitizeIntegerConstraints(baseSchema.jsonSchema);
+	const sanitizedSchema = normalizeSchemaForStructuredOutputs(
+		baseSchema.jsonSchema
+	);
 
 	if (typeof jsonSchemaHelper === 'function') {
 		return jsonSchemaHelper(sanitizedSchema, { validate: baseSchema.validate });

@@ -17,6 +17,13 @@ jest.unstable_mockModule('ai-sdk-provider-codex-cli', () => ({
 	})
 }));
 
+// Mock child_process for system Codex path detection
+jest.unstable_mockModule('child_process', () => ({
+	execSync: jest.fn(() => '/usr/local/bin/codex\n'),
+	exec: jest.fn(),
+	spawn: jest.fn()
+}));
+
 // Mock config getters
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getCodexCliSettingsForCommand: jest.fn(() => ({ allowNpx: true })),
@@ -85,9 +92,28 @@ describe('CodexCliProvider', () => {
 		const client = await provider.getClient({ commandName: 'parse-prd' });
 		expect(client).toBeDefined();
 		expect(createCodexCli).toHaveBeenCalledWith({
-			defaultSettings: expect.objectContaining({ allowNpx: true })
+			defaultSettings: expect.objectContaining({
+				allowNpx: true,
+				codexPath: '/usr/local/bin/codex'
+			})
 		});
 		expect(getCodexCliSettingsForCommand).toHaveBeenCalledWith('parse-prd');
+	});
+
+	it('preserves explicitly configured codexPath over system Codex path', async () => {
+		getCodexCliSettingsForCommand.mockReturnValueOnce({
+			allowNpx: true,
+			codexPath: '/custom/bin/codex'
+		});
+
+		await provider.getClient({ commandName: 'parse-prd' });
+
+		expect(createCodexCli).toHaveBeenCalledWith({
+			defaultSettings: expect.objectContaining({
+				allowNpx: true,
+				codexPath: '/custom/bin/codex'
+			})
+		});
 	});
 
 	it('injects OPENAI_API_KEY only when apiKey provided', async () => {
