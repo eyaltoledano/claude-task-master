@@ -175,5 +175,6 @@ describe('BaseAIProvider structured output schema handling', () => {
 		});
 		expect(strictSchema.properties.steps.items[1].minimum).toBeUndefined();
 		expect(strictSchema.properties.choice.additionalProperties).toBeUndefined();
+		expect(strictSchema.properties.choice.required).toBeUndefined();
 	});
 });

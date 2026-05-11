@@ -116,7 +116,11 @@ const normalizeSchemaForStructuredOutputs = (schema) => {
 			next.additionalProperties = false;
 		}
 
-		if (propertyKeys.length > 0 && next.required === undefined) {
+		if (
+			!hasCombinator &&
+			propertyKeys.length > 0 &&
+			next.required === undefined
+		) {
 			next.required = propertyKeys;
 		}
 	}
