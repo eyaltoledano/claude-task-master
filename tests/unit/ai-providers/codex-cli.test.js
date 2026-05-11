@@ -17,6 +17,13 @@ jest.unstable_mockModule('ai-sdk-provider-codex-cli', () => ({
 	})
 }));
 
+// Mock child_process for system Codex path detection
+jest.unstable_mockModule('child_process', () => ({
+	execSync: jest.fn(() => '/usr/local/bin/codex\n'),
+	exec: jest.fn(),
+	spawn: jest.fn()
+}));
+
 // Mock config getters
 jest.unstable_mockModule('../../../scripts/modules/config-manager.js', () => ({
 	getCodexCliSettingsForCommand: jest.fn(() => ({ allowNpx: true })),
@@ -54,6 +61,7 @@ const { CodexCliProvider } = await import(
 	'../../../src/ai-providers/codex-cli.js'
 );
 const { createCodexCli } = await import('ai-sdk-provider-codex-cli');
+const { execSync } = await import('child_process');
 const { getCodexCliSettingsForCommand } = await import(
 	'../../../scripts/modules/config-manager.js'
 );
@@ -85,9 +93,50 @@ describe('CodexCliProvider', () => {
 		const client = await provider.getClient({ commandName: 'parse-prd' });
 		expect(client).toBeDefined();
 		expect(createCodexCli).toHaveBeenCalledWith({
-			defaultSettings: expect.objectContaining({ allowNpx: true })
+			defaultSettings: expect.objectContaining({
+				allowNpx: true,
+				codexPath: '/usr/local/bin/codex'
+			})
 		});
 		expect(getCodexCliSettingsForCommand).toHaveBeenCalledWith('parse-prd');
+	});
+
+	it('preserves explicitly configured codexPath over system Codex path', async () => {
+		getCodexCliSettingsForCommand.mockReturnValueOnce({
+			allowNpx: true,
+			codexPath: '/custom/bin/codex'
+		});
+
+		await provider.getClient({ commandName: 'parse-prd' });
+
+		expect(createCodexCli).toHaveBeenCalledWith({
+			defaultSettings: expect.objectContaining({
+				allowNpx: true,
+				codexPath: '/custom/bin/codex'
+			})
+		});
+		expect(execSync).not.toHaveBeenCalled();
+	});
+
+	it('omits codexPath when neither config nor system provides one', async () => {
+		execSync.mockImplementationOnce(() => {
+			throw new Error('not found');
+		});
+
+		await provider.getClient({ commandName: 'parse-prd' });
+
+		const call = createCodexCli.mock.calls.at(-1)[0];
+		expect(call.defaultSettings.codexPath).toBeUndefined();
+	});
+
+	it('caches system codexPath lookup across getClient calls', async () => {
+		await provider.getClient({ commandName: 'parse-prd' });
+		await provider.getClient({ commandName: 'expand' });
+
+		expect(execSync).toHaveBeenCalledTimes(1);
+		expect(createCodexCli.mock.calls[1][0].defaultSettings.codexPath).toBe(
+			'/usr/local/bin/codex'
+		);
 	});
 
 	it('injects OPENAI_API_KEY only when apiKey provided', async () => {
