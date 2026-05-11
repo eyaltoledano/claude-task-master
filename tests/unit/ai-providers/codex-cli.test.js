@@ -115,6 +115,7 @@ describe('CodexCliProvider', () => {
 				codexPath: '/custom/bin/codex'
 			})
 		});
+		expect(execSync).not.toHaveBeenCalled();
 	});
 
 	it('omits codexPath when neither config nor system provides one', async () => {
