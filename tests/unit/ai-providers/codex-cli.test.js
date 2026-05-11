@@ -61,6 +61,7 @@ const { CodexCliProvider } = await import(
 	'../../../src/ai-providers/codex-cli.js'
 );
 const { createCodexCli } = await import('ai-sdk-provider-codex-cli');
+const { execSync } = await import('child_process');
 const { getCodexCliSettingsForCommand } = await import(
 	'../../../scripts/modules/config-manager.js'
 );
@@ -114,6 +115,27 @@ describe('CodexCliProvider', () => {
 				codexPath: '/custom/bin/codex'
 			})
 		});
+	});
+
+	it('omits codexPath when neither config nor system provides one', async () => {
+		execSync.mockImplementationOnce(() => {
+			throw new Error('not found');
+		});
+
+		await provider.getClient({ commandName: 'parse-prd' });
+
+		const call = createCodexCli.mock.calls.at(-1)[0];
+		expect(call.defaultSettings.codexPath).toBeUndefined();
+	});
+
+	it('caches system codexPath lookup across getClient calls', async () => {
+		await provider.getClient({ commandName: 'parse-prd' });
+		await provider.getClient({ commandName: 'expand' });
+
+		expect(execSync).toHaveBeenCalledTimes(1);
+		expect(createCodexCli.mock.calls[1][0].defaultSettings.codexPath).toBe(
+			'/usr/local/bin/codex'
+		);
 	});
 
 	it('injects OPENAI_API_KEY only when apiKey provided', async () => {

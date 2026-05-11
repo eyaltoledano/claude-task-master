@@ -96,21 +96,27 @@ const normalizeSchemaForStructuredOutputs = (schema) => {
 	}
 
 	if (next.items) {
-		next.items = normalizeSchemaForStructuredOutputs(next.items);
+		next.items = Array.isArray(next.items)
+			? next.items.map(normalizeSchemaForStructuredOutputs)
+			: normalizeSchemaForStructuredOutputs(next.items);
 	}
 
 	const propertyKeys =
 		next.properties && typeof next.properties === 'object'
 			? Object.keys(next.properties)
 			: [];
-	const isObjectSchema = next.type === 'object' || propertyKeys.length > 0;
+	const isObjectSchema =
+		next.type === 'object' ||
+		(Array.isArray(next.type) && next.type.includes('object')) ||
+		propertyKeys.length > 0;
+	const hasCombinator = ['oneOf', 'anyOf', 'allOf'].some((key) => key in next);
 
 	if (isObjectSchema) {
-		if (!('additionalProperties' in next)) {
+		if (!hasCombinator && !('additionalProperties' in next)) {
 			next.additionalProperties = false;
 		}
 
-		if (propertyKeys.length > 0) {
+		if (propertyKeys.length > 0 && next.required === undefined) {
 			next.required = propertyKeys;
 		}
 	}

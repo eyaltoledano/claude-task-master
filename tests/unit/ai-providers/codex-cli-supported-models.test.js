@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const supportedModelsPath = path.resolve(
-	process.cwd(),
-	'scripts/modules/supported-models.json'
+	__dirname,
+	'../../../scripts/modules/supported-models.json'
 );
 const supportedModels = JSON.parse(
 	fs.readFileSync(supportedModelsPath, 'utf8')

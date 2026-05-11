@@ -45,7 +45,9 @@ const EFFORT_ORDER = ['none', 'low', 'medium', 'high', 'xhigh'];
 
 function getSystemCodexPath() {
 	try {
-		const command = process.platform === 'win32' ? 'where codex' : 'command -v codex';
+		// 'command -v' is POSIX-compliant and available in /bin/sh; prefer it over 'which' which may be missing in minimal containers.
+		const command =
+			process.platform === 'win32' ? 'where codex' : 'command -v codex';
 		const result = execSync(command, {
 			stdio: 'pipe',
 			timeout: 1000,
@@ -83,6 +85,9 @@ export class CodexCliProvider extends BaseAIProvider {
 		// CLI availability check cache
 		this._codexCliChecked = false;
 		this._codexCliAvailable = null;
+		// System Codex path detection cache
+		this._systemCodexPathChecked = false;
+		this._systemCodexPath = null;
 	}
 
 	/**
@@ -169,6 +174,15 @@ export class CodexCliProvider extends BaseAIProvider {
 		return highestSupported;
 	}
 
+	_resolveSystemCodexPath() {
+		if (!this._systemCodexPathChecked) {
+			this._systemCodexPath = getSystemCodexPath();
+			this._systemCodexPathChecked = true;
+		}
+
+		return this._systemCodexPath;
+	}
+
 	/**
 	 * Creates a Codex CLI client instance
 	 * @param {object} params
@@ -191,7 +205,7 @@ export class CodexCliProvider extends BaseAIProvider {
 			// Prefer an explicitly configured Codex path; otherwise prefer the system
 			// Codex CLI over the provider's optional bundled @openai/codex dependency.
 			// The bundled CLI can lag behind newly released ChatGPT/OAuth models.
-			const codexPath = settings.codexPath || getSystemCodexPath();
+			const codexPath = settings.codexPath || this._resolveSystemCodexPath();
 
 			// Inject API key only if explicitly provided; OAuth is the primary path
 			const defaultSettings = {

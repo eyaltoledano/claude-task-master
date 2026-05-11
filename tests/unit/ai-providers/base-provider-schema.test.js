@@ -123,4 +123,57 @@ describe('BaseAIProvider structured output schema handling', () => {
 		// Preserve the existing integer-constraint sanitization behavior.
 		expect(strictSchema.properties.items.properties.id.minimum).toBeUndefined();
 	});
+
+	it('preserves caller-defined required fields and normalizes edge-case schemas', async () => {
+		mockZodSchema.mockReturnValueOnce({
+			jsonSchema: {
+				type: ['object', 'null'],
+				required: ['title'],
+				properties: {
+					title: { type: 'string' },
+					metadata: {
+						type: ['object', 'null'],
+						properties: {
+							priority: { type: 'string' }
+						}
+					},
+					steps: {
+						type: 'array',
+						items: [
+							{ type: 'object', properties: { name: { type: 'string' } } },
+							{ type: 'integer', minimum: 1 }
+						]
+					},
+					choice: {
+						type: 'object',
+						properties: { value: { type: 'string' } },
+						oneOf: [{ required: ['value'] }]
+					}
+				}
+			},
+			validate: mockValidate
+		});
+		const provider = new TestProvider();
+
+		await provider.generateObject({
+			modelId: 'gpt-5.5',
+			messages: [{ role: 'user', content: 'Generate a task' }],
+			schema: { mocked: true },
+			objectName: 'task'
+		});
+
+		const strictSchema = mockJsonSchema.mock.calls[0][0];
+		expect(strictSchema.required).toEqual(['title']);
+		expect(strictSchema.properties.metadata).toMatchObject({
+			type: ['object', 'null'],
+			additionalProperties: false,
+			required: ['priority']
+		});
+		expect(strictSchema.properties.steps.items[0]).toMatchObject({
+			additionalProperties: false,
+			required: ['name']
+		});
+		expect(strictSchema.properties.steps.items[1].minimum).toBeUndefined();
+		expect(strictSchema.properties.choice.additionalProperties).toBeUndefined();
+	});
 });
