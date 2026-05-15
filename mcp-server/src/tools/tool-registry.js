@@ -49,6 +49,7 @@ import {
 	registerGenerateTool,
 	registerGetTaskTool,
 	registerGetTasksTool,
+	registerSearchTasksTool,
 	registerSetTaskStatusTool
 } from '@tm/mcp';
 
@@ -69,6 +70,7 @@ export const toolRegistry = {
 	scope_down_task: registerScopeDownTool,
 	get_tasks: registerGetTasksTool,
 	get_task: registerGetTaskTool,
+	search_tasks: registerSearchTasksTool,
 	next_task: registerNextTaskTool,
 	complexity_report: registerComplexityReportTool,
 	set_task_status: registerSetTaskStatusTool,
@@ -129,7 +131,8 @@ export const standardTools = [
 	'add_subtask',
 	'remove_task',
 	'add_task',
-	'complexity_report'
+	'complexity_report',
+	'search_tasks'
 ];
 
 /**
