@@ -117,11 +117,23 @@ export async function moveTaskCrossTagDirect(args, log, context = {}) {
 				{ projectRoot }
 			);
 
+			// Check if any tasks were renumbered during the move
+			const renumberedTasks = (result.movedTasks || []).filter(
+				(t) => t.newId !== undefined
+			);
+			let message = `Successfully moved ${(result.movedTasks || []).length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`;
+			if (renumberedTasks.length > 0) {
+				const renumberDetails = renumberedTasks
+					.map((t) => `${t.originalId} → ${t.newId}`)
+					.join(', ');
+				message += `. Renumbered to avoid ID collisions: ${renumberDetails}`;
+			}
+
 			return {
 				success: true,
 				data: {
 					...result,
-					message: `Successfully moved ${sourceIds.length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`,
+					message,
 					moveOptions,
 					sourceTag: args.sourceTag,
 					targetTag: args.targetTag
