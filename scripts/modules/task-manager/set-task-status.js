@@ -6,7 +6,7 @@ import {
 	TASK_STATUS_OPTIONS,
 	isValidTaskStatus
 } from '../../../src/constants/task-status.js';
-import { getDebugFlag } from '../config-manager.js';
+import { getDebugFlag, isSlimDoneTasksEnabled } from '../config-manager.js';
 import { validateTaskDependencies } from '../dependency-manager.js';
 import { displayBanner } from '../ui.js';
 import {
@@ -84,6 +84,9 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		const taskIds = taskIdInput.split(',').map((id) => id.trim());
 		const updatedTasks = [];
 
+		// Check if auto-slim on done is enabled
+		const slimOnDone = isSlimDoneTasksEnabled(projectRoot);
+
 		// Update each task and capture old status for display
 		for (const id of taskIds) {
 			// Capture old status before updating
@@ -106,7 +109,9 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 				oldStatus = task?.status || 'pending';
 			}
 
-			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode);
+			await updateSingleTaskStatus(tasksPath, id, newStatus, data, !isMcpMode, {
+				slimOnDone
+			});
 			updatedTasks.push({ id, oldStatus, newStatus });
 		}
 

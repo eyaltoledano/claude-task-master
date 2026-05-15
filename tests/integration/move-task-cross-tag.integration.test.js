@@ -550,7 +550,7 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			).rejects.toThrow('Cannot move subtasks directly between tags');
 		});
 
-		it('should handle ID conflicts in target tag', async () => {
+		it('should auto-renumber tasks on ID conflicts in target tag', async () => {
 			// Setup data with conflicting IDs
 			const conflictingData = {
 				backlog: {
@@ -558,7 +558,8 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 						{
 							id: 1,
 							title: 'Backlog Task',
-							tag: 'backlog'
+							tag: 'backlog',
+							dependencies: []
 						}
 					]
 				},
@@ -567,7 +568,8 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 						{
 							id: 1, // Same ID as in backlog
 							title: 'In Progress Task',
-							tag: 'in-progress'
+							tag: 'in-progress',
+							dependencies: []
 						}
 					]
 				}
@@ -579,35 +581,32 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			const sourceTag = 'backlog';
 			const targetTag = 'in-progress';
 
-			await expect(
-				moveTasksBetweenTags(
-					testDataPath,
-					taskIds,
-					sourceTag,
-					targetTag,
-					{},
-					{ projectRoot: '/test/project' }
-				)
-			).rejects.toThrow('Task 1 already exists in target tag "in-progress"');
+			const result = await moveTasksBetweenTags(
+				testDataPath,
+				taskIds,
+				sourceTag,
+				targetTag,
+				{},
+				{ projectRoot: '/test/project' }
+			);
 
-			// Validate suggestions on the error payload
-			try {
-				await moveTasksBetweenTags(
-					testDataPath,
-					taskIds,
-					sourceTag,
-					targetTag,
-					{},
-					{ projectRoot: '/test/project' }
-				);
-			} catch (err) {
-				expect(err.code).toBe('TASK_ALREADY_EXISTS');
-				expect(Array.isArray(err.data?.suggestions)).toBe(true);
-				const s = (err.data?.suggestions || []).join(' ');
-				expect(s).toContain('different target tag');
-				expect(s).toContain('different set of IDs');
-				expect(s).toContain('within-tag');
-			}
+			// Task should be moved successfully with a new ID
+			expect(result.message).toContain('Successfully moved 1 tasks');
+			expect(result.message).toContain('Renumbered');
+			expect(result.movedTasks).toHaveLength(1);
+			expect(result.movedTasks[0].originalId).toBe(1);
+			expect(result.movedTasks[0].newId).toBe(2); // Next available ID after existing ID 1
+
+			// Verify the target tag now has both tasks
+			expect(mockUtils.writeJSON).toHaveBeenCalled();
+			const writtenData = mockUtils.writeJSON.mock.calls[0][1];
+			expect(writtenData['in-progress'].tasks).toHaveLength(2);
+			expect(writtenData['in-progress'].tasks[0].id).toBe(1); // Original task
+			expect(writtenData['in-progress'].tasks[1].id).toBe(2); // Renumbered moved task
+			expect(writtenData['in-progress'].tasks[1].title).toBe('Backlog Task');
+
+			// Source tag should be empty
+			expect(writtenData.backlog.tasks).toHaveLength(0);
 		});
 	});
 

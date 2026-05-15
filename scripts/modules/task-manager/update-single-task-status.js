@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 
-import { isValidTaskStatus } from '../../../src/constants/task-status.js';
+import {
+	TASK_STATUS_OPTIONS,
+	isValidTaskStatus
+} from '../../../src/constants/task-status.js';
 import { log } from '../utils.js';
+import { slimSubtaskOnComplete, slimTaskOnComplete } from './slim-task.js';
 
 /**
  * Update the status of a single task
@@ -10,14 +14,18 @@ import { log } from '../utils.js';
  * @param {string} newStatus - New status
  * @param {Object} data - Tasks data
  * @param {boolean} showUi - Whether to show UI elements
+ * @param {Object} [statusOptions] - Additional options
+ * @param {boolean} [statusOptions.slimOnDone=false] - Whether to slim tasks when marking as done
  */
 async function updateSingleTaskStatus(
 	tasksPath,
 	taskIdInput,
 	newStatus,
 	data,
-	showUi = true
+	showUi = true,
+	statusOptions = {}
 ) {
+	const { slimOnDone = false } = statusOptions || {};
 	if (!isValidTaskStatus(newStatus)) {
 		throw new Error(
 			`Error: Invalid status value: ${newStatus}. Use one of: ${TASK_STATUS_OPTIONS.join(', ')}`
@@ -51,6 +59,11 @@ async function updateSingleTaskStatus(
 		// Update the subtask status
 		const oldStatus = subtask.status || 'pending';
 		subtask.status = newStatus;
+
+		// Slim subtask if transitioning to done and slimming is enabled
+		if (slimOnDone) {
+			slimSubtaskOnComplete(subtask, oldStatus, newStatus);
+		}
 
 		log(
 			'info',
@@ -126,6 +139,11 @@ async function updateSingleTaskStatus(
 					subtask.status = newStatus;
 				});
 			}
+		}
+
+		// Slim task (and its subtasks) if transitioning to done and slimming is enabled
+		if (slimOnDone) {
+			slimTaskOnComplete(task, oldStatus, newStatus);
 		}
 	}
 }

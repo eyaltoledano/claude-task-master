@@ -148,7 +148,8 @@ const DEFAULT_CONFIG = {
 		bedrockBaseURL: 'https://bedrock.us-east-1.amazonaws.com',
 		enableCodebaseAnalysis: true,
 		enableProxy: false,
-		responseLanguage: 'English'
+		responseLanguage: 'English',
+		slimDoneTasks: true
 	},
 	claudeCode: {},
 	codexCli: {},
