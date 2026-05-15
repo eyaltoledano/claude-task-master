@@ -232,7 +232,7 @@ export class ListTasksCommand extends Command {
 							);
 						}
 					} else if (event.type === 'error' && event.error) {
-						console.error(chalk.red(`\n⚠ Watch error: ${event.error.message}`));
+						console.error(chalk.red(`\n⚠️ Watch error: ${event.error.message}`));
 					}
 				},
 				{ tag: options.tag }
