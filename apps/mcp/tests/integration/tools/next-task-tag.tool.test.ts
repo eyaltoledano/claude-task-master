@@ -46,9 +46,7 @@ describe('MCP response tag honors explicit tag arg (issue #1683)', () => {
 		// Multi-tag tasks file with master + phase3
 		const data = {
 			master: {
-				tasks: [
-					createTask({ id: 1, title: 'Master task', status: 'pending' })
-				],
+				tasks: [createTask({ id: 1, title: 'Master task', status: 'pending' })],
 				metadata: {
 					version: '1.0.0',
 					lastModified: new Date().toISOString(),
@@ -95,10 +93,7 @@ describe('MCP response tag honors explicit tag arg (issue #1683)', () => {
 		}
 	});
 
-	const callMCPTool = (
-		toolName: string,
-		args: Record<string, string>
-	): any => {
+	const callMCPTool = (toolName: string, args: Record<string, string>): any => {
 		const toolArgs = Object.entries(args)
 			.map(([key, value]) => `--tool-arg ${key}=${value}`)
 			.join(' ');
