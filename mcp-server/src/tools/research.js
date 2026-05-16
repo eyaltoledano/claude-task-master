@@ -103,7 +103,8 @@ export function registerResearchTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error performing research',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in research tool: ${error.message}`);

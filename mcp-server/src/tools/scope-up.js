@@ -96,7 +96,8 @@ export function registerScopeUpTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error scoping up task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in scope-up tool: ${error.message}`);

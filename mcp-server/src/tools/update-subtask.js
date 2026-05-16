@@ -119,7 +119,8 @@ export function registerUpdateSubtaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error updating subtask',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(

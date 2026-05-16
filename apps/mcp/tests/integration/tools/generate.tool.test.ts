@@ -7,7 +7,7 @@
  * @integration
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,7 +31,7 @@ describe('generate MCP tool', () => {
 		);
 
 		// Initialize Task Master in test directory
-		execSync(`node "${cliPath}" init --yes`, {
+		execFileSync(process.execPath, [cliPath, 'init', '--yes'], {
 			stdio: 'pipe',
 			env: { ...process.env, TASKMASTER_SKIP_AUTO_UPDATE: '1' }
 		});
@@ -66,12 +66,25 @@ describe('generate MCP tool', () => {
 	 * The inspector returns MCP protocol format: { content: [{ type: "text", text: "<json>" }] }
 	 */
 	const callMCPTool = (toolName: string, args: Record<string, any>): any => {
-		const toolArgs = Object.entries(args)
-			.map(([key, value]) => `--tool-arg ${key}=${value}`)
-			.join(' ');
+		const toolArgs = Object.entries(args).flatMap(([key, value]) => [
+			'--tool-arg',
+			`${key}=${value}`
+		]);
 
-		const output = execSync(
-			`npx @modelcontextprotocol/inspector --cli node "${mcpServerPath}" --method tools/call --tool-name ${toolName} ${toolArgs}`,
+		const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+		const output = execFileSync(
+			npxBin,
+			[
+				'@modelcontextprotocol/inspector',
+				'--cli',
+				'node',
+				mcpServerPath,
+				'--method',
+				'tools/call',
+				'--tool-name',
+				toolName,
+				...toolArgs
+			],
 			{
 				encoding: 'utf-8',
 				stdio: 'pipe',

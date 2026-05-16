@@ -92,7 +92,8 @@ export function registerParsePRDTool(server) {
 						result,
 						log: log,
 						errorPrefix: 'Error parsing PRD',
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
 					});
 				} catch (error) {
 					log.error(`Error in parse_prd: ${error.message}`);

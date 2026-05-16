@@ -90,7 +90,8 @@ export function registerNextTaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error finding next task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error finding next task: ${error.message}`);
