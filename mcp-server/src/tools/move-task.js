@@ -103,7 +103,8 @@ export function registerMoveTaskTool(server) {
 						),
 						log,
 						errorPrefix: 'Error moving tasks between tags',
-						projectRoot: args.projectRoot
+						projectRoot: args.projectRoot,
+						tag: args.toTag
 					});
 				} else {
 					// Within-tag move logic (existing functionality)
@@ -180,7 +181,8 @@ export function registerMoveTaskTool(server) {
 								},
 								log,
 								errorPrefix: 'Error moving multiple tasks',
-								projectRoot: args.projectRoot
+								projectRoot: args.projectRoot,
+								tag: resolvedTag
 							});
 						}
 						return handleApiResult({
@@ -194,7 +196,8 @@ export function registerMoveTaskTool(server) {
 							},
 							log,
 							errorPrefix: 'Error moving multiple tasks',
-							projectRoot: args.projectRoot
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
 						});
 					} else {
 						// Moving a single task
@@ -213,7 +216,8 @@ export function registerMoveTaskTool(server) {
 							),
 							log,
 							errorPrefix: 'Error moving task',
-							projectRoot: args.projectRoot
+							projectRoot: args.projectRoot,
+							tag: resolvedTag
 						});
 					}
 				}

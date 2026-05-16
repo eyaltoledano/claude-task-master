@@ -95,7 +95,8 @@ export function registerClearSubtasksTool(server) {
 					result,
 					log: context.log,
 					errorPrefix: 'Error clearing subtasks',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				context.log.error(`Error in clearSubtasks tool: ${error.message}`);

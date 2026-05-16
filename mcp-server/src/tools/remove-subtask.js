@@ -97,7 +97,8 @@ export function registerRemoveSubtaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error removing subtask',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in removeSubtask tool: ${error.message}`);

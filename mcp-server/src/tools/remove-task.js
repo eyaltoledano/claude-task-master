@@ -92,7 +92,8 @@ export function registerRemoveTaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error removing task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in remove-task tool: ${error.message}`);

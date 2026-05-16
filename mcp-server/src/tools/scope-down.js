@@ -96,7 +96,8 @@ export function registerScopeDownTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error scoping down task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in scope-down tool: ${error.message}`);

@@ -119,7 +119,8 @@ export function registerExpandAllTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error expanding all tasks',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(

@@ -121,7 +121,8 @@ export function registerSetTaskStatusTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error setting task status',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in setTaskStatus tool: ${error.message}`);

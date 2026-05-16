@@ -96,7 +96,8 @@ export function registerUpdateTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error updating tasks',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(

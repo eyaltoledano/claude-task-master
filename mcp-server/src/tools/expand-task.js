@@ -102,7 +102,8 @@ export function registerExpandTaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error expanding task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in expand-task tool: ${error.message}`);

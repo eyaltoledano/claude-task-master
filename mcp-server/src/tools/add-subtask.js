@@ -116,7 +116,8 @@ export function registerAddSubtaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error adding subtask',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in addSubtask tool: ${error.message}`);

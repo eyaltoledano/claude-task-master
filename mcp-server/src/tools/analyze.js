@@ -158,7 +158,8 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error analyzing task complexity',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(

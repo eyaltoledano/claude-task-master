@@ -76,7 +76,8 @@ export function registerFixDependenciesTool(server) {
 					result,
 					log: context.log,
 					errorPrefix: 'Error fixing dependencies',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				context.log.error(`Error in fixDependencies tool: ${error.message}`);

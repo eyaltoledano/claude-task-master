@@ -84,7 +84,8 @@ export function registerRemoveDependencyTool(server) {
 					result,
 					log: context.log,
 					errorPrefix: 'Error removing dependency',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				context.log.error(`Error in removeDependency tool: ${error.message}`);

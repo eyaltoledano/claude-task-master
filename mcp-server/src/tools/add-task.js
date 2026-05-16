@@ -115,7 +115,8 @@ export function registerAddTaskTool(server) {
 					result,
 					log: log,
 					errorPrefix: 'Error adding task',
-					projectRoot: args.projectRoot
+					projectRoot: args.projectRoot,
+					tag: resolvedTag
 				});
 			} catch (error) {
 				log.error(`Error in add-task tool: ${error.message}`);
