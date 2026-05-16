@@ -85,7 +85,7 @@ export class ClaudeCodeProvider extends BaseAIProvider {
 				_claudeCliAvailable = false;
 				log(
 					'warn',
-					'Claude Code CLI not detected. Install it with: npm install -g @anthropic-ai/claude-code'
+					'Claude Code CLI not detected. Install it with: curl -fsSL https://claude.ai/install.sh | sh'
 				);
 			} finally {
 				_claudeCliChecked = true;
