@@ -11,7 +11,7 @@
  * @integration
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -35,7 +35,7 @@ describe('MCP response tag honors explicit tag arg (issue #1683)', () => {
 			'../../../../../dist/mcp-server.js'
 		);
 
-		execSync(`node "${cliPath}" init --yes`, {
+		execFileSync(process.execPath, [cliPath, 'init', '--yes'], {
 			stdio: 'pipe',
 			env: { ...process.env, TASKMASTER_SKIP_AUTO_UPDATE: '1' }
 		});
@@ -94,12 +94,25 @@ describe('MCP response tag honors explicit tag arg (issue #1683)', () => {
 	});
 
 	const callMCPTool = (toolName: string, args: Record<string, string>): any => {
-		const toolArgs = Object.entries(args)
-			.map(([key, value]) => `--tool-arg ${key}=${value}`)
-			.join(' ');
+		const toolArgs = Object.entries(args).flatMap(([key, value]) => [
+			'--tool-arg',
+			`${key}=${value}`
+		]);
 
-		const output = execSync(
-			`npx @modelcontextprotocol/inspector --cli node "${mcpServerPath}" --method tools/call --tool-name ${toolName} ${toolArgs}`,
+		const npxBin = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+		const output = execFileSync(
+			npxBin,
+			[
+				'@modelcontextprotocol/inspector',
+				'--cli',
+				'node',
+				mcpServerPath,
+				'--method',
+				'tools/call',
+				'--tool-name',
+				toolName,
+				...toolArgs
+			],
 			{ encoding: 'utf-8', stdio: 'pipe' }
 		);
 		const mcpResponse = JSON.parse(output);
