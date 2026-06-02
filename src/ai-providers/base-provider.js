@@ -465,7 +465,7 @@ export class BaseAIProvider {
 				messages: params.messages,
 				schema,
 				mode: params.mode || 'auto',
-				maxOutputTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
 					: {}),
@@ -533,7 +533,7 @@ export class BaseAIProvider {
 				mode: this.needsExplicitJsonSchema ? 'json' : 'auto',
 				schemaName: params.objectName,
 				schemaDescription: `Generate a valid JSON object for ${params.objectName}`,
-				maxTokens: params.maxTokens,
+				...this.prepareTokenParam(params.modelId, params.maxTokens),
 				...(this.supportsTemperature && params.temperature !== undefined
 					? { temperature: params.temperature }
 					: {}),
