@@ -6,6 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'path';
 import { getLogger } from '../../../common/logger/index.js';
+import { slugifyTagForFilePath } from '../../../common/utils/tag-path.js';
 import type {
 	ComplexityAnalysis,
 	ComplexityReport,
@@ -31,7 +32,11 @@ export class ComplexityReportManager {
 	 */
 	private getReportPath(tag?: string): string {
 		const reportsDir = path.join(this.projectRoot, '.taskmaster', 'reports');
-		const tagSuffix = tag && tag !== 'master' ? `_${tag}` : '';
+		// Slugify the tag before using it in a filename: tags are user/agent/config
+		// controllable, so a raw `..`/`/` would escape the reports directory.
+		// Matches the legacy `getTagAwareFilePath` writer for read/write parity.
+		const tagSuffix =
+			tag && tag !== 'master' ? `_${slugifyTagForFilePath(tag)}` : '';
 		return path.join(reportsDir, `task-complexity-report${tagSuffix}.json`);
 	}
 

@@ -57,6 +57,9 @@ export {
 // Export path construction utilities
 export { getProjectPaths } from './path-helpers.js';
 
+// Export tag-aware path safety utilities
+export { slugifyTagForFilePath } from './tag-path.js';
+
 // Additional utility exports
 
 /**

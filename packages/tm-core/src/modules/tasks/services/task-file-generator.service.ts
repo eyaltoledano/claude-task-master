@@ -8,6 +8,7 @@ import path from 'node:path';
 import type { Task, Subtask, TaskStatus } from '../../../common/types/index.js';
 import type { IStorage } from '../../../common/interfaces/storage.interface.js';
 import type { ConfigManager } from '../../config/managers/config-manager.js';
+import { slugifyTagForFilePath } from '../../../common/utils/tag-path.js';
 
 /**
  * Options for generating task files
@@ -133,9 +134,11 @@ export class TaskFileGeneratorService {
 	 */
 	private getTaskFileName(taskId: string | number, tag: string): string {
 		const paddedId = String(taskId).padStart(3, '0');
+		// Slugify the tag: it is user/agent/config controllable, so a raw `..`/`/`
+		// would let `path.join` write the task file outside the tasks directory.
 		return tag === 'master'
 			? `task_${paddedId}.md`
-			: `task_${paddedId}_${tag}.md`;
+			: `task_${paddedId}_${slugifyTagForFilePath(tag)}.md`;
 	}
 
 	/**
@@ -160,9 +163,12 @@ export class TaskFileGeneratorService {
 			const files = await fs.readdir(outputDir);
 			const validTaskIds = tasks.map((task) => String(task.id));
 
-			// Tag-aware file patterns
+			// Tag-aware file patterns. The tag is slugified to match the names
+			// produced by getTaskFileName(), keeping cleanup in sync with writes.
 			const masterFilePattern = /^task_(\d+)\.md$/;
-			const taggedFilePattern = new RegExp(`^task_(\\d+)_${this.escapeRegExp(tag)}\\.md$`);
+			const taggedFilePattern = new RegExp(
+				`^task_(\\d+)_${this.escapeRegExp(slugifyTagForFilePath(tag))}\\.md$`
+			);
 
 			// Collect files to remove
 			const filesToRemove: string[] = [];
