@@ -31,10 +31,12 @@ export class XAIProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
+			const fetchImpl = this.createProxyFetch();
 
 			return createXai({
 				apiKey,
-				baseURL: baseURL || 'https://api.x.ai/v1'
+				baseURL: baseURL || 'https://api.x.ai/v1',
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);

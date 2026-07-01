@@ -31,10 +31,12 @@ export class OpenRouterAIProvider extends BaseAIProvider {
 	getClient(params) {
 		try {
 			const { apiKey, baseURL } = params;
+			const fetchImpl = this.createProxyFetch();
 
 			return createOpenRouter({
 				apiKey,
-				...(baseURL && { baseURL })
+				...(baseURL && { baseURL }),
+				...(fetchImpl && { fetch: fetchImpl })
 			});
 		} catch (error) {
 			this.handleError('client initialization', error);
