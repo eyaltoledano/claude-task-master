@@ -80,7 +80,6 @@
 		"@sentry/node": "^10.27.0",
 		"@streamparser/json": "^0.0.22",
 		"@supabase/supabase-js": "^2.57.4",
-		"@types/turndown": "^5.0.6",
 		"ai": "^5.0.51",
 		"ai-sdk-provider-claude-code": "^2.2.4",
 		"ai-sdk-provider-codex-cli": "^0.7.0",
@@ -174,6 +173,7 @@
 		"tsdown": "^0.15.2",
 		"tsx": "^4.20.4",
 		"turbo": "2.5.6",
+		"@types/turndown": "^5.0.6",
 		"typescript": "^5.9.2"
 	}
 }
