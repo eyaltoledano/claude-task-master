@@ -747,6 +747,11 @@ function displayHelp() {
 					name: 'show',
 					args: '<id>',
 					desc: 'Display detailed information about a specific task'
+				},
+				{
+					name: 'find',
+					args: '<query> [--fields <fields>] [-t tag]',
+					desc: 'Search tasks and subtasks by keyword'
 				}
 			]
 		},

@@ -77,6 +77,14 @@ export type {
 } from './modules/tasks/services/task-service.js';
 
 export type {
+	SearchableField,
+	SubtaskSearchMatch,
+	TaskSearchMatch,
+	TaskSearchOptions
+} from './modules/tasks/services/task-search.service.js';
+export { SEARCHABLE_FIELDS } from './modules/tasks/services/task-search.service.js';
+
+export type {
 	StartTaskOptions,
 	StartTaskResult,
 	ConflictCheckResult
