@@ -4839,7 +4839,7 @@ Examples:
 			// Show deprecation warning
 			console.warn(
 				chalk.yellow(
-					'⚠ Warning: "tm add-tag" is deprecated. Use "tm tags add" instead.'
+					'⚠️ Warning: "tm add-tag" is deprecated. Use "tm tags add" instead.'
 				)
 			);
 			console.log(
@@ -4993,7 +4993,7 @@ Examples:
 			// Show deprecation warning
 			console.warn(
 				chalk.yellow(
-					'⚠ Warning: "tm delete-tag" is deprecated. Use "tm tags remove" instead.'
+					'⚠️ Warning: "tm delete-tag" is deprecated. Use "tm tags remove" instead.'
 				)
 			);
 			console.log(
@@ -5065,7 +5065,7 @@ Examples:
 			// Show deprecation warning
 			console.warn(
 				chalk.yellow(
-					'⚠ Warning: "tm use-tag" is deprecated. Use "tm tags use" instead.'
+					'⚠️ Warning: "tm use-tag" is deprecated. Use "tm tags use" instead.'
 				)
 			);
 			console.log(
@@ -5123,7 +5123,7 @@ Examples:
 			// Show deprecation warning
 			console.warn(
 				chalk.yellow(
-					'⚠ Warning: "tm rename-tag" is deprecated. Use "tm tags rename" instead.'
+					'⚠️ Warning: "tm rename-tag" is deprecated. Use "tm tags rename" instead.'
 				)
 			);
 			console.log(
@@ -5187,7 +5187,7 @@ Examples:
 			// Show deprecation warning
 			console.warn(
 				chalk.yellow(
-					'⚠ Warning: "tm copy-tag" is deprecated. Use "tm tags copy" instead.'
+					'⚠️ Warning: "tm copy-tag" is deprecated. Use "tm tags copy" instead.'
 				)
 			);
 			console.log(
