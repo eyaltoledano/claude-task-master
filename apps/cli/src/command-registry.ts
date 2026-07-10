@@ -11,6 +11,7 @@ import { BriefsCommand } from './commands/briefs.command.js';
 import { ClustersCommand } from './commands/clusters.command.js';
 import { ContextCommand } from './commands/context.command.js';
 import { ExportCommand, ExportTagCommand } from './commands/export.command.js';
+import { FindCommand } from './commands/find.command.js';
 import { GenerateCommand } from './commands/generate.command.js';
 // Import all commands
 import { ListTasksCommand } from './commands/list.command.js';
@@ -58,6 +59,13 @@ export class CommandRegistry {
 			name: 'next',
 			description: 'Find the next available task to work on',
 			commandClass: NextCommand as any,
+			category: 'task'
+		},
+		{
+			name: 'find',
+			description:
+				'Search tasks and subtasks by keyword (title, description, details, test strategy)',
+			commandClass: FindCommand as any,
 			category: 'task'
 		},
 		{

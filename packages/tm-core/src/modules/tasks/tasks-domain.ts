@@ -7,6 +7,11 @@ import type { ConfigManager } from '../config/managers/config-manager.js';
 import type { AuthDomain } from '../auth/auth-domain.js';
 import { BriefsDomain } from '../briefs/briefs-domain.js';
 import { TaskService } from './services/task-service.js';
+import {
+	TaskSearchService,
+	type TaskSearchMatch,
+	type TaskSearchOptions
+} from './services/task-search.service.js';
 import { TaskExecutionService } from './services/task-execution-service.js';
 import { TaskLoaderService } from './services/task-loader.service.js';
 import { PreflightChecker } from './services/preflight-checker.service.js';
@@ -47,6 +52,7 @@ import type {
  */
 export class TasksDomain {
 	private taskService: TaskService;
+	private searchService: TaskSearchService;
 	private executionService: TaskExecutionService;
 	private loaderService: TaskLoaderService;
 	private preflightChecker: PreflightChecker;
@@ -60,6 +66,7 @@ export class TasksDomain {
 		this.projectRoot = configManager.getProjectRoot();
 		this.configManager = configManager;
 		this.taskService = new TaskService(configManager);
+		this.searchService = new TaskSearchService();
 		this.executionService = new TaskExecutionService(this.taskService);
 		this.loaderService = new TaskLoaderService(this.taskService);
 		this.preflightChecker = new PreflightChecker(this.projectRoot);
@@ -131,6 +138,31 @@ export class TasksDomain {
 
 		// It's a regular task
 		return { task, isSubtask: false };
+	}
+
+	/**
+	 * Search tasks and subtasks for a case-insensitive keyword across
+	 * title, description, details and test strategy
+	 *
+	 * @param query - Keyword to search for
+	 * @param options - Optional tag and field restrictions
+	 * @returns Matching tasks with the fields (and subtasks) that matched
+	 */
+	async search(
+		query: string,
+		options?: TaskSearchOptions & { tag?: string }
+	): Promise<{ matches: TaskSearchMatch[]; total: number; tag?: string }> {
+		const { tag, ...searchOptions } = options ?? {};
+		const result = await this.taskService.getTaskList({
+			tag,
+			includeSubtasks: true
+		});
+		const matches = this.searchService.search(
+			result.tasks,
+			query,
+			searchOptions
+		);
+		return { matches, total: result.total, tag: result.tag };
 	}
 
 	/**
