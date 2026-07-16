@@ -900,6 +900,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 		mistral: 'MISTRAL_API_KEY',
 		azure: 'AZURE_OPENAI_API_KEY',
 		openrouter: 'OPENROUTER_API_KEY',
+		requesty: 'REQUESTY_API_KEY',
 		xai: 'XAI_API_KEY',
 		zai: 'ZAI_API_KEY',
 		'zai-coding': 'ZAI_API_KEY',

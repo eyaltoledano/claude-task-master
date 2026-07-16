@@ -1042,6 +1042,74 @@
 			"reason": "Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use."
 		}
 	],
+	"requesty": [
+		{
+			"id": "openai/gpt-4o-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.15,
+				"output": 0.6
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384,
+			"supported": true
+		},
+		{
+			"id": "openai/gpt-4o",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 2.5,
+				"output": 10
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 16384,
+			"supported": true
+		},
+		{
+			"id": "openai/gpt-4.1-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.4,
+				"output": 1.6
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 32768,
+			"supported": true
+		},
+		{
+			"id": "anthropic/claude-sonnet-4-5",
+			"swe_score": 0.77,
+			"cost_per_1m_tokens": {
+				"input": 3,
+				"output": 15
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 64000,
+			"supported": true
+		},
+		{
+			"id": "google/gemini-2.5-flash",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.3,
+				"output": 2.5
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 65536,
+			"supported": true
+		},
+		{
+			"id": "deepseek/deepseek-chat",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.27,
+				"output": 1.1
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 8192,
+			"supported": true
+		}
+	],
 	"zai": [
 		{
 			"id": "glm-4.6",
