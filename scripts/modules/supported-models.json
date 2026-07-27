@@ -128,6 +128,32 @@
 			"supported": true
 		}
 	],
+	"atlascloud": [
+		{
+			"id": "deepseek-ai/deepseek-v4-pro",
+			"name": "DeepSeek V4 Pro",
+			"swe_score": 0.68,
+			"cost_per_1m_tokens": {
+				"input": 1.68,
+				"output": 3.38
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 393216,
+			"supported": true
+		},
+		{
+			"id": "qwen/qwen3.5-flash",
+			"name": "Qwen3.5 Flash",
+			"swe_score": 0.62,
+			"cost_per_1m_tokens": {
+				"input": 0.1,
+				"output": 0.4
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 67072,
+			"supported": true
+		}
+	],
 	"codex-cli": [
 		{
 			"id": "gpt-5.2-codex",

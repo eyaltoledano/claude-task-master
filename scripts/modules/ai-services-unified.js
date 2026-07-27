@@ -36,6 +36,7 @@ import {
 // Import provider classes
 import {
 	AnthropicAIProvider,
+	AtlasCloudProvider,
 	AzureProvider,
 	BedrockAIProvider,
 	ClaudeCodeProvider,
@@ -62,6 +63,7 @@ import ProviderRegistry from '../../src/provider-registry/index.js';
 // Create provider instances
 const PROVIDERS = {
 	anthropic: new AnthropicAIProvider(),
+	atlascloud: new AtlasCloudProvider(),
 	perplexity: new PerplexityAIProvider(),
 	google: new GoogleAIProvider(),
 	zai: new ZAIProvider(),

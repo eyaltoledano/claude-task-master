@@ -895,6 +895,7 @@ function isApiKeySet(providerName, session = null, projectRoot = null) {
 	const keyMap = {
 		openai: 'OPENAI_API_KEY',
 		anthropic: 'ANTHROPIC_API_KEY',
+		atlascloud: 'ATLASCLOUD_API_KEY',
 		google: 'GOOGLE_API_KEY',
 		perplexity: 'PERPLEXITY_API_KEY',
 		mistral: 'MISTRAL_API_KEY',
@@ -968,6 +969,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 			case 'anthropic':
 				apiKeyToCheck = mcpEnv.ANTHROPIC_API_KEY;
 				placeholderValue = 'YOUR_ANTHROPIC_API_KEY_HERE';
+				break;
+			case 'atlascloud':
+				apiKeyToCheck = mcpEnv.ATLASCLOUD_API_KEY;
+				placeholderValue = 'YOUR_ATLASCLOUD_API_KEY_HERE';
 				break;
 			case 'openai':
 				apiKeyToCheck = mcpEnv.OPENAI_API_KEY;

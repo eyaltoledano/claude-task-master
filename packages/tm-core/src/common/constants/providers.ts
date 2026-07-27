@@ -6,6 +6,7 @@
 // Providers that have predefined model lists and should be validated
 export const VALIDATED_PROVIDERS = [
 	'anthropic',
+	'atlascloud',
 	'openai',
 	'google',
 	'zai',
