@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Feyaltoledano%2Fclaude-task-master.svg)](https://mcptoplist.com/server/glama%2Feyaltoledano%2Fclaude-task-master)
+
 <a name="readme-top"></a>
 
 <div align='center'>
