@@ -50,6 +50,7 @@ import {
 	OpenAIProvider,
 	OpenRouterAIProvider,
 	PerplexityAIProvider,
+	TrustedRouterProvider,
 	VertexAIProvider,
 	XAIProvider,
 	ZAICodingProvider,
@@ -71,6 +72,7 @@ const PROVIDERS = {
 	xai: new XAIProvider(),
 	groq: new GroqProvider(),
 	openrouter: new OpenRouterAIProvider(),
+	trustedrouter: new TrustedRouterProvider(),
 	ollama: new OllamaAIProvider(),
 	'openai-compatible': new OpenAICompatibleProvider({
 		name: 'OpenAI Compatible',

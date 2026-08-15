@@ -1042,6 +1042,96 @@
 			"reason": "Free OpenRouter models are not supported due to severe rate limits, lack of tool use support, and other reliability issues that make them impractical for production use."
 		}
 	],
+	"trustedrouter": [
+		{
+			"id": "trustedrouter/auto",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.084,
+				"output": 0.189
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 200000,
+			"supported": true
+		},
+		{
+			"id": "trustedrouter/fast",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.3675,
+				"output": 0.7875
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "trustedrouter/cheap",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.01,
+				"output": 0.01
+			},
+			"allowed_roles": ["fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "trustedrouter/zdr",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.0389,
+				"output": 0.1575
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 200000,
+			"supported": true
+		},
+		{
+			"id": "trustedrouter/e2e",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.0389,
+				"output": 0.1764
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "anthropic/claude-opus-4-7",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 5.25,
+				"output": 26.25
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 1000000,
+			"supported": true
+		},
+		{
+			"id": "anthropic/claude-sonnet-4-6",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 3.15,
+				"output": 15.75
+			},
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 1000000,
+			"supported": true
+		},
+		{
+			"id": "openai/gpt-5.4-mini",
+			"swe_score": 0,
+			"cost_per_1m_tokens": {
+				"input": 0.7875,
+				"output": 4.725
+			},
+			"allowed_roles": ["main", "fallback"],
+			"max_tokens": 400000,
+			"supported": true
+		}
+	],
 	"zai": [
 		{
 			"id": "glm-4.6",
