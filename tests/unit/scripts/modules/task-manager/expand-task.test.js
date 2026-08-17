@@ -879,6 +879,28 @@ describe('expandTask', () => {
 
 			existsSpy.mockRestore();
 		});
+
+		test('should treat an explicit --num=0 as dynamic generation, not as the report recommendation', async () => {
+			// Arrange - report and flag carry the same value but different meanings
+			const existsSpy = stubComplexityReport(0);
+
+			// Act
+			const result = await expandTask(
+				'tasks/tasks.json',
+				'1',
+				0,
+				false,
+				'',
+				complexityContext(),
+				false
+			);
+
+			// Assert - the flag selects dynamic generation, so expansion goes ahead
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(result.skipped).toBeUndefined();
+
+			existsSpy.mockRestore();
+		});
 	});
 
 	describe('Error Handling', () => {
