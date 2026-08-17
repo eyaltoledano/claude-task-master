@@ -39,7 +39,7 @@ import { FuzzyTaskSearch } from '../utils/fuzzyTaskSearch.js';
  * @param {string} [context.projectRoot] - Project root path
  * @param {string} [context.tag] - Tag for the task
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
- * @returns {Promise<Object>} The updated parent task object with new subtasks.
+ * @returns {Promise<{task: Object, telemetryData?: Object, tagInfo?: Object, skipped?: boolean}>} The updated parent task plus telemetry. `skipped` is true when a subtask count of 0 meant no expansion was needed and no AI call was made.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
  */
 async function expandTask(
@@ -184,14 +184,18 @@ async function expandTask(
 		}
 
 		// Determine final subtask count
+		let countFromComplexityReport = false;
 		const explicitNumSubtasks = parseInt(numSubtasks, 10);
 		if (!Number.isNaN(explicitNumSubtasks) && explicitNumSubtasks >= 0) {
 			finalSubtaskCount = explicitNumSubtasks;
 			logger.info(
 				`Using explicitly provided subtask count: ${finalSubtaskCount}`
 			);
-		} else if (taskAnalysis?.recommendedSubtasks) {
+		} else if (taskAnalysis?.recommendedSubtasks != null) {
+			// Compare against null explicitly: 0 is a valid recommendation meaning
+			// "no expansion needed", and a truthy check would discard it.
 			finalSubtaskCount = parseInt(taskAnalysis.recommendedSubtasks, 10);
+			countFromComplexityReport = true;
 			logger.info(
 				`Using subtask count from complexity report: ${finalSubtaskCount}`
 			);
@@ -204,6 +208,19 @@ async function expandTask(
 				`Invalid subtask count determined (${finalSubtaskCount}), defaulting to 3.`
 			);
 			finalSubtaskCount = 3;
+		}
+
+		// A count of 0 means two different things depending on where it came from.
+		// As an explicit --num it selects dynamic generation: the prompt then asks
+		// the model for "an appropriate number of" subtasks. The complexity
+		// analysis, however, emits 0 for tasks that need no breakdown at all
+		// ("non-negative integer; 0 if no expansion needed"). Only the latter
+		// skips expansion, and it does so before any AI call is made.
+		if (finalSubtaskCount === 0 && countFromComplexityReport) {
+			logger.info(
+				`Skipping expansion of task ${task.id}: the complexity analysis recommends no subtasks. Pass --num to expand it anyway.`
+			);
+			return { task, telemetryData: undefined, skipped: true };
 		}
 
 		// Determine prompt content AND system prompt

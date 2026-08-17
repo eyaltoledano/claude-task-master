@@ -790,6 +790,117 @@ describe('expandTask', () => {
 			// Clean up stub
 			existsSpy.mockRestore();
 		});
+
+		// Stub a tag-specific complexity report carrying the given recommendation
+		const stubComplexityReport = (recommendedSubtasks) => {
+			const existsSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockImplementation((filepath) =>
+					filepath.endsWith('task-complexity-report_feature-branch.json')
+				);
+
+			readJSON.mockImplementation((filepath, projectRootParam, tagParam) => {
+				if (filepath.includes('task-complexity-report_feature-branch.json')) {
+					return {
+						complexityAnalysis: [
+							{
+								taskId: 1,
+								complexityScore: 2,
+								recommendedSubtasks,
+								reasoning: 'Small enough to implement in one go'
+							}
+						]
+					};
+				}
+				const sampleTasksCopy = JSON.parse(JSON.stringify(sampleTasks));
+				const selectedTag = tagParam || 'master';
+				return {
+					...sampleTasksCopy[selectedTag],
+					tag: selectedTag,
+					_rawTaggedData: sampleTasksCopy
+				};
+			});
+
+			return existsSpy;
+		};
+
+		const complexityContext = () => ({
+			mcpLog: createMcpLogMock(),
+			projectRoot: '/mock/project/root',
+			tag: 'feature-branch',
+			complexityReportPath:
+				'/mock/project/root/task-complexity-report_feature-branch.json'
+		});
+
+		test('should skip expansion when the report recommends 0 subtasks', async () => {
+			// Arrange
+			const existsSpy = stubComplexityReport(0);
+
+			// Act
+			const result = await expandTask(
+				'tasks/tasks.json',
+				'1',
+				undefined,
+				false,
+				'',
+				complexityContext(),
+				false
+			);
+
+			// Assert - the recommendation is honoured before any AI call happens
+			expect(generateObjectService).not.toHaveBeenCalled();
+			expect(writeJSON).not.toHaveBeenCalled();
+			expect(result.skipped).toBe(true);
+			expect(result.task.subtasks).toEqual([]);
+			// The falsy check used to land here and generate the default instead
+			expect(getDefaultSubtasks).not.toHaveBeenCalled();
+
+			existsSpy.mockRestore();
+		});
+
+		test('should expand anyway when an explicit count overrides a recommendation of 0', async () => {
+			// Arrange
+			const existsSpy = stubComplexityReport(0);
+
+			// Act - an explicit --num outranks the report
+			const result = await expandTask(
+				'tasks/tasks.json',
+				'1',
+				3,
+				false,
+				'',
+				complexityContext(),
+				false
+			);
+
+			// Assert
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(result.skipped).toBeUndefined();
+
+			existsSpy.mockRestore();
+		});
+
+		test('should treat an explicit --num=0 as dynamic generation, not as the report recommendation', async () => {
+			// Arrange - report and flag carry the same value but different meanings
+			const existsSpy = stubComplexityReport(0);
+
+			// Act
+			const result = await expandTask(
+				'tasks/tasks.json',
+				'1',
+				0,
+				false,
+				'',
+				complexityContext(),
+				false
+			);
+
+			// Assert - the flag selects dynamic generation, so expansion goes ahead
+			expect(generateObjectService).toHaveBeenCalled();
+			expect(result.skipped).toBeUndefined();
+
+			existsSpy.mockRestore();
+		});
 	});
 
 	describe('Error Handling', () => {

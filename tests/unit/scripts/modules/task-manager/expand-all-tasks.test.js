@@ -182,6 +182,43 @@ describe('expandAllTasks', () => {
 			);
 		});
 
+		test('should count tasks the complexity report leaves alone as skipped', async () => {
+			// Arrange - expandTask reports the first task as skipped (recommended 0)
+			mockExpandTask
+				.mockResolvedValueOnce({ task: { id: 1 }, skipped: true })
+				.mockResolvedValueOnce({
+					task: { id: 2 },
+					telemetryData: {
+						commandName: 'expand-task',
+						totalCost: 0.05,
+						totalTokens: 1000
+					}
+				});
+
+			// Act
+			const result = await expandAllTasks(
+				mockTasksPath,
+				undefined, // no explicit count, so the report decides
+				false,
+				'',
+				false,
+				{
+					session: mockSession,
+					mcpLog: mockMcpLog,
+					projectRoot: mockProjectRoot,
+					tag: 'master'
+				},
+				'json'
+			);
+
+			// Assert - the skipped task is reported as such, not as expanded
+			expect(result.success).toBe(true);
+			expect(result.expandedCount).toBe(1);
+			expect(result.skippedCount).toBe(1);
+			expect(result.failedCount).toBe(0);
+			expect(result.tasksToExpand).toBe(2);
+		});
+
 		test('should handle force flag to expand tasks with existing subtasks', async () => {
 			// Arrange
 			mockExpandTask.mockResolvedValue({
