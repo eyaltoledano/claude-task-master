@@ -209,6 +209,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		getRequiredApiKeyName: jest.fn(() => 'OPENROUTER_API_KEY'),
 		isRequiredApiKey: jest.fn(() => true)
 	})),
+	TrustedRouterProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'TRUSTEDROUTER_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
+	})),
 	OllamaAIProvider: jest.fn(() => mockOllamaProvider),
 	BedrockAIProvider: jest.fn(() => ({
 		generateText: jest.fn(),
