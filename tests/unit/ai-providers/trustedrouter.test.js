@@ -59,11 +59,14 @@ describe('TrustedRouter Provider', () => {
 	});
 
 	describe('Client creation', () => {
-		it('should pass the base URL through to the client', () => {
+		it('should pass the full client configuration through', () => {
 			provider.getClient({ apiKey: 'sk-tr-test' });
 			expect(mockCreateOpenAICompatible).toHaveBeenCalledWith(
 				expect.objectContaining({
-					baseURL: 'https://api.trustedrouter.com/v1'
+					name: 'trustedrouter',
+					apiKey: 'sk-tr-test',
+					baseURL: 'https://api.trustedrouter.com/v1',
+					supportsStructuredOutputs: true
 				})
 			);
 		});
