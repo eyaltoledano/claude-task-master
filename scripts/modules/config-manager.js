@@ -978,6 +978,10 @@ function getMcpApiKeyStatus(providerName, projectRoot = null) {
 				apiKeyToCheck = mcpEnv.OPENROUTER_API_KEY;
 				placeholderValue = 'YOUR_OPENROUTER_API_KEY_HERE';
 				break;
+			case 'requesty':
+				apiKeyToCheck = mcpEnv.REQUESTY_API_KEY;
+				placeholderValue = 'YOUR_REQUESTY_API_KEY_HERE';
+				break;
 			case 'google':
 				apiKeyToCheck = mcpEnv.GOOGLE_API_KEY;
 				placeholderValue = 'YOUR_GOOGLE_API_KEY_HERE';
