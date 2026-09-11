@@ -16,6 +16,7 @@ export const VALIDATED_PROVIDERS = [
 	'mistral',
 	'azure',
 	'openrouter',
+	'requesty',
 	'bedrock',
 	'ollama'
 ] as const;
@@ -28,6 +29,7 @@ export const CUSTOM_PROVIDERS = {
 	VERTEX: 'vertex',
 	BEDROCK: 'bedrock',
 	OPENROUTER: 'openrouter',
+	REQUESTY: 'requesty',
 	OLLAMA: 'ollama',
 	LMSTUDIO: 'lmstudio',
 	OPENAI_COMPATIBLE: 'openai-compatible',

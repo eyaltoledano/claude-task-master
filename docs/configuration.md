@@ -142,6 +142,7 @@ The `TASK_MASTER_TOOLS` environment variable controls which tools are loaded by 
   - `MISTRAL_API_KEY`: Your Mistral API key.
   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key (also requires `AZURE_OPENAI_ENDPOINT`).
   - `OPENROUTER_API_KEY`: Your OpenRouter API key.
+  - `REQUESTY_API_KEY`: Your Requesty API key.
   - `XAI_API_KEY`: Your X-AI API key.
 - **Optional Endpoint Overrides:**
   - **Per-role `baseURL` in `.taskmasterconfig`:** You can add a `baseURL` property to any model role (`main`, `research`, `fallback`) to override the default API endpoint for that provider. If omitted, the provider's standard endpoint is used.

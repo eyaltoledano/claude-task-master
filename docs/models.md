@@ -89,6 +89,12 @@
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/devstral-small                       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| requesty    | openai/gpt-4o-mini                             | —         | 0.15       | 0.6         |
+| requesty    | openai/gpt-4o                                  | —         | 2.5        | 10          |
+| requesty    | openai/gpt-4.1-mini                            | —         | 0.4        | 1.6         |
+| requesty    | anthropic/claude-sonnet-4-5                    | 0.77      | 3          | 15          |
+| requesty    | google/gemini-2.5-flash                        | —         | 0.3        | 2.5         |
+| requesty    | deepseek/deepseek-chat                         | —         | 0.27       | 1.1         |
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
@@ -250,6 +256,12 @@
 | openrouter  | qwen/qwen3-235b-a22b                           | —         | 0.14       | 2           |
 | openrouter  | mistralai/mistral-small-3.1-24b-instruct       | —         | 0.1        | 0.3         |
 | openrouter  | mistralai/mistral-nemo                         | —         | 0.03       | 0.07        |
+| requesty    | openai/gpt-4o-mini                             | —         | 0.15       | 0.6         |
+| requesty    | openai/gpt-4o                                  | —         | 2.5        | 10          |
+| requesty    | openai/gpt-4.1-mini                            | —         | 0.4        | 1.6         |
+| requesty    | anthropic/claude-sonnet-4-5                    | 0.77      | 3          | 15          |
+| requesty    | google/gemini-2.5-flash                        | —         | 0.3        | 2.5         |
+| requesty    | deepseek/deepseek-chat                         | —         | 0.27       | 1.1         |
 | zai         | glm-4.6                                        | 0.68      | 0.6        | 2.2         |
 | zai         | glm-4.5                                        | 0.65      | 0.6        | 2.2         |
 | zai         | glm-4.5-air                                    | 0.62      | 0.2        | 1.1         |
