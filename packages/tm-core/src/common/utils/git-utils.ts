@@ -132,8 +132,8 @@ export async function getRemoteBranches(
 		const names = stdout
 			.trim()
 			.split('\n')
-			.filter((branch) => branch.length > 0 && !branch.includes('HEAD'))
-			.map((branch) => branch.replace(/^[^/]+\//, '').trim());
+			.map((branch) => branch.replace(/^[^/]+\//, '').trim())
+			.filter((branch) => branch.length > 0 && branch !== 'HEAD');
 		return Array.from(new Set(names));
 	} catch (error) {
 		return [];
