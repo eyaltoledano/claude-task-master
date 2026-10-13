@@ -38,6 +38,7 @@ import {
 	AnthropicAIProvider,
 	AzureProvider,
 	BedrockAIProvider,
+	CheaperInferenceProvider,
 	ClaudeCodeProvider,
 	CodexCliProvider,
 	GeminiCliProvider,
@@ -74,6 +75,7 @@ const PROVIDERS = {
 	openrouter: new OpenRouterAIProvider(),
 	ollama: new OllamaAIProvider(),
 	minimax: new MiniMaxProvider(),
+	cheaperinference: new CheaperInferenceProvider(),
 	'openai-compatible': new OpenAICompatibleProvider({
 		name: 'OpenAI Compatible',
 		apiKeyEnvVar: 'OPENAI_COMPATIBLE_API_KEY',

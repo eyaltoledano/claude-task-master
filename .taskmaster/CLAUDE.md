@@ -101,7 +101,8 @@ Task Master provides an MCP server that Claude Code can connect to. Configure in
         "MISTRAL_API_KEY": "MISTRAL_API_KEY_HERE",
         "AZURE_OPENAI_API_KEY": "AZURE_OPENAI_API_KEY_HERE",
         "OLLAMA_API_KEY": "OLLAMA_API_KEY_HERE",
-        "MINIMAX_API_KEY": "MINIMAX_API_KEY_HERE"
+        "MINIMAX_API_KEY": "MINIMAX_API_KEY_HERE",
+        "CHEAPER_INFERENCE_API_KEY": "CHEAPER_INFERENCE_API_KEY_HERE"
       }
     }
   }
@@ -261,6 +262,7 @@ At least **one** of these API keys must be configured:
 - `OPENROUTER_API_KEY` (Multiple models)
 - `XAI_API_KEY` (Grok models)
 - `MINIMAX_API_KEY` (MiniMax models)
+- `CHEAPER_INFERENCE_API_KEY` (Multiple models)
 
 An API key is required for any provider used across any of the 3 roles defined in the `models` command.
 

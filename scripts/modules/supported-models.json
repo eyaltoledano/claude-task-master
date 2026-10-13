@@ -1465,5 +1465,34 @@
 			"max_tokens": 204800,
 			"supported": true
 		}
+	],
+	"cheaperinference": [
+		{
+			"id": "gpt-5.4-mini",
+			"name": "GPT-5.4 Mini",
+			"swe_score": null,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "gpt-5.4",
+			"name": "GPT-5.4",
+			"swe_score": null,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		},
+		{
+			"id": "claude-sonnet-5",
+			"name": "Claude Sonnet 5",
+			"swe_score": null,
+			"cost_per_1m_tokens": null,
+			"allowed_roles": ["main", "fallback", "research"],
+			"max_tokens": 128000,
+			"supported": true
+		}
 	]
 }
