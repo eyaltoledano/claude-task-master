@@ -23,3 +23,4 @@ export { ZAIProvider } from './zai.js';
 export { ZAICodingProvider } from './zai-coding.js';
 export { LMStudioProvider } from './lmstudio.js';
 export { MiniMaxProvider } from './minimax.js';
+export { CheaperInferenceProvider } from './cheaperinference.js';

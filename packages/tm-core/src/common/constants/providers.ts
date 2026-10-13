@@ -18,7 +18,8 @@ export const VALIDATED_PROVIDERS = [
 	'openrouter',
 	'bedrock',
 	'ollama',
-	'minimax'
+	'minimax',
+	'cheaperinference'
 ] as const;
 
 export type ValidatedProvider = (typeof VALIDATED_PROVIDERS)[number];

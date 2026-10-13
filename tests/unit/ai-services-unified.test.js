@@ -281,6 +281,13 @@ jest.unstable_mockModule('../../src/ai-providers/index.js', () => ({
 		generateObject: jest.fn(),
 		getRequiredApiKeyName: jest.fn(() => 'MINIMAX_API_KEY'),
 		isRequiredApiKey: jest.fn(() => true)
+	})),
+	CheaperInferenceProvider: jest.fn(() => ({
+		generateText: jest.fn(),
+		streamText: jest.fn(),
+		generateObject: jest.fn(),
+		getRequiredApiKeyName: jest.fn(() => 'CHEAPER_INFERENCE_API_KEY'),
+		isRequiredApiKey: jest.fn(() => true)
 	}))
 }));
 
