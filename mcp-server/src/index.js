@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import * as Sentry from '@sentry/node';
 import dotenv from 'dotenv';
 import { FastMCP } from 'fastmcp';
-import packageJson from '../../package.json' with { type: 'json' };
+import packageJson from '../../src/utils/package-json.cjs';
 import ProviderRegistry from '../../src/provider-registry/index.js';
 import { initializeSentry } from '../../src/telemetry/sentry.js';
 import logger from './logger.js';

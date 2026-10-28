@@ -2,7 +2,7 @@
  * src/ai-providers/gemini-cli.js
  *
  * Implementation for interacting with Gemini models via Gemini CLI
- * using the ai-sdk-provider-gemini-cli package.
+ * using a pinned compatibility snapshot of ai-sdk-provider-gemini-cli.
  *
  * As of v1.4.0, the SDK provides native structured output support via:
  * - supportsStructuredOutputs = true
@@ -14,7 +14,6 @@
  * which extracts them to Gemini's systemInstruction field.
  */
 
-import { createGeminiProvider } from 'ai-sdk-provider-gemini-cli';
 import { BaseAIProvider } from './base-provider.js';
 
 export class GeminiCliProvider extends BaseAIProvider {
@@ -47,6 +46,10 @@ export class GeminiCliProvider extends BaseAIProvider {
 	 */
 	async getClient(params) {
 		try {
+			// Load the SDK only when this provider is selected, not at CLI startup.
+			const { createGeminiProvider } = await import(
+				'./gemini-cli-sdk/index.js'
+			);
 			// Primary use case: Use existing gemini CLI authentication via OAuth
 			// Secondary use case: Direct API key (for compatibility)
 			let authOptions = {};

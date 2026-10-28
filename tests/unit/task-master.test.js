@@ -112,15 +112,30 @@ describe('initTaskMaster', () => {
 			expect(taskMaster.getProjectRoot()).toBe(tempDir);
 		});
 
-		test('should return cwd when no project markers found cuz we changed the behavior of this function', () => {
-			// Arrange - Empty temp directory, no project markers
+		test('should return cwd when no project markers exist in cwd or its ancestors', () => {
 			process.chdir(tempDir);
+			const existsSync = fs.existsSync;
+			// Keep real fixture I/O, but hide markers in the machine's ancestor dirs.
+			const existsSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockImplementation((file) => {
+					const relativePath = path.relative(tempDir, file);
+					if (
+						relativePath === '..' ||
+						relativePath.startsWith(`..${path.sep}`) ||
+						path.isAbsolute(relativePath)
+					) {
+						return false;
+					}
+					return existsSync(file);
+				});
 
-			// Act
-			const taskMaster = initTaskMaster({});
-
-			// Assert
-			expect(taskMaster.getProjectRoot()).toBe(tempDir);
+			try {
+				const taskMaster = initTaskMaster({});
+				expect(taskMaster.getProjectRoot()).toBe(tempDir);
+			} finally {
+				existsSpy.mockRestore();
+			}
 		});
 	});
 

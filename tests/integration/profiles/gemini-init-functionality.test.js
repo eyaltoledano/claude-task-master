@@ -37,7 +37,9 @@ describe('Gemini Profile Initialization Functionality', () => {
 		expect(geminiProfile.rulesDir).toBe('.');
 		expect(geminiProfile.mcpConfig).toBe(true); // computed from mcpConfigName
 		expect(geminiProfile.mcpConfigName).toBe('settings.json');
-		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json'); // computed
+		expect(geminiProfile.mcpConfigPath).toBe(
+			path.join('.gemini', 'settings.json')
+		); // computed
 		expect(geminiProfile.includeDefaultRules).toBe(false);
 		expect(geminiProfile.fileMap['AGENT.md']).toBe('AGENTS.md');
 		expect(geminiProfile.fileMap['GEMINI.md']).toBe('GEMINI.md');

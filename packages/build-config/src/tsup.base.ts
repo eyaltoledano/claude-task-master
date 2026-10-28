@@ -1,8 +1,8 @@
 /**
- * Base tsdown configuration for Task Master monorepo
+ * Base tsup configuration for Task Master monorepo
  * Provides shared configuration that can be extended by individual packages
  */
-import type { UserConfig } from 'tsdown';
+import type { Options } from 'tsup';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
@@ -17,13 +17,17 @@ export const env = {
 };
 
 /**
- * Base tsdown configuration for all packages
+ * Base tsup configuration for all packages
  * Since everything gets bundled into root dist/ anyway, use consistent settings
  */
-export const baseConfig: Partial<UserConfig> = {
+export const baseConfig: Partial<Options> = {
+	clean: true,
 	sourcemap: isDevelopment,
 	format: 'esm',
 	platform: 'node',
+	target: 'node20.0',
+	removeNodeProtocol: false,
+	replaceNodeEnv: false,
 	dts: isDevelopment,
 	minify: isProduction,
 	treeshake: isProduction,
@@ -32,20 +36,20 @@ export const baseConfig: Partial<UserConfig> = {
 		keepNames: true,
 		splitting: false // Disable code splitting for better stack traces
 	}),
-	// Keep all npm dependencies external (available via node_modules)
-	external: [/^[^@./]/, /^@(?!tm\/)/]
+	// Keep npm dependencies external, but bundle absolute Windows source paths.
+	external: [/^(?![A-Za-z]:[\\/])[^@./]/, /^@(?!tm\/)/]
 };
 
 /**
  * Utility function to merge configurations
- * Simplified for tsdown usage
+ * Simplified for tsup usage
  */
 export function mergeConfig(
-	base: Partial<UserConfig>,
-	overrides: Partial<UserConfig>
-): UserConfig {
+	base: Partial<Options>,
+	overrides: Partial<Options>
+): Options {
 	return {
 		...base,
 		...overrides
-	} as UserConfig;
+	} as Options;
 }

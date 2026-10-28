@@ -1,19 +1,22 @@
 import { jest } from '@jest/globals';
 
 // Mock the gemini-cli SDK module
-jest.unstable_mockModule('ai-sdk-provider-gemini-cli', () => ({
-	createGeminiProvider: jest.fn((options) => {
-		const provider = (modelId, settings) => ({
-			// Mock language model
-			id: modelId,
-			settings,
-			authOptions: options
-		});
-		provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
-		provider.chat = provider.languageModel;
-		return provider;
+jest.unstable_mockModule(
+	'../../../src/ai-providers/gemini-cli-sdk/index.js',
+	() => ({
+		createGeminiProvider: jest.fn((options) => {
+			const provider = (modelId, settings) => ({
+				// Mock language model
+				id: modelId,
+				settings,
+				authOptions: options
+			});
+			provider.languageModel = jest.fn((id, settings) => ({ id, settings }));
+			provider.chat = provider.languageModel;
+			return provider;
+		})
 	})
-}));
+);
 
 // Mock the base provider
 jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
@@ -43,7 +46,9 @@ jest.unstable_mockModule('../../../src/ai-providers/base-provider.js', () => ({
 const { GeminiCliProvider } = await import(
 	'../../../src/ai-providers/gemini-cli.js'
 );
-const { createGeminiProvider } = await import('ai-sdk-provider-gemini-cli');
+const { createGeminiProvider } = await import(
+	'../../../src/ai-providers/gemini-cli-sdk/index.js'
+);
 
 describe('GeminiCliProvider', () => {
 	let provider;

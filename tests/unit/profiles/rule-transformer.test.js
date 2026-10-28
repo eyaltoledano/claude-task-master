@@ -186,7 +186,7 @@ describe('Rule Transformer - General', () => {
 				amp: {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
-					expectedPath: '.vscode/settings.json'
+					expectedPath: path.join('.vscode', 'settings.json')
 				},
 				claude: {
 					mcpConfig: true,
@@ -206,17 +206,17 @@ describe('Rule Transformer - General', () => {
 				cursor: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.cursor/mcp.json'
+					expectedPath: path.join('.cursor', 'mcp.json')
 				},
 				gemini: {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
-					expectedPath: '.gemini/settings.json'
+					expectedPath: path.join('.gemini', 'settings.json')
 				},
 				kiro: {
 					mcpConfig: true,
 					mcpConfigName: 'settings/mcp.json',
-					expectedPath: '.kiro/settings/mcp.json'
+					expectedPath: path.join('.kiro', 'settings', 'mcp.json')
 				},
 				opencode: {
 					mcpConfig: true,
@@ -226,12 +226,12 @@ describe('Rule Transformer - General', () => {
 				roo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.roo/mcp.json'
+					expectedPath: path.join('.roo', 'mcp.json')
 				},
 				kilo: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.kilo/mcp.json'
+					expectedPath: path.join('.kilo', 'mcp.json')
 				},
 				trae: {
 					mcpConfig: false,
@@ -241,17 +241,17 @@ describe('Rule Transformer - General', () => {
 				vscode: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.vscode/mcp.json'
+					expectedPath: path.join('.vscode', 'mcp.json')
 				},
 				windsurf: {
 					mcpConfig: true,
 					mcpConfigName: 'mcp.json',
-					expectedPath: '.windsurf/mcp.json'
+					expectedPath: path.join('.windsurf', 'mcp.json')
 				},
 				zed: {
 					mcpConfig: true,
 					mcpConfigName: 'settings.json',
-					expectedPath: '.zed/settings.json'
+					expectedPath: path.join('.zed', 'settings.json')
 				}
 			};
 
@@ -282,12 +282,13 @@ describe('Rule Transformer - General', () => {
 							);
 						}
 					} else {
-						// Non-root profiles should have profileDir/configName pattern
-						expect(profileConfig.mcpConfigPath).toMatch(
-							new RegExp(
-								`^${profileConfig.profileDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`
+						// Non-root configs must resolve to the configured filename within profileDir.
+						expect(
+							path.relative(
+								profileConfig.profileDir,
+								profileConfig.mcpConfigPath
 							)
-						);
+						).toBe(path.normalize(profileConfig.mcpConfigName));
 					}
 				}
 			});

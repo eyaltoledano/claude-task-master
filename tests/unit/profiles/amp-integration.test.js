@@ -35,7 +35,9 @@ describe('Amp Profile Integration', () => {
 			expect(ampProfile.rulesDir).toBe('.');
 			expect(ampProfile.mcpConfig).toBe(true);
 			expect(ampProfile.mcpConfigName).toBe('settings.json');
-			expect(ampProfile.mcpConfigPath).toBe('.vscode/settings.json');
+			expect(ampProfile.mcpConfigPath).toBe(
+				path.join('.vscode', 'settings.json')
+			);
 			expect(ampProfile.includeDefaultRules).toBe(false);
 		});
 

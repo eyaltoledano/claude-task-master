@@ -174,17 +174,21 @@ jobs:
           retention-days: 1
 
   test:
-    name: Test
+    name: Test (Node ${{ matrix.node-version }})
     timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: [format-check, typecheck, build, changeset-validation]
     if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.0.0', '20']
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
 
       - name: Restore node_modules cache
         id: cache-node-modules
@@ -204,6 +208,13 @@ jobs:
           name: build-artifacts
           path: dist/
 
+      - name: Verify build on minimum Node version
+        if: matrix.node-version == '20.0.0'
+        run: npm run build
+        env:
+          NODE_ENV: production
+          FORCE_COLOR: 1
+
       - name: Run Tests
         run: |
           npm run test:coverage -- --coverageThreshold '{"global":{"branches":0,"functions":0,"lines":0,"statements":0}}' --detectOpenHandles --forceExit
@@ -211,12 +222,13 @@ jobs:
           NODE_ENV: test
           CI: true
           FORCE_COLOR: 1
+          TASKMASTER_TEST_PREBUILT: '1'
 
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-${{ matrix.node-version }}
           path: |
             test-results
             coverage

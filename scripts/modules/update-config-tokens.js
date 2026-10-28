@@ -4,7 +4,7 @@
  */
 
 import fs from 'fs';
-import supportedModels from './supported-models.json' with { type: 'json' };
+import supportedModels from './supported-models.cjs';
 
 /**
  * Updates the config file with correct maxTokens values from supported-models.json

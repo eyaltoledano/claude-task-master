@@ -11,7 +11,7 @@ import {
 	createTmCore
 } from '@tm/core';
 import type { ContentResult, Context } from 'fastmcp';
-import packageJson from '../../../../package.json' with { type: 'json' };
+import packageJson from '../../../../src/utils/package-json.cjs';
 import type { ToolContext } from './types.js';
 
 /**

@@ -1,7 +1,8 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { jest } from '@jest/globals';
 import { RULE_PROFILES } from '../../../src/constants/profiles.js';
 import * as profilesModule from '../../../src/profiles/index.js';
 
@@ -14,6 +15,41 @@ import * as profilesModule from '../../../src/profiles/index.js';
  */
 describe('Hamster Rules Distribution', () => {
 	const CLI_PATH = path.join(process.cwd(), 'dist', 'task-master.js');
+	jest.setTimeout(30_000);
+
+	/** Give each CLI fixture its own project root and authentication directory. */
+	const createTestProject = (prefix) => {
+		const projectDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+		fs.mkdirSync(path.join(projectDir, '.taskmaster'));
+		fs.mkdirSync(path.join(projectDir, '.isolated-home'));
+		fs.writeFileSync(
+			path.join(projectDir, '.taskmaster', 'config.json'),
+			JSON.stringify({ global: { anonymousTelemetry: false } })
+		);
+		return projectDir;
+	};
+
+	/** Run the built CLI without a shell or any real user authentication state. */
+	const addRules = (projectDir, profile, mode) => {
+		const args = [CLI_PATH, 'rules', 'add', profile];
+		if (mode) args.push(`--mode=${mode}`);
+		const homeDir = path.join(projectDir, '.isolated-home');
+		const output = execFileSync(process.execPath, args, {
+			cwd: projectDir,
+			encoding: 'utf8',
+			timeout: 20_000,
+			maxBuffer: 1024 * 1024,
+			env: {
+				...process.env,
+				HOME: homeDir,
+				USERPROFILE: homeDir,
+				NODE_OPTIONS: '',
+				TASKMASTER_LOG_LEVEL: 'error',
+				TASKMASTER_SKIP_AUTO_UPDATE: '1'
+			}
+		});
+		expect(output).toContain(`Successfully processed profiles: ${profile}`);
+	};
 
 	// Profiles that have includeDefaultRules: false and won't get hamster files via defaultFileMap
 	const PROFILES_WITHOUT_DEFAULT_RULES = [
@@ -75,17 +111,11 @@ describe('Hamster Rules Distribution', () => {
 		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
 			test(`${profile} profile receives hamster rules via 'rules add --mode=team'`, () => {
 				// Create a unique temp directory for this test
-				const tempDir = fs.mkdtempSync(
-					path.join(os.tmpdir(), `tm-hamster-test-${profile}-`)
-				);
+				const tempDir = createTestProject(`tm-hamster-test-${profile}-`);
 
 				try {
 					// Run the rules add command with team mode (hamster.mdc is team-only)
-					execSync(`node ${CLI_PATH} rules add ${profile} --mode=team`, {
-						cwd: tempDir,
-						stdio: 'pipe',
-						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
-					});
+					addRules(tempDir, profile, 'team');
 
 					// Get expected path for this profile
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
@@ -113,17 +143,11 @@ describe('Hamster Rules Distribution', () => {
 		// Test that hamster.mdc is NOT distributed in solo mode
 		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
 			test(`${profile} profile does NOT receive hamster rules via 'rules add --mode=solo'`, () => {
-				const tempDir = fs.mkdtempSync(
-					path.join(os.tmpdir(), `tm-hamster-solo-test-${profile}-`)
-				);
+				const tempDir = createTestProject(`tm-hamster-solo-test-${profile}-`);
 
 				try {
 					// Run in solo mode - hamster should NOT be distributed
-					execSync(`node ${CLI_PATH} rules add ${profile} --mode=solo`, {
-						cwd: tempDir,
-						stdio: 'pipe',
-						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
-					});
+					addRules(tempDir, profile, 'solo');
 
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 
@@ -140,21 +164,17 @@ describe('Hamster Rules Distribution', () => {
 	});
 
 	describe('Default mode behavior (no --mode flag)', () => {
-		// When no mode is specified, default is 'solo' (no auth/config present)
+		// Without an authenticated session or configured mode, default is 'solo'.
 		// This means hamster.mdc should NOT be distributed by default
 		PROFILES_WITH_DEFAULT_RULES.forEach((profile) => {
 			test(`${profile} profile defaults to solo mode (no hamster rules without --mode flag)`, () => {
-				const tempDir = fs.mkdtempSync(
-					path.join(os.tmpdir(), `tm-hamster-default-test-${profile}-`)
+				const tempDir = createTestProject(
+					`tm-hamster-default-test-${profile}-`
 				);
 
 				try {
 					// Run without mode flag - should default to solo
-					execSync(`node ${CLI_PATH} rules add ${profile}`, {
-						cwd: tempDir,
-						stdio: 'pipe',
-						env: { ...process.env, TASKMASTER_LOG_LEVEL: 'error' }
-					});
+					addRules(tempDir, profile);
 
 					const expectedPath = getExpectedHamsterPath(profile, tempDir);
 

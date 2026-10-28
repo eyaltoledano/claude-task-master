@@ -1,4 +1,4 @@
-import packageJson from '../../package.json' with { type: 'json' };
+import packageJson from './package-json.cjs';
 
 /**
  * Reads the version from the nearest package.json relative to this file.

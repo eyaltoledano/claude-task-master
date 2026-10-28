@@ -1,3 +1,4 @@
+import path from 'path';
 import { jest } from '@jest/globals';
 import { geminiProfile } from '../../../src/profiles/gemini.js';
 import { getRulesProfile } from '../../../src/utils/rule-transformer.js';
@@ -13,7 +14,9 @@ describe('Rule Transformer - Gemini Profile', () => {
 		expect(geminiProfile.rulesDir).toBe('.');
 		expect(geminiProfile.mcpConfig).toBe(true);
 		expect(geminiProfile.mcpConfigName).toBe('settings.json');
-		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json');
+		expect(geminiProfile.mcpConfigPath).toBe(
+			path.join('.gemini', 'settings.json')
+		);
 		expect(geminiProfile.includeDefaultRules).toBe(false);
 		expect(geminiProfile.fileMap).toEqual({
 			'AGENT.md': 'AGENTS.md',
@@ -38,7 +41,9 @@ describe('Rule Transformer - Gemini Profile', () => {
 	test('should use settings.json instead of mcp.json', () => {
 		const geminiProfile = getRulesProfile('gemini');
 		expect(geminiProfile.mcpConfigName).toBe('settings.json');
-		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json');
+		expect(geminiProfile.mcpConfigPath).toBe(
+			path.join('.gemini', 'settings.json')
+		);
 	});
 
 	test('should not include default rules', () => {
@@ -67,7 +72,9 @@ describe('Rule Transformer - Gemini Profile', () => {
 		// profileDir + mcpConfigName determines MCP config location
 		expect(geminiProfile.profileDir).toBe('.gemini');
 		expect(geminiProfile.mcpConfigName).toBe('settings.json');
-		expect(geminiProfile.mcpConfigPath).toBe('.gemini/settings.json');
+		expect(geminiProfile.mcpConfigPath).toBe(
+			path.join('.gemini', 'settings.json')
+		);
 	});
 
 	test('should have proper conversion config', () => {

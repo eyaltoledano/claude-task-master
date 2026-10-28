@@ -7,7 +7,7 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import packageJson from '../../../package.json' with { type: 'json' };
+import packageJson from '../../../src/utils/package-json.cjs';
 import { getCurrentTag } from '../../../scripts/modules/utils.js';
 import { contextManager } from '../core/context-manager.js'; // Import the singleton
 

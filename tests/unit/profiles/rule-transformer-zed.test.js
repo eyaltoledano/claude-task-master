@@ -1,3 +1,4 @@
+import path from 'path';
 import { jest } from '@jest/globals';
 
 // Mock fs module before importing anything that uses it
@@ -203,7 +204,7 @@ Use the .mdc extension for all rule files.`;
 		expect(zedProfile.profileDir).toBe('.zed');
 		expect(zedProfile.mcpConfig).toBe(true);
 		expect(zedProfile.mcpConfigName).toBe('settings.json');
-		expect(zedProfile.mcpConfigPath).toBe('.zed/settings.json');
+		expect(zedProfile.mcpConfigPath).toBe(path.join('.zed', 'settings.json'));
 		expect(zedProfile.includeDefaultRules).toBe(false);
 		expect(zedProfile.fileMap).toEqual({
 			'AGENTS.md': '.rules'

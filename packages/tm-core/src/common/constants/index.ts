@@ -10,7 +10,7 @@ import type {
 } from '../types/index.js';
 
 // Import from root package.json (monorepo root) for version info
-import packageJson from '../../../../../package.json' with { type: 'json' };
+import packageJson from '../../../../../src/utils/package-json.cjs';
 
 /**
  * Task Master version from root package.json

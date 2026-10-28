@@ -25,9 +25,12 @@ const mockModel = jest.fn((modelId) => ({ modelId, type: 'gemini-cli-model' }));
 mockModel.languageModel = mockModel;
 mockModel.chat = mockModel;
 
-jest.unstable_mockModule('ai-sdk-provider-gemini-cli', () => ({
-	createGeminiProvider: jest.fn(() => mockModel)
-}));
+jest.unstable_mockModule(
+	'../../../src/ai-providers/gemini-cli-sdk/index.js',
+	() => ({
+		createGeminiProvider: jest.fn(() => mockModel)
+	})
+);
 
 // Mock utilities
 jest.unstable_mockModule('../../../scripts/modules/utils.js', () => ({

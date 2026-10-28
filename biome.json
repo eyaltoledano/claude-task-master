@@ -6,6 +6,8 @@
 			".changeset",
 			"tasks",
 			"package-lock.json",
+			"tests/temp",
+			"src/ai-providers/gemini-cli-sdk/index.js",
 			"tests/fixture/*.json",
 			"dist"
 		]

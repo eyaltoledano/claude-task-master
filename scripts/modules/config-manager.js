@@ -16,7 +16,7 @@ import {
 	TASKMASTER_DIR
 } from '../../src/constants/paths.js';
 import { findConfigPath } from '../../src/utils/path-utils.js';
-import MODEL_MAP from './supported-models.json' with { type: 'json' };
+import MODEL_MAP from './supported-models.cjs';
 import { findProjectRoot, isEmpty, log, resolveEnvVariable } from './utils.js';
 
 // Calculate __dirname in ESM

@@ -531,7 +531,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 
 		// Verify that moveTasksBetweenTags was called with 'master' as source tag
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('.taskmaster/tasks/tasks.json'),
+			expect.stringContaining(path.join('.taskmaster', 'tasks', 'tasks.json')),
 			[1], // parseInt converts string to number
 			'master', // Should use current tag as fallback
 			'in-progress',

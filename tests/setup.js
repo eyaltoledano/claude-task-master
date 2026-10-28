@@ -4,6 +4,9 @@
  * This file is run before each test suite to set up the test environment.
  */
 
+// Evaluate Jest's process namespace before signal-exit adds private process state.
+// This avoids a SyntheticModule export race on early Node 20 releases.
+import 'node:process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

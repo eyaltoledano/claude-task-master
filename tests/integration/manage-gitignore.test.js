@@ -6,6 +6,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { jest } from '@jest/globals';
 import manageGitignoreFile from '../../src/utils/manage-gitignore.js';
 
 describe('manage-gitignore.js Integration Tests', () => {
@@ -384,12 +385,6 @@ tasks/ `;
 
 	describe('Error Handling', () => {
 		test('should handle permission errors gracefully', () => {
-			// Create a directory where we would create the file, then remove write permissions
-			const readOnlyDir = path.join(tempDir, 'readonly');
-			fs.mkdirSync(readOnlyDir);
-			fs.chmodSync(readOnlyDir, 0o444); // Read-only
-
-			const readOnlyGitignorePath = path.join(readOnlyDir, '.gitignore');
 			const templateContent = `# Test
 test.txt
 
@@ -399,30 +394,42 @@ tasks/ `;
 
 			const logs = [];
 			const mockLog = (level, message) => logs.push({ level, message });
+			const permissionError = Object.assign(
+				new Error('EACCES: permission denied'),
+				{ code: 'EACCES' }
+			);
+			// Directory chmod does not deny writes consistently across platforms.
+			const writeFileSpy = jest
+				.spyOn(fs, 'writeFileSync')
+				.mockImplementationOnce(() => {
+					throw permissionError;
+				});
 
-			expect(() => {
-				manageGitignoreFile(
-					readOnlyGitignorePath,
-					templateContent,
-					false,
-					mockLog
+			try {
+				expect(() => {
+					manageGitignoreFile(
+						testGitignorePath,
+						templateContent,
+						false,
+						mockLog
+					);
+				}).toThrow(permissionError);
+				expect(writeFileSpy).toHaveBeenCalledWith(
+					testGitignorePath,
+					expect.any(String)
 				);
-			}).toThrow();
-
-			// Verify error was logged
-			expect(logs).toContainEqual({
-				level: 'error',
-				message: expect.stringContaining('Failed to create')
-			});
-
-			// Restore permissions for cleanup
-			fs.chmodSync(readOnlyDir, 0o755);
+				expect(fs.existsSync(testGitignorePath)).toBe(false);
+				expect(logs).toContainEqual({
+					level: 'error',
+					message: `Failed to create ${testGitignorePath}: ${permissionError.message}`
+				});
+			} finally {
+				writeFileSpy.mockRestore();
+			}
 		});
 
 		test('should handle read errors on existing files', () => {
-			// Create a file then remove read permissions
 			fs.writeFileSync(testGitignorePath, 'existing content');
-			fs.chmodSync(testGitignorePath, 0o000); // No permissions
 
 			const templateContent = `# Test
 test.txt
@@ -433,19 +440,36 @@ tasks/ `;
 
 			const logs = [];
 			const mockLog = (level, message) => logs.push({ level, message });
+			const permissionError = Object.assign(
+				new Error('EACCES: permission denied'),
+				{ code: 'EACCES' }
+			);
+			const readFileSpy = jest
+				.spyOn(fs, 'readFileSync')
+				.mockImplementationOnce(() => {
+					throw permissionError;
+				});
 
-			expect(() => {
-				manageGitignoreFile(testGitignorePath, templateContent, false, mockLog);
-			}).toThrow();
-
-			// Verify error was logged
-			expect(logs).toContainEqual({
-				level: 'error',
-				message: expect.stringContaining('Failed to merge content')
-			});
-
-			// Restore permissions for cleanup
-			fs.chmodSync(testGitignorePath, 0o644);
+			try {
+				expect(() => {
+					manageGitignoreFile(
+						testGitignorePath,
+						templateContent,
+						false,
+						mockLog
+					);
+				}).toThrow(permissionError);
+				expect(readFileSpy).toHaveBeenCalledWith(testGitignorePath, 'utf8');
+				expect(logs).toContainEqual({
+					level: 'error',
+					message: `Failed to merge content with ${testGitignorePath}: ${permissionError.message}`
+				});
+			} finally {
+				readFileSpy.mockRestore();
+			}
+			expect(fs.readFileSync(testGitignorePath, 'utf8')).toBe(
+				'existing content'
+			);
 		});
 	});
 

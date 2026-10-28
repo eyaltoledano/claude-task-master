@@ -1,37 +1,19 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+import templates from '../../src/prompts/templates.cjs';
 import { log } from './utils.js';
 
-import addTaskPrompt from '../../src/prompts/add-task.json' with {
-	type: 'json'
-};
-// Import all prompt templates directly
-import analyzeComplexityPrompt from '../../src/prompts/analyze-complexity.json' with {
-	type: 'json'
-};
-import expandTaskPrompt from '../../src/prompts/expand-task.json' with {
-	type: 'json'
-};
-import parsePrdPrompt from '../../src/prompts/parse-prd.json' with {
-	type: 'json'
-};
-import researchPrompt from '../../src/prompts/research.json' with {
-	type: 'json'
-};
-import updateSubtaskPrompt from '../../src/prompts/update-subtask.json' with {
-	type: 'json'
-};
-import updateTaskPrompt from '../../src/prompts/update-task.json' with {
-	type: 'json'
-};
-import updateTasksPrompt from '../../src/prompts/update-tasks.json' with {
-	type: 'json'
-};
-
-// Import schema for validation
-import promptTemplateSchema from '../../src/prompts/schemas/prompt-template.schema.json' with {
-	type: 'json'
-};
+const {
+	addTaskPrompt,
+	analyzeComplexityPrompt,
+	expandTaskPrompt,
+	parsePrdPrompt,
+	researchPrompt,
+	updateSubtaskPrompt,
+	updateTaskPrompt,
+	updateTasksPrompt,
+	promptTemplateSchema
+} = templates;
 
 /**
  * Manages prompt templates for AI interactions

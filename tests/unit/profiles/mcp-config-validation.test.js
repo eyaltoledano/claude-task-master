@@ -9,7 +9,7 @@ describe('MCP Configuration Validation', () => {
 				shouldHaveMcp: true,
 				expectedDir: '.vscode',
 				expectedConfigName: 'settings.json',
-				expectedPath: '.vscode/settings.json'
+				expectedPath: path.join('.vscode', 'settings.json')
 			},
 			claude: {
 				shouldHaveMcp: true,
@@ -33,19 +33,19 @@ describe('MCP Configuration Validation', () => {
 				shouldHaveMcp: true,
 				expectedDir: '.cursor',
 				expectedConfigName: 'mcp.json',
-				expectedPath: '.cursor/mcp.json'
+				expectedPath: path.join('.cursor', 'mcp.json')
 			},
 			gemini: {
 				shouldHaveMcp: true,
 				expectedDir: '.gemini',
 				expectedConfigName: 'settings.json',
-				expectedPath: '.gemini/settings.json'
+				expectedPath: path.join('.gemini', 'settings.json')
 			},
 			kiro: {
 				shouldHaveMcp: true,
 				expectedDir: '.kiro',
 				expectedConfigName: 'settings/mcp.json',
-				expectedPath: '.kiro/settings/mcp.json'
+				expectedPath: path.join('.kiro', 'settings', 'mcp.json')
 			},
 			opencode: {
 				shouldHaveMcp: true,
@@ -57,7 +57,7 @@ describe('MCP Configuration Validation', () => {
 				shouldHaveMcp: true,
 				expectedDir: '.roo',
 				expectedConfigName: 'mcp.json',
-				expectedPath: '.roo/mcp.json'
+				expectedPath: path.join('.roo', 'mcp.json')
 			},
 			trae: {
 				shouldHaveMcp: false,
@@ -69,19 +69,19 @@ describe('MCP Configuration Validation', () => {
 				shouldHaveMcp: true,
 				expectedDir: '.vscode',
 				expectedConfigName: 'mcp.json',
-				expectedPath: '.vscode/mcp.json'
+				expectedPath: path.join('.vscode', 'mcp.json')
 			},
 			windsurf: {
 				shouldHaveMcp: true,
 				expectedDir: '.windsurf',
 				expectedConfigName: 'mcp.json',
-				expectedPath: '.windsurf/mcp.json'
+				expectedPath: path.join('.windsurf', 'mcp.json')
 			},
 			zed: {
 				shouldHaveMcp: true,
 				expectedDir: '.zed',
 				expectedConfigName: 'settings.json',
-				expectedPath: '.zed/settings.json'
+				expectedPath: path.join('.zed', 'settings.json')
 			}
 		};
 
@@ -114,7 +114,7 @@ describe('MCP Configuration Validation', () => {
 							expectedPath = profile.mcpConfigName; // Other root profiles normalize to just the filename
 						}
 					} else {
-						expectedPath = `${profile.profileDir}/${profile.mcpConfigName}`;
+						expectedPath = path.join(profile.profileDir, profile.mcpConfigName);
 					}
 					expect(profile.mcpConfigPath).toBe(expectedPath);
 				}
@@ -149,12 +149,14 @@ describe('MCP Configuration Validation', () => {
 						}
 					} else if (nestedConfigProfiles.includes(profileName)) {
 						// Profiles with nested config directories
-						expect(profile.mcpConfigPath).toMatch(
+						expect(profile.mcpConfigPath.split(path.sep).join('/')).toMatch(
 							/^\.[\w-]+\/[\w-]+\/[\w_.]+$/
 						);
 					} else {
 						// Other profiles should have config files in their specific directories
-						expect(profile.mcpConfigPath).toMatch(/^\.[\w-]+\/[\w_.]+$/);
+						expect(profile.mcpConfigPath.split(path.sep).join('/')).toMatch(
+							/^\.[\w-]+\/[\w_.]+$/
+						);
 					}
 				}
 			});
@@ -293,7 +295,7 @@ describe('MCP Configuration Validation', () => {
 				const profile = getRulesProfile(profileName);
 				if (profile.mcpConfig !== false) {
 					// Verify the path is properly formatted for path.join usage
-					expect(profile.mcpConfigPath.startsWith('/')).toBe(false);
+					expect(path.isAbsolute(profile.mcpConfigPath)).toBe(false);
 
 					// Root directory profiles have different patterns
 					if (profile.profileDir === '.') {
@@ -305,7 +307,7 @@ describe('MCP Configuration Validation', () => {
 						}
 					} else {
 						// Non-root profiles should contain a directory separator
-						expect(profile.mcpConfigPath).toContain('/');
+						expect(profile.mcpConfigPath).toContain(path.sep);
 					}
 
 					// Verify it matches the expected pattern based on how path.join works
@@ -317,7 +319,7 @@ describe('MCP Configuration Validation', () => {
 							expectedPath = profile.mcpConfigName; // path.join('.', 'filename') normalizes to 'filename'
 						}
 					} else {
-						expectedPath = `${profile.profileDir}/${profile.mcpConfigName}`;
+						expectedPath = path.join(profile.profileDir, profile.mcpConfigName);
 					}
 					expect(profile.mcpConfigPath).toBe(expectedPath);
 				}
@@ -339,7 +341,7 @@ describe('MCP Configuration Validation', () => {
 						profile.mcpConfigPath
 					);
 					expect(fullPath).toBe(normalizedExpectedPath);
-					expect(fullPath).toContain(profile.mcpConfigName);
+					expect(fullPath).toContain(path.normalize(profile.mcpConfigName));
 				}
 			});
 		});
@@ -361,14 +363,14 @@ describe('MCP Configuration Validation', () => {
 						}
 					} else if (profileName === 'kiro') {
 						// Kiro has a nested config structure
-						const parts = profile.mcpConfigPath.split('/');
+						const parts = profile.mcpConfigPath.split(path.sep);
 						expect(parts).toHaveLength(3); // Should be profileDir/settings/mcp.json
 						expect(parts[0]).toBe(profile.profileDir);
 						expect(parts[1]).toBe('settings');
 						expect(parts[2]).toBe('mcp.json');
 					} else {
 						// Non-root profiles should have profileDir/configName structure
-						const parts = profile.mcpConfigPath.split('/');
+						const parts = profile.mcpConfigPath.split(path.sep);
 						expect(parts).toHaveLength(2); // Should be profileDir/configName
 						expect(parts[0]).toBe(profile.profileDir);
 						expect(parts[1]).toBe(profile.mcpConfigName);

@@ -1,3 +1,4 @@
+import path from 'path';
 import { jest } from '@jest/globals';
 
 // Mock fs module before importing anything that uses it
@@ -212,7 +213,9 @@ Use the .mdc extension for all rule files.`;
 		expect(kiroProfile.profileDir).toBe('.kiro');
 		expect(kiroProfile.mcpConfig).toBe(true);
 		expect(kiroProfile.mcpConfigName).toBe('settings/mcp.json');
-		expect(kiroProfile.mcpConfigPath).toBe('.kiro/settings/mcp.json');
+		expect(kiroProfile.mcpConfigPath).toBe(
+			path.join('.kiro', 'settings', 'mcp.json')
+		);
 		expect(kiroProfile.includeDefaultRules).toBe(true);
 		expect(kiroProfile.fileMap).toEqual({
 			'rules/cursor_rules.mdc': 'kiro_rules.md',
@@ -244,9 +247,9 @@ Use the .mdc extension for all rule files.`;
 			];
 
 			// Mock directory existence
-			mockExistsSync.mockImplementation((path) => {
-				if (path === '/test/assets/kiro-hooks') return true;
-				if (path === '/test/project/.kiro/hooks') return false;
+			mockExistsSync.mockImplementation((filePath) => {
+				if (filePath === path.join(assetsDir, 'kiro-hooks')) return true;
+				if (filePath === path.join(projectRoot, '.kiro', 'hooks')) return false;
 				return true;
 			});
 
@@ -257,19 +260,20 @@ Use the .mdc extension for all rule files.`;
 			kiroProfile.onPostConvertRulesProfile(projectRoot, assetsDir);
 
 			// Verify hooks directory was created
-			expect(mockMkdirSync).toHaveBeenCalledWith('/test/project/.kiro/hooks', {
-				recursive: true
-			});
+			expect(mockMkdirSync).toHaveBeenCalledWith(
+				path.join(projectRoot, '.kiro', 'hooks'),
+				{ recursive: true }
+			);
 
 			// Verify only .kiro.hook files were copied
 			expect(mockCopyFileSync).toHaveBeenCalledTimes(2);
 			expect(mockCopyFileSync).toHaveBeenCalledWith(
-				'/test/assets/kiro-hooks/tm-test-hook1.kiro.hook',
-				'/test/project/.kiro/hooks/tm-test-hook1.kiro.hook'
+				path.join(assetsDir, 'kiro-hooks', 'tm-test-hook1.kiro.hook'),
+				path.join(projectRoot, '.kiro', 'hooks', 'tm-test-hook1.kiro.hook')
 			);
 			expect(mockCopyFileSync).toHaveBeenCalledWith(
-				'/test/assets/kiro-hooks/tm-test-hook2.kiro.hook',
-				'/test/project/.kiro/hooks/tm-test-hook2.kiro.hook'
+				path.join(assetsDir, 'kiro-hooks', 'tm-test-hook2.kiro.hook'),
+				path.join(projectRoot, '.kiro', 'hooks', 'tm-test-hook2.kiro.hook')
 			);
 		});
 
@@ -290,8 +294,8 @@ Use the .mdc extension for all rule files.`;
 
 			// Verify hook was copied
 			expect(mockCopyFileSync).toHaveBeenCalledWith(
-				'/test/assets/kiro-hooks/tm-test-hook.kiro.hook',
-				'/test/project/.kiro/hooks/tm-test-hook.kiro.hook'
+				path.join(assetsDir, 'kiro-hooks', 'tm-test-hook.kiro.hook'),
+				path.join(projectRoot, '.kiro', 'hooks', 'tm-test-hook.kiro.hook')
 			);
 		});
 
@@ -300,8 +304,8 @@ Use the .mdc extension for all rule files.`;
 			const assetsDir = '/test/assets';
 
 			// Mock source directory doesn't exist
-			mockExistsSync.mockImplementation((path) => {
-				if (path === '/test/assets/kiro-hooks') return false;
+			mockExistsSync.mockImplementation((filePath) => {
+				if (filePath === path.join(assetsDir, 'kiro-hooks')) return false;
 				return true;
 			});
 
