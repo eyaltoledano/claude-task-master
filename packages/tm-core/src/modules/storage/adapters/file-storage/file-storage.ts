@@ -295,7 +295,10 @@ export class FileStorage implements IStorage {
 				task.subtasks?.map((subtask) => ({
 					...subtask,
 					id: Number(subtask.id), // Subtask IDs are numbers
-					parentId: String(subtask.parentId) // Parent ID is string (Task ID)
+					// Parent ID is string (Task ID). Legacy subtasks have no parentId
+					// (they use parentTaskId), so fall back to the enclosing task's ID
+					// instead of writing the literal string "undefined" (#1708).
+					parentId: String(subtask.parentId ?? task.id)
 				})) || []
 		}));
 	}
