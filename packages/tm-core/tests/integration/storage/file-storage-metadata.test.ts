@@ -48,6 +48,55 @@ describe('FileStorage Metadata Preservation - Integration Tests', () => {
 		fs.rmSync(tempDir, { recursive: true, force: true });
 	});
 
+	describe('legacy subtasks without parentId (#1708)', () => {
+		it('should not write parentId "undefined" when updating a task status', async () => {
+			const tasksPath = path.join(
+				tempDir,
+				'.taskmaster',
+				'tasks',
+				'tasks.json'
+			);
+			fs.writeFileSync(
+				tasksPath,
+				JSON.stringify({
+					master: {
+						tasks: [
+							{ ...createTask('1'), id: 1 },
+							{
+								...createTask('2'),
+								id: 2,
+								subtasks: [
+									{
+										id: 1,
+										title: 'S2.1',
+										description: '',
+										status: 'pending',
+										dependencies: [],
+										details: '',
+										parentTaskId: 2
+									}
+								]
+							}
+						],
+						metadata: {}
+					}
+				})
+			);
+
+			await storage.updateTaskStatus('1', 'done');
+
+			const raw = fs.readFileSync(tasksPath, 'utf-8');
+			expect(raw).not.toContain('"undefined"');
+			const saved = JSON.parse(raw);
+			const subtask = saved.master.tasks[1].subtasks[0];
+			expect(subtask.parentId).toBe('2');
+			expect(subtask.parentTaskId).toBe(2);
+
+			const loadedTasks = await storage.loadTasks();
+			expect(loadedTasks[1].subtasks[0].parentId).toBe('2');
+		});
+	});
+
 	describe('saveTasks() and loadTasks() round-trip', () => {
 		it('should preserve metadata through save and load cycle', async () => {
 			const tasks: Task[] = [
