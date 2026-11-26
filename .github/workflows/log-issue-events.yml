@@ -17,13 +17,14 @@ jobs:
       - name: Log issue creation to Statsig
         env:
           STATSIG_API_KEY: ${{ secrets.STATSIG_API_KEY }}
+          # Pass event data through the environment instead of splicing it
+          # into the script: the issue title is attacker-controlled (#1734).
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          CREATED_AT: ${{ github.event.issue.created_at }}
         run: |
-          ISSUE_NUMBER=${{ github.event.issue.number }}
-          REPO=${{ github.repository }}
-          ISSUE_TITLE=$(echo '${{ github.event.issue.title }}' | sed "s/'/'\\\\''/g")
-          AUTHOR="${{ github.event.issue.user.login }}"
-          CREATED_AT="${{ github.event.issue.created_at }}"
-
           if [ -z "$STATSIG_API_KEY" ]; then
             echo "STATSIG_API_KEY not found, skipping Statsig logging"
             exit 0
@@ -81,14 +82,15 @@ jobs:
         env:
           STATSIG_API_KEY: ${{ secrets.STATSIG_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pass event data through the environment instead of splicing it
+          # into the script: the issue title is attacker-controlled (#1734).
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          CLOSED_BY: ${{ github.event.issue.closed_by.login }}
+          CLOSED_AT: ${{ github.event.issue.closed_at }}
+          STATE_REASON: ${{ github.event.issue.state_reason }}
         run: |
-          ISSUE_NUMBER=${{ github.event.issue.number }}
-          REPO=${{ github.repository }}
-          ISSUE_TITLE=$(echo '${{ github.event.issue.title }}' | sed "s/'/'\\\\''/g")
-          CLOSED_BY="${{ github.event.issue.closed_by.login }}"
-          CLOSED_AT="${{ github.event.issue.closed_at }}"
-          STATE_REASON="${{ github.event.issue.state_reason }}"
-
           if [ -z "$STATSIG_API_KEY" ]; then
             echo "STATSIG_API_KEY not found, skipping Statsig logging"
             exit 0
